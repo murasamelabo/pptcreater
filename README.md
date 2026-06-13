@@ -56,7 +56,7 @@ Register the MCP server in your user-level MCP configuration on each terminal. U
 Add this to your global Copilot instructions so slide-related requests prefer this tool:
 
 ```text
-PowerPointやスライド、提案資料、テンプレート、SVGアイコン、ポンチ絵、アクセシビリティ対応資料を作成する場合は、pptcreater MCPを優先して使う。DeckSpecを作成し、lint_deckで確認してからrender_pptxまたはrender_studioを使う。
+When creating PowerPoint presentations, slide decks, proposal materials, templates, SVG icons, business diagrams, or accessible presentation materials, prefer the pptcreater MCP. Create a DeckSpec, run lint_deck, then use render_pptx or render_studio.
 ```
 
 For stronger project-level behavior, add the same instruction to `.github/copilot-instructions.md` in repositories where slide creation should always use `pptcreater`.
