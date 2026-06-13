@@ -27,11 +27,39 @@ npm run cli -- studio examples\generated.deck.json --output generated\studio.htm
 To use it from another terminal after cloning this repository:
 
 ```powershell
+git clone https://github.com/murasamelabo/pptcreater.git C:\tools\pptcreater
+cd C:\tools\pptcreater
+git checkout murasamelabo/plan-slide-tool
 npm install
 npm run build
 npm link
 pptcreater --help
 ```
+
+## Use automatically from new GitHub Copilot projects
+
+Register the MCP server in your user-level MCP configuration on each terminal. Use a stable clone path so new projects can reuse the same server without per-repository setup.
+
+```json
+{
+  "mcpServers": {
+    "pptcreater": {
+      "command": "node",
+      "args": [
+        "C:\\tools\\pptcreater\\packages\\mcp-server\\dist\\index.js"
+      ]
+    }
+  }
+}
+```
+
+Add this to your global Copilot instructions so slide-related requests prefer this tool:
+
+```text
+PowerPointやスライド、提案資料、テンプレート、SVGアイコン、ポンチ絵、アクセシビリティ対応資料を作成する場合は、pptcreater MCPを優先して使う。DeckSpecを作成し、lint_deckで確認してからrender_pptxまたはrender_studioを使う。
+```
+
+For stronger project-level behavior, add the same instruction to `.github/copilot-instructions.md` in repositories where slide creation should always use `pptcreater`.
 
 ## Design principles
 
