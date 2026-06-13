@@ -1,0 +1,49 @@
+﻿{
+  "version": "0.1",
+  "title": "アクセシブルな提案資料",
+  "locale": "ja-JP",
+  "template": "minimal-consulting",
+  "skillPack": "consulting-ja",
+  "metadata": {
+    "keywords": [
+      "accessible",
+      "powerpoint",
+      "deck"
+    ]
+  },
+  "slides": [
+    {
+      "id": "slide-1",
+      "title": "AIで資料作成の品質を標準化する",
+      "layout": "title-content",
+      "speakerNotes": "このスライドは、ツールの価値を一文で伝える導入です。",
+      "elements": [
+        {
+          "id": "title",
+          "type": "text",
+          "role": "title",
+          "text": "AIで資料作成の品質を標準化する",
+          "x": 0.7,
+          "y": 0.55,
+          "w": 11,
+          "h": 0.8,
+          "fontSize": 34,
+          "bold": true,
+          "readingOrder": 0
+        },
+        {
+          "id": "message",
+          "type": "text",
+          "role": "body",
+          "text": "DeckSpec、テンプレート、lint、MCPを組み合わせ、簡潔でアクセシブルなPowerPointを再現可能に生成します。",
+          "x": 0.8,
+          "y": 1.7,
+          "w": 9.6,
+          "h": 1.2,
+          "fontSize": 24,
+          "readingOrder": 1
+        }
+      ]
+    }
+  ]
+}

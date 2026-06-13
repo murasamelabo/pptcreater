@@ -1,0 +1,30 @@
+﻿{
+  "name": "pptcreater",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "pptcreater": "./packages/cli/dist/index.js"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run",
+    "cli": "node packages/cli/dist/index.js",
+    "mcp": "node packages/mcp-server/dist/index.js",
+    "studio": "node ./packages/cli/dist/index.js studio ./examples/deck.ja.json --output ./generated/studio.html"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "commander": "^15.0.0",
+    "pptxgenjs": "^4.0.1",
+    "zod": "^4.4.3"
+  }
+}

@@ -1,0 +1,8 @@
+﻿node_modules/
+packages/*/dist/
+packages/*/*.tsbuildinfo
+coverage/
+examples/*.pptx
+examples/*.svg
+generated/
+*.log
