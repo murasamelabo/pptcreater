@@ -1,0 +1,28 @@
+﻿{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "references": [
+    {
+      "path": "../core"
+    },
+    {
+      "path": "../assets-svg"
+    },
+    {
+      "path": "../diagram"
+    },
+    {
+      "path": "../render-pptx"
+    },
+    {
+      "path": "../studio"
+    }
+  ]
+}

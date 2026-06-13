@@ -1,0 +1,12 @@
+﻿{
+  "id": "minimal-consulting",
+  "name": "Minimal Consulting",
+  "description": "Executive-ready slides with strong whitespace, assertion titles, and restrained accents.",
+  "accessibility": {
+    "minimumBodyFontSize": 20,
+    "minimumContrast": 4.5,
+    "requiresSlideTitles": true,
+    "requiresReadingOrder": true,
+    "requiresAltText": true
+  }
+}

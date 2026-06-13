@@ -1,0 +1,134 @@
+﻿import { z } from "zod";
+
+export const LocaleSchema = z.enum(["ja-JP", "en-US"]);
+
+export const HexColorSchema = z
+  .string()
+  .regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/, "Expected a hex color such as #123abc");
+
+export const TypographyTokensSchema = z.object({
+  headingFont: z.string().min(1),
+  bodyFont: z.string().min(1),
+  fallbackFonts: z.array(z.string().min(1)).default([]),
+  titleSize: z.number().min(24).default(36),
+  bodySize: z.number().min(16).default(24),
+  captionSize: z.number().min(10).default(14)
+});
+
+export const ColorTokensSchema = z.object({
+  background: HexColorSchema,
+  surface: HexColorSchema,
+  text: HexColorSchema,
+  mutedText: HexColorSchema,
+  accent: HexColorSchema,
+  danger: HexColorSchema,
+  success: HexColorSchema
+});
+
+export const SpacingTokensSchema = z.object({
+  margin: z.number().positive().default(0.5),
+  gutter: z.number().positive().default(0.24),
+  radius: z.number().nonnegative().default(0.08)
+});
+
+export const DesignTokensSchema = z.object({
+  colors: ColorTokensSchema,
+  typography: TypographyTokensSchema,
+  spacing: SpacingTokensSchema
+});
+
+export const AccessibilityMetadataSchema = z.object({
+  title: z.string().min(1),
+  language: LocaleSchema,
+  readingOrder: z.array(z.string().min(1)).default([]),
+  longDescription: z.string().optional()
+});
+
+const ElementBaseSchema = z.object({
+  id: z.string().min(1),
+  x: z.number().min(0),
+  y: z.number().min(0),
+  w: z.number().positive(),
+  h: z.number().positive(),
+  readingOrder: z.number().int().nonnegative().optional(),
+  decorative: z.boolean().default(false),
+  altText: z.string().optional()
+});
+
+export const TextElementSchema = ElementBaseSchema.extend({
+  type: z.literal("text"),
+  role: z.enum(["title", "subtitle", "body", "caption", "callout"]).default("body"),
+  text: z.string().min(1),
+  fontSize: z.number().positive().optional(),
+  color: HexColorSchema.optional(),
+  bold: z.boolean().default(false)
+});
+
+export const SvgElementSchema = ElementBaseSchema.extend({
+  type: z.literal("svg"),
+  svg: z.string().min(1),
+  title: z.string().optional(),
+  description: z.string().optional()
+});
+
+export const ImageElementSchema = ElementBaseSchema.extend({
+  type: z.literal("image"),
+  path: z.string().optional(),
+  dataUri: z.string().optional(),
+  description: z.string().optional()
+}).refine((value) => value.path || value.dataUri, {
+  message: "Image elements require either path or dataUri"
+});
+
+export const DiagramElementSchema = ElementBaseSchema.extend({
+  type: z.literal("diagram"),
+  svg: z.string().min(1),
+  summary: z.string().min(1),
+  longDescription: z.string().min(1)
+});
+
+export const SlideElementSchema = z.discriminatedUnion("type", [
+  TextElementSchema,
+  SvgElementSchema,
+  ImageElementSchema,
+  DiagramElementSchema
+]);
+
+export const SlideSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  layout: z.string().default("title-content"),
+  speakerNotes: z.string().optional(),
+  elements: z.array(SlideElementSchema).min(1)
+});
+
+export const DeckSpecSchema = z.object({
+  version: z.literal("0.1"),
+  title: z.string().min(1),
+  locale: LocaleSchema,
+  template: z.string().min(1),
+  skillPack: z.string().optional(),
+  tokens: DesignTokensSchema.optional(),
+  slides: z.array(SlideSchema).min(1),
+  metadata: z
+    .object({
+      author: z.string().optional(),
+      subject: z.string().optional(),
+      keywords: z.array(z.string()).default([])
+    })
+    .default({ keywords: [] })
+});
+
+export type Locale = z.infer<typeof LocaleSchema>;
+export type DesignTokens = z.infer<typeof DesignTokensSchema>;
+export type SlideElement = z.infer<typeof SlideElementSchema>;
+export type TextElement = z.infer<typeof TextElementSchema>;
+export type SvgElement = z.infer<typeof SvgElementSchema>;
+export type ImageElement = z.infer<typeof ImageElementSchema>;
+export type DiagramElement = z.infer<typeof DiagramElementSchema>;
+export type Slide = z.infer<typeof SlideSchema>;
+export type DeckSpec = z.infer<typeof DeckSpecSchema>;
+
+export function parseDeckSpec(input: unknown): DeckSpec {
+  return DeckSpecSchema.parse(input);
+}

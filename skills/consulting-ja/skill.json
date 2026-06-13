@@ -1,0 +1,11 @@
+﻿{
+  "id": "consulting-ja",
+  "name": "Consulting Japanese",
+  "locale": "ja-JP",
+  "rules": [
+    "各スライドは1つの主張に絞る",
+    "タイトルは結論型にする",
+    "詳細はspeaker notesへ移す",
+    "図表は要点を直接ラベル化する"
+  ]
+}

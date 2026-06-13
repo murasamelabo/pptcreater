@@ -1,0 +1,33 @@
+﻿{
+  "name": "@pptcreater/mcp-server",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@pptcreater/assets-svg": "0.1.0",
+    "@pptcreater/core": "0.1.0",
+    "@pptcreater/diagram": "0.1.0",
+    "@pptcreater/render-pptx": "0.1.0",
+    "@pptcreater/studio": "0.1.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3"
+  }
+}

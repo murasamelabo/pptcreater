@@ -1,0 +1,52 @@
+﻿{
+  "title": "Deck creation workflow",
+  "summary": "Prompt is converted into DeckSpec, linted, then rendered to PowerPoint.",
+  "longDescription": "The workflow starts with a user prompt. The core creates a DeckSpec, checks it with design and accessibility lint rules, applies templates and assets, and renders the final PowerPoint file.",
+  "nodes": [
+    {
+      "id": "prompt",
+      "label": "Prompt",
+      "x": 80,
+      "y": 210,
+      "kind": "actor"
+    },
+    {
+      "id": "deckspec",
+      "label": "DeckSpec",
+      "x": 300,
+      "y": 210,
+      "kind": "data"
+    },
+    {
+      "id": "lint",
+      "label": "Lint",
+      "x": 520,
+      "y": 210,
+      "kind": "process"
+    },
+    {
+      "id": "pptx",
+      "label": "PowerPoint",
+      "x": 740,
+      "y": 210,
+      "kind": "system"
+    }
+  ],
+  "arrows": [
+    {
+      "from": "prompt",
+      "to": "deckspec",
+      "label": "structure"
+    },
+    {
+      "from": "deckspec",
+      "to": "lint",
+      "label": "verify"
+    },
+    {
+      "from": "lint",
+      "to": "pptx",
+      "label": "render"
+    }
+  ]
+}
