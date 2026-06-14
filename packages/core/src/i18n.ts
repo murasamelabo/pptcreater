@@ -1,4 +1,4 @@
-import type { LintIssue, LintReport } from "./lint.js";
+﻿import type { LintIssue, LintReport } from "./lint.js";
 import type { Locale } from "./schema.js";
 
 export type MessageKey =

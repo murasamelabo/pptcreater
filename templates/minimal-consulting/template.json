@@ -1,12 +1,68 @@
 ﻿{
   "id": "minimal-consulting",
   "name": "Minimal Consulting",
+  "locale": "ja-JP",
   "description": "Executive-ready slides with strong whitespace, assertion titles, and restrained accents.",
+  "tokens": {
+    "colors": {
+      "background": "#f8fafc",
+      "surface": "#ffffff",
+      "text": "#111827",
+      "mutedText": "#475569",
+      "accent": "#1d4ed8",
+      "danger": "#b91c1c",
+      "success": "#047857"
+    },
+    "typography": {
+      "headingFont": "Yu Gothic",
+      "bodyFont": "Yu Gothic",
+      "fallbackFonts": [
+        "Meiryo",
+        "Arial",
+        "sans-serif"
+      ],
+      "titleSize": 36,
+      "bodySize": 24,
+      "captionSize": 14
+    },
+    "spacing": {
+      "margin": 0.5,
+      "gutter": 0.24,
+      "radius": 0.08
+    }
+  },
+  "layouts": [
+    {
+      "id": "title-content",
+      "name": "Title and content",
+      "description": "Assertion title, concise body, and one optional visual.",
+      "placeholders": [
+        "title",
+        "body",
+        "visual"
+      ]
+    },
+    {
+      "id": "section-divider",
+      "name": "Section divider",
+      "description": "High-contrast section transition with one key message.",
+      "placeholders": [
+        "title",
+        "subtitle"
+      ]
+    }
+  ],
   "accessibility": {
     "minimumBodyFontSize": 20,
     "minimumContrast": 4.5,
     "requiresSlideTitles": true,
     "requiresReadingOrder": true,
     "requiresAltText": true
-  }
+  },
+  "tags": [
+    "consulting",
+    "minimal",
+    "japanese",
+    "accessible"
+  ]
 }

@@ -3,9 +3,22 @@ import { lstat, mkdir, realpath, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { createSimpleIconSvg, searchSvgAssets } from "@pptcreater/assets-svg";
+import { createSimpleIconSvg, getDefaultSvgRegistryPath, registerSvgAsset, searchAllSvgAssets } from "@pptcreater/assets-svg";
 import { renderPonchiDiagram } from "@pptcreater/diagram";
-import { createSampleDeck, DeckSpecSchema, LocaleSchema, listSkillPacks, listTemplates, lintDeckSpec, localizeLintReport, parseDeckSpec, type DeckSpec } from "@pptcreater/core";
+import {
+  createSampleDeck,
+  DeckSpecSchema,
+  getDefaultTemplateRegistryPath,
+  listSkillPacks,
+  lintDeckSpec,
+  LocaleSchema,
+  localizeLintReport,
+  parseDeckSpec,
+  registerTemplateManifest,
+  searchTemplates,
+  TemplateManifestSchema,
+  type DeckSpec
+} from "@pptcreater/core";
 import { renderDeckToPptx } from "@pptcreater/render-pptx";
 import { renderStudioHtml } from "@pptcreater/studio";
 
@@ -278,17 +291,21 @@ export function createPptcreaterMcpServer(): McpServer {
       }
     },
     async ({ query }) => {
-      const normalized = query.trim().toLowerCase();
-      const templates = listTemplates().filter((template) => {
-        if (!normalized) {
-          return true;
-        }
-
-        return [template.id, template.name, template.description, ...template.tags].join(" ").toLowerCase().includes(normalized);
-      });
-
-      return jsonText(templates);
+      return jsonText(await searchTemplates(query));
     }
+  );
+
+  server.registerTool(
+    "register_template",
+    {
+      title: "Register template",
+      description: "Register a validated template manifest as a reusable pptcreater template.",
+      inputSchema: {
+        template: TemplateManifestSchema,
+        overwrite: z.boolean().default(false)
+      }
+    },
+    async ({ template, overwrite }) => jsonText(await registerTemplateManifest(template, { overwrite }))
   );
 
   server.registerTool(
@@ -300,7 +317,27 @@ export function createPptcreaterMcpServer(): McpServer {
         query: z.string().default("")
       }
     },
-    async ({ query }) => jsonText(searchSvgAssets(query))
+    async ({ query }) => jsonText(await searchAllSvgAssets(query))
+  );
+
+  server.registerTool(
+    "register_svg_asset",
+    {
+      title: "Register reusable SVG asset",
+      description: "Sanitize and register an SVG icon or illustration for repeated use by search_assets and future decks.",
+      inputSchema: {
+        id: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,79}$/),
+        title: z.string().min(1),
+        description: z.string().min(1),
+        tags: z.array(z.string()).default([]),
+        license: z.string().default("custom"),
+        decorative: z.boolean().default(false),
+        altText: z.string().optional(),
+        svg: z.string().min(1).max(200_000),
+        overwrite: z.boolean().default(false)
+      }
+    },
+    async ({ overwrite, ...asset }) => jsonText(await registerSvgAsset(asset, { overwrite }))
   );
 
   server.registerTool(
@@ -339,6 +376,41 @@ export function createPptcreaterMcpServer(): McpServer {
   );
 
   server.registerResource(
+    "asset-registration-guide",
+    "asset://registration-guide",
+    {
+      title: "Asset registration guide",
+      description: "How AI agents should register reusable SVG assets and templates in pptcreater.",
+      mimeType: "text/markdown"
+    },
+    async (uri) => ({
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: "text/markdown",
+          text: [
+            "# pptcreater asset registration",
+            "",
+            "Use `register_svg_asset` when the user provides or asks you to create an SVG that should be reused in future decks.",
+            "",
+            "Required SVG fields: `id`, `title`, `description`, and `svg`.",
+            "Recommended fields: `tags`, `license`, `decorative`, and `altText`.",
+            "The server sanitizes SVG markup before writing it to the registry.",
+            `Default SVG registry: ${getDefaultSvgRegistryPath()}`,
+            "",
+            "Use `search_assets` before creating a duplicate asset.",
+            "",
+            "Use `register_template` for reusable slide template manifests. A template manifest must include design tokens, layouts, locale, tags, and accessibility constraints.",
+            `Default template registry: ${getDefaultTemplateRegistryPath()}`,
+            "",
+            "After registration, use `search_assets` or `search_templates` to discover the new reusable item."
+          ].join("\n")
+        }
+      ]
+    })
+  );
+
+  server.registerResource(
     "deckspec-schema",
     "deckspec://schema",
     {
@@ -354,11 +426,38 @@ export function createPptcreaterMcpServer(): McpServer {
           text: JSON.stringify(
             {
               version: "0.1",
-              description: "Use create_deck for examples and lint_deck before render_pptx."
+              description: "Use create_deck for examples and lint_deck before render_pptx.",
+              templateField: "DeckSpec.template must be the id of a template returned by search_templates. Register reusable custom templates with register_template.",
+              assetFlow: "Use search_assets to find registered SVG assets. Use register_svg_asset for reusable SVGs before referencing their sanitized SVG in DeckSpec elements.",
+              requiredVisualAccessibility: "Non-decorative SVG, image, and diagram elements require altText. Diagram elements also require summary and longDescription.",
+              recommendedWorkflow: ["search_templates", "search_assets", "create_deck or custom DeckSpec", "lint_deck", "render_pptx or render_studio"]
             },
             null,
             2
           )
+        }
+      ]
+    })
+  );
+
+  server.registerPrompt(
+    "register_reusable_svg_asset",
+    {
+      title: "Register reusable SVG asset",
+      description: "Guide an agent to turn an SVG into a reusable pptcreater asset.",
+      argsSchema: {
+        assetName: z.string().min(1),
+        purpose: z.string().min(1)
+      }
+    },
+    ({ assetName, purpose }) => ({
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `Register a reusable SVG asset named "${assetName}" for this purpose: ${purpose}. First call search_assets to avoid duplicates. If no suitable asset exists, provide safe SVG markup and call register_svg_asset with a stable id, title, description, tags, license, decorative flag, and altText when the asset conveys meaning.`
+          }
         }
       ]
     })

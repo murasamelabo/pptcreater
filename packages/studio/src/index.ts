@@ -1,4 +1,4 @@
-import { sanitizeSvg, searchSvgAssets } from "@pptcreater/assets-svg";
+﻿import { sanitizeSvg, searchSvgAssets } from "@pptcreater/assets-svg";
 import { listSkillPacks, listTemplates, lintDeckSpec, localizeLintReport, parseDeckSpec, type DeckSpec, type Locale } from "@pptcreater/core";
 
 type StudioLabels = {

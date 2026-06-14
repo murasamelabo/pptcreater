@@ -2,9 +2,20 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { Command } from "commander";
-import { createSimpleIconSvg, searchSvgAssets } from "@pptcreater/assets-svg";
+import { createSimpleIconSvg, getDefaultSvgRegistryPath, registerSvgAsset, searchAllSvgAssets } from "@pptcreater/assets-svg";
 import { renderPonchiDiagram } from "@pptcreater/diagram";
-import { cliMessage, createSampleDeck, listSkillPacks, listTemplates, lintDeckSpec, localizeLintReport, parseDeckSpec, type Locale } from "@pptcreater/core";
+import {
+  cliMessage,
+  createSampleDeck,
+  getDefaultTemplateRegistryPath,
+  listAllTemplates,
+  listSkillPacks,
+  lintDeckSpec,
+  localizeLintReport,
+  parseDeckSpec,
+  registerTemplateManifest,
+  type Locale
+} from "@pptcreater/core";
 import { renderDeckToPptx } from "@pptcreater/render-pptx";
 import { renderStudioHtml } from "@pptcreater/studio";
 
@@ -120,27 +131,99 @@ program
     console.log(cliMessage(outputLocale(deck.locale), "cli.studioCreated", { path: options.output }));
   }));
 
-program
+const templateCommand = program
   .command("template")
-  .description("Template operations.")
+  .description("Template operations.");
+
+templateCommand
   .command("list")
   .description("List built-in templates.")
   .option("--json", "Emit JSON", false)
-  .action(commandAction((options: { json: boolean }) => {
-    const templates = listTemplates();
+  .action(commandAction(async (options: { json: boolean }) => {
+    const templates = await listAllTemplates();
     console.log(options.json ? JSON.stringify(templates, null, 2) : templates.map((template) => `${template.id}\t${template.name}`).join("\n"));
   }));
 
-program
+templateCommand
+  .command("register")
+  .description("Register a template manifest JSON for reuse.")
+  .argument("<manifest>", "Template manifest JSON path")
+  .option("--overwrite", "Replace an existing custom template with the same id", false)
+  .option("--json", "Emit JSON", false)
+  .action(commandAction(async (manifestPath: string, options: { overwrite: boolean; json: boolean }) => {
+    const result = await registerTemplateManifest(await readJson(manifestPath), { overwrite: options.overwrite });
+    console.log(options.json ? JSON.stringify(result, null, 2) : `Registered template ${result.template.id} in ${result.registryPath}`);
+  }));
+
+templateCommand
+  .command("registry-path")
+  .description("Print the template registry path.")
+  .action(() => {
+    console.log(getDefaultTemplateRegistryPath());
+  });
+
+const assetCommand = program
   .command("asset")
-  .description("SVG asset operations.")
+  .description("SVG asset operations.");
+
+assetCommand
   .command("search")
   .argument("[query]", "Search query", "")
   .option("--json", "Emit JSON", false)
-  .action(commandAction((query: string, options: { json: boolean }) => {
-    const assets = searchSvgAssets(query);
+  .action(commandAction(async (query: string, options: { json: boolean }) => {
+    const assets = await searchAllSvgAssets(query);
     console.log(options.json ? JSON.stringify(assets, null, 2) : assets.map((asset) => `${asset.id}\t${asset.title}`).join("\n"));
   }));
+
+assetCommand
+  .command("register")
+  .description("Register a sanitized SVG file as a reusable asset.")
+  .argument("<svgFile>", "SVG file path")
+  .requiredOption("--id <id>", "Reusable asset id")
+  .requiredOption("--title <title>", "Human-readable asset title")
+  .requiredOption("--description <description>", "Asset description")
+  .option("--tag <tag...>", "Search tags")
+  .option("--license <license>", "Asset license", "custom")
+  .option("--alt-text <text>", "Default alt text")
+  .option("--decorative", "Mark as decorative by default", false)
+  .option("--overwrite", "Replace an existing asset with the same id", false)
+  .option("--json", "Emit JSON", false)
+  .action(commandAction(async (
+    svgFile: string,
+    options: {
+      id: string;
+      title: string;
+      description: string;
+      tag?: string[];
+      license: string;
+      altText?: string;
+      decorative: boolean;
+      overwrite: boolean;
+      json: boolean;
+    }
+  ) => {
+    const result = await registerSvgAsset(
+      {
+        id: options.id,
+        title: options.title,
+        description: options.description,
+        tags: options.tag ?? [],
+        license: options.license,
+        decorative: options.decorative,
+        altText: options.altText,
+        svg: await readFile(svgFile, "utf8")
+      },
+      { overwrite: options.overwrite }
+    );
+    console.log(options.json ? JSON.stringify(result, null, 2) : `Registered SVG asset ${result.asset.id} in ${result.registryPath}`);
+  }));
+
+assetCommand
+  .command("registry-path")
+  .description("Print the SVG asset registry path.")
+  .action(() => {
+    console.log(getDefaultSvgRegistryPath());
+  });
 
 program
   .command("icon")
