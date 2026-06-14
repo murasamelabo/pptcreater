@@ -76,6 +76,7 @@ export const ShapeElementSchema = ElementBaseSchema.extend({
   decorative: z.boolean().default(true),
   shape: z.enum(["rect", "roundRect", "roundedRect", "ellipse", "oval", "line", "rightArrow", "arrow"]).default("rect"),
   fill: z.union([HexColorSchema, z.literal("none")]).default("none"),
+  fillOpacity: z.number().min(0).max(1).optional(),
   line: z
     .object({
       color: HexColorSchema.optional(),

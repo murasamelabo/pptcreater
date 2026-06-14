@@ -1,4 +1,5 @@
 ﻿import type { ContentMode, DeckSpec, DesignTokens, Locale, ShapeElement, SlideElement, TextElement } from "./schema.js";
+import { estimateTextOverflow } from "./layout.js";
 import { getTemplate, recommendTemplateForContentMode, styleProfileTokens, templateForStyleProfile, type StyleProfile } from "./templates.js";
 
 export type CreateSampleDeckOptions = {
@@ -112,6 +113,37 @@ function minFontForRole(role: TextElement["role"]): number {
   return 20;
 }
 
+// Reduce a font size until the text fits its box (never below the role minimum),
+// so generated slides never trip the layout.text-overflow-risk lint or visibly clip.
+function fitFontSize(role: TextElement["role"], text: string, w: number, h: number, fontSize: number): number {
+  const floor = minFontForRole(role);
+  let size = Math.max(fontSize, floor);
+
+  for (let attempt = 0; attempt < 28 && size > floor; attempt += 1) {
+    const overflow = estimateTextOverflow({
+      id: "fit",
+      type: "text",
+      role,
+      text,
+      x: 0,
+      y: 0,
+      w,
+      h,
+      fontSize: size,
+      bold: false,
+      decorative: false
+    });
+
+    if (!overflow.overflows) {
+      break;
+    }
+
+    size -= 1;
+  }
+
+  return size;
+}
+
 function textElement(
   id: string,
   role: TextElement["role"],
@@ -136,7 +168,7 @@ function textElement(
     y,
     w,
     h,
-    fontSize: Math.max(fontSize, minFontForRole(role)),
+    fontSize: fitFontSize(role, text, w, h, Math.max(fontSize, minFontForRole(role))),
     color,
     contrastBackground,
     align,
@@ -156,7 +188,8 @@ function shapeElement(
   h: number,
   readingOrder: number,
   fill: ShapeElement["fill"],
-  line: ShapeElement["line"]
+  line: ShapeElement["line"],
+  fillOpacity?: number
 ): SlideElement {
   return {
     id,
@@ -167,10 +200,88 @@ function shapeElement(
     w,
     h,
     fill,
+    fillOpacity,
     line,
     decorative: true,
     readingOrder
   };
+}
+
+const ICON_PATHS: Record<string, string> = {
+  idea: '<path d="M10 2.5a5 5 0 0 0-3 9v2h6v-2a5 5 0 0 0-3-9Z" /><path d="M8 16h4" /><path d="M8.5 18h3" />',
+  people:
+    '<circle cx="7" cy="8" r="2.4" /><circle cx="13.4" cy="8.6" r="2" /><path d="M3.4 16c0-2.3 1.8-3.7 3.6-3.7S10.6 13.7 10.6 16" /><path d="M12 12.7c1.9 0 3.6 1.2 3.6 3.3" />',
+  structure:
+    '<rect x="3" y="3.4" width="5" height="3.8" rx="1" /><rect x="12" y="12.8" width="5" height="3.8" rx="1" /><path d="M5.5 7.2v3.1a2 2 0 0 0 2 2h4.5" />',
+  visual: '<rect x="3" y="4" width="14" height="9" rx="1" /><path d="M10 13v3" /><path d="M7 16.2h6" />',
+  verify: '<path d="M10 2.6 16 5v4.4c0 4-2.7 6.3-6 8-3.3-1.7-6-4-6-8V5Z" /><path d="M7.4 9.9 9.3 11.8 12.9 8" />',
+  glance:
+    '<path d="M10 2.6v2.6" /><path d="M10 14.8v2.6" /><path d="M2.6 10h2.6" /><path d="M14.8 10h2.6" /><path d="m5 5 1.8 1.8" /><path d="m13.2 13.2 1.8 1.8" /><path d="m15 5-1.8 1.8" /><path d="m6.8 13.2-1.8 1.8" /><circle cx="10" cy="10" r="2.3" />',
+  hierarchy:
+    '<path d="M3 16.2h14" /><path d="M5 16.2v-3.6" /><path d="M9 16.2v-6.4" /><path d="M13 16.2v-4.8" /><path d="m3.4 9.6 3.6-3.6 3 3 5-5" />',
+  check: '<path d="M4 10.5 8.2 14.7 16.5 5.8" />'
+};
+
+function iconSvgElement(
+  id: string,
+  iconKey: keyof typeof ICON_PATHS,
+  color: string,
+  x: number,
+  y: number,
+  size: number,
+  readingOrder: number
+): SlideElement {
+  const path = ICON_PATHS[iconKey] ?? ICON_PATHS.glance;
+  return {
+    id,
+    type: "svg",
+    x,
+    y,
+    w: size,
+    h: size,
+    decorative: true,
+    readingOrder,
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="${color}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`
+  };
+}
+
+function atmosphereSvg(theme: Theme, base: string, glowA: string, glowB: string, idSuffix: string): string {
+  const baseAlt = theme.isDark ? lightenToward(base, 0.12) : scaleToward(base, 0.965);
+  const opacityA = theme.isDark ? 0.3 : 0.14;
+  const opacityB = theme.isDark ? 0.24 : 0.1;
+  const baseId = `atm-base-${idSuffix}`;
+  const glowAId = `atm-a-${idSuffix}`;
+  const glowBId = `atm-b-${idSuffix}`;
+  return [
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">',
+    "<defs>",
+    `<linearGradient id="${baseId}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${base}" /><stop offset="1" stop-color="${baseAlt}" /></linearGradient>`,
+    `<radialGradient id="${glowAId}" cx="0.82" cy="0.16" r="0.62"><stop offset="0" stop-color="${glowA}" stop-opacity="${opacityA}" /><stop offset="1" stop-color="${glowA}" stop-opacity="0" /></radialGradient>`,
+    `<radialGradient id="${glowBId}" cx="0.12" cy="0.92" r="0.7"><stop offset="0" stop-color="${glowB}" stop-opacity="${opacityB}" /><stop offset="1" stop-color="${glowB}" stop-opacity="0" /></radialGradient>`,
+    "</defs>",
+    `<rect x="0" y="0" width="1280" height="720" fill="url(#${baseId})" />`,
+    `<rect x="0" y="0" width="1280" height="720" fill="url(#${glowAId})" />`,
+    `<rect x="0" y="0" width="1280" height="720" fill="url(#${glowBId})" />`,
+    "</svg>"
+  ].join("");
+}
+
+function backgroundElement(theme: Theme, id: string, base: string, glowA: string, glowB: string): SlideElement {
+  return {
+    id,
+    type: "svg",
+    x: 0,
+    y: 0,
+    w: 13.333,
+    h: 7.5,
+    decorative: true,
+    readingOrder: 0,
+    svg: atmosphereSvg(theme, base, glowA, glowB, id)
+  };
+}
+
+function cardFillOpacity(theme: Theme): number | undefined {
+  return theme.isDark ? 0.68 : undefined;
 }
 
 function normalizeContentMode(value: unknown): ContentMode {
@@ -186,19 +297,22 @@ function normalizeContentMode(value: unknown): ContentMode {
 }
 
 function heroSlide(theme: Theme, isJapanese: boolean, title: string, subtitle: string, audience: string): SlideElement[] {
-  const accentBand = shapeElement("hero-band", "rect", 0, 0, 0.34, 7.5, 0, theme.accent, { color: theme.accent, width: 0.1 });
-  const panel = shapeElement("hero-panel", "roundRect", 7.7, 1.0, 4.9, 5.3, 1, theme.surface, { color: theme.cardLine, width: 1 });
-  const panelAccent = shapeElement("hero-panel-accent", "roundRect", 8.1, 1.5, 1.6, 0.22, 2, theme.accent, { color: theme.accent, width: 0.1 });
+  const background = backgroundElement(theme, "hero-bg", theme.background, theme.accent, theme.strongAccent);
+  const accentBand = shapeElement("hero-band", "rect", 0, 0, 0.34, 7.5, 1, theme.accent, { color: theme.accent, width: 0.1 });
+  const panel = shapeElement("hero-panel", "roundRect", 7.7, 1.0, 4.9, 5.3, 2, theme.surface, { color: theme.cardLine, width: 1 }, cardFillOpacity(theme));
+  const panelAccent = shapeElement("hero-panel-accent", "roundRect", 8.1, 1.5, 1.6, 0.22, 3, theme.accent, { color: theme.accent, width: 0.1 });
 
   return [
+    background,
     accentBand,
     panel,
     panelAccent,
-    textElement("eyebrow", "caption", isJapanese ? "PPTCREATER DECK" : "PPTCREATER DECK", 0.8, 0.78, 6.2, 0.4, 3, 14, theme.accentOnBackground, theme.background, "left", "middle"),
-    textElement("title", "title", title, 0.8, 1.35, 6.5, 2.3, 4, theme.tokens.typography.titleSize, theme.text, theme.background, "left", "top"),
-    textElement("subtitle", "body", subtitle, 0.8, 3.95, 6.4, 1.4, 5, theme.tokens.typography.bodySize, theme.mutedText, theme.background, "left", "top"),
-    textElement("audience", "caption", `${isJapanese ? "対象" : "Audience"}: ${audience}`, 0.8, 5.7, 6.4, 0.6, 6, theme.tokens.typography.captionSize, theme.mutedText, theme.background, "left", "middle"),
-    textElement("panel-title", "callout", isJapanese ? "このデッキの読み方" : "How to read this deck", 8.1, 1.95, 4.1, 0.6, 7, 18, theme.text, theme.surface, "left", "middle"),
+    iconSvgElement("hero-panel-icon", "idea", theme.accentOnBackground, 11.5, 1.95, 0.6, 4),
+    textElement("eyebrow", "caption", "PPTCREATER DECK", 0.8, 0.78, 6.2, 0.4, 5, 14, theme.accentOnBackground, theme.background, "left", "middle"),
+    textElement("title", "title", title, 0.8, 1.35, 6.5, 2.3, 6, theme.tokens.typography.titleSize, theme.text, theme.background, "left", "top"),
+    textElement("subtitle", "body", subtitle, 0.8, 3.95, 6.4, 1.4, 7, theme.tokens.typography.bodySize, theme.mutedText, theme.background, "left", "top"),
+    textElement("audience", "caption", `${isJapanese ? "対象" : "Audience"}: ${audience}`, 0.8, 5.7, 6.4, 0.6, 8, theme.tokens.typography.captionSize, theme.mutedText, theme.background, "left", "middle"),
+    textElement("panel-title", "callout", isJapanese ? "このデッキの読み方" : "How to read this deck", 8.1, 1.95, 3.2, 0.6, 9, 18, theme.text, theme.surface, "left", "middle"),
     textElement(
       "panel-body",
       "body",
@@ -209,7 +323,7 @@ function heroSlide(theme: Theme, isJapanese: boolean, title: string, subtitle: s
       2.7,
       4.1,
       3.2,
-      8,
+      10,
       theme.tokens.typography.bodySize,
       theme.mutedText,
       theme.surface,
@@ -219,54 +333,61 @@ function heroSlide(theme: Theme, isJapanese: boolean, title: string, subtitle: s
   ];
 }
 
-function cardSlide(theme: Theme, isJapanese: boolean, title: string, cards: [string, string][]): SlideElement[] {
+function cardSlide(theme: Theme, isJapanese: boolean, title: string, cards: [string, string, keyof typeof ICON_PATHS][]): SlideElement[] {
   const elements: SlideElement[] = [
-    textElement("title", "title", title, 0.8, 0.7, 11.7, 1.0, 0, theme.tokens.typography.titleSize - 6, theme.text, theme.background, "left", "middle")
+    backgroundElement(theme, "cards-bg", theme.background, theme.strongAccent, theme.accent),
+    textElement("title", "title", title, 0.8, 0.7, 11.7, 1.0, 1, theme.tokens.typography.titleSize - 6, theme.text, theme.background, "left", "middle")
   ];
 
   const cardWidth = 3.7;
   const gap = 0.42;
   const startX = (13.333 - (cardWidth * cards.length + gap * (cards.length - 1))) / 2;
+  const cardOpacity = cardFillOpacity(theme);
 
-  cards.forEach(([heading, body], index) => {
+  cards.forEach(([heading, body, iconKey], index) => {
     const x = startX + index * (cardWidth + gap);
-    const order = 1 + index * 6;
-    elements.push(shapeElement(`card-${index}`, "roundRect", x, 2.1, cardWidth, 3.7, order, theme.surface, { color: theme.cardLine, width: 1 }));
-    elements.push(shapeElement(`card-accent-${index}`, "roundRect", x + 0.35, 2.5, 0.6, 0.6, order + 1, theme.strongAccent, { color: theme.strongAccent, width: 0.1 }));
-    elements.push(textElement(`card-num-${index}`, "callout", String(index + 1), x + 0.35, 2.6, 0.6, 0.4, order + 2, 20, theme.onAccent, theme.strongAccent, "center", "middle"));
-    elements.push(textElement(`card-heading-${index}`, "callout", heading, x + 0.4, 3.35, cardWidth - 0.8, 0.7, order + 3, 22, theme.text, theme.surface, "left", "top"));
-    elements.push(textElement(`card-body-${index}`, "body", body, x + 0.4, 4.15, cardWidth - 0.8, 1.4, order + 4, theme.tokens.typography.bodySize - 4, theme.mutedText, theme.surface, "left", "top"));
+    const order = 2 + index * 6;
+    elements.push(shapeElement(`card-${index}`, "roundRect", x, 2.1, cardWidth, 3.7, order, theme.surface, { color: theme.cardLine, width: 1 }, cardOpacity));
+    elements.push(shapeElement(`card-accent-${index}`, "roundRect", x + 0.35, 2.5, 0.72, 0.72, order + 1, theme.strongAccent, { color: theme.strongAccent, width: 0.1 }));
+    elements.push(iconSvgElement(`card-icon-${index}`, iconKey, theme.onAccent, x + 0.53, 2.68, 0.36, order + 2));
+    elements.push(textElement(`card-heading-${index}`, "callout", heading, x + 0.4, 3.45, cardWidth - 0.8, 0.7, order + 3, 22, theme.text, theme.surface, "left", "top"));
+    elements.push(textElement(`card-body-${index}`, "body", body, x + 0.4, 4.25, cardWidth - 0.8, 1.4, order + 4, theme.tokens.typography.bodySize - 4, theme.mutedText, theme.surface, "left", "top"));
   });
 
   return elements;
 }
 
-function stepSlide(theme: Theme, isJapanese: boolean, title: string, steps: string[], caption: string): SlideElement[] {
+function stepSlide(theme: Theme, isJapanese: boolean, title: string, steps: [string, keyof typeof ICON_PATHS][], caption: string): SlideElement[] {
   const elements: SlideElement[] = [
-    textElement("title", "title", title, 0.8, 0.7, 11.7, 1.0, 0, theme.tokens.typography.titleSize - 6, theme.text, theme.background, "left", "middle"),
-    shapeElement("track", "line", 1.2, 3.4, 11.0, 0, 1, "none", { color: theme.cardLine, width: 3 })
+    backgroundElement(theme, "steps-bg", theme.background, theme.accent, theme.strongAccent),
+    textElement("title", "title", title, 0.8, 0.7, 11.7, 1.0, 1, theme.tokens.typography.titleSize - 6, theme.text, theme.background, "left", "middle"),
+    shapeElement("track", "line", 1.2, 3.4, 11.0, 0, 2, "none", { color: theme.cardLine, width: 3 })
   ];
 
   const nodeWidth = 1.7;
   const gap = (11.0 - nodeWidth * steps.length) / Math.max(1, steps.length - 1);
 
-  steps.forEach((label, index) => {
+  steps.forEach(([label, iconKey], index) => {
     const x = 1.2 + index * (nodeWidth + gap);
-    const order = 2 + index * 3;
-    elements.push(shapeElement(`node-${index}`, "ellipse", x + nodeWidth / 2 - 0.45, 2.95, 0.9, 0.9, order, theme.strongAccent, { color: theme.strongAccent, width: 0.1 }));
-    elements.push(textElement(`node-num-${index}`, "callout", String(index + 1), x + nodeWidth / 2 - 0.45, 3.1, 0.9, 0.5, order + 1, 22, theme.onAccent, theme.strongAccent, "center", "middle"));
-    elements.push(textElement(`node-label-${index}`, "caption", label, x, 4.1, nodeWidth, 0.7, order + 2, theme.tokens.typography.captionSize + 2, theme.text, theme.background, "center", "top"));
+    const order = 3 + index * 4;
+    const cx = x + nodeWidth / 2 - 0.45;
+    elements.push(shapeElement(`node-${index}`, "ellipse", cx, 2.95, 0.9, 0.9, order, theme.strongAccent, { color: theme.strongAccent, width: 0.1 }));
+    elements.push(iconSvgElement(`node-icon-${index}`, iconKey, theme.onAccent, cx + 0.27, 3.22, 0.36, order + 1));
+    elements.push(textElement(`node-num-${index}`, "caption", `STEP ${index + 1}`, x, 4.0, nodeWidth, 0.4, order + 2, theme.tokens.typography.captionSize, theme.accentOnBackground, theme.background, "center", "top"));
+    elements.push(textElement(`node-label-${index}`, "caption", label, x, 4.45, nodeWidth, 0.7, order + 3, theme.tokens.typography.captionSize + 2, theme.text, theme.background, "center", "top"));
   });
 
-  elements.push(textElement("step-caption", "body", caption, 1.2, 5.4, 11.0, 1.0, 100, theme.tokens.typography.bodySize, theme.mutedText, theme.background, "left", "top"));
+  elements.push(textElement("step-caption", "body", caption, 1.2, 5.7, 11.0, 1.0, 100, theme.tokens.typography.bodySize, theme.mutedText, theme.background, "left", "top"));
   return elements;
 }
 
 function closingSlide(theme: Theme, isJapanese: boolean, title: string, body: string): SlideElement[] {
   return [
-    shapeElement("closing-bg", "rect", 0, 0, 13.333, 7.5, 0, theme.strongAccent, { color: theme.strongAccent, width: 0.1 }),
-    textElement("title", "title", title, 1.0, 2.3, 11.3, 2.0, 1, theme.tokens.typography.titleSize, theme.onAccent, theme.strongAccent, "left", "top"),
-    textElement("body", "body", body, 1.0, 4.6, 11.3, 1.6, 2, theme.tokens.typography.bodySize, theme.onAccent, theme.strongAccent, "left", "top")
+    backgroundElement(theme, "closing-bg", theme.strongAccent, theme.accent, theme.strongAccent),
+    shapeElement("closing-rule", "rect", 1.0, 4.25, 2.4, 0.07, 1, theme.onAccent, { color: theme.onAccent, width: 0.1 }),
+    iconSvgElement("closing-icon", "check", theme.onAccent, 1.0, 1.5, 0.7, 2),
+    textElement("title", "title", title, 1.0, 2.4, 11.3, 1.8, 3, theme.tokens.typography.titleSize, theme.onAccent, theme.strongAccent, "left", "top"),
+    textElement("body", "body", body, 1.0, 4.6, 11.3, 1.6, 4, theme.tokens.typography.bodySize, theme.onAccent, theme.strongAccent, "left", "top")
   ];
 }
 
@@ -303,19 +424,33 @@ export function createSampleDeck(locale: Locale, options: CreateSampleDeckOption
     decision: isJapanese ? "意思決定向けに論点と次アクションを明確化しています。" : "Optimized for decisions with clear options and next actions."
   }[contentMode];
 
-  const qualityCards: [string, string][] = isJapanese
+  const qualityCards: [string, string, keyof typeof ICON_PATHS][] = isJapanese
     ? [
-        [isJapanese ? "3秒で伝わる" : "Glance", "結論型タイトルで要点を即伝達"],
-        ["視覚階層", "サイズ・余白・色で視線を設計"],
-        ["アクセシブル", "コントラスト・読み順・alt textを検証"]
+        ["3秒で伝わる", "結論型タイトルで要点を即伝達", "glance"],
+        ["視覚階層", "サイズ・余白・色で視線を設計", "hierarchy"],
+        ["アクセシブル", "コントラスト・読み順・alt textを検証", "verify"]
       ]
     : [
-        ["Glance", "Assertion titles communicate instantly"],
-        ["Hierarchy", "Size, whitespace, and color guide the eye"],
-        ["Accessible", "Verify contrast, reading order, and alt text"]
+        ["Glance", "Assertion titles communicate instantly", "glance"],
+        ["Hierarchy", "Size, whitespace, and color guide the eye", "hierarchy"],
+        ["Accessible", "Verify contrast, reading order, and alt text", "verify"]
       ];
 
-  const steps = isJapanese ? ["目的", "聴衆", "構成", "可視化", "検証"] : ["Purpose", "Audience", "Structure", "Visualize", "Verify"];
+  const steps: [string, keyof typeof ICON_PATHS][] = isJapanese
+    ? [
+        ["目的", "idea"],
+        ["聴衆", "people"],
+        ["構成", "structure"],
+        ["可視化", "visual"],
+        ["検証", "check"]
+      ]
+    : [
+        ["Purpose", "idea"],
+        ["Audience", "people"],
+        ["Structure", "structure"],
+        ["Visualize", "visual"],
+        ["Verify", "check"]
+      ];
 
   const slides = [
     {

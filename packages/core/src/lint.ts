@@ -1,6 +1,6 @@
 ﻿import { contrastRatio, defaultTokens } from "./color.js";
 import { estimateTextOverflow, SLIDE_WIDE } from "./layout.js";
-import type { DeckSpec, Slide, SlideElement, TextElement } from "./schema.js";
+import type { DeckSpec, ShapeElement, Slide, SlideElement, TextElement } from "./schema.js";
 import { defaultFontSizeForRole } from "./typography.js";
 
 export type LintSeverity = "error" | "warning" | "suggestion";
@@ -191,6 +191,41 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
   const textBoxes = slide.elements
     .map((element, elementIndex) => ({ element, elementIndex }))
     .filter((entry): entry is { element: TextElement; elementIndex: number } => entry.element.type === "text");
+
+  const opaqueShapes = slide.elements.filter(
+    (element): element is ShapeElement =>
+      element.type === "shape" && element.fill !== "none" && (element.fillOpacity === undefined || element.fillOpacity >= 0.6)
+  );
+
+  textBoxes.forEach(({ element: text, elementIndex }) => {
+    const textOrder = text.readingOrder ?? Number.MAX_SAFE_INTEGER;
+    const textArea = text.w * text.h;
+    for (const shape of opaqueShapes) {
+      const shapeOrder = shape.readingOrder ?? Number.MAX_SAFE_INTEGER;
+      if (shapeOrder <= textOrder) {
+        continue;
+      }
+
+      const overlapWidth = Math.min(text.x + text.w, shape.x + shape.w) - Math.max(text.x, shape.x);
+      const overlapHeight = Math.min(text.y + text.h, shape.y + shape.h) - Math.max(text.y, shape.y);
+      if (overlapWidth <= 0.04 || overlapHeight <= 0.04) {
+        continue;
+      }
+
+      if (textArea > 0 && (overlapWidth * overlapHeight) / textArea > 0.35) {
+        issues.push(
+          issue(
+            "warning",
+            "layout.shape-over-text",
+            `Opaque shape "${shape.id}" is drawn over text "${text.id}" and may hide it. Lower the shape readingOrder, make it decorative background, or run polish_deck_layout.`,
+            `slides.${slideIndex}.elements.${elementIndex}`,
+            { shapeId: shape.id }
+          )
+        );
+        break;
+      }
+    }
+  });
 
   for (let i = 0; i < textBoxes.length; i += 1) {
     for (let j = i + 1; j < textBoxes.length; j += 1) {

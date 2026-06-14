@@ -50,8 +50,19 @@
       "id": "slide-1",
       "title": "3秒で要点が伝わるスライドを標準化する",
       "layout": "hero",
-      "speakerNotes": "目的: このpptcreaterツールの価値と使い方を説明し、導入判断につなげる。聴衆: GitHub CopilotやClaude Codeを使う開発者・デザイナー・企画担当。意思決定向けに論点と次アクションを明確化しています。",
+      "speakerNotes": "目的: AIで資料作成の品質を標準化する。聴衆: 意思決定者と実務担当者。意思決定向けに論点と次アクションを明確化しています。",
       "elements": [
+        {
+          "id": "hero-bg",
+          "type": "svg",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "decorative": true,
+          "readingOrder": 0,
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1280 720\"><defs><linearGradient id=\"atm-base-hero-bg\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"#ffffff\" /><stop offset=\"1\" stop-color=\"#f6f6f6\" /></linearGradient><radialGradient id=\"atm-a-hero-bg\" cx=\"0.82\" cy=\"0.16\" r=\"0.62\"><stop offset=\"0\" stop-color=\"#1d4ed8\" stop-opacity=\"0.14\" /><stop offset=\"1\" stop-color=\"#1d4ed8\" stop-opacity=\"0\" /></radialGradient><radialGradient id=\"atm-b-hero-bg\" cx=\"0.12\" cy=\"0.92\" r=\"0.7\"><stop offset=\"0\" stop-color=\"#1d4ed8\" stop-opacity=\"0.1\" /><stop offset=\"1\" stop-color=\"#1d4ed8\" stop-opacity=\"0\" /></radialGradient></defs><rect x=\"0\" y=\"0\" width=\"1280\" height=\"720\" fill=\"url(#atm-base-hero-bg)\" /><rect x=\"0\" y=\"0\" width=\"1280\" height=\"720\" fill=\"url(#atm-a-hero-bg)\" /><rect x=\"0\" y=\"0\" width=\"1280\" height=\"720\" fill=\"url(#atm-b-hero-bg)\" /></svg>"
+        },
         {
           "id": "hero-band",
           "type": "shape",
@@ -66,7 +77,7 @@
             "width": 0.1
           },
           "decorative": true,
-          "readingOrder": 0
+          "readingOrder": 1
         },
         {
           "id": "hero-panel",
@@ -82,7 +93,7 @@
             "width": 1
           },
           "decorative": true,
-          "readingOrder": 1
+          "readingOrder": 2
         },
         {
           "id": "hero-panel-accent",
@@ -98,7 +109,18 @@
             "width": 0.1
           },
           "decorative": true,
-          "readingOrder": 2
+          "readingOrder": 3
+        },
+        {
+          "id": "hero-panel-icon",
+          "type": "svg",
+          "x": 11.5,
+          "y": 1.95,
+          "w": 0.6,
+          "h": 0.6,
+          "decorative": true,
+          "readingOrder": 4,
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"#1d4ed8\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 2.5a5 5 0 0 0-3 9v2h6v-2a5 5 0 0 0-3-9Z\" /><path d=\"M8 16h4\" /><path d=\"M8.5 18h3\" /></svg>"
         },
         {
           "id": "eyebrow",
@@ -116,7 +138,7 @@
           "valign": "middle",
           "bold": false,
           "decorative": false,
-          "readingOrder": 3
+          "readingOrder": 5
         },
         {
           "id": "title",
@@ -134,7 +156,7 @@
           "valign": "top",
           "bold": true,
           "decorative": false,
-          "readingOrder": 4
+          "readingOrder": 6
         },
         {
           "id": "subtitle",
@@ -152,13 +174,13 @@
           "valign": "top",
           "bold": false,
           "decorative": false,
-          "readingOrder": 5
+          "readingOrder": 7
         },
         {
           "id": "audience",
           "type": "text",
           "role": "caption",
-          "text": "対象: GitHub CopilotやClaude Codeを使う開発者・デザイナー・企画担当",
+          "text": "対象: 意思決定者と実務担当者",
           "x": 0.8,
           "y": 5.7,
           "w": 6.4,
@@ -170,7 +192,7 @@
           "valign": "middle",
           "bold": false,
           "decorative": false,
-          "readingOrder": 6
+          "readingOrder": 8
         },
         {
           "id": "panel-title",
@@ -179,7 +201,7 @@
           "text": "このデッキの読み方",
           "x": 8.1,
           "y": 1.95,
-          "w": 4.1,
+          "w": 3.2,
           "h": 0.6,
           "fontSize": 20,
           "color": "#111827",
@@ -188,7 +210,7 @@
           "valign": "middle",
           "bold": true,
           "decorative": false,
-          "readingOrder": 7
+          "readingOrder": 9
         },
         {
           "id": "panel-body",
@@ -206,7 +228,7 @@
           "valign": "top",
           "bold": false,
           "decorative": false,
-          "readingOrder": 8
+          "readingOrder": 10
         }
       ]
     },
@@ -216,6 +238,17 @@
       "layout": "steps",
       "speakerNotes": "目的と聴衆を確認し、構成・可視化・検証へ進めます。",
       "elements": [
+        {
+          "id": "steps-bg",
+          "type": "svg",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "decorative": true,
+          "readingOrder": 0,
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1280 720\"><defs><linearGradient id=\"atm-base-steps-bg\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"#ffffff\" /><stop offset=\"1\" stop-color=\"#f6f6f6\" /></linearGradient><radialGradient id=\"atm-a-steps-bg\" cx=\"0.82\" cy=\"0.16\" r=\"0.62\"><stop offset=\"0\" stop-color=\"#1d4ed8\" stop-opacity=\"0.14\" /><stop offset=\"1\" stop-color=\"#1d4ed8\" stop-opacity=\"0\" /></radialGradient><radialGradient id=\"atm-b-steps-bg\" cx=\"0.12\" cy=\"0.92\" r=\"0.7\"><stop offset=\"0\" stop-color=\"#1d4ed8\" stop-opacity=\"0.1\" /><stop offset=\"1\" stop-color=\"#1d4ed8\" stop-opacity=\"0\" /></radialGradient></defs><rect x=\"0\" y=\"0\" width=\"1280\" height=\"720\" fill=\"url(#atm-base-steps-bg)\" /><rect x=\"0\" y=\"0\" width=\"1280\" height=\"720\" fill=\"url(#atm-a-steps-bg)\" /><rect x=\"0\" y=\"0\" width=\"1280\" height=\"720\" fill=\"url(#atm-b-steps-bg)\" /></svg>"
+        },
         {
           "id": "title",
           "type": "text",
@@ -232,7 +265,7 @@
           "valign": "middle",
           "bold": true,
           "decorative": false,
-          "readingOrder": 0
+          "readingOrder": 1
         },
         {
           "id": "track",
@@ -248,7 +281,7 @@
             "width": 3
           },
           "decorative": true,
-          "readingOrder": 1
+          "readingOrder": 2
         },
         {
           "id": "node-0",
@@ -264,25 +297,36 @@
             "width": 0.1
           },
           "decorative": true,
-          "readingOrder": 2
+          "readingOrder": 3
+        },
+        {
+          "id": "node-icon-0",
+          "type": "svg",
+          "x": 1.8699999999999999,
+          "y": 3.22,
+          "w": 0.36,
+          "h": 0.36,
+          "decorative": true,
+          "readingOrder": 4,
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 2.5a5 5 0 0 0-3 9v2h6v-2a5 5 0 0 0-3-9Z\" /><path d=\"M8 16h4\" /><path d=\"M8.5 18h3\" /></svg>"
         },
         {
           "id": "node-num-0",
           "type": "text",
-          "role": "callout",
-          "text": "1",
-          "x": 1.5999999999999999,
-          "y": 3.1,
-          "w": 0.9,
-          "h": 0.5,
-          "fontSize": 22,
-          "color": "#ffffff",
-          "contrastBackground": "#1d4ed8",
+          "role": "caption",
+          "text": "STEP 1",
+          "x": 1.2,
+          "y": 4,
+          "w": 1.7,
+          "h": 0.4,
+          "fontSize": 14,
+          "color": "#1d4ed8",
+          "contrastBackground": "#ffffff",
           "align": "center",
-          "valign": "middle",
-          "bold": true,
+          "valign": "top",
+          "bold": false,
           "decorative": false,
-          "readingOrder": 3
+          "readingOrder": 5
         },
         {
           "id": "node-label-0",
@@ -290,7 +334,7 @@
           "role": "caption",
           "text": "目的",
           "x": 1.2,
-          "y": 4.1,
+          "y": 4.45,
           "w": 1.7,
           "h": 0.7,
           "fontSize": 16,
@@ -300,7 +344,7 @@
           "valign": "top",
           "bold": false,
           "decorative": false,
-          "readingOrder": 4
+          "readingOrder": 6
         },
         {
           "id": "node-1",
@@ -316,25 +360,36 @@
             "width": 0.1
           },
           "decorative": true,
-          "readingOrder": 5
+          "readingOrder": 7
+        },
+        {
+          "id": "node-icon-1",
+          "type": "svg",
+          "x": 4.195,
+          "y": 3.22,
+          "w": 0.36,
+          "h": 0.36,
+          "decorative": true,
+          "readingOrder": 8,
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"7\" cy=\"8\" r=\"2.4\" /><circle cx=\"13.4\" cy=\"8.6\" r=\"2\" /><path d=\"M3.4 16c0-2.3 1.8-3.7 3.6-3.7S10.6 13.7 10.6 16\" /><path d=\"M12 12.7c1.9 0 3.6 1.2 3.6 3.3\" /></svg>"
         },
         {
           "id": "node-num-1",
           "type": "text",
-          "role": "callout",
-          "text": "2",
-          "x": 3.925,
-          "y": 3.1,
-          "w": 0.9,
-          "h": 0.5,
-          "fontSize": 22,
-          "color": "#ffffff",
-          "contrastBackground": "#1d4ed8",
+          "role": "caption",
+          "text": "STEP 2",
+          "x": 3.5250000000000004,
+          "y": 4,
+          "w": 1.7,
+          "h": 0.4,
+          "fontSize": 14,
+          "color": "#1d4ed8",
+          "contrastBackground": "#ffffff",
           "align": "center",
-          "valign": "middle",
-          "bold": true,
+          "valign": "top",
+          "bold": false,
           "decorative": false,
-          "readingOrder": 6
+          "readingOrder": 9
         },
         {
           "id": "node-label-1",
@@ -342,7 +397,7 @@
           "role": "caption",
           "text": "聴衆",
           "x": 3.5250000000000004,
-          "y": 4.1,
+          "y": 4.45,
           "w": 1.7,
           "h": 0.7,
           "fontSize": 16,
@@ -352,7 +407,7 @@
           "valign": "top",
           "bold": false,
           "decorative": false,
-          "readingOrder": 7
+          "readingOrder": 10
         },
         {
           "id": "node-2",
@@ -368,25 +423,36 @@
             "width": 0.1
           },
           "decorative": true,
-          "readingOrder": 8
+          "readingOrder": 11
+        },
+        {
+          "id": "node-icon-2",
+          "type": "svg",
+          "x": 6.52,
+          "y": 3.22,
+          "w": 0.36,
+          "h": 0.36,
+          "decorative": true,
+          "readingOrder": 12,
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"3.4\" width=\"5\" height=\"3.8\" rx=\"1\" /><rect x=\"12\" y=\"12.8\" width=\"5\" height=\"3.8\" rx=\"1\" /><path d=\"M5.5 7.2v3.1a2 2 0 0 0 2 2h4.5\" /></svg>"
         },
         {
           "id": "node-num-2",
           "type": "text",
-          "role": "callout",
-          "text": "3",
-          "x": 6.25,
-          "y": 3.1,
-          "w": 0.9,
-          "h": 0.5,
-          "fontSize": 22,
-          "color": "#ffffff",
-          "contrastBackground": "#1d4ed8",
+          "role": "caption",
+          "text": "STEP 3",
+          "x": 5.8500000000000005,
+          "y": 4,
+          "w": 1.7,
+          "h": 0.4,
+          "fontSize": 14,
+          "color": "#1d4ed8",
+          "contrastBackground": "#ffffff",
           "align": "center",
-          "valign": "middle",
-          "bold": true,
+          "valign": "top",
+          "bold": false,
           "decorative": false,
-          "readingOrder": 9
+          "readingOrder": 13
         },
         {
           "id": "node-label-2",
@@ -394,7 +460,7 @@
           "role": "caption",
           "text": "構成",
           "x": 5.8500000000000005,
-          "y": 4.1,
+          "y": 4.45,
           "w": 1.7,
           "h": 0.7,
           "fontSize": 16,
@@ -404,7 +470,7 @@
           "valign": "top",
           "bold": false,
           "decorative": false,
-          "readingOrder": 10
+          "readingOrder": 14
         },
         {
           "id": "node-3",
@@ -420,25 +486,36 @@
             "width": 0.1
           },
           "decorative": true,
-          "readingOrder": 11
+          "readingOrder": 15
+        },
+        {
+          "id": "node-icon-3",
+          "type": "svg",
+          "x": 8.845,
+          "y": 3.22,
+          "w": 0.36,
+          "h": 0.36,
+          "decorative": true,
+          "readingOrder": 16,
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"4\" width=\"14\" height=\"9\" rx=\"1\" /><path d=\"M10 13v3\" /><path d=\"M7 16.2h6\" /></svg>"
         },
         {
           "id": "node-num-3",
           "type": "text",
-          "role": "callout",
-          "text": "4",
-          "x": 8.575000000000001,
-          "y": 3.1,
-          "w": 0.9,
-          "h": 0.5,
-          "fontSize": 22,
-          "color": "#ffffff",
-          "contrastBackground": "#1d4ed8",
+          "role": "caption",
+          "text": "STEP 4",
+          "x": 8.175,
+          "y": 4,
+          "w": 1.7,
+          "h": 0.4,
+          "fontSize": 14,
+          "color": "#1d4ed8",
+          "contrastBackground": "#ffffff",
           "align": "center",
-          "valign": "middle",
-          "bold": true,
+          "valign": "top",
+          "bold": false,
           "decorative": false,
-          "readingOrder": 12
+          "readingOrder": 17
         },
         {
           "id": "node-label-3",
@@ -446,7 +523,7 @@
           "role": "caption",
           "text": "可視化",
           "x": 8.175,
-          "y": 4.1,
+          "y": 4.45,
           "w": 1.7,
           "h": 0.7,
           "fontSize": 16,
@@ -456,7 +533,7 @@
           "valign": "top",
           "bold": false,
           "decorative": false,
-          "readingOrder": 13
+          "readingOrder": 18
         },
         {
           "id": "node-4",
@@ -472,25 +549,36 @@
             "width": 0.1
           },
           "decorative": true,
-          "readingOrder": 14
+          "readingOrder": 19
+        },
+        {
+          "id": "node-icon-4",
+          "type": "svg",
+          "x": 11.17,
+          "y": 3.22,
+          "w": 0.36,
+          "h": 0.36,
+          "decorative": true,
+          "readingOrder": 20,
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 10.5 8.2 14.7 16.5 5.8\" /></svg>"
         },
         {
           "id": "node-num-4",
           "type": "text",
-          "role": "callout",
-          "text": "5",
-          "x": 10.9,
-          "y": 3.1,
-          "w": 0.9,
-          "h": 0.5,
-          "fontSize": 22,
-          "color": "#ffffff",
-          "contrastBackground": "#1d4ed8",
+          "role": "caption",
+          "text": "STEP 5",
+          "x": 10.5,
+          "y": 4,
+          "w": 1.7,
+          "h": 0.4,
+          "fontSize": 14,
+          "color": "#1d4ed8",
+          "contrastBackground": "#ffffff",
           "align": "center",
-          "valign": "middle",
-          "bold": true,
+          "valign": "top",
+          "bold": false,
           "decorative": false,
-          "readingOrder": 15
+          "readingOrder": 21
         },
         {
           "id": "node-label-4",
@@ -498,7 +586,7 @@
           "role": "caption",
           "text": "検証",
           "x": 10.5,
-          "y": 4.1,
+          "y": 4.45,
           "w": 1.7,
           "h": 0.7,
           "fontSize": 16,
@@ -508,7 +596,7 @@
           "valign": "top",
           "bold": false,
           "decorative": false,
-          "readingOrder": 16
+          "readingOrder": 22
         },
         {
           "id": "step-caption",
@@ -516,7 +604,7 @@
           "role": "body",
           "text": "先に聞くほど、後のスライドは短く・強く・見やすくなります。",
           "x": 1.2,
-          "y": 5.4,
+          "y": 5.7,
           "w": 11,
           "h": 1,
           "fontSize": 22,
@@ -537,6 +625,17 @@
       "speakerNotes": "カード・テキストは編集可能なPowerPointオブジェクトです。",
       "elements": [
         {
+          "id": "cards-bg",
+          "type": "svg",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "decorative": true,
+          "readingOrder": 0,
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1280 720\"><defs><linearGradient id=\"atm-base-cards-bg\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"#ffffff\" /><stop offset=\"1\" stop-color=\"#f6f6f6\" /></linearGradient><radialGradient id=\"atm-a-cards-bg\" cx=\"0.82\" cy=\"0.16\" r=\"0.62\"><stop offset=\"0\" stop-color=\"#1d4ed8\" stop-opacity=\"0.14\" /><stop offset=\"1\" stop-color=\"#1d4ed8\" stop-opacity=\"0\" /></radialGradient><radialGradient id=\"atm-b-cards-bg\" cx=\"0.12\" cy=\"0.92\" r=\"0.7\"><stop offset=\"0\" stop-color=\"#1d4ed8\" stop-opacity=\"0.1\" /><stop offset=\"1\" stop-color=\"#1d4ed8\" stop-opacity=\"0\" /></radialGradient></defs><rect x=\"0\" y=\"0\" width=\"1280\" height=\"720\" fill=\"url(#atm-base-cards-bg)\" /><rect x=\"0\" y=\"0\" width=\"1280\" height=\"720\" fill=\"url(#atm-a-cards-bg)\" /><rect x=\"0\" y=\"0\" width=\"1280\" height=\"720\" fill=\"url(#atm-b-cards-bg)\" /></svg>"
+        },
+        {
           "id": "title",
           "type": "text",
           "role": "title",
@@ -552,7 +651,7 @@
           "valign": "middle",
           "bold": true,
           "decorative": false,
-          "readingOrder": 0
+          "readingOrder": 1
         },
         {
           "id": "card-0",
@@ -568,7 +667,7 @@
             "width": 1
           },
           "decorative": true,
-          "readingOrder": 1
+          "readingOrder": 2
         },
         {
           "id": "card-accent-0",
@@ -576,33 +675,26 @@
           "shape": "roundRect",
           "x": 1.0464999999999995,
           "y": 2.5,
-          "w": 0.6,
-          "h": 0.6,
+          "w": 0.72,
+          "h": 0.72,
           "fill": "#1d4ed8",
           "line": {
             "color": "#1d4ed8",
             "width": 0.1
           },
           "decorative": true,
-          "readingOrder": 2
+          "readingOrder": 3
         },
         {
-          "id": "card-num-0",
-          "type": "text",
-          "role": "callout",
-          "text": "1",
-          "x": 1.0464999999999995,
-          "y": 2.6,
-          "w": 0.6,
-          "h": 0.4,
-          "fontSize": 20,
-          "color": "#ffffff",
-          "contrastBackground": "#1d4ed8",
-          "align": "center",
-          "valign": "middle",
-          "bold": true,
-          "decorative": false,
-          "readingOrder": 3
+          "id": "card-icon-0",
+          "type": "svg",
+          "x": 1.2264999999999995,
+          "y": 2.68,
+          "w": 0.36,
+          "h": 0.36,
+          "decorative": true,
+          "readingOrder": 4,
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 2.6v2.6\" /><path d=\"M10 14.8v2.6\" /><path d=\"M2.6 10h2.6\" /><path d=\"M14.8 10h2.6\" /><path d=\"m5 5 1.8 1.8\" /><path d=\"m13.2 13.2 1.8 1.8\" /><path d=\"m15 5-1.8 1.8\" /><path d=\"m6.8 13.2-1.8 1.8\" /><circle cx=\"10\" cy=\"10\" r=\"2.3\" /></svg>"
         },
         {
           "id": "card-heading-0",
@@ -610,7 +702,7 @@
           "role": "callout",
           "text": "3秒で伝わる",
           "x": 1.0964999999999994,
-          "y": 3.35,
+          "y": 3.45,
           "w": 2.9000000000000004,
           "h": 0.7,
           "fontSize": 22,
@@ -620,7 +712,7 @@
           "valign": "top",
           "bold": true,
           "decorative": false,
-          "readingOrder": 4
+          "readingOrder": 5
         },
         {
           "id": "card-body-0",
@@ -628,7 +720,7 @@
           "role": "body",
           "text": "結論型タイトルで要点を即伝達",
           "x": 1.0964999999999994,
-          "y": 4.15,
+          "y": 4.25,
           "w": 2.9000000000000004,
           "h": 1.4,
           "fontSize": 20,
@@ -638,7 +730,7 @@
           "valign": "top",
           "bold": false,
           "decorative": false,
-          "readingOrder": 5
+          "readingOrder": 6
         },
         {
           "id": "card-1",
@@ -654,7 +746,7 @@
             "width": 1
           },
           "decorative": true,
-          "readingOrder": 7
+          "readingOrder": 8
         },
         {
           "id": "card-accent-1",
@@ -662,33 +754,26 @@
           "shape": "roundRect",
           "x": 5.166499999999999,
           "y": 2.5,
-          "w": 0.6,
-          "h": 0.6,
+          "w": 0.72,
+          "h": 0.72,
           "fill": "#1d4ed8",
           "line": {
             "color": "#1d4ed8",
             "width": 0.1
           },
           "decorative": true,
-          "readingOrder": 8
+          "readingOrder": 9
         },
         {
-          "id": "card-num-1",
-          "type": "text",
-          "role": "callout",
-          "text": "2",
-          "x": 5.166499999999999,
-          "y": 2.6,
-          "w": 0.6,
-          "h": 0.4,
-          "fontSize": 20,
-          "color": "#ffffff",
-          "contrastBackground": "#1d4ed8",
-          "align": "center",
-          "valign": "middle",
-          "bold": true,
-          "decorative": false,
-          "readingOrder": 9
+          "id": "card-icon-1",
+          "type": "svg",
+          "x": 5.3465,
+          "y": 2.68,
+          "w": 0.36,
+          "h": 0.36,
+          "decorative": true,
+          "readingOrder": 10,
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 16.2h14\" /><path d=\"M5 16.2v-3.6\" /><path d=\"M9 16.2v-6.4\" /><path d=\"M13 16.2v-4.8\" /><path d=\"m3.4 9.6 3.6-3.6 3 3 5-5\" /></svg>"
         },
         {
           "id": "card-heading-1",
@@ -696,7 +781,7 @@
           "role": "callout",
           "text": "視覚階層",
           "x": 5.2165,
-          "y": 3.35,
+          "y": 3.45,
           "w": 2.9000000000000004,
           "h": 0.7,
           "fontSize": 22,
@@ -706,7 +791,7 @@
           "valign": "top",
           "bold": true,
           "decorative": false,
-          "readingOrder": 10
+          "readingOrder": 11
         },
         {
           "id": "card-body-1",
@@ -714,7 +799,7 @@
           "role": "body",
           "text": "サイズ・余白・色で視線を設計",
           "x": 5.2165,
-          "y": 4.15,
+          "y": 4.25,
           "w": 2.9000000000000004,
           "h": 1.4,
           "fontSize": 20,
@@ -724,7 +809,7 @@
           "valign": "top",
           "bold": false,
           "decorative": false,
-          "readingOrder": 11
+          "readingOrder": 12
         },
         {
           "id": "card-2",
@@ -740,7 +825,7 @@
             "width": 1
           },
           "decorative": true,
-          "readingOrder": 13
+          "readingOrder": 14
         },
         {
           "id": "card-accent-2",
@@ -748,33 +833,26 @@
           "shape": "roundRect",
           "x": 9.286499999999998,
           "y": 2.5,
-          "w": 0.6,
-          "h": 0.6,
+          "w": 0.72,
+          "h": 0.72,
           "fill": "#1d4ed8",
           "line": {
             "color": "#1d4ed8",
             "width": 0.1
           },
           "decorative": true,
-          "readingOrder": 14
+          "readingOrder": 15
         },
         {
-          "id": "card-num-2",
-          "type": "text",
-          "role": "callout",
-          "text": "3",
-          "x": 9.286499999999998,
-          "y": 2.6,
-          "w": 0.6,
-          "h": 0.4,
-          "fontSize": 20,
-          "color": "#ffffff",
-          "contrastBackground": "#1d4ed8",
-          "align": "center",
-          "valign": "middle",
-          "bold": true,
-          "decorative": false,
-          "readingOrder": 15
+          "id": "card-icon-2",
+          "type": "svg",
+          "x": 9.466499999999998,
+          "y": 2.68,
+          "w": 0.36,
+          "h": 0.36,
+          "decorative": true,
+          "readingOrder": 16,
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 2.6 16 5v4.4c0 4-2.7 6.3-6 8-3.3-1.7-6-4-6-8V5Z\" /><path d=\"M7.4 9.9 9.3 11.8 12.9 8\" /></svg>"
         },
         {
           "id": "card-heading-2",
@@ -782,7 +860,7 @@
           "role": "callout",
           "text": "アクセシブル",
           "x": 9.3365,
-          "y": 3.35,
+          "y": 3.45,
           "w": 2.9000000000000004,
           "h": 0.7,
           "fontSize": 22,
@@ -792,7 +870,7 @@
           "valign": "top",
           "bold": true,
           "decorative": false,
-          "readingOrder": 16
+          "readingOrder": 17
         },
         {
           "id": "card-body-2",
@@ -800,7 +878,7 @@
           "role": "body",
           "text": "コントラスト・読み順・alt textを検証",
           "x": 9.3365,
-          "y": 4.15,
+          "y": 4.25,
           "w": 2.9000000000000004,
           "h": 1.4,
           "fontSize": 20,
@@ -810,7 +888,7 @@
           "valign": "top",
           "bold": false,
           "decorative": false,
-          "readingOrder": 17
+          "readingOrder": 18
         }
       ]
     },
@@ -822,19 +900,41 @@
       "elements": [
         {
           "id": "closing-bg",
-          "type": "shape",
-          "shape": "rect",
+          "type": "svg",
           "x": 0,
           "y": 0,
           "w": 13.333,
           "h": 7.5,
-          "fill": "#1d4ed8",
+          "decorative": true,
+          "readingOrder": 0,
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1280 720\"><defs><linearGradient id=\"atm-base-closing-bg\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"#1d4ed8\" /><stop offset=\"1\" stop-color=\"#1c4bd0\" /></linearGradient><radialGradient id=\"atm-a-closing-bg\" cx=\"0.82\" cy=\"0.16\" r=\"0.62\"><stop offset=\"0\" stop-color=\"#1d4ed8\" stop-opacity=\"0.14\" /><stop offset=\"1\" stop-color=\"#1d4ed8\" stop-opacity=\"0\" /></radialGradient><radialGradient id=\"atm-b-closing-bg\" cx=\"0.12\" cy=\"0.92\" r=\"0.7\"><stop offset=\"0\" stop-color=\"#1d4ed8\" stop-opacity=\"0.1\" /><stop offset=\"1\" stop-color=\"#1d4ed8\" stop-opacity=\"0\" /></radialGradient></defs><rect x=\"0\" y=\"0\" width=\"1280\" height=\"720\" fill=\"url(#atm-base-closing-bg)\" /><rect x=\"0\" y=\"0\" width=\"1280\" height=\"720\" fill=\"url(#atm-a-closing-bg)\" /><rect x=\"0\" y=\"0\" width=\"1280\" height=\"720\" fill=\"url(#atm-b-closing-bg)\" /></svg>"
+        },
+        {
+          "id": "closing-rule",
+          "type": "shape",
+          "shape": "rect",
+          "x": 1,
+          "y": 4.25,
+          "w": 2.4,
+          "h": 0.07,
+          "fill": "#ffffff",
           "line": {
-            "color": "#1d4ed8",
+            "color": "#ffffff",
             "width": 0.1
           },
           "decorative": true,
-          "readingOrder": 0
+          "readingOrder": 1
+        },
+        {
+          "id": "closing-icon",
+          "type": "svg",
+          "x": 1,
+          "y": 1.5,
+          "w": 0.7,
+          "h": 0.7,
+          "decorative": true,
+          "readingOrder": 2,
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 10.5 8.2 14.7 16.5 5.8\" /></svg>"
         },
         {
           "id": "title",
@@ -842,9 +942,9 @@
           "role": "title",
           "text": "用途に合わせてスタイルを選ぶ",
           "x": 1,
-          "y": 2.3,
+          "y": 2.4,
           "w": 11.3,
-          "h": 2,
+          "h": 1.8,
           "fontSize": 38,
           "color": "#ffffff",
           "contrastBackground": "#1d4ed8",
@@ -852,7 +952,7 @@
           "valign": "top",
           "bold": true,
           "decorative": false,
-          "readingOrder": 1
+          "readingOrder": 3
         },
         {
           "id": "body",
@@ -870,7 +970,7 @@
           "valign": "top",
           "bold": false,
           "decorative": false,
-          "readingOrder": 2
+          "readingOrder": 4
         }
       ]
     }

@@ -6,6 +6,7 @@ import {
   defaultTokens,
   lintDeckSpec,
   normalizeDeckLayout,
+  normalizeReadingOrder,
   parseDeckSpec,
   type DeckSpec,
   type SlideElement
@@ -118,7 +119,15 @@ function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpec, sli
   }
 
   if (element.type === "shape") {
-    const fill = element.fill === "none" ? { type: "none" } : { color: element.fill.replace("#", "") };
+    const fill =
+      element.fill === "none"
+        ? { type: "none" }
+        : {
+            color: element.fill.replace("#", ""),
+            ...(element.fillOpacity !== undefined
+              ? { transparency: Math.max(0, Math.min(100, Math.round((1 - element.fillOpacity) * 100))) }
+              : {})
+          };
     const line = element.line
       ? {
           color: (element.line.color ?? "#64748b").replace("#", ""),
@@ -289,7 +298,8 @@ export async function renderDeckToPptx(input: unknown, outputPath: string, optio
   deck.slides.forEach((deckSlide, slideIndex) => {
     const slide = pptx.addSlide();
     slide.background = { color: tokens.colors.background.replace("#", "") };
-    sortedElements(deckSlide.elements).forEach((element) => addElement(slide, element, deck, slideIndex));
+    const safeSlide = normalizeReadingOrder(deckSlide);
+    sortedElements(safeSlide.elements).forEach((element) => addElement(slide, element, deck, slideIndex));
 
     const notes = [deckSlide.speakerNotes, ...collectSlideAccessibilityNotes(deck, deckSlide, slideIndex)]
       .filter((note): note is string => Boolean(note))

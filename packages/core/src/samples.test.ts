@@ -4,6 +4,7 @@ import { parseDeckSpec } from "./schema.js";
 import { createSampleDeck } from "./samples.js";
 
 const CONTENT_MODES = ["presentation", "report", "technical", "handout", "decision"] as const;
+const STYLE_PROFILES = ["minimal", "stylish", "report", "presentation", "technical"] as const;
 
 describe("sample deck generation", () => {
   it("creates a visual sample deck", () => {
@@ -20,6 +21,30 @@ describe("sample deck generation", () => {
       expect(report.ok, `${contentMode} should have no errors`).toBe(true);
       expect(report.issues, `${contentMode} should have no issues`).toHaveLength(0);
     }
+  });
+
+  it("produces lint-clean decks for every style profile in both locales", () => {
+    for (const styleProfile of STYLE_PROFILES) {
+      for (const locale of ["ja-JP", "en-US"] as const) {
+        const deck = parseDeckSpec(createSampleDeck(locale, { styleProfile }));
+        const report = lintDeckSpec(deck);
+        expect(report.ok, `${styleProfile}/${locale} should have no errors`).toBe(true);
+        expect(report.issues, `${styleProfile}/${locale} should have no issues`).toHaveLength(0);
+      }
+    }
+  });
+
+  it("adds icons and a full-bleed atmosphere background to slides", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 4 });
+    const svgElements = deck.slides.flatMap((slide) => slide.elements).filter((element) => element.type === "svg");
+
+    const hasFullBleedBackground = svgElements.some(
+      (element) => element.x === 0 && element.y === 0 && element.w === 13.333 && element.h === 7.5
+    );
+    const hasIcon = svgElements.some((element) => element.w <= 0.8 && element.h <= 0.8);
+
+    expect(hasFullBleedBackground, "expected a full-bleed atmosphere background").toBe(true);
+    expect(hasIcon, "expected at least one icon").toBe(true);
   });
 
   it("selects a different template and palette per content mode", () => {

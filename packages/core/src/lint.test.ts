@@ -48,6 +48,26 @@ describe("DeckSpec linting", () => {
     expect(report.issues.some((issue) => issue.code === "layout.text-overlap")).toBe(true);
   });
 
+  it("flags an opaque shape drawn over text", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "cover-shape",
+      type: "shape",
+      shape: "rect",
+      x: 0.8,
+      y: 1.35,
+      w: 6.5,
+      h: 2.3,
+      fill: "#000000",
+      decorative: true,
+      readingOrder: 900
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "layout.shape-over-text")).toBe(true);
+  });
+
   it("flags missing alt text for non-decorative visuals", () => {
     const deck = createSampleDeck("en-US");
     deck.slides[0].elements.push({
