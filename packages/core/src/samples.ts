@@ -144,6 +144,15 @@ function fitFontSize(role: TextElement["role"], text: string, w: number, h: numb
   return size;
 }
 
+function characterSpacingFor(role: TextElement["role"], text: string): number | undefined {
+  if (role !== "title" && role !== "callout") {
+    return undefined;
+  }
+
+  const hasJapanese = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(text);
+  return hasJapanese ? -0.4 : -1;
+}
+
 function textElement(
   id: string,
   role: TextElement["role"],
@@ -171,6 +180,7 @@ function textElement(
     fontSize: fitFontSize(role, text, w, h, Math.max(fontSize, minFontForRole(role))),
     color,
     contrastBackground,
+    characterSpacing: characterSpacingFor(role, text),
     align,
     valign,
     bold: role === "title" || role === "callout",

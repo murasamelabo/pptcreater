@@ -59,13 +59,13 @@ export function styleProfileTokens(locale: Locale, profile: StyleProfile): Desig
   if (profile === "stylish") {
     return {
       colors: {
-        background: "#0b1120",
-        surface: "#111c33",
+        background: "#0b1020",
+        surface: "#151c2f",
         text: "#f8fafc",
-        mutedText: "#cbd5e1",
-        accent: "#34d399",
-        danger: "#fb7185",
-        success: "#34d399"
+        mutedText: "#c6d0df",
+        accent: "#2dd4bf",
+        danger: "#fda4af",
+        success: "#5eead4"
       },
       typography: { headingFont: heading, bodyFont: body, fallbackFonts: fallback, titleSize: 44, bodySize: 22, captionSize: 14 },
       spacing: { margin: 0.6, gutter: 0.3, radius: 0.16 }
@@ -75,13 +75,13 @@ export function styleProfileTokens(locale: Locale, profile: StyleProfile): Desig
   if (profile === "report") {
     return {
       colors: {
-        background: "#ffffff",
-        surface: "#f4f5f7",
-        text: "#1f2937",
-        mutedText: "#4b5563",
-        accent: "#b91c1c",
-        danger: "#b91c1c",
-        success: "#15803d"
+        background: "#fbfaf7",
+        surface: "#f1eee7",
+        text: "#24211d",
+        mutedText: "#5f5a52",
+        accent: "#8f3d35",
+        danger: "#9f3a38",
+        success: "#2f6f55"
       },
       typography: { headingFont: heading, bodyFont: body, fallbackFonts: fallback, titleSize: 30, bodySize: 18, captionSize: 12 },
       spacing: { margin: 0.45, gutter: 0.2, radius: 0.02 }
@@ -91,13 +91,13 @@ export function styleProfileTokens(locale: Locale, profile: StyleProfile): Desig
   if (profile === "presentation") {
     return {
       colors: {
-        background: "#f8fafc",
+        background: "#f7f9fc",
         surface: "#ffffff",
-        text: "#0f172a",
-        mutedText: "#475569",
-        accent: "#2563eb",
-        danger: "#dc2626",
-        success: "#059669"
+        text: "#152033",
+        mutedText: "#53627a",
+        accent: "#2f6fb3",
+        danger: "#b4534d",
+        success: "#2f7d62"
       },
       typography: { headingFont: heading, bodyFont: body, fallbackFonts: fallback, titleSize: 48, bodySize: 26, captionSize: 16 },
       spacing: { margin: 0.6, gutter: 0.3, radius: 0.12 }
@@ -107,13 +107,13 @@ export function styleProfileTokens(locale: Locale, profile: StyleProfile): Desig
   if (profile === "technical") {
     return {
       colors: {
-        background: "#0f172a",
-        surface: "#1e293b",
+        background: "#101827",
+        surface: "#1b283a",
         text: "#f8fafc",
-        mutedText: "#cbd5e1",
-        accent: "#38bdf8",
-        danger: "#f87171",
-        success: "#34d399"
+        mutedText: "#c7d2df",
+        accent: "#4bb8d8",
+        danger: "#fca5a5",
+        success: "#67d6b2"
       },
       typography: { headingFont: heading, bodyFont: body, fallbackFonts: fallback, titleSize: 36, bodySize: 22, captionSize: 14 },
       spacing: { margin: 0.5, gutter: 0.24, radius: 0.08 }
@@ -123,12 +123,12 @@ export function styleProfileTokens(locale: Locale, profile: StyleProfile): Desig
   return {
     colors: {
       background: "#ffffff",
-      surface: "#f8fafc",
-      text: "#111827",
-      mutedText: "#475569",
-      accent: "#1d4ed8",
-      danger: "#b91c1c",
-      success: "#047857"
+      surface: "#f6f5f2",
+      text: "#1f2933",
+      mutedText: "#59636e",
+      accent: "#315f9f",
+      danger: "#9f3a38",
+      success: "#2f6f55"
     },
     typography: { headingFont: heading, bodyFont: body, fallbackFonts: fallback, titleSize: 38, bodySize: 22, captionSize: 14 },
     spacing: { margin: 0.6, gutter: 0.28, radius: 0.1 }

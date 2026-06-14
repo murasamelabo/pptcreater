@@ -1,10 +1,10 @@
 ﻿import type { Stats } from "node:fs";
 import { lstat, mkdir, realpath, writeFile } from "node:fs/promises";
-import { dirname, extname, isAbsolute, relative, resolve, win32 } from "node:path";
+import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, searchAllSvgAssets } from "@pptcreater/assets-svg";
-import { renderPonchiDiagram } from "@pptcreater/diagram";
+import { renderPonchiDiagram, renderSchematicDiagram } from "@pptcreater/diagram";
 import {
   createSampleDeck,
   DeckSpecSchema,
@@ -50,12 +50,7 @@ function isPathInside(child: string, parent: string): boolean {
 }
 
 function normalizeMcpOutputPathInput(outputPath: string): string {
-  const trimmed = outputPath.trim();
-  if (isAbsolute(trimmed) || /^[a-zA-Z]:[\\/]/.test(trimmed)) {
-    return win32.basename(trimmed);
-  }
-
-  return trimmed;
+  return outputPath.trim();
 }
 
 function assertSafeRelativeOutputSegments(outputPath: string): void {
@@ -84,7 +79,7 @@ function resolveMcpOutputPath(outputPath: string): McpOutputPath {
   assertSafeRelativeOutputSegments(normalizedOutputPath);
 
   if (isAbsolute(normalizedOutputPath)) {
-    throw new Error("MCP render_pptx only accepts relative output paths.");
+    throw new Error("MCP outputPath must be relative (for example, deck.pptx). Files are written under the generated directory.");
   }
 
   const extension = extname(normalizedOutputPath).toLowerCase();
@@ -237,6 +232,35 @@ export function createPptcreaterMcpServer(): McpServer {
     },
     async ({ locale, purpose, audience, slideCount, contentMode, styleProfile }) =>
       jsonText(createSampleDeck(locale, { purpose, audience, slideCount, contentMode, styleProfile }))
+  );
+
+  server.registerTool(
+    "create_pptx",
+    {
+      title: "Create and render PowerPoint",
+      description:
+        "One-shot safe workflow: create a styled DeckSpec with built-in layout, icons, and visual backgrounds, lint it, then render it to .pptx. Use this when the user asks to create a PPTX directly.",
+      inputSchema: {
+        locale: z.enum(["ja-JP", "en-US"]).default("ja-JP"),
+        purpose: z.string().optional(),
+        audience: z.string().optional(),
+        slideCount: z.number().int().min(1).max(4).optional(),
+        contentMode: z.enum(["presentation", "report", "technical", "handout", "decision"]).optional(),
+        styleProfile: z.enum(STYLE_PROFILES).optional(),
+        outputPath: z.string().min(1),
+        overwrite: z.boolean().default(false)
+      }
+    },
+    async ({ locale, purpose, audience, slideCount, contentMode, styleProfile, outputPath, overwrite }) => {
+      const deck = createSampleDeck(locale, { purpose, audience, slideCount, contentMode, styleProfile });
+      const lint = localizeLintReport(lintDeckSpec(deck), locale);
+      const resolvedOutputPath = await prepareMcpOutputPath(outputPath, overwrite);
+      if (extname(resolvedOutputPath).toLowerCase() !== ".pptx") {
+        throw new Error("create_pptx outputPath must end with .pptx.");
+      }
+      const render = await renderDeckToPptx(deck, resolvedOutputPath, { polishLayout: true });
+      return jsonText({ deck, lint, render });
+    }
   );
 
   server.registerTool(
@@ -434,6 +458,29 @@ export function createPptcreaterMcpServer(): McpServer {
   );
 
   server.registerTool(
+    "generate_schematic",
+    {
+      title: "Generate Slideland-style schematic",
+      description:
+        "Generate a safe, presentation-ready schematic SVG from a preset kind. Prefer this over freehand SVG when creating tables, trees, horizontal/vertical flows, lists, or mockup-style visuals.",
+      inputSchema: {
+        schematic: z.object({
+          kind: z.enum(["table", "tree", "flow", "vertical-flow", "list", "list-horizontal", "list-enumeration", "mockup"]),
+          title: z.string().min(1),
+          summary: z.string().min(1),
+          longDescription: z.string().min(20),
+          items: z.array(z.string().min(1)).min(1).max(8),
+          secondaryItems: z.array(z.string().min(1)).max(8).default([]),
+          tone: z.enum(["minimal", "cool", "luxury", "report"]).default("minimal"),
+          width: z.number().min(960).default(960),
+          height: z.number().min(540).default(540)
+        })
+      }
+    },
+    async ({ schematic }) => jsonText(renderSchematicDiagram(schematic))
+  );
+
+  server.registerTool(
     "list_skills",
     {
       title: "List skill packs",
@@ -577,12 +624,13 @@ export function createPptcreaterMcpServer(): McpServer {
           text: JSON.stringify(
             {
               version: "0.1",
-              description: "Use create_deck for examples and lint_deck before render_pptx.",
+              description: "Use create_pptx for direct PPTX requests. Use create_deck for examples and lint_deck before render_pptx when manually editing a DeckSpec.",
               templateField: "DeckSpec.template must be the id of a template returned by search_templates. Register reusable custom templates with register_template.",
-              assetFlow: "Use search_assets to find registered SVG assets. Use register_svg_asset for reusable SVGs before referencing their sanitized SVG in DeckSpec elements.",
+              assetFlow: "Use search_assets to find registered SVG assets. Use generate_schematic for table/tree/flow/list/mockup visuals, and register_svg_asset for reusable SVGs before referencing their sanitized SVG in DeckSpec elements.",
+              shapeFlow: "DeckSpec supports native shape elements: rect, roundRect, ellipse, line, and rightArrow. Prefer native shape/text for editable cards, arrows, and simple diagrams; use generate_schematic for complex but safe SVG diagrams.",
               sourceVisuals: "Use metadata.sources plus element.sourceId/citation when quoting, recreating, or using source visuals as inspiration. Prefer editable shape/text objects for recreated visuals.",
               requiredVisualAccessibility: "Non-decorative SVG, image, and diagram elements require altText. Diagram elements also require summary and longDescription.",
-              recommendedWorkflow: ["search_templates", "search_assets", "create_deck or custom DeckSpec", "lint_deck", "render_pptx or render_studio"]
+              recommendedWorkflow: ["create_pptx for direct output", "search_templates", "search_assets", "generate_schematic for structured visuals", "create_deck or custom DeckSpec", "lint_deck", "render_pptx or render_studio"]
             },
             null,
             2

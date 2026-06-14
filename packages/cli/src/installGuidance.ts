@@ -141,12 +141,14 @@ Before creating a DeckSpec, clarify these points when they are not already speci
 
 1. Use pptcreater MCP resources/tools where available.
 2. Use \`interview_slide_brief\` when the request is underspecified.
-3. Use \`search_templates\` and \`search_assets\` before creating new assets.
-4. Use \`plan_source_visual\` for source figures: choose quote, recreate, or inspiration.
-5. Create a visual DeckSpec with editable PowerPoint shapes/text where possible.
-6. Run \`lint_deck\`.
-7. Run \`polish_deck_layout\` only when layout issues or overflow risks are present.
-8. Render with \`render_pptx\` or preview with \`render_studio\`.
+3. For a direct PPTX request, prefer \`create_pptx\` first. It creates, lints, polishes, and renders with safe defaults.
+4. Use \`search_templates\` and \`search_assets\` before creating new assets.
+5. Use \`generate_schematic\` for tables, trees, horizontal/vertical flows, list layouts, and mockup-style visuals. Do not freehand complex SVG unless the preset cannot express the structure.
+6. Use \`plan_source_visual\` for source figures: choose quote, recreate, or inspiration.
+7. Create a visual DeckSpec with editable PowerPoint shapes/text where possible.
+8. Run \`lint_deck\`.
+9. Run \`polish_deck_layout\` only when layout issues or overflow risks are present.
+10. Render with \`render_pptx\` or preview with \`render_studio\`.
 
 ## Design rules
 
@@ -166,6 +168,10 @@ Before creating a DeckSpec, clarify these points when they are not already speci
 - Translucency: on dark templates, set shape \`fillOpacity\` (~0.6-0.7) on cards/panels so the atmosphere shows through for a modern, layered look. Keep text on a solid-enough surface that contrast still passes.
 - Photo-style slides: when a slide is mostly text, back it with an atmosphere background or a permitted image and add a scrim (a semi-transparent shape between background and text) so the text stays legible.
 - Choose a style profile that matches intent: \`minimal\`, \`stylish\`, \`report\`, \`presentation\`, or \`technical\`. Let content mode pick one automatically, or force it when the brand calls for it.
+- Color system: avoid pure saturated red/green/blue on large areas. Use low-chroma backgrounds, neutral surfaces, and reserve accent colors for thin rules, icons, badges, and one focal object.
+- Alignment: use a consistent 12-column or card grid. Align card tops, icon centers, and text baselines. Avoid arbitrary x/y positions when a schematic preset can provide the layout.
+- Typography: keep title tracking slightly tight, body text neutral, and line lengths short. If text does not fit naturally, shorten the copy rather than shrinking below accessibility minimums.
+- SVG compatibility: pptcreater accepts a safe SVG subset. Prefer \`generate_schematic\`, \`generate_svg\`, and registered assets; avoid unsupported filter effects, external images, scripts, CSS styles, and complex patterns unless sanitized successfully.
 
 ## Content modes
 

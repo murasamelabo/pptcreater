@@ -8,7 +8,7 @@ Agent-friendly PowerPoint creation toolkit focused on concise, well-designed, ac
 - Design and accessibility linting before rendering
 - Accessible template and skill-pack primitives
 - SVG asset sanitizing/search/generation helpers
-- A simple ponchi-e/diagram SVG DSL
+- A simple ponchi-e/diagram SVG DSL plus preset schematics for tables, trees, flows, lists, and mockups
 - PowerPoint `.pptx` rendering
 - CLI and MCP surfaces for GitHub Copilot, Claude Code, and other agent workflows
 - Static Studio HTML previews for reviewing slides, lint issues, templates, skills, and SVG assets
@@ -54,12 +54,33 @@ pptcreater new --output examples\deck.json --locale ja-JP --content-mode present
 
 Available styles: `minimal`, `stylish`, `report`, `presentation`, `technical`. From MCP, use `recommend_template` to get the template and style for a content mode, or pass `styleProfile` to `create_deck`. Built-in styled templates (`modern-simple`, `stylish-editorial`, `report-formal`, `presentation-bold`, `technical-architecture`) are listed by `pptcreater template list` and MCP `search_templates`.
 
+From MCP, use `create_pptx` when the user simply asks for a `.pptx`. It creates a styled DeckSpec, lints it, polishes layout, and renders the PowerPoint in one call. Use the lower-level `create_deck` -> `lint_deck` -> `render_pptx` workflow only when you need to manually edit the DeckSpec.
+
 Use `pptcreater polish <deck> --output <polished.deck.json>`, `pptcreater render --polish`, or MCP `polish_deck_layout` before rendering when source content is long or diagrams have many labels. The polish step clamps elements to slide bounds and adjusts text fitting to reduce overflows and misalignment. It is explicit so source-faithful decks are not silently mutated.
 
 Lint also flags `layout.text-overflow-risk`, `layout.out-of-bounds`, and `layout.text-overlap` so agents can detect and fix collisions and overflow before delivering a deck.
 
 
 Modern slide generation follows these principles: assertion titles, modular cards, bold whitespace, restrained accents, one memorable visual scene per slide, and editable PowerPoint shapes for content that users may revise later. The MCP resource `design://modern-slide-principles` exposes this guidance to AI agents.
+
+## Slideland-style schematic presets
+
+For structured visuals, prefer MCP `generate_schematic` instead of freehand SVG. It returns safe SVG for common slide patterns inspired by Slideland categories:
+
+- `table`: comparison/KPI matrix
+- `tree`: hierarchy and branching
+- `flow`: horizontal process
+- `vertical-flow`: step-by-step vertical process
+- `list`, `list-horizontal`, `list-enumeration`: clean bullet/list layouts
+- `mockup`: UI/mockup-style visual block
+
+Each schematic supports `tone`: `minimal`, `cool`, `luxury`, or `report`. The presets use low-chroma palettes, aligned grids, readable labels, and safe SVG elements, reducing renderer failures such as unsupported filters, styles, or complex patterns.
+
+CLI usage:
+
+```powershell
+pptcreater schematic .\examples\flow-schematic.json --output generated\flow.svg
+```
 
 ## Sample deck
 
@@ -68,6 +89,9 @@ A sample deck explaining this tool is included:
 - `samples/pptcreater-overview.deck.json` — source DeckSpec
 - `samples/pptcreater-overview.pptx` — generated PowerPoint
 - `samples/pptcreater-overview.html` — static Studio preview
+- `samples/schematic-patterns.deck.json` — Slideland-inspired schematic preset examples
+- `samples/schematic-patterns.pptx` — generated schematic examples
+- `samples/schematic-patterns.html` — static Studio preview
 
 Regenerate it with:
 
@@ -110,7 +134,7 @@ Register the MCP server in your user-level MCP configuration on each terminal. U
 Add this to your global Copilot instructions so slide-related requests prefer this tool:
 
 ```text
-When creating PowerPoint presentations, slide decks, proposal materials, templates, SVG icons, business diagrams, or accessible presentation materials, prefer the pptcreater MCP. First use interview_slide_brief when purpose, audience, or volume is unclear. Then create a visual DeckSpec with diagrams/icons, run lint_deck, and use render_pptx or render_studio.
+When creating PowerPoint presentations, slide decks, proposal materials, templates, SVG icons, business diagrams, or accessible presentation materials, prefer the pptcreater MCP. Use create_pptx for direct PPTX output. For custom DeckSpecs, first use interview_slide_brief when purpose, audience, or volume is unclear, use generate_schematic for table/tree/flow/list/mockup visuals, then run lint_deck and render_pptx or render_studio.
 ```
 
 For stronger project-level behavior, add the same instruction to `.github/copilot-instructions.md` in repositories where slide creation should always use `pptcreater`.
@@ -178,11 +202,11 @@ From an MCP-capable AI agent, use:
 
 SVG icons can be registered as sanitized reusable assets. Use this for icons, logos, simple illustrations, and diagram parts that should be reused across decks.
 
-pptcreater includes generated, free-to-use generic icon presets such as `check`, `warning`, `info`, `arrow-right`, `cloud`, `database`, `server`, `user-group`, `chart-up`, `shield`, `lightbulb`, `workflow`, `spark`, `rocket`, and `presentation`. These bundled preset SVG files are visible under `assets\svg\presets\`.
+pptcreater includes generated, free-to-use generic icon presets for UI, business, security, data, flow, and slide-design patterns (57 presets including `check`, `warning`, `info`, `table`, `tree`, `list`, `lock`, `key`, `laptop`, `chart-up`, `shield`, `workflow`, `rocket`, and `presentation`). These bundled preset SVG files are visible under `assets\svg\presets\`.
 
 ```powershell
 pptcreater asset search cloud
-pptcreater icon workflow --color "#1d4ed8"
+pptcreater icon workflow --color "#315f9f"
 pptcreater asset sources
 ```
 
@@ -213,6 +237,7 @@ From an MCP-capable AI agent, use:
 - `asset://registration-guide` to read the registration workflow.
 - `asset://icon-sources` to discover known upstream icon catalogs and licensing guidance notes.
 - `search_assets` before registering a new SVG, to avoid duplicates.
+- `generate_schematic` before freehand SVG when the visual is a table, tree, flow, list, or mockup.
 - `register_svg_asset` to sanitize and register the asset with `id`, `title`, `description`, `tags`, `license`, `decorative`, `altText`, and `svg`.
 - `search_assets` again after registration to reuse the asset in future DeckSpecs.
 
@@ -225,7 +250,9 @@ Good slide design depends on purpose, audience, delivery mode, and volume. The b
 From MCP, use:
 
 - `interview_slide_brief` when the user's request does not specify purpose, audience, delivery context, or slide count.
-- `create_deck` with `purpose`, `audience`, `slideCount`, and `contentMode` when those details are known.
+- `create_pptx` when the user wants a PowerPoint file directly.
+- `create_deck` with `purpose`, `audience`, `slideCount`, and `contentMode` when those details are known and you need to inspect or edit DeckSpec.
+- `generate_schematic` for table/tree/flow/list/mockup visuals before attempting custom SVG.
 - `design://modern-slide-principles` when the agent needs modern slide composition guidance.
 - `plan_source_visual` when summarizing a source document or URL that contains figures. It helps the agent choose whether to quote the original figure, recreate it as editable PowerPoint objects, or use it only as inspiration.
 

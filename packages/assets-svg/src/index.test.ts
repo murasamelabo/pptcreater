@@ -2,7 +2,7 @@
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createSimpleIconSvg, registerSvgAsset, sanitizeSvg, searchAllSvgAssets } from "./index.js";
+import { BUILTIN_ICON_NAMES, createSimpleIconSvg, registerSvgAsset, sanitizeSvg, searchAllSvgAssets } from "./index.js";
 
 describe("SVG assets", () => {
   it("removes active and external SVG content", () => {
@@ -20,6 +20,20 @@ describe("SVG assets", () => {
 
     expect(svg).toContain('fill="none"');
     expect(svg).toContain('stroke="#123456"');
+  });
+
+  it("bundles a broad icon set for slide UI patterns", () => {
+    expect(BUILTIN_ICON_NAMES.length).toBeGreaterThanOrEqual(40);
+    expect(BUILTIN_ICON_NAMES).toEqual(expect.arrayContaining(["table", "tree", "list", "lock", "key", "laptop"]));
+  });
+
+  it("keeps safe SVG pattern fills", () => {
+    const svg = sanitizeSvg(
+      '<svg viewBox="0 0 10 10"><defs><pattern id="dots" patternUnits="userSpaceOnUse" width="4" height="4"><circle cx="1" cy="1" r="1" fill="#123456" /></pattern></defs><rect width="10" height="10" fill="url(#dots)" /></svg>'
+    );
+
+    expect(svg).toContain("<pattern");
+    expect(svg).toContain('fill="url(#dots)"');
   });
 
   it("preserves the root SVG namespace", () => {

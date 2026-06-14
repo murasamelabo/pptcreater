@@ -109,6 +109,7 @@ function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpec, sli
       fontSize: element.fontSize ?? defaultFontSizeForRole(element.role, tokens),
       color: (element.color ?? tokens.colors.text).replace("#", ""),
       bold: element.bold || element.role === "title",
+      charSpacing: element.characterSpacing,
       align: element.align,
       valign: element.valign,
       fit: "shrink",

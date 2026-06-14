@@ -67,6 +67,7 @@ export const TextElementSchema = ElementBaseSchema.extend({
   color: HexColorSchema.optional(),
   contrastBackground: HexColorSchema.optional(),
   bold: z.boolean().default(false),
+  characterSpacing: z.number().min(-10).max(20).optional(),
   align: z.enum(["left", "center", "right"]).optional(),
   valign: z.enum(["top", "middle", "bottom"]).optional()
 });

@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { Command, InvalidArgumentError } from "commander";
 import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, searchAllSvgAssets, type BuiltinIconName } from "@pptcreater/assets-svg";
-import { renderPonchiDiagram } from "@pptcreater/diagram";
+import { renderPonchiDiagram, renderSchematicDiagram } from "@pptcreater/diagram";
 import {
   cliMessage,
   createSampleDeck,
@@ -351,7 +351,18 @@ program
   .requiredOption("-o, --output <path>", "Output SVG path")
   .action(commandAction(async (diagramPath: string, options: { output: string }) => {
     const result = renderPonchiDiagram(await readJson(diagramPath));
-    await writeFile(options.output, `${result.svg}\n`, "utf8");
+    await writeFile(options.output, `\uFEFF${result.svg}\n`, "utf8");
+    console.log(`Created ${options.output}`);
+  }));
+
+program
+  .command("schematic")
+  .description("Render a preset schematic JSON file (table/tree/flow/list/mockup) to SVG.")
+  .argument("<schematic>", "Schematic JSON path")
+  .requiredOption("-o, --output <path>", "Output SVG path")
+  .action(commandAction(async (schematicPath: string, options: { output: string }) => {
+    const result = renderSchematicDiagram(await readJson(schematicPath));
+    await writeFile(options.output, `\uFEFF${result.svg}\n`, "utf8");
     console.log(`Created ${options.output}`);
   }));
 

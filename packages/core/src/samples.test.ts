@@ -63,7 +63,7 @@ describe("sample deck generation", () => {
 
     expect(forced.template).toBe("stylish-editorial");
     expect(forced.metadata.keywords).toContain("stylish");
-    expect(forced.tokens?.colors.background).toBe("#0b1120");
+    expect(forced.tokens?.colors.background).toBe("#0b1020");
   });
 
   it("uses locale-appropriate fonts for English decks", () => {

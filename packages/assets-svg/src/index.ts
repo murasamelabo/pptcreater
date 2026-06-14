@@ -33,12 +33,54 @@ export const BUILTIN_ICON_NAMES = [
   "check",
   "warning",
   "info",
+  "plus",
+  "minus",
+  "x",
   "arrow-right",
+  "arrow-down",
+  "upload",
+  "download",
+  "link",
   "cloud",
   "database",
   "server",
   "user-group",
+  "user",
+  "lock",
+  "key",
+  "settings",
+  "search",
+  "document",
+  "folder",
+  "table",
+  "tree",
+  "list",
+  "layers",
+  "target",
+  "flag",
+  "star",
+  "heart",
+  "home",
+  "building",
+  "globe",
+  "mail",
+  "calendar",
+  "clock",
+  "bell",
+  "phone",
+  "laptop",
   "chart-up",
+  "chart-bar",
+  "pie-chart",
+  "map",
+  "eye",
+  "edit",
+  "trash",
+  "filter",
+  "code",
+  "branch",
+  "cash",
+  "scale",
   "shield",
   "lightbulb",
   "workflow",
@@ -75,11 +117,53 @@ const BUILTIN_ICON_DEFINITIONS: Record<BuiltinIconName, BuiltinIconDefinition> =
     tags: ["icon", "info", "note", "context"],
     path: '<circle cx="10" cy="10" r="7" /><path d="M10 9v5" /><path d="M10 6h.01" />'
   },
+  plus: {
+    title: "Plus icon",
+    description: "Plus sign for adding or expansion.",
+    tags: ["icon", "plus", "add", "expand"],
+    path: '<path d="M10 4v12" /><path d="M4 10h12" />'
+  },
+  minus: {
+    title: "Minus icon",
+    description: "Minus sign for removal or reduction.",
+    tags: ["icon", "minus", "remove", "reduce"],
+    path: '<path d="M4 10h12" />'
+  },
+  x: {
+    title: "X icon",
+    description: "X mark for close, cancel, or negative states.",
+    tags: ["icon", "x", "close", "cancel", "negative"],
+    path: '<path d="M5 5l10 10" /><path d="M15 5 5 15" />'
+  },
   "arrow-right": {
     title: "Arrow right icon",
     description: "Right arrow for flow or next step.",
     tags: ["icon", "arrow", "flow", "next"],
     path: '<path d="M4 10h11" /><path d="M11 6l4 4-4 4" />'
+  },
+  "arrow-down": {
+    title: "Arrow down icon",
+    description: "Down arrow for vertical flows or next sections.",
+    tags: ["icon", "arrow", "flow", "down"],
+    path: '<path d="M10 4v11" /><path d="M6 11l4 4 4-4" />'
+  },
+  upload: {
+    title: "Upload icon",
+    description: "Upload arrow for import or publishing.",
+    tags: ["icon", "upload", "import", "publish"],
+    path: '<path d="M10 15V4" /><path d="M6 8l4-4 4 4" /><path d="M4 16h12" />'
+  },
+  download: {
+    title: "Download icon",
+    description: "Download arrow for export or retrieval.",
+    tags: ["icon", "download", "export", "retrieve"],
+    path: '<path d="M10 4v11" /><path d="M6 11l4 4 4-4" /><path d="M4 16h12" />'
+  },
+  link: {
+    title: "Link icon",
+    description: "Link chain for connections and references.",
+    tags: ["icon", "link", "connection", "reference"],
+    path: '<path d="M8.5 6.5 7 5a3 3 0 0 0-4.2 4.2l2 2a3 3 0 0 0 4.2 0" /><path d="M11.5 13.5 13 15a3 3 0 0 0 4.2-4.2l-2-2a3 3 0 0 0-4.2 0" /><path d="M7.5 12.5l5-5" />'
   },
   cloud: {
     title: "Cloud icon",
@@ -105,11 +189,221 @@ const BUILTIN_ICON_DEFINITIONS: Record<BuiltinIconName, BuiltinIconDefinition> =
     tags: ["icon", "user", "group", "audience", "team"],
     path: '<circle cx="7.5" cy="7" r="2.5" /><circle cx="14" cy="8" r="2" /><path d="M3 16c.8-2.5 2.4-4 4.5-4s3.7 1.5 4.5 4" /><path d="M11.5 13.3c1.9.2 3.2 1.2 4 2.7" />'
   },
+  user: {
+    title: "User icon",
+    description: "Single user for a person, role, or customer.",
+    tags: ["icon", "user", "person", "customer"],
+    path: '<circle cx="10" cy="7" r="3" /><path d="M4.5 17c1-3 2.8-4.5 5.5-4.5S14.5 14 15.5 17" />'
+  },
+  lock: {
+    title: "Lock icon",
+    description: "Lock for security, access, and protected states.",
+    tags: ["icon", "lock", "security", "access"],
+    path: '<rect x="4" y="8" width="12" height="9" rx="2" /><path d="M7 8V6a3 3 0 0 1 6 0v2" /><path d="M10 12v2" />'
+  },
+  key: {
+    title: "Key icon",
+    description: "Key for authentication, access, or permissions.",
+    tags: ["icon", "key", "auth", "permission", "access"],
+    path: '<circle cx="7" cy="10" r="3" /><path d="M10 10h7" /><path d="M14 10v3" /><path d="M16 10v2" />'
+  },
+  settings: {
+    title: "Settings icon",
+    description: "Sliders for settings or tuning.",
+    tags: ["icon", "settings", "configuration", "tuning"],
+    path: '<path d="M4 6h12" /><path d="M4 14h12" /><circle cx="8" cy="6" r="1.8" /><circle cx="13" cy="14" r="1.8" />'
+  },
+  search: {
+    title: "Search icon",
+    description: "Magnifying glass for search and discovery.",
+    tags: ["icon", "search", "find", "discovery"],
+    path: '<circle cx="8.5" cy="8.5" r="4.5" /><path d="M12 12l4 4" />'
+  },
+  document: {
+    title: "Document icon",
+    description: "Document page for files, policies, and reports.",
+    tags: ["icon", "document", "file", "report", "policy"],
+    path: '<path d="M6 3h5l4 4v10H6Z" /><path d="M11 3v5h4" /><path d="M8 12h5" /><path d="M8 15h4" />'
+  },
+  folder: {
+    title: "Folder icon",
+    description: "Folder for collections and repositories.",
+    tags: ["icon", "folder", "collection", "repository"],
+    path: '<path d="M3 6.5h5l1.5 2H17v7.5H3Z" /><path d="M3 8.5h14" />'
+  },
+  table: {
+    title: "Table icon",
+    description: "Grid table for matrix and comparison layouts.",
+    tags: ["icon", "table", "matrix", "comparison"],
+    path: '<rect x="3" y="4" width="14" height="12" rx="1.5" /><path d="M3 8h14" /><path d="M3 12h14" /><path d="M8 4v12" /><path d="M13 4v12" />'
+  },
+  tree: {
+    title: "Tree icon",
+    description: "Tree diagram for hierarchy or branching.",
+    tags: ["icon", "tree", "hierarchy", "branch"],
+    path: '<rect x="7" y="3" width="6" height="4" rx="1" /><rect x="3" y="13" width="5" height="4" rx="1" /><rect x="12" y="13" width="5" height="4" rx="1" /><path d="M10 7v3" /><path d="M5.5 13v-3h9v3" />'
+  },
+  list: {
+    title: "List icon",
+    description: "List for ordered points and checklists.",
+    tags: ["icon", "list", "enumeration", "checklist"],
+    path: '<path d="M8 5h9" /><path d="M8 10h9" /><path d="M8 15h9" /><circle cx="4" cy="5" r="1" /><circle cx="4" cy="10" r="1" /><circle cx="4" cy="15" r="1" />'
+  },
+  layers: {
+    title: "Layers icon",
+    description: "Stacked layers for architecture or levels.",
+    tags: ["icon", "layers", "stack", "architecture"],
+    path: '<path d="M10 3 18 7l-8 4-8-4Z" /><path d="M4 10l6 3 6-3" /><path d="M4 13l6 3 6-3" />'
+  },
+  target: {
+    title: "Target icon",
+    description: "Target for goals and focus areas.",
+    tags: ["icon", "target", "goal", "focus"],
+    path: '<circle cx="10" cy="10" r="7" /><circle cx="10" cy="10" r="4" /><circle cx="10" cy="10" r="1.4" />'
+  },
+  flag: {
+    title: "Flag icon",
+    description: "Flag for milestones and priorities.",
+    tags: ["icon", "flag", "milestone", "priority"],
+    path: '<path d="M5 17V4" /><path d="M5 5h9l-1.5 3L14 11H5" />'
+  },
+  star: {
+    title: "Star icon",
+    description: "Star for highlights or excellence.",
+    tags: ["icon", "star", "highlight", "quality"],
+    path: '<path d="m10 3 2 4 4.5.6-3.2 3.1.8 4.4-4.1-2.1-4.1 2.1.8-4.4-3.2-3.1L8 7Z" />'
+  },
+  heart: {
+    title: "Heart icon",
+    description: "Heart for care, value, or customer love.",
+    tags: ["icon", "heart", "care", "value"],
+    path: '<path d="M10 16s-6-3.5-6-8a3.2 3.2 0 0 1 5.7-2l.3.4.3-.4A3.2 3.2 0 0 1 16 8c0 4.5-6 8-6 8Z" />'
+  },
+  home: {
+    title: "Home icon",
+    description: "Home for base, landing, or location.",
+    tags: ["icon", "home", "base", "location"],
+    path: '<path d="M3 9.5 10 4l7 5.5" /><path d="M5 8.8V17h10V8.8" /><path d="M8 17v-5h4v5" />'
+  },
+  building: {
+    title: "Building icon",
+    description: "Building for organizations and facilities.",
+    tags: ["icon", "building", "company", "facility"],
+    path: '<rect x="4" y="3" width="8" height="14" rx="1" /><path d="M12 8h4v9h-4" /><path d="M7 6h2M7 9h2M7 12h2" />'
+  },
+  globe: {
+    title: "Globe icon",
+    description: "Globe for global, web, and network contexts.",
+    tags: ["icon", "globe", "global", "web", "network"],
+    path: '<circle cx="10" cy="10" r="7" /><path d="M3 10h14" /><path d="M10 3c2 2 3 4.3 3 7s-1 5-3 7" /><path d="M10 3c-2 2-3 4.3-3 7s1 5 3 7" />'
+  },
+  mail: {
+    title: "Mail icon",
+    description: "Envelope for email and messages.",
+    tags: ["icon", "mail", "email", "message"],
+    path: '<rect x="3" y="5" width="14" height="10" rx="1.5" /><path d="m4 7 6 4 6-4" />'
+  },
+  calendar: {
+    title: "Calendar icon",
+    description: "Calendar for schedules and dates.",
+    tags: ["icon", "calendar", "schedule", "date"],
+    path: '<rect x="3" y="5" width="14" height="12" rx="1.5" /><path d="M6 3v4M14 3v4M3 9h14" />'
+  },
+  clock: {
+    title: "Clock icon",
+    description: "Clock for time and duration.",
+    tags: ["icon", "clock", "time", "duration"],
+    path: '<circle cx="10" cy="10" r="7" /><path d="M10 6v4l3 2" />'
+  },
+  bell: {
+    title: "Bell icon",
+    description: "Bell for notifications and alerts.",
+    tags: ["icon", "bell", "notification", "alert"],
+    path: '<path d="M6 9a4 4 0 0 1 8 0v3l2 2H4l2-2Z" /><path d="M8.5 16a1.8 1.8 0 0 0 3 0" />'
+  },
+  phone: {
+    title: "Phone icon",
+    description: "Phone for mobile or communication.",
+    tags: ["icon", "phone", "mobile", "communication"],
+    path: '<rect x="6" y="3" width="8" height="14" rx="2" /><path d="M9 14h2" />'
+  },
+  laptop: {
+    title: "Laptop icon",
+    description: "Laptop for applications and workstations.",
+    tags: ["icon", "laptop", "app", "workstation"],
+    path: '<rect x="5" y="5" width="10" height="7" rx="1" /><path d="M3 15h14l-2-3H5Z" />'
+  },
   "chart-up": {
     title: "Chart up icon",
     description: "Rising chart for growth or improvement.",
     tags: ["icon", "chart", "growth", "analytics"],
     path: '<path d="M4 16h12" /><path d="M5 14l3.4-3.4 2.6 2.1L16 6" /><path d="M12.5 6H16v3.5" />'
+  },
+  "chart-bar": {
+    title: "Bar chart icon",
+    description: "Bar chart for metrics and comparisons.",
+    tags: ["icon", "chart", "bar", "metrics", "comparison"],
+    path: '<path d="M4 16h12" /><rect x="5" y="10" width="2.5" height="6" /><rect x="9" y="6" width="2.5" height="10" /><rect x="13" y="8" width="2.5" height="8" />'
+  },
+  "pie-chart": {
+    title: "Pie chart icon",
+    description: "Pie chart for share or composition.",
+    tags: ["icon", "chart", "pie", "composition", "share"],
+    path: '<path d="M10 3v7h7a7 7 0 1 1-7-7Z" /><path d="M12 3.4A7 7 0 0 1 16.6 8H12Z" />'
+  },
+  map: {
+    title: "Map icon",
+    description: "Map for geography, routes, or coverage.",
+    tags: ["icon", "map", "route", "location"],
+    path: '<path d="M3 5.5 7.5 4l5 1.5L17 4v10.5L12.5 16l-5-1.5L3 16Z" /><path d="M7.5 4v10.5" /><path d="M12.5 5.5V16" />'
+  },
+  eye: {
+    title: "Eye icon",
+    description: "Eye for visibility and monitoring.",
+    tags: ["icon", "eye", "visibility", "monitoring"],
+    path: '<path d="M3 10s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5Z" /><circle cx="10" cy="10" r="2.2" />'
+  },
+  edit: {
+    title: "Edit icon",
+    description: "Pencil for editing or authoring.",
+    tags: ["icon", "edit", "author", "write"],
+    path: '<path d="M4 14.5V17h2.5L15 8.5 12.5 6Z" /><path d="m11.5 7 2.5 2.5" />'
+  },
+  trash: {
+    title: "Trash icon",
+    description: "Trash can for delete and cleanup.",
+    tags: ["icon", "trash", "delete", "cleanup"],
+    path: '<path d="M4 6h12" /><path d="M8 6V4h4v2" /><path d="M6 6l.8 11h6.4L14 6" /><path d="M9 9v5M11 9v5" />'
+  },
+  filter: {
+    title: "Filter icon",
+    description: "Filter funnel for narrowing and segmentation.",
+    tags: ["icon", "filter", "segment", "narrow"],
+    path: '<path d="M4 5h12l-5 6v4l-2 1v-5Z" />'
+  },
+  code: {
+    title: "Code icon",
+    description: "Code brackets for engineering and APIs.",
+    tags: ["icon", "code", "engineering", "api"],
+    path: '<path d="M7 6 3 10l4 4" /><path d="m13 6 4 4-4 4" /><path d="m11 4-2 12" />'
+  },
+  branch: {
+    title: "Branch icon",
+    description: "Branching nodes for decisions and versioning.",
+    tags: ["icon", "branch", "decision", "version"],
+    path: '<circle cx="6" cy="5" r="2" /><circle cx="14" cy="15" r="2" /><circle cx="6" cy="15" r="2" /><path d="M6 7v6" /><path d="M8 5h2a4 4 0 0 1 4 4v4" />'
+  },
+  cash: {
+    title: "Cash icon",
+    description: "Cash for cost, revenue, and financial topics.",
+    tags: ["icon", "cash", "money", "cost", "revenue"],
+    path: '<rect x="3" y="6" width="14" height="9" rx="1.5" /><circle cx="10" cy="10.5" r="2" /><path d="M5 8h1M14 13h1" />'
+  },
+  scale: {
+    title: "Scale icon",
+    description: "Balance scale for governance and tradeoffs.",
+    tags: ["icon", "scale", "governance", "tradeoff", "compliance"],
+    path: '<path d="M10 4v13" /><path d="M5 7h10" /><path d="M5 7l-3 5h6Z" /><path d="M15 7l-3 5h6Z" /><path d="M7 17h6" />'
   },
   shield: {
     title: "Shield icon",
@@ -244,6 +538,7 @@ const SAFE_ELEMENTS = new Set([
   "title",
   "desc",
   "defs",
+  "pattern",
   "marker",
   "linearGradient",
   "radialGradient",
@@ -272,6 +567,9 @@ const SAFE_ATTRIBUTES = new Set([
   "offset",
   "opacity",
   "orient",
+  "patternContentUnits",
+  "patternTransform",
+  "patternUnits",
   "points",
   "r",
   "refX",
