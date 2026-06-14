@@ -1,6 +1,9 @@
 ﻿import { describe, expect, it } from "vitest";
+import { lintDeckSpec } from "./lint.js";
 import { parseDeckSpec } from "./schema.js";
 import { createSampleDeck } from "./samples.js";
+
+const CONTENT_MODES = ["presentation", "report", "technical", "handout", "decision"] as const;
 
 describe("sample deck generation", () => {
   it("creates a visual sample deck", () => {
@@ -8,15 +11,41 @@ describe("sample deck generation", () => {
 
     expect(deck.slides).toHaveLength(4);
     expect(deck.slides.every((slide) => slide.elements.some((element) => element.type === "shape"))).toBe(true);
-    expect(deck.slides[2].elements.filter((element) => element.type === "shape")).toHaveLength(6);
   });
 
-  it("changes visible labels for technical mode", () => {
-    const deck = createSampleDeck("ja-JP", { contentMode: "technical" });
-    const text = deck.slides.flatMap((slide) => slide.elements).filter((element) => element.type === "text").map((element) => element.text).join(" ");
+  it("produces lint-clean decks for every content mode", () => {
+    for (const contentMode of CONTENT_MODES) {
+      const deck = parseDeckSpec(createSampleDeck("ja-JP", { contentMode }));
+      const report = lintDeckSpec(deck);
+      expect(report.ok, `${contentMode} should have no errors`).toBe(true);
+      expect(report.issues, `${contentMode} should have no issues`).toHaveLength(0);
+    }
+  });
 
-    expect(text).toContain("概念");
-    expect(text).toContain("構成");
+  it("selects a different template and palette per content mode", () => {
+    const presentation = createSampleDeck("ja-JP", { contentMode: "presentation" });
+    const report = createSampleDeck("ja-JP", { contentMode: "report" });
+    const technical = createSampleDeck("ja-JP", { contentMode: "technical" });
+
+    expect(presentation.template).toBe("presentation-bold");
+    expect(report.template).toBe("report-formal");
+    expect(technical.template).toBe("technical-architecture");
+    expect(technical.tokens?.colors.background).not.toBe(report.tokens?.colors.background);
+  });
+
+  it("forces the template and palette when a style profile is provided", () => {
+    const forced = createSampleDeck("ja-JP", { contentMode: "presentation", styleProfile: "stylish" });
+
+    expect(forced.template).toBe("stylish-editorial");
+    expect(forced.metadata.keywords).toContain("stylish");
+    expect(forced.tokens?.colors.background).toBe("#0b1120");
+  });
+
+  it("uses locale-appropriate fonts for English decks", () => {
+    const deck = createSampleDeck("en-US", { contentMode: "report" });
+
+    expect(deck.tokens?.typography.headingFont).not.toBe("Yu Gothic");
+    expect(deck.tokens?.typography.bodyFont).toBe("Aptos");
   });
 
   it("rejects invalid runtime content modes", () => {

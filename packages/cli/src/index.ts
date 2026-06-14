@@ -15,8 +15,10 @@ import {
   normalizeDeckLayout,
   parseDeckSpec,
   registerTemplateManifest,
+  STYLE_PROFILES,
   type ContentMode,
-  type Locale
+  type Locale,
+  type StyleProfile
 } from "@pptcreater/core";
 import { renderDeckToPptx } from "@pptcreater/render-pptx";
 import { renderStudioHtml } from "@pptcreater/studio";
@@ -60,6 +62,15 @@ function parseContentMode(value: string): ContentMode {
   }
 
   throw new InvalidArgumentError("Content mode must be one of: presentation, report, technical, handout, decision.");
+}
+
+function parseStyleProfile(value: string): StyleProfile {
+  const normalized = value.trim().toLowerCase();
+  if ((STYLE_PROFILES as readonly string[]).includes(normalized)) {
+    return normalized as StyleProfile;
+  }
+
+  throw new InvalidArgumentError(`Style must be one of: ${STYLE_PROFILES.join(", ")}.`);
 }
 
 function parseBuiltinIconName(value: string): BuiltinIconName {
@@ -139,13 +150,15 @@ program
   .option("--audience <audience>", "Primary audience")
   .option("--slides <count>", "Target slide count from 1 to 4", parseSlideCount)
   .option("--content-mode <mode>", "presentation, report, technical, handout, or decision", parseContentMode)
-  .action(commandAction(async (options: { output: string; locale: string; purpose?: string; audience?: string; slides?: number; contentMode?: ContentMode }) => {
+  .option("--style <profile>", "Force a style: minimal, stylish, report, presentation, technical", parseStyleProfile)
+  .action(commandAction(async (options: { output: string; locale: string; purpose?: string; audience?: string; slides?: number; contentMode?: ContentMode; style?: StyleProfile }) => {
     const locale = asLocale(options.locale);
     await writeJson(options.output, createSampleDeck(locale, {
       purpose: options.purpose,
       audience: options.audience,
       slideCount: options.slides,
-      contentMode: options.contentMode
+      contentMode: options.contentMode,
+      styleProfile: options.style
     }));
     console.log(cliMessage(outputLocale(locale), "cli.created", { path: options.output }));
   }));

@@ -16,8 +16,10 @@ import {
   normalizeDeckLayout,
   parseDeckSpec,
   planSourceVisualStrategy,
+  recommendTemplateForContentMode,
   registerTemplateManifest,
   searchTemplates,
+  STYLE_PROFILES,
   TemplateManifestSchema,
   type DeckSpec
 } from "@pptcreater/core";
@@ -223,16 +225,30 @@ export function createPptcreaterMcpServer(): McpServer {
     "create_deck",
     {
       title: "Create sample DeckSpec",
-      description: "Create a starter visual DeckSpec in Japanese or English. Optional briefing fields adapt the sample to the user's purpose and audience.",
+      description: "Create a starter visual DeckSpec. The content mode selects a styled template (presentation/report/technical), or pass styleProfile to force a style.",
       inputSchema: {
         locale: z.enum(["ja-JP", "en-US"]).default("ja-JP"),
         purpose: z.string().optional(),
         audience: z.string().optional(),
         slideCount: z.number().int().min(1).max(4).optional(),
-        contentMode: z.enum(["presentation", "report", "technical", "handout", "decision"]).optional()
+        contentMode: z.enum(["presentation", "report", "technical", "handout", "decision"]).optional(),
+        styleProfile: z.enum(STYLE_PROFILES).optional()
       }
     },
-    async ({ locale, purpose, audience, slideCount, contentMode }) => jsonText(createSampleDeck(locale, { purpose, audience, slideCount, contentMode }))
+    async ({ locale, purpose, audience, slideCount, contentMode, styleProfile }) =>
+      jsonText(createSampleDeck(locale, { purpose, audience, slideCount, contentMode, styleProfile }))
+  );
+
+  server.registerTool(
+    "recommend_template",
+    {
+      title: "Recommend a styled template",
+      description: "Recommend a built-in styled template and style profile for a content mode (presentation, report, technical, handout, decision).",
+      inputSchema: {
+        contentMode: z.enum(["presentation", "report", "technical", "handout", "decision"]).default("presentation")
+      }
+    },
+    async ({ contentMode }) => jsonText(recommendTemplateForContentMode(contentMode))
   );
 
   server.registerTool(

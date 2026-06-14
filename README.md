@@ -38,15 +38,26 @@ pptcreater new `
 
 The starter visuals are generated as native PowerPoint shapes and text boxes where possible, not flattened screenshots. This means cards, labels, workflow nodes, arrows, and roadmap elements can be edited later in PowerPoint.
 
-Content modes let agents change the deck taste:
+Content modes let agents change the deck taste, and each mode selects a styled built-in template automatically:
 
-- `presentation`: concise message slides for live presentation.
-- `report`: more context in notes and report-style support for review.
-- `technical`: architecture/concept/process visuals for understanding.
-- `decision`: emphasizes evidence, risk, and next action.
-- `handout`: keeps additional context in speaker notes.
+- `presentation`: bold keynote style (`presentation-bold`) with large type and minimal words.
+- `report`: formal report style (`report-formal`) with denser supporting text.
+- `technical`: dark technical style (`technical-architecture`) for architecture/concept/process visuals.
+- `decision`: clean modern style (`modern-simple`) emphasizing evidence, risk, and next action.
+- `handout`: report style for self-contained reading.
+
+You can also force a style directly:
+
+```powershell
+pptcreater new --output examples\deck.json --locale ja-JP --content-mode presentation --style stylish
+```
+
+Available styles: `minimal`, `stylish`, `report`, `presentation`, `technical`. From MCP, use `recommend_template` to get the template and style for a content mode, or pass `styleProfile` to `create_deck`. Built-in styled templates (`modern-simple`, `stylish-editorial`, `report-formal`, `presentation-bold`, `technical-architecture`) are listed by `pptcreater template list` and MCP `search_templates`.
 
 Use `pptcreater polish <deck> --output <polished.deck.json>`, `pptcreater render --polish`, or MCP `polish_deck_layout` before rendering when source content is long or diagrams have many labels. The polish step clamps elements to slide bounds and adjusts text fitting to reduce overflows and misalignment. It is explicit so source-faithful decks are not silently mutated.
+
+Lint also flags `layout.text-overflow-risk`, `layout.out-of-bounds`, and `layout.text-overlap` so agents can detect and fix collisions and overflow before delivering a deck.
+
 
 Modern slide generation follows these principles: assertion titles, modular cards, bold whitespace, restrained accents, one memorable visual scene per slide, and editable PowerPoint shapes for content that users may revise later. The MCP resource `design://modern-slide-principles` exposes this guidance to AI agents.
 

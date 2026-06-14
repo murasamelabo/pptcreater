@@ -10,6 +10,44 @@ describe("DeckSpec linting", () => {
     expect(report.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
   });
 
+  it("flags overlapping text elements", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push(
+      {
+        id: "overlap-a",
+        type: "text",
+        role: "body",
+        text: "重なるテキストA",
+        x: 1,
+        y: 6.2,
+        w: 4,
+        h: 0.8,
+        fontSize: 22,
+        bold: false,
+        decorative: false,
+        readingOrder: 200
+      },
+      {
+        id: "overlap-b",
+        type: "text",
+        role: "body",
+        text: "重なるテキストB",
+        x: 1.2,
+        y: 6.3,
+        w: 4,
+        h: 0.8,
+        fontSize: 22,
+        bold: false,
+        decorative: false,
+        readingOrder: 201
+      }
+    );
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "layout.text-overlap")).toBe(true);
+  });
+
   it("flags missing alt text for non-decorative visuals", () => {
     const deck = createSampleDeck("en-US");
     deck.slides[0].elements.push({

@@ -188,6 +188,36 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
     }
   });
 
+  const textBoxes = slide.elements
+    .map((element, elementIndex) => ({ element, elementIndex }))
+    .filter((entry): entry is { element: TextElement; elementIndex: number } => entry.element.type === "text");
+
+  for (let i = 0; i < textBoxes.length; i += 1) {
+    for (let j = i + 1; j < textBoxes.length; j += 1) {
+      const a = textBoxes[i].element;
+      const b = textBoxes[j].element;
+      const overlapWidth = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+      const overlapHeight = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+      if (overlapWidth <= 0.04 || overlapHeight <= 0.04) {
+        continue;
+      }
+
+      const overlapArea = overlapWidth * overlapHeight;
+      const smallerArea = Math.min(a.w * a.h, b.w * b.h);
+      if (smallerArea > 0 && overlapArea / smallerArea > 0.25) {
+        issues.push(
+          issue(
+            "warning",
+            "layout.text-overlap",
+            `Text elements "${a.id}" and "${b.id}" overlap. Separate them so labels do not collide.`,
+            `slides.${slideIndex}.elements.${textBoxes[j].elementIndex}`,
+            { otherId: a.id }
+          )
+        );
+      }
+    }
+  }
+
   return issues;
 }
 
