@@ -20,6 +20,7 @@ import {
 } from "@pptcreater/core";
 import { renderDeckToPptx } from "@pptcreater/render-pptx";
 import { renderStudioHtml } from "@pptcreater/studio";
+import { installGuidance } from "./installGuidance.js";
 
 async function readJson(path: string): Promise<unknown> {
   const text = await readFile(path, "utf8");
@@ -92,6 +93,38 @@ program
   .description("Create concise accessible PowerPoint decks from DeckSpec.")
   .version("0.1.0")
   .option("--language <locale>", "CLI output language: ja-JP or en-US");
+
+program
+  .command("install-copilot")
+  .description("Install SKILLS.md and GitHub Copilot project instructions into a target project.")
+  .option("--target <path>", "Project directory to update", ".")
+  .option("--skills-file <name>", "Skills Markdown file name", "SKILLS.md")
+  .option("--overwrite", "Overwrite an existing skills file", false)
+  .option("--json", "Emit JSON", false)
+  .action(commandAction(async (options: { target: string; skillsFile: string; overwrite: boolean; json: boolean }) => {
+    const result = await installGuidance("copilot", {
+      targetDir: options.target,
+      skillsFileName: options.skillsFile,
+      overwrite: options.overwrite
+    });
+    console.log(options.json ? JSON.stringify(result, null, 2) : `Installed Copilot guidance: ${result.filesChanged.join(", ") || "already up to date"}`);
+  }));
+
+program
+  .command("install-claude-code")
+  .description("Install SKILLS.md and Claude Code CLAUDE.md instructions into a target project.")
+  .option("--target <path>", "Project directory to update", ".")
+  .option("--skills-file <name>", "Skills Markdown file name", "SKILLS.md")
+  .option("--overwrite", "Overwrite an existing skills file", false)
+  .option("--json", "Emit JSON", false)
+  .action(commandAction(async (options: { target: string; skillsFile: string; overwrite: boolean; json: boolean }) => {
+    const result = await installGuidance("claude-code", {
+      targetDir: options.target,
+      skillsFileName: options.skillsFile,
+      overwrite: options.overwrite
+    });
+    console.log(options.json ? JSON.stringify(result, null, 2) : `Installed Claude Code guidance: ${result.filesChanged.join(", ") || "already up to date"}`);
+  }));
 
 program
   .command("new")

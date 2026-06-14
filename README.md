@@ -104,6 +104,34 @@ When creating PowerPoint presentations, slide decks, proposal materials, templat
 
 For stronger project-level behavior, add the same instruction to `.github/copilot-instructions.md` in repositories where slide creation should always use `pptcreater`.
 
+## Install project guidance files
+
+You can install project-level guidance files so GitHub Copilot and Claude Code know to brief first and use pptcreater for slide work.
+
+For GitHub Copilot:
+
+```powershell
+pptcreater install-copilot --target C:\path\to\your-project
+```
+
+This creates or updates:
+
+- `SKILLS.md`
+- `.github\copilot-instructions.md`
+
+For Claude Code:
+
+```powershell
+pptcreater install-claude-code --target C:\path\to\your-project
+```
+
+This creates or updates:
+
+- `SKILLS.md`
+- `CLAUDE.md`
+
+Both commands are idempotent. Existing instruction files are updated inside a managed `pptcreater` block. Existing `SKILLS.md` content is preserved unless you pass `--overwrite`.
+
 ## Add PowerPoint templates
 
 Templates are registered as pptcreater template manifests: JSON files that define design tokens, layouts, locale, tags, and accessibility constraints. Direct `.pptx` / `.potx` template import is not supported yet; use a manifest to describe the reusable slide system.
