@@ -51,7 +51,7 @@ function fitTextElement(element: TextElement): TextElement {
 function fitElementToSlide(element: SlideElement): SlideElement {
   const next = cloneElement(element);
   const minWidth = next.type === "shape" && next.shape === "line" ? 0.05 : 0.12;
-  const minHeight = next.type === "shape" && next.shape === "line" ? 0.01 : 0.08;
+  const minHeight = next.type === "shape" && next.shape === "line" ? 0 : 0.08;
   next.x = clamp(next.x, 0, SLIDE_WIDE.width - minWidth);
   next.y = clamp(next.y, 0, SLIDE_WIDE.height - minHeight);
   next.w = clamp(next.w, minWidth, SLIDE_WIDE.width - next.x);

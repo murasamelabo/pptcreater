@@ -1,6 +1,6 @@
 ﻿import type { Stats } from "node:fs";
 import { lstat, mkdir, realpath, writeFile } from "node:fs/promises";
-import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
+import { dirname, extname, isAbsolute, relative, resolve, win32 } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, searchAllSvgAssets } from "@pptcreater/assets-svg";
@@ -47,6 +47,15 @@ function isPathInside(child: string, parent: string): boolean {
   return childRelative === "" || (!childRelative.startsWith("..") && !isAbsolute(childRelative));
 }
 
+function normalizeMcpOutputPathInput(outputPath: string): string {
+  const trimmed = outputPath.trim();
+  if (isAbsolute(trimmed) || /^[a-zA-Z]:[\\/]/.test(trimmed)) {
+    return win32.basename(trimmed);
+  }
+
+  return trimmed;
+}
+
 function assertSafeRelativeOutputSegments(outputPath: string): void {
   const segments = outputPath.split(/[\\/]+/).filter(Boolean);
   segments.forEach((segment) => {
@@ -65,23 +74,24 @@ function assertSafeRelativeOutputSegments(outputPath: string): void {
 }
 
 function resolveMcpOutputPath(outputPath: string): McpOutputPath {
-  if (outputPath.includes("\0")) {
+  const normalizedOutputPath = normalizeMcpOutputPathInput(outputPath);
+  if (normalizedOutputPath.includes("\0")) {
     throw new Error("outputPath cannot contain null bytes.");
   }
 
-  assertSafeRelativeOutputSegments(outputPath);
+  assertSafeRelativeOutputSegments(normalizedOutputPath);
 
-  if (isAbsolute(outputPath)) {
+  if (isAbsolute(normalizedOutputPath)) {
     throw new Error("MCP render_pptx only accepts relative output paths.");
   }
 
-  const extension = extname(outputPath).toLowerCase();
+  const extension = extname(normalizedOutputPath).toLowerCase();
   if (extension !== ".pptx" && extension !== ".html") {
     throw new Error("outputPath must end with .pptx or .html.");
   }
 
   const outputRoot = resolve(process.cwd(), "generated");
-  const resolvedOutputPath = resolve(outputRoot, outputPath);
+  const resolvedOutputPath = resolve(outputRoot, normalizedOutputPath);
   const relativePath = relative(outputRoot, resolvedOutputPath);
 
   if (relativePath.startsWith("..") || isAbsolute(relativePath)) {

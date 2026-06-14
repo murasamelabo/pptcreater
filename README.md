@@ -116,7 +116,7 @@ pptcreater install-copilot --target C:\path\to\your-project
 
 This creates or updates:
 
-- `SKILLS.md`
+- `.github\pptcreater-skills.md`
 - `.github\copilot-instructions.md`
 
 For Claude Code:
@@ -127,10 +127,10 @@ pptcreater install-claude-code --target C:\path\to\your-project
 
 This creates or updates:
 
-- `SKILLS.md`
+- `.github\pptcreater-skills.md`
 - `CLAUDE.md`
 
-Both commands are idempotent. Existing instruction files are updated inside a managed `pptcreater` block. Existing `SKILLS.md` content is preserved unless you pass `--overwrite`.
+Both commands are idempotent. Existing instruction files are updated inside a managed `pptcreater` block. Existing root-level `SKILLS.md` files are not modified. Pass `--no-instructions` if you only want to install `.github\pptcreater-skills.md` without updating `.github\copilot-instructions.md` or `CLAUDE.md`.
 
 ## Add PowerPoint templates
 
@@ -167,7 +167,7 @@ From an MCP-capable AI agent, use:
 
 SVG icons can be registered as sanitized reusable assets. Use this for icons, logos, simple illustrations, and diagram parts that should be reused across decks.
 
-pptcreater includes generated, free-to-use generic icon presets such as `check`, `warning`, `info`, `arrow-right`, `cloud`, `database`, `server`, `user-group`, `chart-up`, `shield`, `lightbulb`, `workflow`, `spark`, `rocket`, and `presentation`.
+pptcreater includes generated, free-to-use generic icon presets such as `check`, `warning`, `info`, `arrow-right`, `cloud`, `database`, `server`, `user-group`, `chart-up`, `shield`, `lightbulb`, `workflow`, `spark`, `rocket`, and `presentation`. These bundled preset SVG files are visible under `assets\svg\presets\`.
 
 ```powershell
 pptcreater asset search cloud
@@ -175,7 +175,7 @@ pptcreater icon workflow --color "#1d4ed8"
 pptcreater asset sources
 ```
 
-`asset sources` lists upstream catalogs that agents can inspect before registering external SVGs, including Fluent UI System Icons, Google Material Symbols, AWS Architecture Icons, Azure Architecture Icons, Entra, Microsoft 365, Dynamics 365, Power Platform, and Google Cloud icons. Always follow the upstream license and brand terms before registering vendor-specific icons.
+`asset sources` lists upstream catalogs that agents can inspect before registering external SVGs, including Fluent UI System Icons, Google Material Symbols, AWS Architecture Icons, Azure Architecture Icons, Entra, Microsoft 365, Dynamics 365, Power Platform, and Google Cloud icons. Those vendor icon sets are not bundled in this repository; always follow the upstream license and brand terms before registering vendor-specific icons.
 
 ```powershell
 pptcreater asset register .\icons\rocket.svg `

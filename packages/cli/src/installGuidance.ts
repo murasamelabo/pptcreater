@@ -15,12 +15,13 @@ export type InstallGuidanceOptions = {
   targetDir: string;
   overwrite?: boolean;
   skillsFileName?: string;
+  installInstructions?: boolean;
 };
 
 export type InstallGuidanceResult = {
   targetDir: string;
   skillsPath: string;
-  instructionPath: string;
+  instructionPath?: string;
   filesChanged: string[];
 };
 
@@ -110,10 +111,10 @@ async function writeManagedFile(root: string, path: string, contents: string): P
   await rename(tempPath, path);
 }
 
-function normalizeSkillsFileName(value = "SKILLS.md"): string {
+function normalizeSkillsFileName(value = "pptcreater-skills.md"): string {
   const trimmed = value.trim();
   if (!/^[A-Za-z0-9._-]+\.md$/i.test(trimmed)) {
-    throw new Error("skills file name must be a simple Markdown file name such as SKILLS.md.");
+    throw new Error("skills file name must be a simple Markdown file name such as pptcreater-skills.md.");
   }
 
   return trimmed;
@@ -168,9 +169,9 @@ ${SKILLS_BLOCK_END}
 `;
 }
 
-function copilotInstructionBlock(skillsFileName: string): string {
+function copilotInstructionBlock(skillsPathForInstruction: string): string {
   return `${COPILOT_BLOCK_START}
-Read ${skillsFileName} before creating PowerPoint presentations or slide decks.
+Read ${skillsPathForInstruction} before creating PowerPoint presentations or slide decks.
 
 When creating slides, use the pptcreater MCP. If purpose, audience, delivery format, slide count, or source assets are unclear, ask a short briefing before creating the DeckSpec.
 
@@ -178,9 +179,9 @@ After the brief is clear, create a visual DeckSpec with editable PowerPoint obje
 ${COPILOT_BLOCK_END}`;
 }
 
-function claudeInstructionBlock(skillsFileName: string): string {
+function claudeInstructionBlock(skillsPathForInstruction: string): string {
   return `${CLAUDE_BLOCK_START}
-Before creating PowerPoint presentations or slide decks, read ${skillsFileName}.
+Before creating PowerPoint presentations or slide decks, read ${skillsPathForInstruction}.
 
 Use the pptcreater MCP for slide work. Start by clarifying purpose, audience, delivery mode, volume, and available source assets when they are unclear. Prefer editable PowerPoint shapes/text over flattened images. Run lint_deck before rendering, and use polish_deck_layout only when needed.
 ${CLAUDE_BLOCK_END}`;
@@ -217,7 +218,8 @@ export async function installGuidance(target: InstallTarget, options: InstallGui
   const targetDir = resolve(options.targetDir);
   const targetRoot = await assertRegularTargetRoot(targetDir);
   const skillsFileName = normalizeSkillsFileName(options.skillsFileName);
-  const skillsPath = join(targetRoot, skillsFileName);
+  const skillsPath = join(targetRoot, ".github", skillsFileName);
+  const skillsPathForInstruction = `.github/${skillsFileName}`;
   const filesChanged: string[] = [];
 
   if (options.overwrite || !(await pathExists(skillsPath))) {
@@ -226,15 +228,23 @@ export async function installGuidance(target: InstallTarget, options: InstallGui
     await upsertInstruction(targetRoot, skillsPath, SKILLS_BLOCK_START, SKILLS_BLOCK_END, createSkillsMarkdown().match(new RegExp(`${SKILLS_BLOCK_START}[\\s\\S]*${SKILLS_BLOCK_END}`))?.[0] ?? createSkillsMarkdown(), filesChanged);
   }
 
+  if (options.installInstructions === false) {
+    return {
+      targetDir: targetRoot,
+      skillsPath,
+      filesChanged
+    };
+  }
+
   const instructionPath =
     target === "copilot"
       ? join(targetRoot, ".github", "copilot-instructions.md")
       : join(targetRoot, "CLAUDE.md");
 
   if (target === "copilot") {
-    await upsertInstruction(targetRoot, instructionPath, COPILOT_BLOCK_START, COPILOT_BLOCK_END, copilotInstructionBlock(skillsFileName), filesChanged);
+    await upsertInstruction(targetRoot, instructionPath, COPILOT_BLOCK_START, COPILOT_BLOCK_END, copilotInstructionBlock(skillsPathForInstruction), filesChanged);
   } else {
-    await upsertInstruction(targetRoot, instructionPath, CLAUDE_BLOCK_START, CLAUDE_BLOCK_END, claudeInstructionBlock(skillsFileName), filesChanged);
+    await upsertInstruction(targetRoot, instructionPath, CLAUDE_BLOCK_START, CLAUDE_BLOCK_END, claudeInstructionBlock(skillsPathForInstruction), filesChanged);
   }
 
   return {

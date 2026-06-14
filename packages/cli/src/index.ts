@@ -96,15 +96,17 @@ program
 
 program
   .command("install-copilot")
-  .description("Install SKILLS.md and GitHub Copilot project instructions into a target project.")
+  .description("Install .github/pptcreater-skills.md and optional GitHub Copilot project instructions.")
   .option("--target <path>", "Project directory to update", ".")
-  .option("--skills-file <name>", "Skills Markdown file name", "SKILLS.md")
+  .option("--skills-file <name>", "Skills Markdown file name under .github", "pptcreater-skills.md")
+  .option("--no-instructions", "Only install the .github skills file and skip copilot-instructions.md")
   .option("--overwrite", "Overwrite an existing skills file", false)
   .option("--json", "Emit JSON", false)
-  .action(commandAction(async (options: { target: string; skillsFile: string; overwrite: boolean; json: boolean }) => {
+  .action(commandAction(async (options: { target: string; skillsFile: string; instructions: boolean; overwrite: boolean; json: boolean }) => {
     const result = await installGuidance("copilot", {
       targetDir: options.target,
       skillsFileName: options.skillsFile,
+      installInstructions: options.instructions,
       overwrite: options.overwrite
     });
     console.log(options.json ? JSON.stringify(result, null, 2) : `Installed Copilot guidance: ${result.filesChanged.join(", ") || "already up to date"}`);
@@ -112,15 +114,17 @@ program
 
 program
   .command("install-claude-code")
-  .description("Install SKILLS.md and Claude Code CLAUDE.md instructions into a target project.")
+  .description("Install .github/pptcreater-skills.md and optional Claude Code CLAUDE.md instructions.")
   .option("--target <path>", "Project directory to update", ".")
-  .option("--skills-file <name>", "Skills Markdown file name", "SKILLS.md")
+  .option("--skills-file <name>", "Skills Markdown file name under .github", "pptcreater-skills.md")
+  .option("--no-instructions", "Only install the .github skills file and skip CLAUDE.md")
   .option("--overwrite", "Overwrite an existing skills file", false)
   .option("--json", "Emit JSON", false)
-  .action(commandAction(async (options: { target: string; skillsFile: string; overwrite: boolean; json: boolean }) => {
+  .action(commandAction(async (options: { target: string; skillsFile: string; instructions: boolean; overwrite: boolean; json: boolean }) => {
     const result = await installGuidance("claude-code", {
       targetDir: options.target,
       skillsFileName: options.skillsFile,
+      installInstructions: options.instructions,
       overwrite: options.overwrite
     });
     console.log(options.json ? JSON.stringify(result, null, 2) : `Installed Claude Code guidance: ${result.filesChanged.join(", ") || "already up to date"}`);

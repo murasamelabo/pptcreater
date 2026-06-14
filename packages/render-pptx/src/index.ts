@@ -76,6 +76,22 @@ function shapeObjectName(element: Extract<SlideElement, { type: "shape" }>, slid
   return `${prefix} s${slideIndex + 1}-${safeObjectId(element.id)}`;
 }
 
+function pptxShapeName(shape: Extract<SlideElement, { type: "shape" }>["shape"]): string {
+  if (shape === "roundedRect") {
+    return "roundRect";
+  }
+
+  if (shape === "oval") {
+    return "ellipse";
+  }
+
+  if (shape === "arrow") {
+    return "rightArrow";
+  }
+
+  return shape;
+}
+
 function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpec, slideIndex: number): void {
   const tokens = deck.tokens ?? defaultTokens(deck.locale);
   const position = {
@@ -112,7 +128,7 @@ function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpec, sli
           endArrowType: element.line.endArrowType
         }
       : { color: "64748b", transparency: 100 };
-    slide.addShape(element.shape, {
+    slide.addShape(pptxShapeName(element.shape), {
       ...position,
       objectName: shapeObjectName(element, slideIndex),
       fill,

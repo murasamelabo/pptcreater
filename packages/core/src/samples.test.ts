@@ -35,4 +35,54 @@ describe("sample deck generation", () => {
     const target = parsed.slides[0].elements.find((element) => element.type === "shape");
     expect(target).toMatchObject({ decorative: false });
   });
+
+  it("accepts common agent-generated shape aliases and zero-height lines", () => {
+    const deck = createSampleDeck("en-US", { slideCount: 1 });
+    deck.slides[0].elements.push(
+      {
+        id: "zero-height-line",
+        type: "shape",
+        shape: "line",
+        x: 1,
+        y: 1,
+        w: 2,
+        h: 0,
+        fill: "none",
+        decorative: true,
+        readingOrder: 100
+      },
+      {
+        id: "rounded-alias",
+        type: "shape",
+        shape: "roundedRect",
+        x: 1,
+        y: 1.2,
+        w: 2,
+        h: 1,
+        fill: "#ffffff",
+        decorative: true,
+        readingOrder: 101
+      }
+    );
+
+    expect(() => parseDeckSpec(deck)).not.toThrow();
+  });
+
+  it("rejects zero-height non-line shapes", () => {
+    const deck = createSampleDeck("en-US", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "bad-zero-height-rect",
+      type: "shape",
+      shape: "rect",
+      x: 1,
+      y: 1,
+      w: 2,
+      h: 0,
+      fill: "#ffffff",
+      decorative: true,
+      readingOrder: 102
+    });
+
+    expect(() => parseDeckSpec(deck)).toThrow(/Only line shapes/);
+  });
 });

@@ -50,7 +50,7 @@ const ElementBaseSchema = z.object({
   x: z.number().min(0),
   y: z.number().min(0),
   w: z.number().positive(),
-  h: z.number().positive(),
+  h: z.number().nonnegative(),
   readingOrder: z.number().int().nonnegative().optional(),
   decorative: z.boolean().default(false),
   altText: z.string().optional(),
@@ -60,6 +60,7 @@ const ElementBaseSchema = z.object({
 
 export const TextElementSchema = ElementBaseSchema.extend({
   type: z.literal("text"),
+  h: z.number().positive(),
   role: z.enum(["title", "subtitle", "body", "caption", "callout"]).default("body"),
   text: z.string().min(1),
   fontSize: z.number().positive().optional(),
@@ -73,7 +74,7 @@ export const TextElementSchema = ElementBaseSchema.extend({
 export const ShapeElementSchema = ElementBaseSchema.extend({
   type: z.literal("shape"),
   decorative: z.boolean().default(true),
-  shape: z.enum(["rect", "roundRect", "ellipse", "line", "rightArrow"]).default("rect"),
+  shape: z.enum(["rect", "roundRect", "roundedRect", "ellipse", "oval", "line", "rightArrow", "arrow"]).default("rect"),
   fill: z.union([HexColorSchema, z.literal("none")]).default("none"),
   line: z
     .object({
@@ -85,10 +86,19 @@ export const ShapeElementSchema = ElementBaseSchema.extend({
     })
     .optional(),
   radius: z.number().nonnegative().optional()
+}).superRefine((element, context) => {
+  if (element.shape !== "line" && element.h <= 0) {
+    context.addIssue({
+      code: "custom",
+      message: "Only line shapes may use h = 0. Non-line shapes require positive height.",
+      path: ["h"]
+    });
+  }
 });
 
 export const SvgElementSchema = ElementBaseSchema.extend({
   type: z.literal("svg"),
+  h: z.number().positive(),
   svg: z.string().min(1),
   title: z.string().optional(),
   description: z.string().optional()
@@ -96,6 +106,7 @@ export const SvgElementSchema = ElementBaseSchema.extend({
 
 export const ImageElementSchema = ElementBaseSchema.extend({
   type: z.literal("image"),
+  h: z.number().positive(),
   path: z.string().optional(),
   dataUri: z.string().optional(),
   description: z.string().optional()
@@ -105,6 +116,7 @@ export const ImageElementSchema = ElementBaseSchema.extend({
 
 export const DiagramElementSchema = ElementBaseSchema.extend({
   type: z.literal("diagram"),
+  h: z.number().positive(),
   svg: z.string().min(1),
   summary: z.string().min(1),
   longDescription: z.string().min(1)

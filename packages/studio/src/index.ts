@@ -65,7 +65,8 @@ function shapeStyle(element: Extract<DeckSpec["slides"][number]["elements"][numb
   const borderColor = element.line?.color ?? "#64748b";
   const borderWidth = element.line?.width ?? 1;
   const fill = element.fill === "none" ? "transparent" : element.fill;
-  const radius = element.shape === "ellipse" ? "999px" : element.shape === "roundRect" ? "18px" : "2px";
+  const normalizedShape = element.shape === "oval" ? "ellipse" : element.shape === "roundedRect" ? "roundRect" : element.shape === "arrow" ? "rightArrow" : element.shape;
+  const radius = normalizedShape === "ellipse" ? "999px" : normalizedShape === "roundRect" ? "18px" : "2px";
   return `left:${left}%;top:${top}%;width:${width}%;height:${Math.max(height, 0.2)}%;background:${fill};border:${borderWidth}px solid ${borderColor};border-radius:${radius};`;
 }
 
@@ -74,7 +75,8 @@ function nativeShapePreview(slide: DeckSpec["slides"][number]): string {
     .map((element) => {
       if (element.type === "shape") {
         const accessibility = element.decorative ? 'aria-hidden="true"' : `role="img" aria-label="${escapeHtml(element.altText ?? element.id)}"`;
-        return `<div class="native-shape native-${element.shape}" style="${shapeStyle(element)}" ${accessibility}></div>`;
+        const normalizedShape = element.shape === "oval" ? "ellipse" : element.shape === "roundedRect" ? "roundRect" : element.shape === "arrow" ? "rightArrow" : element.shape;
+        return `<div class="native-shape native-${normalizedShape}" style="${shapeStyle(element)}" ${accessibility}></div>`;
       }
 
       if (element.type === "text") {
