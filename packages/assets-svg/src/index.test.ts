@@ -15,6 +15,19 @@ describe("SVG assets", () => {
     expect(svg).not.toContain("style=");
   });
 
+  it("keeps safe paint values such as fill none", () => {
+    const svg = sanitizeSvg('<svg viewBox="0 0 10 10" fill="none" stroke="#123456"><path d="M1 5h8" /></svg>');
+
+    expect(svg).toContain('fill="none"');
+    expect(svg).toContain('stroke="#123456"');
+  });
+
+  it("preserves the root SVG namespace", () => {
+    const svg = sanitizeSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M1 5h8" /></svg>');
+
+    expect(svg).toContain('xmlns="http://www.w3.org/2000/svg"');
+  });
+
   it("rejects disallowed elements and namespaced script variants", () => {
     expect(() => sanitizeSvg("<svg><script>alert(1)</script></svg>")).toThrow(/not allowed/);
     expect(() => sanitizeSvg("<svg:script>alert(1)</svg:script>")).toThrow(/Namespaced SVG elements/);
@@ -22,6 +35,10 @@ describe("SVG assets", () => {
 
   it("rejects invalid generated icon colors", () => {
     expect(() => createSimpleIconSvg("check", '" onload="bad')).toThrow(/Invalid SVG color/);
+  });
+
+  it("rejects unsupported built-in icon names", () => {
+    expect(() => createSimpleIconSvg("typo-icon")).toThrow(/Unsupported built-in icon name/);
   });
 
   it("registers sanitized SVG assets for later search", async () => {

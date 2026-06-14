@@ -3,7 +3,7 @@ import { lstat, mkdir, realpath, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { createSimpleIconSvg, getDefaultSvgRegistryPath, registerSvgAsset, searchAllSvgAssets } from "@pptcreater/assets-svg";
+import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, searchAllSvgAssets } from "@pptcreater/assets-svg";
 import { renderPonchiDiagram } from "@pptcreater/diagram";
 import {
   createSampleDeck,
@@ -211,12 +211,16 @@ export function createPptcreaterMcpServer(): McpServer {
     "create_deck",
     {
       title: "Create sample DeckSpec",
-      description: "Create a starter DeckSpec in Japanese or English.",
+      description: "Create a starter visual DeckSpec in Japanese or English. Optional briefing fields adapt the sample to the user's purpose and audience.",
       inputSchema: {
-        locale: z.enum(["ja-JP", "en-US"]).default("ja-JP")
+        locale: z.enum(["ja-JP", "en-US"]).default("ja-JP"),
+        purpose: z.string().optional(),
+        audience: z.string().optional(),
+        slideCount: z.number().int().min(1).max(4).optional(),
+        contentMode: z.enum(["presentation", "handout", "decision"]).optional()
       }
     },
-    async ({ locale }) => jsonText(createSampleDeck(locale))
+    async ({ locale, purpose, audience, slideCount, contentMode }) => jsonText(createSampleDeck(locale, { purpose, audience, slideCount, contentMode }))
   );
 
   server.registerTool(
@@ -346,7 +350,7 @@ export function createPptcreaterMcpServer(): McpServer {
       title: "Generate SVG icon",
       description: "Generate a simple safe SVG icon asset.",
       inputSchema: {
-        name: z.enum(["check", "warning", "info"]).default("info"),
+        name: z.enum(BUILTIN_ICON_NAMES).default("info"),
         color: z.string().regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/).default("#1d4ed8")
       }
     },
@@ -376,6 +380,25 @@ export function createPptcreaterMcpServer(): McpServer {
   );
 
   server.registerResource(
+    "icon-source-catalogs",
+    "asset://icon-sources",
+    {
+      title: "Icon source catalogs",
+      description: "Free or publicly documented icon catalogs that agents may use after checking each source's license and brand terms.",
+      mimeType: "application/json"
+    },
+    async (uri) => ({
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: "application/json",
+          text: JSON.stringify(listIconSourceCatalogs(), null, 2)
+        }
+      ]
+    })
+  );
+
+  server.registerResource(
     "asset-registration-guide",
     "asset://registration-guide",
     {
@@ -399,6 +422,7 @@ export function createPptcreaterMcpServer(): McpServer {
             `Default SVG registry: ${getDefaultSvgRegistryPath()}`,
             "",
             "Use `search_assets` before creating a duplicate asset.",
+            "Use `asset://icon-sources` to discover upstream icon catalogs and their license/brand guidance notes.",
             "",
             "Use `register_template` for reusable slide template manifests. A template manifest must include design tokens, layouts, locale, tags, and accessibility constraints.",
             `Default template registry: ${getDefaultTemplateRegistryPath()}`,
@@ -435,6 +459,47 @@ export function createPptcreaterMcpServer(): McpServer {
             null,
             2
           )
+        }
+      ]
+    })
+  );
+
+  server.registerPrompt(
+    "interview_slide_brief",
+    {
+      title: "Interview slide brief",
+      description: "Ask the minimum useful questions before creating a visual slide deck.",
+      argsSchema: {
+        locale: z.enum(["ja-JP", "en-US"]).default("ja-JP")
+      }
+    },
+    ({ locale }) => ({
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text:
+              locale === "ja-JP"
+                ? [
+                    "スライド作成前に、以下を1つずつユーザーへ確認してから、図解中心のDeckSpecを作成してください:",
+                    "1. この資料で聴衆に理解・判断・行動してほしいことは何ですか？",
+                    "2. 主な聴衆は誰で、前提知識はどの程度ですか？",
+                    "3. 発表用、配布用、非同期レビュー用、Web公開用のどれに近いですか？",
+                    "4. 希望する枚数、時間、章立てはありますか？",
+                    "5. 使いたいテンプレート、ブランド色、アイコン、ロゴ、図表、データソースはありますか？",
+                    "回答後、search_templates と search_assets を使い、図・アイコンを含むDeckSpecを作成し、lint_deck後に render_pptx または render_studio を使ってください。"
+                  ].join("\n")
+                : [
+                    "Before creating slides, ask the user these questions one at a time, then create a visual DeckSpec:",
+                    "1. What should the audience understand, decide, or do?",
+                    "2. Who is the audience and what do they already know?",
+                    "3. Is this for live presentation, handout, async review, or public sharing?",
+                    "4. What slide count, time limit, or section structure is desired?",
+                    "5. Are there templates, brand colors, icons, logos, diagrams, or data sources to reuse?",
+                    "After the answers, use search_templates and search_assets, create a DeckSpec with diagrams/icons, run lint_deck, then render_pptx or render_studio."
+                  ].join("\n")
+          }
         }
       ]
     })

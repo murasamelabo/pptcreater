@@ -29,6 +29,204 @@ export const SvgAssetRegistrySchema = z.object({
 
 export type SvgAssetRegistry = z.infer<typeof SvgAssetRegistrySchema>;
 
+export const BUILTIN_ICON_NAMES = [
+  "check",
+  "warning",
+  "info",
+  "arrow-right",
+  "cloud",
+  "database",
+  "server",
+  "user-group",
+  "chart-up",
+  "shield",
+  "lightbulb",
+  "workflow",
+  "spark",
+  "rocket",
+  "presentation"
+] as const;
+
+export type BuiltinIconName = (typeof BUILTIN_ICON_NAMES)[number];
+
+type BuiltinIconDefinition = {
+  title: string;
+  description: string;
+  tags: string[];
+  path: string;
+};
+
+const BUILTIN_ICON_DEFINITIONS: Record<BuiltinIconName, BuiltinIconDefinition> = {
+  check: {
+    title: "Check icon",
+    description: "Check mark for completion or approval.",
+    tags: ["icon", "check", "success", "approval"],
+    path: '<path d="M4 10.5 8.2 14.7 16.5 5.8" />'
+  },
+  warning: {
+    title: "Warning icon",
+    description: "Warning triangle for risks or cautions.",
+    tags: ["icon", "warning", "risk", "caution"],
+    path: '<path d="M10 3 18 17H2L10 3Z" /><path d="M10 8v4" /><path d="M10 15h.01" />'
+  },
+  info: {
+    title: "Info icon",
+    description: "Information icon for notes or context.",
+    tags: ["icon", "info", "note", "context"],
+    path: '<circle cx="10" cy="10" r="7" /><path d="M10 9v5" /><path d="M10 6h.01" />'
+  },
+  "arrow-right": {
+    title: "Arrow right icon",
+    description: "Right arrow for flow or next step.",
+    tags: ["icon", "arrow", "flow", "next"],
+    path: '<path d="M4 10h11" /><path d="M11 6l4 4-4 4" />'
+  },
+  cloud: {
+    title: "Cloud icon",
+    description: "Cloud icon for cloud platforms or remote services.",
+    tags: ["icon", "cloud", "platform", "infrastructure"],
+    path: '<path d="M7 15h8.3A3.7 3.7 0 0 0 16 7.7 5.2 5.2 0 0 0 6.2 6 4.5 4.5 0 0 0 7 15Z" />'
+  },
+  database: {
+    title: "Database icon",
+    description: "Database cylinder for storage or data sources.",
+    tags: ["icon", "database", "data", "storage"],
+    path: '<ellipse cx="10" cy="5" rx="6" ry="2.5" /><path d="M4 5v8c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V5" /><path d="M4 9c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5" />'
+  },
+  server: {
+    title: "Server icon",
+    description: "Server rack for compute or backend components.",
+    tags: ["icon", "server", "compute", "backend"],
+    path: '<rect x="4" y="4" width="12" height="5" rx="1.2" /><rect x="4" y="11" width="12" height="5" rx="1.2" /><path d="M7 6.5h.01M7 13.5h.01M10 6.5h3M10 13.5h3" />'
+  },
+  "user-group": {
+    title: "User group icon",
+    description: "User group for audience, customers, or teams.",
+    tags: ["icon", "user", "group", "audience", "team"],
+    path: '<circle cx="7.5" cy="7" r="2.5" /><circle cx="14" cy="8" r="2" /><path d="M3 16c.8-2.5 2.4-4 4.5-4s3.7 1.5 4.5 4" /><path d="M11.5 13.3c1.9.2 3.2 1.2 4 2.7" />'
+  },
+  "chart-up": {
+    title: "Chart up icon",
+    description: "Rising chart for growth or improvement.",
+    tags: ["icon", "chart", "growth", "analytics"],
+    path: '<path d="M4 16h12" /><path d="M5 14l3.4-3.4 2.6 2.1L16 6" /><path d="M12.5 6H16v3.5" />'
+  },
+  shield: {
+    title: "Shield icon",
+    description: "Shield for security, governance, or reliability.",
+    tags: ["icon", "shield", "security", "governance"],
+    path: '<path d="M10 3 16 5v4.7c0 3.4-2.2 5.9-6 7.3-3.8-1.4-6-3.9-6-7.3V5l6-2Z" /><path d="M7.5 10.3 9.3 12 12.8 8" />'
+  },
+  lightbulb: {
+    title: "Lightbulb icon",
+    description: "Lightbulb for ideas or insights.",
+    tags: ["icon", "idea", "insight", "innovation"],
+    path: '<path d="M7 9a3 3 0 1 1 6 0c0 1.2-.6 2-1.4 2.8-.5.5-.8 1.1-.8 1.7H9.2c0-.6-.3-1.2-.8-1.7C7.6 11 7 10.2 7 9Z" /><path d="M8.8 16h2.4" /><path d="M9 13.5h2" />'
+  },
+  workflow: {
+    title: "Workflow icon",
+    description: "Connected nodes for process or architecture flows.",
+    tags: ["icon", "workflow", "process", "architecture"],
+    path: '<rect x="3" y="4" width="5" height="4" rx="1" /><rect x="12" y="4" width="5" height="4" rx="1" /><rect x="7.5" y="13" width="5" height="4" rx="1" /><path d="M8 6h4" /><path d="M10 8v5" />'
+  },
+  spark: {
+    title: "Spark icon",
+    description: "Spark for emphasis, quality, or AI moments.",
+    tags: ["icon", "spark", "quality", "ai"],
+    path: '<path d="M10 3l1.6 4.4L16 9l-4.4 1.6L10 15l-1.6-4.4L4 9l4.4-1.6L10 3Z" /><path d="M16 14l.6 1.4L18 16l-1.4.6L16 18l-.6-1.4L14 16l1.4-.6L16 14Z" />'
+  },
+  rocket: {
+    title: "Rocket icon",
+    description: "Rocket for launch, acceleration, or growth.",
+    tags: ["icon", "rocket", "launch", "growth"],
+    path: '<path d="M11 4c2.5-.7 4.2-.3 5 1-.7 3.1-2.4 5.8-5 8l-4-4c2.2-2.6 4.9-4.3 8-5Z" /><path d="M7 9 4 10l-1 3 3-1" /><path d="M11 13l-1 3-3 1 1-3" /><circle cx="12.8" cy="7.2" r="1" />'
+  },
+  presentation: {
+    title: "Presentation icon",
+    description: "Presentation screen for slide decks or reporting.",
+    tags: ["icon", "presentation", "slides", "report"],
+    path: '<rect x="3" y="4" width="14" height="9" rx="1.5" /><path d="M10 13v4" /><path d="M7 17h6" /><path d="M6.5 10.5 9 8l2 1.5 2.5-3" />'
+  }
+};
+
+export type IconSourceCatalog = {
+  id: string;
+  name: string;
+  url: string;
+  licenseNote: string;
+  registrationNote: string;
+};
+
+export const ICON_SOURCE_CATALOGS: IconSourceCatalog[] = [
+  {
+    id: "fluentui-system-icons",
+    name: "Microsoft Fluent UI System Icons",
+    url: "https://github.com/microsoft/fluentui-system-icons",
+    licenseNote: "Use according to the upstream repository license.",
+    registrationNote: "Good source for general UI icons. Register selected SVGs with register_svg_asset."
+  },
+  {
+    id: "google-material-symbols",
+    name: "Google Material Symbols",
+    url: "https://fonts.google.com/icons",
+    licenseNote: "Use according to Google Fonts / Material Symbols license terms.",
+    registrationNote: "Good source for generic product, action, and object icons."
+  },
+  {
+    id: "aws-architecture-icons",
+    name: "AWS Architecture Icons",
+    url: "https://aws.amazon.com/jp/architecture/icons/",
+    licenseNote: "Use according to AWS architecture icon terms and brand guidelines.",
+    registrationNote: "Use for AWS architecture diagrams after confirming the intended brand usage."
+  },
+  {
+    id: "azure-architecture-icons",
+    name: "Azure Architecture Icons",
+    url: "https://learn.microsoft.com/ja-jp/azure/architecture/icons/",
+    licenseNote: "Use according to Microsoft architecture icon terms and brand guidelines.",
+    registrationNote: "Use for Azure architecture diagrams after confirming the intended brand usage."
+  },
+  {
+    id: "entra-architecture-icons",
+    name: "Microsoft Entra Architecture Icons",
+    url: "https://learn.microsoft.com/ja-jp/entra/architecture/architecture-icons",
+    licenseNote: "Use according to Microsoft icon terms and brand guidelines.",
+    registrationNote: "Use for identity/security architecture diagrams."
+  },
+  {
+    id: "microsoft-365-architecture-icons",
+    name: "Microsoft 365 Architecture Icons and Templates",
+    url: "https://learn.microsoft.com/ja-jp/previous-versions/microsoft-365/solutions/architecture-icons-templates",
+    licenseNote: "Use according to Microsoft icon terms and brand guidelines.",
+    registrationNote: "Use for Microsoft 365 solution diagrams."
+  },
+  {
+    id: "dynamics-365-icons",
+    name: "Dynamics 365 Icons",
+    url: "https://learn.microsoft.com/ja-jp/dynamics365/get-started/icons",
+    licenseNote: "Use according to Microsoft icon terms and brand guidelines.",
+    registrationNote: "Use for Dynamics 365 solution slides."
+  },
+  {
+    id: "power-platform-icons",
+    name: "Power Platform Icons",
+    url: "https://learn.microsoft.com/ja-jp/power-platform/guidance/icons",
+    licenseNote: "Use according to Microsoft icon terms and brand guidelines.",
+    registrationNote: "Use for Power Platform architecture and governance slides."
+  },
+  {
+    id: "google-cloud-icons",
+    name: "Google Cloud Icons",
+    url: "https://cloud.google.com/icons?hl=ja",
+    licenseNote: "Use according to Google Cloud icon terms and brand guidelines.",
+    registrationNote: "Use for Google Cloud architecture diagrams after confirming the intended brand usage."
+  }
+];
+
+export function listIconSourceCatalogs(): IconSourceCatalog[] {
+  return [...ICON_SOURCE_CATALOGS];
+}
+
 const HEX_COLOR_PATTERN = /^#(?:[0-9a-fA-F]{3}){1,2}$/;
 const FORBIDDEN_XML_PATTERN = /<!DOCTYPE|<!ENTITY|<\?xml-stylesheet/i;
 const SAFE_ELEMENTS = new Set([
@@ -102,6 +300,7 @@ const SAFE_ATTRIBUTES = new Set([
   "y2"
 ]);
 const URL_ATTRIBUTES = new Set(["clip-path", "fill", "href", "marker-end", "marker-mid", "marker-start", "mask", "stroke", "xlink:href"]);
+const PAINT_ATTRIBUTES = new Set(["fill", "stroke"]);
 const REGISTRY_LOCK_STALE_MS = 30_000;
 const REGISTRY_LOCK_OWNER_FILE = "owner.json";
 
@@ -137,12 +336,25 @@ function isSafeAttributeValue(name: string, value: string): boolean {
     return false;
   }
 
+  if (name === "xmlns") {
+    return value === "http://www.w3.org/2000/svg";
+  }
+
   if (/url\s*\(/i.test(value)) {
     return isSafeUrlValue(value);
   }
 
   if (URL_ATTRIBUTES.has(name)) {
-    return !/(?:https?:|file:|javascript:|data:|\/\/)/i.test(value) && (value.startsWith("#") || isSafeUrlValue(value));
+    const hasUnsafeProtocol = /(?:https?:|file:|javascript:|data:|\/\/)/i.test(value);
+    if (hasUnsafeProtocol) {
+      return false;
+    }
+
+    if (PAINT_ATTRIBUTES.has(name) && !/url\s*\(/i.test(value)) {
+      return /^[#a-zA-Z0-9(),.%\s-]+$/.test(value);
+    }
+
+    return value.startsWith("#") || isSafeUrlValue(value);
   }
 
   return !/(?:https?:|file:|javascript:|data:|\/\/|@import)/i.test(value);
@@ -242,32 +454,39 @@ export function recolorSvg(svg: string, color: string): string {
 export function createSimpleIconSvg(name: string, color = "#1d4ed8"): SvgAsset {
   assertHexColor(color);
   const normalizedName = name.trim().toLowerCase();
-  const path =
-    normalizedName === "check"
-      ? "<path d=\"M4 10.5 8.2 14.7 16.5 5.8\" />"
-      : normalizedName === "warning"
-        ? "<path d=\"M10 3 18 17H2L10 3Z\" /><path d=\"M10 8v4\" /><path d=\"M10 15h.01\" />"
-        : "<circle cx=\"10\" cy=\"10\" r=\"7\" /><path d=\"M10 6v5\" /><path d=\"M10 14h.01\" />";
+  if (!BUILTIN_ICON_NAMES.includes(normalizedName as BuiltinIconName)) {
+    throw new Error(`Unsupported built-in icon name: ${name}`);
+  }
+
+  const iconName = normalizedName as BuiltinIconName;
+  const definition = BUILTIN_ICON_DEFINITIONS[iconName];
 
   return SvgAssetSchema.parse({
-    id: `icon-${normalizedName || "info"}`,
-    title: `${normalizedName || "info"} icon`,
-    description: `Simple ${normalizedName || "info"} icon for slide use.`,
-    tags: ["icon", normalizedName || "info"],
-    license: "generated",
+    id: `icon-${iconName}`,
+    title: definition.title,
+    description: definition.description,
+    tags: definition.tags,
+    license: "generated-free",
     decorative: false,
-    altText: `${normalizedName || "info"} icon`,
+    altText: definition.title,
     svg: sanitizeSvg(
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${definition.path}</svg>`
     )
   });
 }
 
-export const BUILTIN_SVG_ASSETS: SvgAsset[] = [
-  createSimpleIconSvg("check", "#047857"),
-  createSimpleIconSvg("warning", "#b91c1c"),
-  createSimpleIconSvg("info", "#1d4ed8")
-];
+const ICON_COLOR_BY_NAME: Partial<Record<BuiltinIconName, string>> = {
+  check: "#047857",
+  warning: "#b91c1c",
+  info: "#1d4ed8",
+  shield: "#0f766e",
+  "chart-up": "#047857",
+  spark: "#7c3aed",
+  rocket: "#ea580c",
+  cloud: "#0284c7"
+};
+
+export const BUILTIN_SVG_ASSETS: SvgAsset[] = BUILTIN_ICON_NAMES.map((name) => createSimpleIconSvg(name, ICON_COLOR_BY_NAME[name] ?? "#1d4ed8"));
 
 function defaultConfigRoot(): string {
   if (process.env.PPTCREATER_HOME) {

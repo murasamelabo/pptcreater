@@ -1,8 +1,8 @@
 ﻿#!/usr/bin/env node
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { Command } from "commander";
-import { createSimpleIconSvg, getDefaultSvgRegistryPath, registerSvgAsset, searchAllSvgAssets } from "@pptcreater/assets-svg";
+import { Command, InvalidArgumentError } from "commander";
+import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, searchAllSvgAssets, type BuiltinIconName } from "@pptcreater/assets-svg";
 import { renderPonchiDiagram } from "@pptcreater/diagram";
 import {
   cliMessage,
@@ -42,6 +42,32 @@ function outputLocale(fallback: Locale = "en-US"): Locale {
   return language ? asLocale(language) : fallback;
 }
 
+function parseSlideCount(value: string): number {
+  const count = Number(value);
+  if (!Number.isInteger(count) || count < 1 || count > 4) {
+    throw new InvalidArgumentError("Slide count must be an integer from 1 to 4.");
+  }
+
+  return count;
+}
+
+function parseContentMode(value: string): "presentation" | "handout" | "decision" {
+  if (value === "presentation" || value === "handout" || value === "decision") {
+    return value;
+  }
+
+  throw new InvalidArgumentError("Content mode must be one of: presentation, handout, decision.");
+}
+
+function parseBuiltinIconName(value: string): BuiltinIconName {
+  const normalized = value.trim().toLowerCase();
+  if (BUILTIN_ICON_NAMES.includes(normalized as BuiltinIconName)) {
+    return normalized as BuiltinIconName;
+  }
+
+  throw new InvalidArgumentError(`Icon name must be one of: ${BUILTIN_ICON_NAMES.join(", ")}.`);
+}
+
 function formatCliError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -70,9 +96,18 @@ program
   .description("Create a sample DeckSpec.")
   .option("-o, --output <path>", "Output DeckSpec path", "deck.json")
   .option("--locale <locale>", "Deck locale", "ja-JP")
-  .action(commandAction(async (options: { output: string; locale: string }) => {
+  .option("--purpose <purpose>", "Purpose or desired audience outcome")
+  .option("--audience <audience>", "Primary audience")
+  .option("--slides <count>", "Target slide count from 1 to 4", parseSlideCount)
+  .option("--content-mode <mode>", "presentation, handout, or decision", parseContentMode)
+  .action(commandAction(async (options: { output: string; locale: string; purpose?: string; audience?: string; slides?: number; contentMode?: "presentation" | "handout" | "decision" }) => {
     const locale = asLocale(options.locale);
-    await writeJson(options.output, createSampleDeck(locale));
+    await writeJson(options.output, createSampleDeck(locale, {
+      purpose: options.purpose,
+      audience: options.audience,
+      slideCount: options.slides,
+      contentMode: options.contentMode
+    }));
     console.log(cliMessage(outputLocale(locale), "cli.created", { path: options.output }));
   }));
 
@@ -176,6 +211,15 @@ assetCommand
   }));
 
 assetCommand
+  .command("sources")
+  .description("List external icon source catalogs and license guidance notes.")
+  .option("--json", "Emit JSON", false)
+  .action(commandAction((options: { json: boolean }) => {
+    const sources = listIconSourceCatalogs();
+    console.log(options.json ? JSON.stringify(sources, null, 2) : sources.map((source) => `${source.id}\t${source.url}`).join("\n"));
+  }));
+
+assetCommand
   .command("register")
   .description("Register a sanitized SVG file as a reusable asset.")
   .argument("<svgFile>", "SVG file path")
@@ -228,7 +272,7 @@ assetCommand
 program
   .command("icon")
   .description("Generate a simple SVG icon asset.")
-  .argument("<name>", "Icon name: check, warning, or info")
+  .argument("<name>", `Icon name: ${BUILTIN_ICON_NAMES.join(", ")}`, parseBuiltinIconName)
   .option("--color <hex>", "Stroke color", "#1d4ed8")
   .option("--json", "Emit JSON", false)
   .action(commandAction((name: string, options: { color: string; json: boolean }) => {

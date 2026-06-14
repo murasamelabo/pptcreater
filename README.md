@@ -24,6 +24,34 @@ npm run cli -- render examples\generated.deck.json --output examples\generated.p
 npm run cli -- studio examples\generated.deck.json --output generated\studio.html --language ja-JP
 ```
 
+`new` creates a visual starter deck, not a text-only deck. You can pass briefing context so the generated DeckSpec includes an audience-specific message, diagrams, icons, and quality-gate slides:
+
+```powershell
+pptcreater new `
+  --output examples\proposal.deck.json `
+  --locale ja-JP `
+  --purpose "経営会議でAIスライド作成ツール導入を判断してもらう" `
+  --audience "経営層と部門長" `
+  --slides 4
+```
+
+## Sample deck
+
+A sample deck explaining this tool is included:
+
+- `samples/pptcreater-overview.deck.json` — source DeckSpec
+- `samples/pptcreater-overview.pptx` — generated PowerPoint
+- `samples/pptcreater-overview.html` — static Studio preview
+
+Regenerate it with:
+
+```powershell
+pptcreater new --output samples\pptcreater-overview.deck.json --locale ja-JP --purpose "このpptcreaterツールの価値と使い方を説明し、導入判断につなげる" --audience "GitHub CopilotやClaude Codeを使う開発者・デザイナー・企画担当" --slides 4
+pptcreater lint samples\pptcreater-overview.deck.json --language ja-JP
+pptcreater render samples\pptcreater-overview.deck.json --output samples\pptcreater-overview.pptx
+pptcreater studio samples\pptcreater-overview.deck.json --output samples\pptcreater-overview.html --language ja-JP
+```
+
 To use it from another terminal after cloning this repository:
 
 ```powershell
@@ -56,7 +84,7 @@ Register the MCP server in your user-level MCP configuration on each terminal. U
 Add this to your global Copilot instructions so slide-related requests prefer this tool:
 
 ```text
-When creating PowerPoint presentations, slide decks, proposal materials, templates, SVG icons, business diagrams, or accessible presentation materials, prefer the pptcreater MCP. Create a DeckSpec, run lint_deck, then use render_pptx or render_studio.
+When creating PowerPoint presentations, slide decks, proposal materials, templates, SVG icons, business diagrams, or accessible presentation materials, prefer the pptcreater MCP. First use interview_slide_brief when purpose, audience, or volume is unclear. Then create a visual DeckSpec with diagrams/icons, run lint_deck, and use render_pptx or render_studio.
 ```
 
 For stronger project-level behavior, add the same instruction to `.github/copilot-instructions.md` in repositories where slide creation should always use `pptcreater`.
@@ -96,6 +124,16 @@ From an MCP-capable AI agent, use:
 
 SVG icons can be registered as sanitized reusable assets. Use this for icons, logos, simple illustrations, and diagram parts that should be reused across decks.
 
+pptcreater includes generated, free-to-use generic icon presets such as `check`, `warning`, `info`, `arrow-right`, `cloud`, `database`, `server`, `user-group`, `chart-up`, `shield`, `lightbulb`, `workflow`, `spark`, `rocket`, and `presentation`.
+
+```powershell
+pptcreater asset search cloud
+pptcreater icon workflow --color "#1d4ed8"
+pptcreater asset sources
+```
+
+`asset sources` lists upstream catalogs that agents can inspect before registering external SVGs, including Fluent UI System Icons, Google Material Symbols, AWS Architecture Icons, Azure Architecture Icons, Entra, Microsoft 365, Dynamics 365, Power Platform, and Google Cloud icons. Always follow the upstream license and brand terms before registering vendor-specific icons.
+
 ```powershell
 pptcreater asset register .\icons\rocket.svg `
   --id rocket-launch `
@@ -119,11 +157,23 @@ By default this is a user-level registry under your pptcreater config directory,
 From an MCP-capable AI agent, use:
 
 - `asset://registration-guide` to read the registration workflow.
+- `asset://icon-sources` to discover known upstream icon catalogs and licensing guidance notes.
 - `search_assets` before registering a new SVG, to avoid duplicates.
 - `register_svg_asset` to sanitize and register the asset with `id`, `title`, `description`, `tags`, `license`, `decorative`, `altText`, and `svg`.
 - `search_assets` again after registration to reuse the asset in future DeckSpecs.
 
 To force both registries under a custom base directory, set `PPTCREATER_HOME`. To control each registry separately, set `PPTCREATER_TEMPLATE_REGISTRY_PATH` or `PPTCREATER_SVG_REGISTRY_PATH` before running the CLI or MCP server.
+
+## Brief before generating decks
+
+Good slide design depends on purpose, audience, delivery mode, and volume. The built-in skill packs `slide-briefing-ja` and `slide-briefing-en` define intake questions for AI agents.
+
+From MCP, use:
+
+- `interview_slide_brief` when the user's request does not specify purpose, audience, delivery context, or slide count.
+- `create_deck` with `purpose`, `audience`, `slideCount`, and `contentMode` when those details are known.
+
+The default deck generator follows the design reference principles: three-second glance test, one slide / one message, high signal-to-noise, visible hierarchy, diagrams/icons on slides, and accessibility checks before rendering.
 
 ## Design principles
 
