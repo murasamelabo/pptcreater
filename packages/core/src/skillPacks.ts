@@ -25,6 +25,23 @@ export type SkillPack = z.infer<typeof SkillPackSchema>;
 
 export const BUILTIN_SKILL_PACKS: SkillPack[] = [
   {
+    id: "modern-slide-design",
+    name: "Modern Slide Design",
+    locale: "en-US",
+    description: "Modern editorial slide style: strong assertion titles, modular cards, generous whitespace, asymmetric composition, and editable native PowerPoint objects.",
+    designDirection: "modern-editorial",
+    density: "medium",
+    rules: [
+      "Use one bold assertion title per slide",
+      "Prefer modular cards, timelines, flows, and dashboard-like blocks over paragraphs",
+      "Use generous whitespace and one restrained accent color",
+      "Use editable native PowerPoint shapes/text for diagrams whenever later editing is expected",
+      "Use source visuals as inspiration or recreate them as editable objects unless exact quotation is required and rights are clear",
+      "Run polish_deck_layout and lint_deck before render_pptx"
+    ],
+    forbidden: ["flattened screenshots for editable content", "dense paragraphs as the primary visual", "copying third-party slide designs verbatim"]
+  },
+  {
     id: "slide-briefing-ja",
     name: "Slide Briefing Japanese",
     locale: "ja-JP",

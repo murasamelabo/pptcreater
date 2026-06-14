@@ -13,7 +13,9 @@ import {
   lintDeckSpec,
   LocaleSchema,
   localizeLintReport,
+  normalizeDeckLayout,
   parseDeckSpec,
+  planSourceVisualStrategy,
   registerTemplateManifest,
   searchTemplates,
   TemplateManifestSchema,
@@ -217,7 +219,7 @@ export function createPptcreaterMcpServer(): McpServer {
         purpose: z.string().optional(),
         audience: z.string().optional(),
         slideCount: z.number().int().min(1).max(4).optional(),
-        contentMode: z.enum(["presentation", "handout", "decision"]).optional()
+        contentMode: z.enum(["presentation", "report", "technical", "handout", "decision"]).optional()
       }
     },
     async ({ locale, purpose, audience, slideCount, contentMode }) => jsonText(createSampleDeck(locale, { purpose, audience, slideCount, contentMode }))
@@ -240,6 +242,25 @@ export function createPptcreaterMcpServer(): McpServer {
   );
 
   server.registerTool(
+    "polish_deck_layout",
+    {
+      title: "Polish DeckSpec layout",
+      description: "Normalize slide bounds and text fitting before rendering to reduce overflow and misalignment.",
+      inputSchema: {
+        deck: DeckSpecSchema,
+        locale: LocaleSchema.optional()
+      }
+    },
+    async ({ deck, locale }) => {
+      const polished = normalizeDeckLayout(parseDeckSpec(deck));
+      return jsonText({
+        deck: polished,
+        lint: localizeLintReport(lintDeckSpec(polished), locale ?? polished.locale)
+      });
+    }
+  );
+
+  server.registerTool(
     "render_pptx",
     {
       title: "Render PowerPoint",
@@ -247,17 +268,18 @@ export function createPptcreaterMcpServer(): McpServer {
       inputSchema: {
         deck: DeckSpecSchema,
         outputPath: z.string().min(1),
-        overwrite: z.boolean().default(false)
+        overwrite: z.boolean().default(false),
+        polishLayout: z.boolean().default(false)
       }
     },
-    async ({ deck, outputPath, overwrite }) => {
+    async ({ deck, outputPath, overwrite, polishLayout }) => {
       const parsedDeck = parseDeckSpec(deck);
       rejectLocalImagePaths(parsedDeck);
       const resolvedOutputPath = await prepareMcpOutputPath(outputPath, overwrite);
       if (extname(resolvedOutputPath).toLowerCase() !== ".pptx") {
         throw new Error("render_pptx outputPath must end with .pptx.");
       }
-      return jsonText(await renderDeckToPptx(parsedDeck, resolvedOutputPath));
+      return jsonText(await renderDeckToPptx(parsedDeck, resolvedOutputPath, { polishLayout }));
     }
   );
 
@@ -283,6 +305,22 @@ export function createPptcreaterMcpServer(): McpServer {
       await writeFile(resolvedOutputPath, renderStudioHtml(parsedDeck, locale ?? parsedDeck.locale), "utf8");
       return jsonText({ outputPath: resolvedOutputPath });
     }
+  );
+
+  server.registerTool(
+    "plan_source_visual",
+    {
+      title: "Plan source visual usage",
+      description: "Help an agent choose whether to quote an original source figure, recreate it as editable objects, or use it only as inspiration.",
+      inputSchema: {
+        sourceTitle: z.string().min(1),
+        sourceUrl: z.string().url().optional(),
+        visualDescription: z.string().min(1),
+        hasPermission: z.boolean().optional(),
+        needsExactFidelity: z.boolean().optional()
+      }
+    },
+    async (input) => jsonText(planSourceVisualStrategy(input))
   );
 
   server.registerTool(
@@ -435,6 +473,69 @@ export function createPptcreaterMcpServer(): McpServer {
   );
 
   server.registerResource(
+    "modern-slide-principles",
+    "design://modern-slide-principles",
+    {
+      title: "Modern slide design principles",
+      description: "Design principles distilled from modern slide galleries without copying any specific design.",
+      mimeType: "text/markdown"
+    },
+    async (uri) => ({
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: "text/markdown",
+          text: [
+            "# Modern slide design principles",
+            "",
+            "Use these as style guidance, not as a license to copy specific third-party slides.",
+            "",
+            "- Lead with a strong assertion title, not a topic label.",
+            "- Use a modular grid: cards, bands, large numerals, timelines, and process blocks.",
+            "- Build one memorable visual scene per slide.",
+            "- Keep typography bold, sparse, and hierarchical.",
+            "- Use generous whitespace and one intentional accent color.",
+            "- Prefer editable PowerPoint shapes/text over flattened images.",
+            "- For report decks, use more structure and evidence blocks.",
+            "- For presentation decks, use fewer words and more visual contrast.",
+            "- For technical decks, use architecture, concept, boundary, and flow diagrams.",
+            "- Run `polish_deck_layout` and `lint_deck` before rendering."
+          ].join("\n")
+        }
+      ]
+    })
+  );
+
+  server.registerResource(
+    "source-visual-guide",
+    "source://visual-use-guide",
+    {
+      title: "Source visual usage guide",
+      description: "How to decide between quoting a source figure and recreating it as editable PowerPoint objects.",
+      mimeType: "text/markdown"
+    },
+    async (uri) => ({
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: "text/markdown",
+          text: [
+            "# Source visual usage guide",
+            "",
+            "When a deck summarizes a source document or URL, first decide whether each source visual should be quoted, recreated, or used only as inspiration.",
+            "",
+            "- Quote: only when exact fidelity is required and usage rights are clear. Add `metadata.sources[].usage = quote`, `sourceId`, and `citation`.",
+            "- Recreate: preferred for explanatory slides because PowerPoint objects remain editable and can be localized/simplified.",
+            "- Inspiration: use when rights are unclear or the original is too detailed; do not copy the original visual.",
+            "",
+            "Use the `plan_source_visual` tool to present these choices to the agent/user before rendering."
+          ].join("\n")
+        }
+      ]
+    })
+  );
+
+  server.registerResource(
     "deckspec-schema",
     "deckspec://schema",
     {
@@ -453,6 +554,7 @@ export function createPptcreaterMcpServer(): McpServer {
               description: "Use create_deck for examples and lint_deck before render_pptx.",
               templateField: "DeckSpec.template must be the id of a template returned by search_templates. Register reusable custom templates with register_template.",
               assetFlow: "Use search_assets to find registered SVG assets. Use register_svg_asset for reusable SVGs before referencing their sanitized SVG in DeckSpec elements.",
+              sourceVisuals: "Use metadata.sources plus element.sourceId/citation when quoting, recreating, or using source visuals as inspiration. Prefer editable shape/text objects for recreated visuals.",
               requiredVisualAccessibility: "Non-decorative SVG, image, and diagram elements require altText. Diagram elements also require summary and longDescription.",
               recommendedWorkflow: ["search_templates", "search_assets", "create_deck or custom DeckSpec", "lint_deck", "render_pptx or render_studio"]
             },

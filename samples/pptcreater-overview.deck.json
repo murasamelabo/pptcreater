@@ -37,15 +37,17 @@
       "accessible",
       "powerpoint",
       "deck",
-      "visual",
-      "diagram"
-    ]
+      "native-shape",
+      "editable"
+    ],
+    "contentMode": "decision",
+    "sources": []
   },
   "slides": [
     {
       "id": "slide-1",
       "title": "3秒で要点が伝わるスライドを標準化する",
-      "layout": "visual-hero",
+      "layout": "visual-hero-native",
       "speakerNotes": "目的: このpptcreaterツールの価値と使い方を説明し、導入判断につなげる。聴衆: GitHub CopilotやClaude Codeを使う開発者・デザイナー・企画担当。意思決定向けに判断材料、リスク、次アクションを明示する構成です。 タイトル、図、強調箇所が同じ主張を支える構成です。",
       "elements": [
         {
@@ -66,7 +68,7 @@
           "id": "subtitle",
           "type": "text",
           "role": "body",
-          "text": "用途・聴衆・ボリュームを先に固定し、図解とアクセシビリティ検証をDeckSpecへ組み込みます。",
+          "text": "用途・聴衆・ボリュームを先に固定し、編集可能な図形とアクセシビリティ検証をDeckSpecへ組み込みます。",
           "x": 0.72,
           "y": 1.82,
           "w": 6.45,
@@ -78,66 +80,224 @@
           "readingOrder": 1
         },
         {
+          "id": "hero-panel",
+          "type": "shape",
+          "shape": "roundRect",
+          "x": 7.48,
+          "y": 0.78,
+          "w": 4.95,
+          "h": 3.55,
+          "fill": "#dbeafe",
+          "line": {
+            "color": "#93c5fd",
+            "width": 1.2
+          },
+          "decorative": true,
+          "readingOrder": 3
+        },
+        {
+          "id": "hero-card",
+          "type": "shape",
+          "shape": "roundRect",
+          "x": 7.9,
+          "y": 1.14,
+          "w": 2.12,
+          "h": 1.76,
+          "fill": "#ffffff",
+          "line": {
+            "color": "#93c5fd",
+            "width": 1
+          },
+          "decorative": true,
+          "readingOrder": 4
+        },
+        {
+          "id": "hero-title-bar",
+          "type": "shape",
+          "shape": "roundRect",
+          "x": 8.16,
+          "y": 1.42,
+          "w": 1.42,
+          "h": 0.14,
+          "fill": "#1d4ed8",
+          "line": {
+            "color": "#1d4ed8",
+            "width": 0.1
+          },
+          "decorative": true,
+          "readingOrder": 5
+        },
+        {
+          "id": "hero-line-1",
+          "type": "shape",
+          "shape": "roundRect",
+          "x": 8.16,
+          "y": 1.78,
+          "w": 1.56,
+          "h": 0.1,
+          "fill": "#94a3b8",
+          "line": {
+            "color": "#94a3b8",
+            "width": 0.1
+          },
+          "decorative": true,
+          "readingOrder": 6
+        },
+        {
+          "id": "hero-line-2",
+          "type": "shape",
+          "shape": "roundRect",
+          "x": 8.16,
+          "y": 2.06,
+          "w": 1.18,
+          "h": 0.1,
+          "fill": "#cbd5e1",
+          "line": {
+            "color": "#cbd5e1",
+            "width": 0.1
+          },
+          "decorative": true,
+          "readingOrder": 7
+        },
+        {
+          "id": "hero-circle",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 10.36,
+          "y": 1.26,
+          "w": 1.52,
+          "h": 1.52,
+          "fill": "#1d4ed8",
+          "line": {
+            "color": "#1d4ed8",
+            "width": 1
+          },
+          "decorative": true,
+          "readingOrder": 8
+        },
+        {
+          "id": "hero-arrow",
+          "type": "text",
+          "role": "callout",
+          "text": "→",
+          "x": 10.36,
+          "y": 1.49,
+          "w": 1.52,
+          "h": 0.58,
+          "fontSize": 34,
+          "color": "#ffffff",
+          "contrastBackground": "#1d4ed8",
+          "align": "center",
+          "valign": "middle",
+          "bold": true,
+          "decorative": false,
+          "readingOrder": 9
+        },
+        {
+          "id": "hero-three-sec",
+          "type": "text",
+          "role": "callout",
+          "text": "3 sec",
+          "x": 10.16,
+          "y": 3.03,
+          "w": 1.7,
+          "h": 0.35,
+          "fontSize": 22,
+          "color": "#0f172a",
+          "align": "center",
+          "valign": "middle",
+          "bold": true,
+          "decorative": false,
+          "readingOrder": 10
+        },
+        {
+          "id": "hero-one-message",
+          "type": "text",
+          "role": "caption",
+          "text": "One message",
+          "x": 9.75,
+          "y": 3.43,
+          "w": 2.55,
+          "h": 0.32,
+          "fontSize": 14,
+          "color": "#334155",
+          "align": "center",
+          "valign": "middle",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 11
+        },
+        {
           "id": "audience-pill",
           "type": "text",
           "role": "caption",
           "text": "Audience: GitHub CopilotやClaude Codeを使う開発者・デザイナー・企画担当",
           "x": 0.72,
           "y": 3,
-          "w": 4.4,
-          "h": 0.42,
+          "w": 5.9,
+          "h": 0.62,
           "fontSize": 14,
           "color": "#1d4ed8",
           "bold": false,
           "decorative": false,
-          "readingOrder": 2
+          "readingOrder": 12
         },
         {
-          "id": "hero-visual",
-          "type": "svg",
-          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 720 420\" role=\"img\">\n    <defs>\n      <linearGradient id=\"heroA\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\">\n        <stop offset=\"0\" stop-color=\"#dbeafe\" />\n        <stop offset=\"1\" stop-color=\"#bfdbfe\" />\n      </linearGradient>\n      <linearGradient id=\"heroB\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\">\n        <stop offset=\"0\" stop-color=\"#1d4ed8\" />\n        <stop offset=\"1\" stop-color=\"#0f766e\" />\n      </linearGradient>\n    </defs>\n    <title>Designed slide system preview</title>\n    <desc>A slide canvas with a strong title, visual hierarchy, and reusable visual assets.</desc>\n    <rect x=\"24\" y=\"24\" width=\"672\" height=\"372\" rx=\"36\" fill=\"url(#heroA)\" />\n    <rect x=\"70\" y=\"72\" width=\"320\" height=\"210\" rx=\"26\" fill=\"#ffffff\" stroke=\"#93c5fd\" stroke-width=\"3\" />\n    <rect x=\"104\" y=\"110\" width=\"218\" height=\"18\" rx=\"9\" fill=\"#1d4ed8\" />\n    <rect x=\"104\" y=\"148\" width=\"244\" height=\"14\" rx=\"7\" fill=\"#94a3b8\" />\n    <rect x=\"104\" y=\"178\" width=\"188\" height=\"14\" rx=\"7\" fill=\"#cbd5e1\" />\n    <rect x=\"104\" y=\"222\" width=\"76\" height=\"28\" rx=\"14\" fill=\"#dcfce7\" />\n    <rect x=\"197\" y=\"222\" width=\"94\" height=\"28\" rx=\"14\" fill=\"#e0f2fe\" />\n    <circle cx=\"505\" cy=\"177\" r=\"88\" fill=\"url(#heroB)\" />\n    <path d=\"M472 177h66\" stroke=\"#ffffff\" stroke-width=\"10\" stroke-linecap=\"round\" />\n    <path d=\"M518 147l31 30-31 30\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"10\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n    <text x=\"456\" y=\"313\" font-family=\"Arial, sans-serif\" font-size=\"32\" font-weight=\"700\" fill=\"#0f172a\">3 sec</text>\n    <text x=\"456\" y=\"351\" font-family=\"Arial, sans-serif\" font-size=\"22\" fill=\"#334155\">One message</text>\n  </svg>",
-          "altText": "3秒で伝わるスライド構成のプレビュー",
-          "decorative": false,
-          "x": 7.55,
-          "y": 0.78,
-          "w": 4.9,
-          "h": 3.2,
-          "readingOrder": 3
-        },
-        {
-          "id": "spark-icon",
-          "type": "svg",
-          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 124 124\" fill=\"none\" stroke=\"#7c3aed\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M60 12l10 27 27 10-27 10-10 27-10-27-27-10 27-10 10-27Z\" /><path d=\"M100 76l4 10 10 4-10 4-4 10-4-10-10-4 10-4 4-10Z\" /></svg>",
-          "altText": "品質を示すスパークアイコン",
-          "decorative": false,
+          "id": "spark-badge",
+          "type": "shape",
+          "shape": "ellipse",
           "x": 0.74,
           "y": 3.82,
           "w": 0.54,
           "h": 0.54,
-          "readingOrder": 4
+          "fill": "#7c3aed",
+          "line": {
+            "color": "#7c3aed",
+            "width": 1
+          },
+          "decorative": true,
+          "readingOrder": 13
+        },
+        {
+          "id": "spark-mark",
+          "type": "text",
+          "role": "caption",
+          "text": "✦",
+          "x": 0.74,
+          "y": 3.89,
+          "w": 0.54,
+          "h": 0.28,
+          "fontSize": 18,
+          "color": "#ffffff",
+          "contrastBackground": "#7c3aed",
+          "align": "center",
+          "valign": "middle",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 14
         },
         {
           "id": "principle",
           "type": "text",
           "role": "caption",
-          "text": "Mode: decision / 1 slide = 1 message / high signal-to-noise / accessible by default",
+          "text": "Mode: decision / 1 slide = 1 message / high signal-to-noise / editable PPT objects",
           "x": 1.42,
           "y": 3.9,
-          "w": 6.7,
-          "h": 0.38,
+          "w": 7.35,
+          "h": 0.58,
           "fontSize": 13,
           "color": "#475569",
           "bold": false,
           "decorative": false,
-          "readingOrder": 5
+          "readingOrder": 15
         }
       ]
     },
     {
       "id": "slide-2",
       "title": "ヒアリングから図解までを1つの作成フローにする",
-      "layout": "diagram-focus",
-      "speakerNotes": "目的、聴衆、構成を最初に確認し、図解・アイコン・検証を後段で自動化します。",
+      "layout": "native-workflow",
+      "speakerNotes": "目的、聴衆、構成を最初に確認し、図形・アイコン・検証を後段で自動化します。すべてPowerPoint上で編集できるオブジェクトです。",
       "elements": [
         {
           "id": "title",
@@ -154,18 +314,318 @@
           "readingOrder": 0
         },
         {
-          "id": "workflow-diagram",
-          "type": "diagram",
-          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 920 360\" role=\"img\">\n    <title>Deck creation workflow</title>\n    <desc>Six steps from purpose and audience briefing to structured visuals, accessibility verification, and PowerPoint output.</desc>\n    <rect width=\"920\" height=\"360\" rx=\"28\" fill=\"#ffffff\" />\n    <path d=\"M142 168h48\" stroke=\"#64748b\" stroke-width=\"5\" stroke-linecap=\"round\" /><path d=\"M176 154l16 14-16 14\" fill=\"none\" stroke=\"#64748b\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><rect x=\"44\" y=\"106\" width=\"96\" height=\"92\" rx=\"22\" fill=\"#dbeafe\" stroke=\"#2563eb\" stroke-width=\"3\" /><text x=\"92\" y=\"160\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"18\" font-weight=\"700\" fill=\"#0f172a\">目的</text><path d=\"M284 168h48\" stroke=\"#64748b\" stroke-width=\"5\" stroke-linecap=\"round\" /><path d=\"M318 154l16 14-16 14\" fill=\"none\" stroke=\"#64748b\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><rect x=\"186\" y=\"106\" width=\"96\" height=\"92\" rx=\"22\" fill=\"#dbeafe\" stroke=\"#2563eb\" stroke-width=\"3\" /><text x=\"234\" y=\"160\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"18\" font-weight=\"700\" fill=\"#0f172a\">聴衆</text><path d=\"M426 168h48\" stroke=\"#64748b\" stroke-width=\"5\" stroke-linecap=\"round\" /><path d=\"M460 154l16 14-16 14\" fill=\"none\" stroke=\"#64748b\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><rect x=\"328\" y=\"106\" width=\"96\" height=\"92\" rx=\"22\" fill=\"#ecfeff\" stroke=\"#0891b2\" stroke-width=\"3\" /><text x=\"376\" y=\"160\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"18\" font-weight=\"700\" fill=\"#0f172a\">構成</text><path d=\"M568 168h48\" stroke=\"#64748b\" stroke-width=\"5\" stroke-linecap=\"round\" /><path d=\"M602 154l16 14-16 14\" fill=\"none\" stroke=\"#64748b\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><rect x=\"470\" y=\"106\" width=\"96\" height=\"92\" rx=\"22\" fill=\"#ecfeff\" stroke=\"#0891b2\" stroke-width=\"3\" /><text x=\"518\" y=\"160\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"18\" font-weight=\"700\" fill=\"#0f172a\">可視化</text><path d=\"M710 168h48\" stroke=\"#64748b\" stroke-width=\"5\" stroke-linecap=\"round\" /><path d=\"M744 154l16 14-16 14\" fill=\"none\" stroke=\"#64748b\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><rect x=\"612\" y=\"106\" width=\"96\" height=\"92\" rx=\"22\" fill=\"#dcfce7\" stroke=\"#059669\" stroke-width=\"3\" /><text x=\"660\" y=\"160\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"18\" font-weight=\"700\" fill=\"#0f172a\">検証</text><rect x=\"754\" y=\"106\" width=\"96\" height=\"92\" rx=\"22\" fill=\"#dcfce7\" stroke=\"#059669\" stroke-width=\"3\" /><text x=\"802\" y=\"160\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"18\" font-weight=\"700\" fill=\"#0f172a\">出力</text>\n    <text x=\"44\" y=\"272\" font-family=\"Arial, sans-serif\" font-size=\"22\" fill=\"#334155\">ヒアリングで用途を固定し、DeckSpecに図・アイコン・検証条件を埋め込む</text>\n  </svg>",
-          "summary": "目的、聴衆、構成、可視化、検証、出力をつなぐ6段階の作成フロー",
-          "longDescription": "図は、目的と聴衆の確認から始まり、構成化、可視化、検証、PowerPoint出力へ進む流れを示しています。",
-          "altText": "目的、聴衆、構成、可視化、検証、出力をつなぐ6段階の作成フロー",
-          "decorative": false,
+          "id": "workflow-bg",
+          "type": "shape",
+          "shape": "roundRect",
           "x": 0.78,
-          "y": 1.45,
-          "w": 11.7,
-          "h": 4.25,
+          "y": 1.48,
+          "w": 11.74,
+          "h": 4.18,
+          "fill": "#ffffff",
+          "line": {
+            "color": "#cbd5e1",
+            "width": 1
+          },
+          "decorative": true,
           "readingOrder": 1
+        },
+        {
+          "id": "workflow-node-0",
+          "type": "shape",
+          "shape": "roundRect",
+          "x": 1.08,
+          "y": 2.58,
+          "w": 1.24,
+          "h": 0.88,
+          "fill": "#dbeafe",
+          "line": {
+            "color": "#2563eb",
+            "width": 1.2
+          },
+          "decorative": true,
+          "readingOrder": 2
+        },
+        {
+          "id": "workflow-label-0",
+          "type": "text",
+          "role": "caption",
+          "text": "目的",
+          "x": 1.08,
+          "y": 2.83,
+          "w": 1.24,
+          "h": 0.28,
+          "fontSize": 15,
+          "color": "#0f172a",
+          "align": "center",
+          "valign": "middle",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 3
+        },
+        {
+          "id": "workflow-arrow-0",
+          "type": "shape",
+          "shape": "line",
+          "x": 2.3,
+          "y": 3.02,
+          "w": 0.52,
+          "h": 0.01,
+          "fill": "none",
+          "line": {
+            "color": "#64748b",
+            "width": 2,
+            "endArrowType": "triangle"
+          },
+          "decorative": true,
+          "readingOrder": 4
+        },
+        {
+          "id": "workflow-node-1",
+          "type": "shape",
+          "shape": "roundRect",
+          "x": 2.9000000000000004,
+          "y": 2.58,
+          "w": 1.24,
+          "h": 0.88,
+          "fill": "#dbeafe",
+          "line": {
+            "color": "#2563eb",
+            "width": 1.2
+          },
+          "decorative": true,
+          "readingOrder": 5
+        },
+        {
+          "id": "workflow-label-1",
+          "type": "text",
+          "role": "caption",
+          "text": "聴衆",
+          "x": 2.9000000000000004,
+          "y": 2.83,
+          "w": 1.24,
+          "h": 0.28,
+          "fontSize": 15,
+          "color": "#0f172a",
+          "align": "center",
+          "valign": "middle",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 6
+        },
+        {
+          "id": "workflow-arrow-1",
+          "type": "shape",
+          "shape": "line",
+          "x": 4.12,
+          "y": 3.02,
+          "w": 0.52,
+          "h": 0.01,
+          "fill": "none",
+          "line": {
+            "color": "#64748b",
+            "width": 2,
+            "endArrowType": "triangle"
+          },
+          "decorative": true,
+          "readingOrder": 7
+        },
+        {
+          "id": "workflow-node-2",
+          "type": "shape",
+          "shape": "roundRect",
+          "x": 4.720000000000001,
+          "y": 2.58,
+          "w": 1.24,
+          "h": 0.88,
+          "fill": "#ecfeff",
+          "line": {
+            "color": "#0891b2",
+            "width": 1.2
+          },
+          "decorative": true,
+          "readingOrder": 8
+        },
+        {
+          "id": "workflow-label-2",
+          "type": "text",
+          "role": "caption",
+          "text": "構成",
+          "x": 4.720000000000001,
+          "y": 2.83,
+          "w": 1.24,
+          "h": 0.28,
+          "fontSize": 15,
+          "color": "#0f172a",
+          "align": "center",
+          "valign": "middle",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 9
+        },
+        {
+          "id": "workflow-arrow-2",
+          "type": "shape",
+          "shape": "line",
+          "x": 5.94,
+          "y": 3.02,
+          "w": 0.52,
+          "h": 0.01,
+          "fill": "none",
+          "line": {
+            "color": "#64748b",
+            "width": 2,
+            "endArrowType": "triangle"
+          },
+          "decorative": true,
+          "readingOrder": 10
+        },
+        {
+          "id": "workflow-node-3",
+          "type": "shape",
+          "shape": "roundRect",
+          "x": 6.54,
+          "y": 2.58,
+          "w": 1.24,
+          "h": 0.88,
+          "fill": "#ecfeff",
+          "line": {
+            "color": "#0891b2",
+            "width": 1.2
+          },
+          "decorative": true,
+          "readingOrder": 11
+        },
+        {
+          "id": "workflow-label-3",
+          "type": "text",
+          "role": "caption",
+          "text": "可視化",
+          "x": 6.54,
+          "y": 2.83,
+          "w": 1.24,
+          "h": 0.28,
+          "fontSize": 15,
+          "color": "#0f172a",
+          "align": "center",
+          "valign": "middle",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 12
+        },
+        {
+          "id": "workflow-arrow-3",
+          "type": "shape",
+          "shape": "line",
+          "x": 7.76,
+          "y": 3.02,
+          "w": 0.52,
+          "h": 0.01,
+          "fill": "none",
+          "line": {
+            "color": "#64748b",
+            "width": 2,
+            "endArrowType": "triangle"
+          },
+          "decorative": true,
+          "readingOrder": 13
+        },
+        {
+          "id": "workflow-node-4",
+          "type": "shape",
+          "shape": "roundRect",
+          "x": 8.36,
+          "y": 2.58,
+          "w": 1.24,
+          "h": 0.88,
+          "fill": "#dcfce7",
+          "line": {
+            "color": "#059669",
+            "width": 1.2
+          },
+          "decorative": true,
+          "readingOrder": 14
+        },
+        {
+          "id": "workflow-label-4",
+          "type": "text",
+          "role": "caption",
+          "text": "検証",
+          "x": 8.36,
+          "y": 2.83,
+          "w": 1.24,
+          "h": 0.28,
+          "fontSize": 15,
+          "color": "#0f172a",
+          "align": "center",
+          "valign": "middle",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 15
+        },
+        {
+          "id": "workflow-arrow-4",
+          "type": "shape",
+          "shape": "line",
+          "x": 9.58,
+          "y": 3.02,
+          "w": 0.52,
+          "h": 0.01,
+          "fill": "none",
+          "line": {
+            "color": "#64748b",
+            "width": 2,
+            "endArrowType": "triangle"
+          },
+          "decorative": true,
+          "readingOrder": 16
+        },
+        {
+          "id": "workflow-node-5",
+          "type": "shape",
+          "shape": "roundRect",
+          "x": 10.18,
+          "y": 2.58,
+          "w": 1.24,
+          "h": 0.88,
+          "fill": "#dcfce7",
+          "line": {
+            "color": "#059669",
+            "width": 1.2
+          },
+          "decorative": true,
+          "readingOrder": 17
+        },
+        {
+          "id": "workflow-label-5",
+          "type": "text",
+          "role": "caption",
+          "text": "出力",
+          "x": 10.18,
+          "y": 2.83,
+          "w": 1.24,
+          "h": 0.28,
+          "fontSize": 15,
+          "color": "#0f172a",
+          "align": "center",
+          "valign": "middle",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 18
+        },
+        {
+          "id": "workflow-caption",
+          "type": "text",
+          "role": "body",
+          "text": "ヒアリングで用途を固定し、DeckSpecに図・アイコン・検証条件を埋め込む",
+          "x": 1.04,
+          "y": 4.66,
+          "w": 10.2,
+          "h": 0.48,
+          "fontSize": 20,
+          "color": "#334155",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 22
         },
         {
           "id": "takeaway",
@@ -180,15 +640,15 @@
           "color": "#0f766e",
           "bold": true,
           "decorative": false,
-          "readingOrder": 2
+          "readingOrder": 24
         }
       ]
     },
     {
       "id": "slide-3",
       "title": "優れたスライドは装飾ではなく情報UIとして設計する",
-      "layout": "three-card",
-      "speakerNotes": "3秒テスト、視覚階層、アクセシビリティを品質ゲートとして使います。",
+      "layout": "native-card-summary",
+      "speakerNotes": "カード、丸アイコン、テキストはすべてPowerPointオブジェクトなので、後から文字や色を編集できます。",
       "elements": [
         {
           "id": "title",
@@ -205,16 +665,244 @@
           "readingOrder": 0
         },
         {
-          "id": "quality-cards",
-          "type": "svg",
-          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 900 300\" role=\"img\">\n    <title>Slide design quality cards</title>\n    <desc>Three cards summarizing glance test, visual hierarchy, and accessibility checks.</desc>\n    <rect width=\"900\" height=\"300\" rx=\"28\" fill=\"#f8fafc\" />\n    <rect x=\"36\" y=\"42\" width=\"250\" height=\"216\" rx=\"28\" fill=\"#ffffff\" stroke=\"#cbd5e1\" stroke-width=\"2\" /><circle cx=\"90\" cy=\"92\" r=\"26\" fill=\"#1d4ed8\" /><text x=\"90\" y=\"102\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"28\" font-weight=\"700\" fill=\"#ffffff\">✦</text><text x=\"70\" y=\"154\" font-family=\"Arial, sans-serif\" font-size=\"26\" font-weight=\"700\" fill=\"#0f172a\">Glance</text><text x=\"70\" y=\"198\" font-family=\"Arial, sans-serif\" font-size=\"18\" fill=\"#475569\">3秒で要点が見える</text><rect x=\"324\" y=\"42\" width=\"250\" height=\"216\" rx=\"28\" fill=\"#ffffff\" stroke=\"#cbd5e1\" stroke-width=\"2\" /><circle cx=\"378\" cy=\"92\" r=\"26\" fill=\"#0f766e\" /><text x=\"378\" y=\"102\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"28\" font-weight=\"700\" fill=\"#ffffff\">→</text><text x=\"358\" y=\"154\" font-family=\"Arial, sans-serif\" font-size=\"26\" font-weight=\"700\" fill=\"#0f172a\">Hierarchy</text><text x=\"358\" y=\"198\" font-family=\"Arial, sans-serif\" font-size=\"18\" fill=\"#475569\">視線の順番を設計する</text><rect x=\"612\" y=\"42\" width=\"250\" height=\"216\" rx=\"28\" fill=\"#ffffff\" stroke=\"#cbd5e1\" stroke-width=\"2\" /><circle cx=\"666\" cy=\"92\" r=\"26\" fill=\"#7c3aed\" /><text x=\"666\" y=\"102\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"28\" font-weight=\"700\" fill=\"#ffffff\">✓</text><text x=\"646\" y=\"154\" font-family=\"Arial, sans-serif\" font-size=\"26\" font-weight=\"700\" fill=\"#0f172a\">A11y</text><text x=\"646\" y=\"198\" font-family=\"Arial, sans-serif\" font-size=\"18\" fill=\"#475569\">色・順序・alt textを検証</text>\n  </svg>",
-          "altText": "3秒テスト、視覚階層、アクセシビリティの3つの品質カード",
-          "decorative": false,
-          "x": 0.75,
-          "y": 1.42,
-          "w": 11.5,
-          "h": 3.9,
+          "id": "quality-card-0",
+          "type": "shape",
+          "shape": "roundRect",
+          "x": 1.06,
+          "y": 1.56,
+          "w": 3,
+          "h": 2.24,
+          "fill": "#ffffff",
+          "line": {
+            "color": "#cbd5e1",
+            "width": 1.2
+          },
+          "decorative": true,
           "readingOrder": 1
+        },
+        {
+          "id": "quality-icon-bg-0",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 1.3800000000000001,
+          "y": 1.84,
+          "w": 0.68,
+          "h": 0.68,
+          "fill": "#1d4ed8",
+          "line": {
+            "color": "#1d4ed8",
+            "width": 1
+          },
+          "decorative": true,
+          "readingOrder": 2
+        },
+        {
+          "id": "quality-icon-0",
+          "type": "text",
+          "role": "callout",
+          "text": "D",
+          "x": 1.3800000000000001,
+          "y": 1.94,
+          "w": 0.68,
+          "h": 0.34,
+          "fontSize": 22,
+          "color": "#ffffff",
+          "contrastBackground": "#1d4ed8",
+          "align": "center",
+          "valign": "middle",
+          "bold": true,
+          "decorative": false,
+          "readingOrder": 3
+        },
+        {
+          "id": "quality-title-0",
+          "type": "text",
+          "role": "callout",
+          "text": "Decision",
+          "x": 1.5,
+          "y": 2.55,
+          "w": 2.1,
+          "h": 0.38,
+          "fontSize": 20,
+          "color": "#0f172a",
+          "bold": true,
+          "decorative": false,
+          "readingOrder": 4
+        },
+        {
+          "id": "quality-body-0",
+          "type": "text",
+          "role": "caption",
+          "text": "判断事項を明確に",
+          "x": 1.5,
+          "y": 3.1,
+          "w": 2.2,
+          "h": 0.42,
+          "fontSize": 14,
+          "color": "#334155",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 5
+        },
+        {
+          "id": "quality-card-1",
+          "type": "shape",
+          "shape": "roundRect",
+          "x": 4.71,
+          "y": 1.56,
+          "w": 3,
+          "h": 2.24,
+          "fill": "#ffffff",
+          "line": {
+            "color": "#cbd5e1",
+            "width": 1.2
+          },
+          "decorative": true,
+          "readingOrder": 6
+        },
+        {
+          "id": "quality-icon-bg-1",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 5.03,
+          "y": 1.84,
+          "w": 0.68,
+          "h": 0.68,
+          "fill": "#0f766e",
+          "line": {
+            "color": "#0f766e",
+            "width": 1
+          },
+          "decorative": true,
+          "readingOrder": 7
+        },
+        {
+          "id": "quality-icon-1",
+          "type": "text",
+          "role": "callout",
+          "text": "R",
+          "x": 5.03,
+          "y": 1.94,
+          "w": 0.68,
+          "h": 0.34,
+          "fontSize": 22,
+          "color": "#ffffff",
+          "contrastBackground": "#0f766e",
+          "align": "center",
+          "valign": "middle",
+          "bold": true,
+          "decorative": false,
+          "readingOrder": 8
+        },
+        {
+          "id": "quality-title-1",
+          "type": "text",
+          "role": "callout",
+          "text": "Risk",
+          "x": 5.15,
+          "y": 2.55,
+          "w": 2.1,
+          "h": 0.38,
+          "fontSize": 20,
+          "color": "#0f172a",
+          "bold": true,
+          "decorative": false,
+          "readingOrder": 9
+        },
+        {
+          "id": "quality-body-1",
+          "type": "text",
+          "role": "caption",
+          "text": "リスクと代替案",
+          "x": 5.15,
+          "y": 3.1,
+          "w": 2.2,
+          "h": 0.42,
+          "fontSize": 14,
+          "color": "#334155",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 10
+        },
+        {
+          "id": "quality-card-2",
+          "type": "shape",
+          "shape": "roundRect",
+          "x": 8.36,
+          "y": 1.56,
+          "w": 3,
+          "h": 2.24,
+          "fill": "#ffffff",
+          "line": {
+            "color": "#cbd5e1",
+            "width": 1.2
+          },
+          "decorative": true,
+          "readingOrder": 11
+        },
+        {
+          "id": "quality-icon-bg-2",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 8.68,
+          "y": 1.84,
+          "w": 0.68,
+          "h": 0.68,
+          "fill": "#7c3aed",
+          "line": {
+            "color": "#7c3aed",
+            "width": 1
+          },
+          "decorative": true,
+          "readingOrder": 12
+        },
+        {
+          "id": "quality-icon-2",
+          "type": "text",
+          "role": "callout",
+          "text": "A",
+          "x": 8.68,
+          "y": 1.94,
+          "w": 0.68,
+          "h": 0.34,
+          "fontSize": 22,
+          "color": "#ffffff",
+          "contrastBackground": "#7c3aed",
+          "align": "center",
+          "valign": "middle",
+          "bold": true,
+          "decorative": false,
+          "readingOrder": 13
+        },
+        {
+          "id": "quality-title-2",
+          "type": "text",
+          "role": "callout",
+          "text": "Action",
+          "x": 8.799999999999999,
+          "y": 2.55,
+          "w": 2.1,
+          "h": 0.38,
+          "fontSize": 20,
+          "color": "#0f172a",
+          "bold": true,
+          "decorative": false,
+          "readingOrder": 14
+        },
+        {
+          "id": "quality-body-2",
+          "type": "text",
+          "role": "caption",
+          "text": "次アクション",
+          "x": 8.799999999999999,
+          "y": 3.1,
+          "w": 2.2,
+          "h": 0.42,
+          "fontSize": 14,
+          "color": "#334155",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 15
         },
         {
           "id": "explain",
@@ -229,15 +917,15 @@
           "color": "#334155",
           "bold": false,
           "decorative": false,
-          "readingOrder": 2
+          "readingOrder": 20
         }
       ]
     },
     {
       "id": "slide-4",
       "title": "テンプレートとSVG資産を再利用して継続的に品質を上げる",
-      "layout": "asset-rollout",
-      "speakerNotes": "テンプレート、アイコン、ポンチ絵、lint、出力を繰り返し使える仕組みにします。",
+      "layout": "native-rollout",
+      "speakerNotes": "ロードマップの線、丸、番号、ラベルも編集可能なPowerPointオブジェクトです。",
       "elements": [
         {
           "id": "title",
@@ -254,28 +942,309 @@
           "readingOrder": 0
         },
         {
-          "id": "rollout",
-          "type": "svg",
-          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 860 300\" role=\"img\">\n    <title>Reusable asset rollout path</title>\n    <desc>Reusable templates, icons, diagrams, lint checks, and PPTX rendering connected as a repeatable creation path.</desc>\n    <rect width=\"860\" height=\"300\" rx=\"26\" fill=\"#ffffff\" />\n    <path d=\"M74 152 C210 52 334 252 466 152 S700 52 794 152\" fill=\"none\" stroke=\"#93c5fd\" stroke-width=\"14\" stroke-linecap=\"round\" />\n    <circle cx=\"74\" cy=\"118\" r=\"38\" fill=\"#1d4ed8\" /><text x=\"74\" y=\"125\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"20\" font-weight=\"700\" fill=\"#ffffff\">1</text><text x=\"74\" y=\"186\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"18\" fill=\"#0f172a\">テンプレート</text><circle cx=\"254\" cy=\"184\" r=\"38\" fill=\"#1d4ed8\" /><text x=\"254\" y=\"191\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"20\" font-weight=\"700\" fill=\"#ffffff\">2</text><text x=\"254\" y=\"252\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"18\" fill=\"#0f172a\">アイコン</text><circle cx=\"434\" cy=\"118\" r=\"38\" fill=\"#1d4ed8\" /><text x=\"434\" y=\"125\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"20\" font-weight=\"700\" fill=\"#ffffff\">3</text><text x=\"434\" y=\"186\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"18\" fill=\"#0f172a\">ポンチ絵</text><circle cx=\"614\" cy=\"184\" r=\"38\" fill=\"#1d4ed8\" /><text x=\"614\" y=\"191\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"20\" font-weight=\"700\" fill=\"#ffffff\">4</text><text x=\"614\" y=\"252\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"18\" fill=\"#0f172a\">lint</text><circle cx=\"794\" cy=\"118\" r=\"38\" fill=\"#1d4ed8\" /><text x=\"794\" y=\"125\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"20\" font-weight=\"700\" fill=\"#ffffff\">5</text><text x=\"794\" y=\"186\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"18\" fill=\"#0f172a\">pptx</text>\n  </svg>",
-          "altText": "テンプレート、アイコン、ポンチ絵、lint、pptx出力の再利用パス",
-          "decorative": false,
-          "x": 0.75,
-          "y": 1.35,
-          "w": 11.3,
-          "h": 3.95,
+          "id": "rollout-base",
+          "type": "shape",
+          "shape": "line",
+          "x": 1.05,
+          "y": 3.02,
+          "w": 10.7,
+          "h": 0.01,
+          "fill": "none",
+          "line": {
+            "color": "#93c5fd",
+            "width": 8
+          },
+          "decorative": true,
           "readingOrder": 1
         },
         {
-          "id": "shield-icon",
-          "type": "svg",
-          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 124 124\" fill=\"none\" stroke=\"#0f766e\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M62 12 104 27v32c0 26-15 43-42 53-27-10-42-27-42-53V27l42-15Z\" /><path d=\"M42 60l14 14 30-34\" /></svg>",
-          "altText": "アクセシビリティと安全性を示す盾アイコン",
+          "id": "rollout-node-0",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 1.05,
+          "y": 2.4,
+          "w": 0.74,
+          "h": 0.74,
+          "fill": "#1d4ed8",
+          "line": {
+            "color": "#1d4ed8",
+            "width": 1
+          },
+          "decorative": true,
+          "readingOrder": 2
+        },
+        {
+          "id": "rollout-number-0",
+          "type": "text",
+          "role": "caption",
+          "text": "1",
+          "x": 1.05,
+          "y": 2.52,
+          "w": 0.74,
+          "h": 0.34,
+          "fontSize": 17,
+          "color": "#ffffff",
+          "contrastBackground": "#1d4ed8",
+          "align": "center",
+          "valign": "middle",
+          "bold": false,
           "decorative": false,
+          "readingOrder": 3
+        },
+        {
+          "id": "rollout-label-0",
+          "type": "text",
+          "role": "caption",
+          "text": "論点",
+          "x": 0.6000000000000001,
+          "y": 3.26,
+          "w": 1.68,
+          "h": 0.32,
+          "fontSize": 13,
+          "color": "#0f172a",
+          "align": "center",
+          "valign": "middle",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 4
+        },
+        {
+          "id": "rollout-node-1",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 3.5700000000000003,
+          "y": 3.5,
+          "w": 0.74,
+          "h": 0.74,
+          "fill": "#1d4ed8",
+          "line": {
+            "color": "#1d4ed8",
+            "width": 1
+          },
+          "decorative": true,
+          "readingOrder": 5
+        },
+        {
+          "id": "rollout-number-1",
+          "type": "text",
+          "role": "caption",
+          "text": "2",
+          "x": 3.5700000000000003,
+          "y": 3.62,
+          "w": 0.74,
+          "h": 0.34,
+          "fontSize": 17,
+          "color": "#ffffff",
+          "contrastBackground": "#1d4ed8",
+          "align": "center",
+          "valign": "middle",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 6
+        },
+        {
+          "id": "rollout-label-1",
+          "type": "text",
+          "role": "caption",
+          "text": "選択肢",
+          "x": 3.12,
+          "y": 4.36,
+          "w": 1.68,
+          "h": 0.32,
+          "fontSize": 13,
+          "color": "#0f172a",
+          "align": "center",
+          "valign": "middle",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 7
+        },
+        {
+          "id": "rollout-node-2",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 6.09,
+          "y": 2.4,
+          "w": 0.74,
+          "h": 0.74,
+          "fill": "#1d4ed8",
+          "line": {
+            "color": "#1d4ed8",
+            "width": 1
+          },
+          "decorative": true,
+          "readingOrder": 8
+        },
+        {
+          "id": "rollout-number-2",
+          "type": "text",
+          "role": "caption",
+          "text": "3",
+          "x": 6.09,
+          "y": 2.52,
+          "w": 0.74,
+          "h": 0.34,
+          "fontSize": 17,
+          "color": "#ffffff",
+          "contrastBackground": "#1d4ed8",
+          "align": "center",
+          "valign": "middle",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 9
+        },
+        {
+          "id": "rollout-label-2",
+          "type": "text",
+          "role": "caption",
+          "text": "リスク",
+          "x": 5.64,
+          "y": 3.26,
+          "w": 1.68,
+          "h": 0.32,
+          "fontSize": 13,
+          "color": "#0f172a",
+          "align": "center",
+          "valign": "middle",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 10
+        },
+        {
+          "id": "rollout-node-3",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 8.610000000000001,
+          "y": 3.5,
+          "w": 0.74,
+          "h": 0.74,
+          "fill": "#1d4ed8",
+          "line": {
+            "color": "#1d4ed8",
+            "width": 1
+          },
+          "decorative": true,
+          "readingOrder": 11
+        },
+        {
+          "id": "rollout-number-3",
+          "type": "text",
+          "role": "caption",
+          "text": "4",
+          "x": 8.610000000000001,
+          "y": 3.62,
+          "w": 0.74,
+          "h": 0.34,
+          "fontSize": 17,
+          "color": "#ffffff",
+          "contrastBackground": "#1d4ed8",
+          "align": "center",
+          "valign": "middle",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 12
+        },
+        {
+          "id": "rollout-label-3",
+          "type": "text",
+          "role": "caption",
+          "text": "推奨",
+          "x": 8.160000000000002,
+          "y": 4.36,
+          "w": 1.68,
+          "h": 0.32,
+          "fontSize": 13,
+          "color": "#0f172a",
+          "align": "center",
+          "valign": "middle",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 13
+        },
+        {
+          "id": "rollout-node-4",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 11.13,
+          "y": 2.4,
+          "w": 0.74,
+          "h": 0.74,
+          "fill": "#1d4ed8",
+          "line": {
+            "color": "#1d4ed8",
+            "width": 1
+          },
+          "decorative": true,
+          "readingOrder": 14
+        },
+        {
+          "id": "rollout-number-4",
+          "type": "text",
+          "role": "caption",
+          "text": "5",
+          "x": 11.13,
+          "y": 2.52,
+          "w": 0.74,
+          "h": 0.34,
+          "fontSize": 17,
+          "color": "#ffffff",
+          "contrastBackground": "#1d4ed8",
+          "align": "center",
+          "valign": "middle",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 15
+        },
+        {
+          "id": "rollout-label-4",
+          "type": "text",
+          "role": "caption",
+          "text": "決定",
+          "x": 10.680000000000001,
+          "y": 3.26,
+          "w": 1.68,
+          "h": 0.32,
+          "fontSize": 13,
+          "color": "#0f172a",
+          "align": "center",
+          "valign": "middle",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 16
+        },
+        {
+          "id": "shield-badge",
+          "type": "shape",
+          "shape": "ellipse",
           "x": 0.88,
           "y": 5.83,
           "w": 0.5,
           "h": 0.5,
-          "readingOrder": 2
+          "fill": "#0f766e",
+          "line": {
+            "color": "#0f766e",
+            "width": 1
+          },
+          "decorative": true,
+          "readingOrder": 18
+        },
+        {
+          "id": "shield-mark",
+          "type": "text",
+          "role": "caption",
+          "text": "✓",
+          "x": 0.88,
+          "y": 5.9,
+          "w": 0.5,
+          "h": 0.26,
+          "fontSize": 16,
+          "color": "#ffffff",
+          "contrastBackground": "#0f766e",
+          "align": "center",
+          "valign": "middle",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 19
         },
         {
           "id": "quality-gate",
@@ -290,7 +1259,7 @@
           "color": "#334155",
           "bold": false,
           "decorative": false,
-          "readingOrder": 3
+          "readingOrder": 20
         }
       ]
     }

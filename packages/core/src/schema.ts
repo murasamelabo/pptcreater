@@ -1,6 +1,7 @@
 ﻿import { z } from "zod";
 
 export const LocaleSchema = z.enum(["ja-JP", "en-US"]);
+export const ContentModeSchema = z.enum(["presentation", "report", "technical", "handout", "decision"]);
 
 export const HexColorSchema = z
   .string()
@@ -52,7 +53,9 @@ const ElementBaseSchema = z.object({
   h: z.number().positive(),
   readingOrder: z.number().int().nonnegative().optional(),
   decorative: z.boolean().default(false),
-  altText: z.string().optional()
+  altText: z.string().optional(),
+  sourceId: z.string().optional(),
+  citation: z.string().optional()
 });
 
 export const TextElementSchema = ElementBaseSchema.extend({
@@ -61,7 +64,27 @@ export const TextElementSchema = ElementBaseSchema.extend({
   text: z.string().min(1),
   fontSize: z.number().positive().optional(),
   color: HexColorSchema.optional(),
-  bold: z.boolean().default(false)
+  contrastBackground: HexColorSchema.optional(),
+  bold: z.boolean().default(false),
+  align: z.enum(["left", "center", "right"]).optional(),
+  valign: z.enum(["top", "middle", "bottom"]).optional()
+});
+
+export const ShapeElementSchema = ElementBaseSchema.extend({
+  type: z.literal("shape"),
+  decorative: z.boolean().default(true),
+  shape: z.enum(["rect", "roundRect", "ellipse", "line", "rightArrow"]).default("rect"),
+  fill: z.union([HexColorSchema, z.literal("none")]).default("none"),
+  line: z
+    .object({
+      color: HexColorSchema.optional(),
+      width: z.number().positive().optional(),
+      dash: z.enum(["solid", "dash", "dashDot"]).optional(),
+      beginArrowType: z.enum(["none", "arrow", "diamond", "oval", "stealth", "triangle"]).optional(),
+      endArrowType: z.enum(["none", "arrow", "diamond", "oval", "stealth", "triangle"]).optional()
+    })
+    .optional(),
+  radius: z.number().nonnegative().optional()
 });
 
 export const SvgElementSchema = ElementBaseSchema.extend({
@@ -89,6 +112,7 @@ export const DiagramElementSchema = ElementBaseSchema.extend({
 
 export const SlideElementSchema = z.discriminatedUnion("type", [
   TextElementSchema,
+  ShapeElementSchema,
   SvgElementSchema,
   ImageElementSchema,
   DiagramElementSchema
@@ -114,15 +138,30 @@ export const DeckSpecSchema = z.object({
     .object({
       author: z.string().optional(),
       subject: z.string().optional(),
-      keywords: z.array(z.string()).default([])
+      keywords: z.array(z.string()).default([]),
+      contentMode: ContentModeSchema.optional(),
+      sources: z
+        .array(
+          z.object({
+            id: z.string().min(1),
+            title: z.string().min(1),
+            url: z.string().url().optional(),
+            usage: z.enum(["quote", "recreate", "inspiration"]),
+            attribution: z.string().optional(),
+            notes: z.string().optional()
+          })
+        )
+        .default([])
     })
-    .default({ keywords: [] })
+    .default({ keywords: [], sources: [] })
 });
 
 export type Locale = z.infer<typeof LocaleSchema>;
+export type ContentMode = z.infer<typeof ContentModeSchema>;
 export type DesignTokens = z.infer<typeof DesignTokensSchema>;
 export type SlideElement = z.infer<typeof SlideElementSchema>;
 export type TextElement = z.infer<typeof TextElementSchema>;
+export type ShapeElement = z.infer<typeof ShapeElementSchema>;
 export type SvgElement = z.infer<typeof SvgElementSchema>;
 export type ImageElement = z.infer<typeof ImageElementSchema>;
 export type DiagramElement = z.infer<typeof DiagramElementSchema>;

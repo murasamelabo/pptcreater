@@ -1,4 +1,5 @@
 ﻿import { contrastRatio, defaultTokens } from "./color.js";
+import { estimateTextOverflow, SLIDE_WIDE } from "./layout.js";
 import type { DeckSpec, Slide, SlideElement, TextElement } from "./schema.js";
 import { defaultFontSizeForRole } from "./typography.js";
 
@@ -46,7 +47,7 @@ function textElementMinimumSize(element: TextElement): number {
 }
 
 function requiresAltText(element: SlideElement): boolean {
-  return ["svg", "image", "diagram"].includes(element.type) && !element.decorative;
+  return ["svg", "image", "diagram", "shape"].includes(element.type) && !element.decorative;
 }
 
 function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[] {
@@ -75,6 +76,18 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
     }
 
     elementIds.add(element.id);
+
+    if (element.x + element.w > SLIDE_WIDE.width || element.y + element.h > SLIDE_WIDE.height) {
+      issues.push(
+        issue(
+          "error",
+          "layout.out-of-bounds",
+          "Element extends beyond the slide bounds and must be resized or moved.",
+          path,
+          { slideWidth: SLIDE_WIDE.width, slideHeight: SLIDE_WIDE.height }
+        )
+      );
+    }
 
     if (element.readingOrder === undefined) {
       issues.push(
@@ -119,8 +132,25 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
         );
       }
 
+      const overflow = estimateTextOverflow({
+        ...element,
+        fontSize
+      });
+      if (overflow.overflows) {
+        issues.push(
+          issue(
+            "warning",
+            "layout.text-overflow-risk",
+            "Text may overflow its bounding box. Increase the box size, split the text, or reduce font size.",
+            `${path}.text`,
+            { estimatedLines: overflow.estimatedLines, maxLines: overflow.maxLines }
+          )
+        );
+      }
+
       const foreground = element.color ?? tokens.colors.text;
-      const ratio = contrastRatio(foreground, background);
+      const textBackground = element.contrastBackground ?? background;
+      const ratio = contrastRatio(foreground, textBackground);
       const minimumRatio = fontSize >= 24 ? 3 : 4.5;
       if (ratio < minimumRatio) {
         issues.push(
@@ -164,6 +194,52 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
 export function lintDeckSpec(deck: DeckSpec): LintReport {
   const issues: LintIssue[] = [];
   const titleCounts = new Map<string, number>();
+  const sourceIdCounts = new Map<string, number>();
+  deck.metadata.sources.forEach((source) => {
+    sourceIdCounts.set(source.id, (sourceIdCounts.get(source.id) ?? 0) + 1);
+  });
+  const sourcesById = new Map(deck.metadata.sources.map((source) => [source.id, source]));
+  const referencedSourceIds = new Set(
+    deck.slides.flatMap((slide) => slide.elements.map((element) => element.sourceId).filter((sourceId): sourceId is string => Boolean(sourceId)))
+  );
+
+  deck.metadata.sources.forEach((source, sourceIndex) => {
+    if ((sourceIdCounts.get(source.id) ?? 0) > 1) {
+      issues.push(
+        issue(
+          "error",
+          "source.duplicate-id",
+          "Each source id must be unique so citations resolve to the intended source.",
+          `metadata.sources.${sourceIndex}.id`,
+          { sourceId: source.id }
+        )
+      );
+    }
+
+    if ((source.usage === "quote" || source.usage === "recreate") && !source.attribution) {
+      issues.push(
+        issue(
+          "error",
+          "source.attribution-missing",
+          "Quoted or recreated source visuals require attribution metadata.",
+          `metadata.sources.${sourceIndex}.attribution`,
+          { sourceId: source.id, usage: source.usage }
+        )
+      );
+    }
+
+    if ((source.usage === "quote" || source.usage === "recreate") && !referencedSourceIds.has(source.id)) {
+      issues.push(
+        issue(
+          "error",
+          "source.visual-reference-missing",
+          "Quoted or recreated sources must be referenced by at least one element.sourceId.",
+          `metadata.sources.${sourceIndex}.id`,
+          { sourceId: source.id, usage: source.usage }
+        )
+      );
+    }
+  });
 
   deck.slides.forEach((slide) => {
     titleCounts.set(slide.title, (titleCounts.get(slide.title) ?? 0) + 1);
@@ -180,6 +256,62 @@ export function lintDeckSpec(deck: DeckSpec): LintReport {
         )
       );
     }
+
+    slide.elements.forEach((element, elementIndex) => {
+      if (!element.sourceId) {
+        return;
+      }
+
+      const source = sourcesById.get(element.sourceId);
+      if (!source) {
+        issues.push(
+          issue(
+            "error",
+            "source.unresolved",
+            "Element references a sourceId that is not declared in metadata.sources.",
+            `slides.${slideIndex}.elements.${elementIndex}.sourceId`,
+            { sourceId: element.sourceId }
+          )
+        );
+        return;
+      }
+
+      if ((source.usage === "quote" || source.usage === "recreate") && !element.citation) {
+        issues.push(
+          issue(
+            "error",
+            "source.citation-missing",
+            "Elements based on quoted or recreated source visuals require a citation.",
+            `slides.${slideIndex}.elements.${elementIndex}.citation`,
+            { sourceId: element.sourceId, usage: source.usage }
+          )
+        );
+      }
+
+      if (source.usage === "recreate" && element.type !== "shape" && element.type !== "text") {
+        issues.push(
+          issue(
+            "error",
+            "source.recreate-not-editable",
+            "Recreated source visuals must be represented with editable PowerPoint shape/text elements, not flattened images or SVG.",
+            `slides.${slideIndex}.elements.${elementIndex}.type`,
+            { sourceId: element.sourceId }
+          )
+        );
+      }
+
+      if (source.usage === "recreate" && element.type === "shape" && element.decorative) {
+        issues.push(
+          issue(
+            "error",
+            "source.recreate-shape-accessibility-missing",
+            "Source-linked recreated shapes must be marked non-decorative and include altText, or cite the source from an accessible text element instead.",
+            `slides.${slideIndex}.elements.${elementIndex}.decorative`,
+            { sourceId: element.sourceId }
+          )
+        );
+      }
+    });
 
     issues.push(...lintSlide(slide, slideIndex, deck));
   });

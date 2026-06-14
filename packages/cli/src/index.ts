@@ -12,8 +12,10 @@ import {
   listSkillPacks,
   lintDeckSpec,
   localizeLintReport,
+  normalizeDeckLayout,
   parseDeckSpec,
   registerTemplateManifest,
+  type ContentMode,
   type Locale
 } from "@pptcreater/core";
 import { renderDeckToPptx } from "@pptcreater/render-pptx";
@@ -51,12 +53,12 @@ function parseSlideCount(value: string): number {
   return count;
 }
 
-function parseContentMode(value: string): "presentation" | "handout" | "decision" {
-  if (value === "presentation" || value === "handout" || value === "decision") {
+function parseContentMode(value: string): ContentMode {
+  if (value === "presentation" || value === "report" || value === "technical" || value === "handout" || value === "decision") {
     return value;
   }
 
-  throw new InvalidArgumentError("Content mode must be one of: presentation, handout, decision.");
+  throw new InvalidArgumentError("Content mode must be one of: presentation, report, technical, handout, decision.");
 }
 
 function parseBuiltinIconName(value: string): BuiltinIconName {
@@ -99,8 +101,8 @@ program
   .option("--purpose <purpose>", "Purpose or desired audience outcome")
   .option("--audience <audience>", "Primary audience")
   .option("--slides <count>", "Target slide count from 1 to 4", parseSlideCount)
-  .option("--content-mode <mode>", "presentation, handout, or decision", parseContentMode)
-  .action(commandAction(async (options: { output: string; locale: string; purpose?: string; audience?: string; slides?: number; contentMode?: "presentation" | "handout" | "decision" }) => {
+  .option("--content-mode <mode>", "presentation, report, technical, handout, or decision", parseContentMode)
+  .action(commandAction(async (options: { output: string; locale: string; purpose?: string; audience?: string; slides?: number; contentMode?: ContentMode }) => {
     const locale = asLocale(options.locale);
     await writeJson(options.output, createSampleDeck(locale, {
       purpose: options.purpose,
@@ -139,14 +141,26 @@ program
   }));
 
 program
+  .command("polish")
+  .description("Normalize layout bounds and text fitting in a DeckSpec before rendering.")
+  .argument("<deck>", "DeckSpec JSON path")
+  .requiredOption("-o, --output <path>", "Output polished DeckSpec JSON path")
+  .action(commandAction(async (deckPath: string, options: { output: string }) => {
+    const polished = normalizeDeckLayout(parseDeckSpec(await readJson(deckPath)));
+    await writeJson(options.output, polished);
+    console.log(cliMessage(outputLocale(polished.locale), "cli.created", { path: options.output }));
+  }));
+
+program
   .command("render")
   .description("Render a DeckSpec to PowerPoint.")
   .argument("<deck>", "DeckSpec JSON path")
   .requiredOption("-o, --output <path>", "Output .pptx path")
   .option("--force", "Render even when lint errors are present", false)
-  .action(commandAction(async (deckPath: string, options: { output: string; force: boolean }) => {
+  .option("--polish", "Apply layout polish before rendering", false)
+  .action(commandAction(async (deckPath: string, options: { output: string; force: boolean; polish: boolean }) => {
     const deck = await readJson(deckPath);
-    const result = await renderDeckToPptx(deck, options.output, { allowLintErrors: options.force });
+    const result = await renderDeckToPptx(deck, options.output, { allowLintErrors: options.force, polishLayout: options.polish });
     const parsedDeck = parseDeckSpec(deck);
     console.log(cliMessage(outputLocale(parsedDeck.locale), "cli.rendered", { path: result.outputPath }));
     if (result.warnings.length > 0) {

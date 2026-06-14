@@ -32,8 +32,23 @@ pptcreater new `
   --locale ja-JP `
   --purpose "経営会議でAIスライド作成ツール導入を判断してもらう" `
   --audience "経営層と部門長" `
-  --slides 4
+  --slides 4 `
+  --content-mode decision
 ```
+
+The starter visuals are generated as native PowerPoint shapes and text boxes where possible, not flattened screenshots. This means cards, labels, workflow nodes, arrows, and roadmap elements can be edited later in PowerPoint.
+
+Content modes let agents change the deck taste:
+
+- `presentation`: concise message slides for live presentation.
+- `report`: more context in notes and report-style support for review.
+- `technical`: architecture/concept/process visuals for understanding.
+- `decision`: emphasizes evidence, risk, and next action.
+- `handout`: keeps additional context in speaker notes.
+
+Use `pptcreater polish <deck> --output <polished.deck.json>`, `pptcreater render --polish`, or MCP `polish_deck_layout` before rendering when source content is long or diagrams have many labels. The polish step clamps elements to slide bounds and adjusts text fitting to reduce overflows and misalignment. It is explicit so source-faithful decks are not silently mutated.
+
+Modern slide generation follows these principles: assertion titles, modular cards, bold whitespace, restrained accents, one memorable visual scene per slide, and editable PowerPoint shapes for content that users may revise later. The MCP resource `design://modern-slide-principles` exposes this guidance to AI agents.
 
 ## Sample deck
 
@@ -46,7 +61,7 @@ A sample deck explaining this tool is included:
 Regenerate it with:
 
 ```powershell
-pptcreater new --output samples\pptcreater-overview.deck.json --locale ja-JP --purpose "このpptcreaterツールの価値と使い方を説明し、導入判断につなげる" --audience "GitHub CopilotやClaude Codeを使う開発者・デザイナー・企画担当" --slides 4
+pptcreater new --output samples\pptcreater-overview.deck.json --locale ja-JP --purpose "このpptcreaterツールの価値と使い方を説明し、導入判断につなげる" --audience "GitHub CopilotやClaude Codeを使う開発者・デザイナー・企画担当" --slides 4 --content-mode decision
 pptcreater lint samples\pptcreater-overview.deck.json --language ja-JP
 pptcreater render samples\pptcreater-overview.deck.json --output samples\pptcreater-overview.pptx
 pptcreater studio samples\pptcreater-overview.deck.json --output samples\pptcreater-overview.html --language ja-JP
@@ -172,8 +187,12 @@ From MCP, use:
 
 - `interview_slide_brief` when the user's request does not specify purpose, audience, delivery context, or slide count.
 - `create_deck` with `purpose`, `audience`, `slideCount`, and `contentMode` when those details are known.
+- `design://modern-slide-principles` when the agent needs modern slide composition guidance.
+- `plan_source_visual` when summarizing a source document or URL that contains figures. It helps the agent choose whether to quote the original figure, recreate it as editable PowerPoint objects, or use it only as inspiration.
 
 The default deck generator follows the design reference principles: three-second glance test, one slide / one message, high signal-to-noise, visible hierarchy, diagrams/icons on slides, and accessibility checks before rendering.
+
+When using source visuals, prefer recreation as editable PowerPoint shapes when the goal is explanation, localization, simplification, or later editing. Quote original figures only when exact fidelity is required and usage rights are clear; record attribution in `metadata.sources`, `sourceId`, and `citation`.
 
 ## Design principles
 

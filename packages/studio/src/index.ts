@@ -47,17 +47,72 @@ function escapeHtml(value: string): string {
 }
 
 function textElements(slide: DeckSpec["slides"][number]): string {
-  return slide.elements
+  return sortedElements(slide.elements)
     .filter((element) => element.type === "text")
     .map((element) => `<p class="text text-${element.role}">${escapeHtml(element.text)}</p>`)
     .join("");
 }
 
+function sortedElements(elements: DeckSpec["slides"][number]["elements"]): DeckSpec["slides"][number]["elements"] {
+  return [...elements].sort((a, b) => (a.readingOrder ?? Number.MAX_SAFE_INTEGER) - (b.readingOrder ?? Number.MAX_SAFE_INTEGER));
+}
+
+function shapeStyle(element: Extract<DeckSpec["slides"][number]["elements"][number], { type: "shape" }>): string {
+  const left = (element.x / 13.333) * 100;
+  const top = (element.y / 7.5) * 100;
+  const width = (element.w / 13.333) * 100;
+  const height = (element.h / 7.5) * 100;
+  const borderColor = element.line?.color ?? "#64748b";
+  const borderWidth = element.line?.width ?? 1;
+  const fill = element.fill === "none" ? "transparent" : element.fill;
+  const radius = element.shape === "ellipse" ? "999px" : element.shape === "roundRect" ? "18px" : "2px";
+  return `left:${left}%;top:${top}%;width:${width}%;height:${Math.max(height, 0.2)}%;background:${fill};border:${borderWidth}px solid ${borderColor};border-radius:${radius};`;
+}
+
+function nativeShapePreview(slide: DeckSpec["slides"][number]): string {
+  const items = sortedElements(slide.elements)
+    .map((element) => {
+      if (element.type === "shape") {
+        const accessibility = element.decorative ? 'aria-hidden="true"' : `role="img" aria-label="${escapeHtml(element.altText ?? element.id)}"`;
+        return `<div class="native-shape native-${element.shape}" style="${shapeStyle(element)}" ${accessibility}></div>`;
+      }
+
+      if (element.type === "text") {
+        const left = (element.x / 13.333) * 100;
+        const top = (element.y / 7.5) * 100;
+        const width = (element.w / 13.333) * 100;
+        const height = (element.h / 7.5) * 100;
+        const fontSize = Math.max(10, Math.round((element.fontSize ?? 18) * 0.52));
+        const weight = element.bold ? 700 : 400;
+        const align = element.align ?? "left";
+        return `<div class="native-text native-text-${element.role}" style="left:${left}%;top:${top}%;width:${width}%;height:${height}%;font-size:${fontSize}px;font-weight:${weight};color:${element.color ?? "#0f172a"};text-align:${align};">${escapeHtml(element.text)}</div>`;
+      }
+
+      return "";
+    })
+    .join("");
+
+  return items ? `<div class="native-canvas">${items}</div>` : "";
+}
+
 function visualElements(slide: DeckSpec["slides"][number]): string {
-  return slide.elements
+  return sortedElements(slide.elements)
     .filter((element) => element.type === "svg" || element.type === "diagram")
     .map((element) => `<figure><div class="svg-frame">${sanitizeSvg(element.svg)}</div><figcaption>${escapeHtml(element.altText ?? ("summary" in element ? element.summary : ""))}</figcaption></figure>`)
     .join("");
+}
+
+function sourceCitations(deck: DeckSpec, slide: DeckSpec["slides"][number]): string {
+  const sourcesById = new Map(deck.metadata.sources.map((source) => [source.id, source]));
+  const citations = slide.elements
+    .filter((element) => element.sourceId)
+    .map((element) => {
+      const source = sourcesById.get(element.sourceId ?? "");
+      return `<li>${escapeHtml(element.citation ?? source?.attribution ?? source?.title ?? element.sourceId ?? "")}</li>`;
+    })
+    .join("");
+
+  return citations ? `<details><summary>Sources</summary><ul>${citations}</ul></details>` : "";
 }
 
 export function renderStudioHtml(input: unknown, localeOverride?: Locale): string {
@@ -89,6 +144,9 @@ export function renderStudioHtml(input: unknown, localeOverride?: Locale): strin
     .text-body { font-size: 20px; }
     .text-caption { color: var(--muted); font-size: 14px; }
     .svg-frame svg { max-width: 100%; height: auto; border-radius: 12px; }
+    .native-canvas { position: relative; aspect-ratio: 16 / 9; min-height: 360px; background: #fff; border-radius: 16px; overflow: hidden; }
+    .native-shape, .native-text { position: absolute; box-sizing: border-box; }
+    .native-line { height: 2px !important; border-left: 0 !important; border-right: 0 !important; border-bottom: 0 !important; }
     .issue { border-left: 5px solid var(--line); padding: 10px 12px; margin: 10px 0; background: #f8fafc; }
     .issue.error { border-color: var(--danger); }
     .issue.warning { border-color: var(--warn); }
@@ -111,8 +169,9 @@ export function renderStudioHtml(input: unknown, localeOverride?: Locale): strin
         .map(
           (slide, index) => `<article class="slide">
         <h3>${index + 1}. ${escapeHtml(slide.title)}</h3>
-        ${textElements(slide)}
+        ${nativeShapePreview(slide) || textElements(slide)}
         ${visualElements(slide)}
+        ${sourceCitations(deck, slide)}
         ${slide.speakerNotes ? `<details><summary>${escapeHtml(labels.notes)}</summary><p>${escapeHtml(slide.speakerNotes)}</p></details>` : ""}
       </article>`
         )

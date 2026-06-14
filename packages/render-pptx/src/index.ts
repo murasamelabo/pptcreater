@@ -1,18 +1,22 @@
-﻿import { createRequire } from "node:module";
+﻿import { readFile, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { sanitizeSvg } from "@pptcreater/assets-svg";
 import {
   defaultFontSizeForRole,
   defaultTokens,
   lintDeckSpec,
+  normalizeDeckLayout,
   parseDeckSpec,
   type DeckSpec,
   type SlideElement
 } from "@pptcreater/core";
 
 const require = createRequire(import.meta.url);
+const JSZip = require("jszip") as { loadAsync(data: Buffer): Promise<{ file(name: string): { async(type: "string"): Promise<string> } | null; file(name: string, data: string): void; generateAsync(options: { type: "nodebuffer" }): Promise<Buffer> }> };
 type PptxSlide = {
   background: { color: string };
   addText(text: string, options: Record<string, unknown>): void;
+  addShape(shapeName: string, options?: Record<string, unknown>): void;
   addImage(options: { data?: string; path?: string; x: number; y: number; w: number; h: number; altText?: string }): void;
   addNotes(notes: string): void;
 };
@@ -37,6 +41,7 @@ const PptxGenJSConstructor = require("pptxgenjs") as { new (): PptxPresentation 
 
 export type RenderOptions = {
   allowLintErrors?: boolean;
+  polishLayout?: boolean;
 };
 
 export type RenderResult = {
@@ -62,7 +67,16 @@ function sortedElements(elements: SlideElement[]): SlideElement[] {
   return [...elements].sort((a, b) => (a.readingOrder ?? Number.MAX_SAFE_INTEGER) - (b.readingOrder ?? Number.MAX_SAFE_INTEGER));
 }
 
-function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpec): void {
+function safeObjectId(value: string): string {
+  return value.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
+}
+
+function shapeObjectName(element: Extract<SlideElement, { type: "shape" }>, slideIndex: number): string {
+  const prefix = element.decorative ? "Decorative" : "Accessible";
+  return `${prefix} s${slideIndex + 1}-${safeObjectId(element.id)}`;
+}
+
+function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpec, slideIndex: number): void {
   const tokens = deck.tokens ?? defaultTokens(deck.locale);
   const position = {
     x: inches(element.x),
@@ -78,9 +92,32 @@ function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpec): vo
       fontSize: element.fontSize ?? defaultFontSizeForRole(element.role, tokens),
       color: (element.color ?? tokens.colors.text).replace("#", ""),
       bold: element.bold || element.role === "title",
+      align: element.align,
+      valign: element.valign,
       fit: "shrink",
       margin: 0.02,
       breakLine: false
+    });
+    return;
+  }
+
+  if (element.type === "shape") {
+    const fill = element.fill === "none" ? { type: "none" } : { color: element.fill.replace("#", "") };
+    const line = element.line
+      ? {
+          color: (element.line.color ?? "#64748b").replace("#", ""),
+          width: element.line.width ?? 1,
+          dashType: element.line.dash,
+          beginArrowType: element.line.beginArrowType,
+          endArrowType: element.line.endArrowType
+        }
+      : { color: "64748b", transparency: 100 };
+    slide.addShape(element.shape, {
+      ...position,
+      objectName: shapeObjectName(element, slideIndex),
+      fill,
+      line,
+      rectRadius: element.radius
     });
     return;
   }
@@ -104,8 +141,84 @@ function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpec): vo
   }
 }
 
-function collectSlideAccessibilityNotes(deckSlide: DeckSpec["slides"][number], slideIndex: number): string[] {
+function escapeXmlAttribute(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function shapeDescriptions(deck: DeckSpec): Map<number, Map<string, string>> {
+  const bySlide = new Map<number, Map<string, string>>();
+  deck.slides.forEach((slide, slideIndex) => {
+    const slideDescriptions = new Map<string, string>();
+    slide.elements.forEach((element) => {
+      if (element.type === "shape") {
+        slideDescriptions.set(shapeObjectName(element, slideIndex), element.decorative ? "" : element.altText ?? element.id);
+      }
+    });
+    bySlide.set(slideIndex, slideDescriptions);
+  });
+  return bySlide;
+}
+
+function decorateCnvPr(attrs: string, description: string, selfClosing: boolean): string {
+  const cleanedAttrs = attrs.replace(/\s*\/\s*$/, "").replace(/\s+descr="[^"]*"/, "").replace(/\s+decorative="[^"]*"/, "");
+  const descriptionAttr = `descr="${escapeXmlAttribute(description)}"`;
+
+  if (description === "") {
+    const decorativeAttrs = `${cleanedAttrs} ${descriptionAttr} decorative="1"`;
+    const decorativeExtension =
+      '<a:extLst><a:ext uri="{C183D7F6-B498-43B3-948B-1728B52AA6E4}"><a16:decorative xmlns:a16="http://schemas.microsoft.com/office/drawing/2014/main">1</a16:decorative></a:ext></a:extLst>';
+    if (!selfClosing) {
+      return `<p:cNvPr${decorativeAttrs}>${decorativeExtension}`;
+    }
+
+    return `<p:cNvPr${decorativeAttrs}>${decorativeExtension}</p:cNvPr>`;
+  }
+
+  return `<p:cNvPr${cleanedAttrs} ${descriptionAttr}${selfClosing ? "/>" : ">"}`;
+}
+
+async function markShapeAccessibility(pptxPath: string, deck: DeckSpec): Promise<void> {
+  const descriptionsBySlide = shapeDescriptions(deck);
+  const zip = await JSZip.loadAsync(await readFile(pptxPath));
+  const slideNames = Object.keys((zip as unknown as { files: Record<string, unknown> }).files).filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name));
+
+  await Promise.all(
+    slideNames.map(async (name) => {
+      const file = zip.file(name);
+      if (!file) {
+        return;
+      }
+
+      const slideIndex = Number(name.match(/slide(\d+)\.xml$/)?.[1] ?? "1") - 1;
+      const descriptions = descriptionsBySlide.get(slideIndex) ?? new Map<string, string>();
+      const xml = await file.async("string");
+      const patched = xml.replace(/<p:cNvPr\b([^>]*\/?)>/g, (match, attrs: string) => {
+        const nameMatch = attrs.match(/\bname="([^"]+)"/);
+        if (!nameMatch) {
+          return match;
+        }
+
+        const description = descriptions.get(nameMatch[1]);
+        if (description === undefined) {
+          return match;
+        }
+
+        return decorateCnvPr(attrs, description, /\/\s*$/.test(attrs));
+      });
+      zip.file(name, patched);
+    })
+  );
+
+  await writeFile(pptxPath, await zip.generateAsync({ type: "nodebuffer" }));
+}
+
+function collectSlideAccessibilityNotes(deck: DeckSpec, deckSlide: DeckSpec["slides"][number], slideIndex: number): string[] {
   const notes = [`Slide ${slideIndex + 1}: ${deckSlide.title}`];
+  const sourcesById = new Map(deck.metadata.sources.map((source) => [source.id, source]));
   deckSlide.elements.forEach((element) => {
     if ("altText" in element && element.altText) {
       notes.push(`${element.id}: ${element.altText}`);
@@ -114,13 +227,28 @@ function collectSlideAccessibilityNotes(deckSlide: DeckSpec["slides"][number], s
     if (element.type === "diagram") {
       notes.push(`${element.id} long description: ${element.longDescription}`);
     }
+
+    if (element.sourceId) {
+      const source = sourcesById.get(element.sourceId);
+      notes.push(
+        [
+          `Source for ${element.id}: ${source?.title ?? element.sourceId}`,
+          source?.url ? `URL: ${source.url}` : undefined,
+          source?.usage ? `Usage: ${source.usage}` : undefined,
+          source?.attribution ? `Attribution: ${source.attribution}` : undefined,
+          element.citation ? `Citation: ${element.citation}` : undefined
+        ]
+          .filter((item): item is string => Boolean(item))
+          .join(" | ")
+      );
+    }
   });
 
   return notes;
 }
 
 export async function renderDeckToPptx(input: unknown, outputPath: string, options: RenderOptions = {}): Promise<RenderResult> {
-  const deck = parseDeckSpec(input);
+  const deck = options.polishLayout ? normalizeDeckLayout(parseDeckSpec(input)) : parseDeckSpec(input);
   const lintReport = lintDeckSpec(deck);
   const warnings = lintReport.issues.map((item) => `${item.severity}:${item.code}:${item.path}:${item.message}`);
   const errors = lintReport.issues.filter((item) => item.severity === "error");
@@ -145,9 +273,9 @@ export async function renderDeckToPptx(input: unknown, outputPath: string, optio
   deck.slides.forEach((deckSlide, slideIndex) => {
     const slide = pptx.addSlide();
     slide.background = { color: tokens.colors.background.replace("#", "") };
-    sortedElements(deckSlide.elements).forEach((element) => addElement(slide, element, deck));
+    sortedElements(deckSlide.elements).forEach((element) => addElement(slide, element, deck, slideIndex));
 
-    const notes = [deckSlide.speakerNotes, ...collectSlideAccessibilityNotes(deckSlide, slideIndex)]
+    const notes = [deckSlide.speakerNotes, ...collectSlideAccessibilityNotes(deck, deckSlide, slideIndex)]
       .filter((note): note is string => Boolean(note))
       .join("\n");
     if (notes) {
@@ -156,5 +284,6 @@ export async function renderDeckToPptx(input: unknown, outputPath: string, optio
   });
 
   await pptx.writeFile({ fileName: outputPath });
+  await markShapeAccessibility(outputPath, deck);
   return { outputPath, warnings };
 }
