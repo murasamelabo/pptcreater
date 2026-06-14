@@ -107,7 +107,15 @@ pptcreater render samples\pptcreater-overview.deck.json --output samples\pptcrea
 pptcreater studio samples\pptcreater-overview.deck.json --output samples\pptcreater-overview.html --language ja-JP
 ```
 
-The style-pattern samples are generated from the same explanation content with different built-in style profiles (`minimal`, `stylish`, `report`, `presentation`, `technical`) so you can compare the expected output direction before asking an agent to create new decks.
+The style-pattern samples intentionally change the communication context, not just the color palette:
+
+- `minimal`: short assertion slides with whitespace and one focused visual.
+- `stylish`: mockup/photo-style visuals and large editorial messaging.
+- `report`: comparison tables, risk/mitigation tables, and governance lists.
+- `presentation`: live-talk pacing with big statements, a simple flow, and three-point framing.
+- `technical`: ponchi-e architecture, vertical flow, tree, and safety checklist diagrams.
+
+Use these samples to compare which structure fits the deck you want before asking an agent to create new slides.
 
 To use it from another terminal after cloning this repository:
 
