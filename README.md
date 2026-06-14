@@ -89,6 +89,11 @@ A sample deck explaining this tool is included:
 - `samples/pptcreater-overview.deck.json` — source DeckSpec
 - `samples/pptcreater-overview.pptx` — generated PowerPoint
 - `samples/pptcreater-overview.html` — static Studio preview
+- `samples/pptcreater-overview-minimal.*` — minimal/simple explanation pattern
+- `samples/pptcreater-overview-stylish.*` — stylish/cool presentation pattern
+- `samples/pptcreater-overview-report.*` — formal report pattern
+- `samples/pptcreater-overview-presentation.*` — bold live-presentation pattern
+- `samples/pptcreater-overview-technical.*` — technical/architecture pattern
 - `samples/schematic-patterns.deck.json` — Slideland-inspired schematic preset examples
 - `samples/schematic-patterns.pptx` — generated schematic examples
 - `samples/schematic-patterns.html` — static Studio preview
@@ -101,6 +106,8 @@ pptcreater lint samples\pptcreater-overview.deck.json --language ja-JP
 pptcreater render samples\pptcreater-overview.deck.json --output samples\pptcreater-overview.pptx
 pptcreater studio samples\pptcreater-overview.deck.json --output samples\pptcreater-overview.html --language ja-JP
 ```
+
+The style-pattern samples are generated from the same explanation content with different built-in style profiles (`minimal`, `stylish`, `report`, `presentation`, `technical`) so you can compare the expected output direction before asking an agent to create new decks.
 
 To use it from another terminal after cloning this repository:
 
