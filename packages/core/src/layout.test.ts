@@ -62,8 +62,277 @@ describe("layout polish", () => {
 
     const polished = normalizeDeckLayout(deck);
     const polishedTitle = polished.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
+    const lines = polishedTitle?.type === "text" ? polishedTitle.text.split("\n") : [];
 
     expect(polishedTitle?.type === "text" ? polishedTitle.text : "").toContain("\n");
+    expect(lines.at(-1)?.length ?? 0).toBeGreaterThan(4);
+    expect(lines.at(-1)).not.toBe("る");
+  });
+
+  it("reflows ragged manual breaks for normal body text", () => {
+    const slide: Slide = {
+      id: "ragged",
+      title: "Ragged",
+      layout: "title-content",
+      elements: [
+        {
+          id: "body",
+          type: "text",
+          role: "body",
+          text: "Microsoft Entra認証、\n条件付きアクセス、Azure Bastion\n、\nApp Proxyへ寄せる。",
+          x: 1,
+          y: 1,
+          w: 4,
+          h: 1.8,
+          fontSize: 20,
+          bold: false,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const normalizedText = normalized.elements[0];
+
+    expect(normalizedText.type === "text" ? normalizedText.text : "").not.toContain("\n、");
+  });
+
+  it("preserves acceptable latin title manual breaks", () => {
+    const deck = createSampleDeck("en-US", { slideCount: 1 });
+    const title = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
+    if (title?.type === "text") {
+      title.text = "Zero Trust\nArchitecture";
+      title.w = 7;
+      title.h = 1.3;
+      title.fontSize = 32;
+    }
+
+    const polished = normalizeDeckLayout(deck);
+    const polishedTitle = polished.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
+
+    expect(polishedTitle?.type === "text" ? polishedTitle.text : "").toBe("Zero Trust\nArchitecture");
+  });
+
+  it("preserves acceptable manual title breaks", () => {
+    const deck = createSampleDeck("en-US", { slideCount: 1 });
+    const title = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
+    if (title?.type === "text") {
+      title.text = "Roadmap\nQ4";
+      title.w = 7;
+      title.h = 1.4;
+      title.fontSize = 30;
+    }
+
+    const polished = normalizeDeckLayout(deck);
+    const polishedTitle = polished.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
+
+    expect(polishedTitle?.type === "text" ? polishedTitle.text : "").toBe("Roadmap\nQ4");
+  });
+
+  it("preserves compact latin manual line breaks", () => {
+    const slide: Slide = {
+      id: "latin-ragged",
+      title: "Latin ragged",
+      layout: "title-content",
+      elements: [
+        {
+          id: "body",
+          type: "text",
+          role: "body",
+          text: "Zero Trust\nArchitecture",
+          x: 1,
+          y: 1,
+          w: 5,
+          h: 1.2,
+          fontSize: 20,
+          bold: false,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const normalizedText = normalized.elements[0];
+
+    expect(normalizedText.type === "text" ? normalizedText.text : "").toBe("Zero Trust\nArchitecture");
+  });
+
+  it("preserves compact hyphenated or slash continuation lines", () => {
+    const slide: Slide = {
+      id: "continuation",
+      title: "Continuation",
+      layout: "title-content",
+      elements: [
+        {
+          id: "body",
+          type: "text",
+          role: "body",
+          text: "Cost-\neffective and risk/\nreward",
+          x: 1,
+          y: 1,
+          w: 6,
+          h: 1.2,
+          fontSize: 20,
+          bold: false,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const normalizedText = normalized.elements[0];
+    const value = normalizedText.type === "text" ? normalizedText.text : "";
+
+    expect(value).toContain("Cost-\neffective");
+    expect(value).toContain("risk/\nreward");
+  });
+
+  it("preserves compact lowercase manual line breaks", () => {
+    const slide: Slide = {
+      id: "lowercase-prose",
+      title: "Lowercase prose",
+      layout: "title-content",
+      elements: [
+        {
+          id: "body",
+          type: "text",
+          role: "body",
+          text: "cloud\nsecurity",
+          x: 1,
+          y: 1,
+          w: 5,
+          h: 1,
+          fontSize: 20,
+          bold: false,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const normalizedText = normalized.elements[0];
+
+    expect(normalizedText.type === "text" ? normalizedText.text : "").toBe("cloud\nsecurity");
+  });
+
+  it("preserves compact manual breaks before short common English words", () => {
+    const slide: Slide = {
+      id: "short-word-prose",
+      title: "Short word prose",
+      layout: "title-content",
+      elements: [
+        {
+          id: "body",
+          type: "text",
+          role: "body",
+          text: "security\nis important",
+          x: 1,
+          y: 1,
+          w: 5,
+          h: 1,
+          fontSize: 20,
+          bold: false,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const normalizedText = normalized.elements[0];
+
+    expect(normalizedText.type === "text" ? normalizedText.text : "").toBe("security\nis important");
+  });
+
+  it("preserves intentional multiline bullet lists", () => {
+    const slide: Slide = {
+      id: "bullets",
+      title: "Bullets",
+      layout: "title-content",
+      elements: [
+        {
+          id: "body",
+          type: "text",
+          role: "body",
+          text: "• One\n• Two\n• Three",
+          x: 1,
+          y: 1,
+          w: 4,
+          h: 1.5,
+          fontSize: 20,
+          bold: false,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const normalizedText = normalized.elements[0];
+
+    expect(normalizedText.type === "text" ? normalizedText.text : "").toBe("• One\n• Two\n• Three");
+  });
+
+  it("preserves mixed heading and bullet lists", () => {
+    const slide: Slide = {
+      id: "mixed-list",
+      title: "Mixed list",
+      layout: "title-content",
+      elements: [
+        {
+          id: "body",
+          type: "text",
+          role: "body",
+          text: "Risks:\n• A\n• B",
+          x: 1,
+          y: 1,
+          w: 4,
+          h: 1.5,
+          fontSize: 20,
+          bold: false,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const normalizedText = normalized.elements[0];
+
+    expect(normalizedText.type === "text" ? normalizedText.text : "").toBe("Risks:\n• A\n• B");
+  });
+
+  it("preserves compact structured manual line breaks", () => {
+    const slide: Slide = {
+      id: "metric-value",
+      title: "Metric value",
+      layout: "title-content",
+      elements: [
+        {
+          id: "body",
+          type: "text",
+          role: "body",
+          text: "Metric\nValue",
+          x: 1,
+          y: 1,
+          w: 4,
+          h: 1.2,
+          fontSize: 20,
+          bold: false,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const normalizedText = normalized.elements[0];
+
+    expect(normalizedText.type === "text" ? normalizedText.text : "").toBe("Metric\nValue");
   });
 
   it("uses deck typography tokens when fitting text without explicit font size", () => {

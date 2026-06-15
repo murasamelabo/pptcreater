@@ -44,8 +44,9 @@ describe("DeckSpec linting", () => {
     );
 
     const report = lintDeckSpec(parseDeckSpec(deck));
+    const overlap = report.issues.find((issue) => issue.code === "layout.text-overlap");
 
-    expect(report.issues.some((issue) => issue.code === "layout.text-overlap")).toBe(true);
+    expect(overlap?.severity).toBe("error");
   });
 
   it("treats text overflow risk as a render-blocking error", () => {
@@ -63,6 +64,216 @@ describe("DeckSpec linting", () => {
 
     expect(overflow?.severity).toBe("error");
     expect(report.ok).toBe(false);
+  });
+
+  it("flags bad orphan line breaks", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    const title = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
+    if (title?.type === "text") {
+      title.text = "中継局とインターフェイスは、Zero Trustを適用する入口にな\nる";
+      title.w = 8;
+      title.h = 1.6;
+      title.fontSize = 30;
+    }
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const badBreak = report.issues.find((issue) => issue.code === "layout.bad-line-break");
+
+    expect(badBreak?.severity).toBe("error");
+    expect(report.ok).toBe(false);
+  });
+
+  it("does not flag concise bullet lists as bad line breaks", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    const body = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "body");
+    if (body?.type === "text") {
+      body.text = "Risks:\n• A\n• B";
+      body.w = 4;
+      body.h = 1.4;
+      body.fontSize = 20;
+    }
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "layout.bad-line-break")).toBe(false);
+  });
+
+  it("allows short alphanumeric final title lines", () => {
+    const deck = createSampleDeck("en-US", { slideCount: 1 });
+    const title = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
+    if (title?.type === "text") {
+      title.text = "Roadmap\nQ4";
+      title.w = 4;
+      title.h = 1.4;
+      title.fontSize = 30;
+    }
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "layout.bad-line-break")).toBe(false);
+  });
+
+  it("suggests visual hierarchy for body-only enumerations", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements = [
+      {
+        id: "one",
+        type: "text",
+        role: "body",
+        text: "大きな列挙項目その一",
+        x: 1,
+        y: 1,
+        w: 3,
+        h: 1,
+        fontSize: 22,
+        bold: false,
+        decorative: false,
+        readingOrder: 1
+      },
+      {
+        id: "two",
+        type: "text",
+        role: "body",
+        text: "大きな列挙項目その二",
+        x: 1,
+        y: 2.2,
+        w: 3,
+        h: 1,
+        fontSize: 22,
+        bold: false,
+        decorative: false,
+        readingOrder: 2
+      },
+      {
+        id: "three",
+        type: "text",
+        role: "body",
+        text: "大きな列挙項目その三",
+        x: 1,
+        y: 3.4,
+        w: 3,
+        h: 1,
+        fontSize: 22,
+        bold: false,
+        decorative: false,
+        readingOrder: 3
+      }
+    ];
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const hierarchy = report.issues.find((issue) => issue.code === "layout.enumeration-hierarchy");
+
+    expect(hierarchy?.severity).toBe("warning");
+  });
+
+  it("does not block enumerations with shape-based visual structure", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements = [
+      {
+        id: "card-one",
+        type: "shape",
+        shape: "roundRect",
+        x: 0.8,
+        y: 1,
+        w: 3,
+        h: 1,
+        fill: "#ffffff",
+        decorative: true,
+        readingOrder: 1
+      },
+      {
+        id: "one",
+        type: "text",
+        role: "body",
+        text: "大きな列挙項目その一",
+        x: 1,
+        y: 1.2,
+        w: 2.5,
+        h: 0.6,
+        fontSize: 22,
+        bold: false,
+        decorative: false,
+        readingOrder: 2
+      },
+      {
+        id: "card-two",
+        type: "shape",
+        shape: "roundRect",
+        x: 4.1,
+        y: 1,
+        w: 3,
+        h: 1,
+        fill: "#ffffff",
+        decorative: true,
+        readingOrder: 3
+      },
+      {
+        id: "two",
+        type: "text",
+        role: "body",
+        text: "大きな列挙項目その二",
+        x: 4.3,
+        y: 1.2,
+        w: 2.5,
+        h: 0.6,
+        fontSize: 22,
+        bold: false,
+        decorative: false,
+        readingOrder: 4
+      },
+      {
+        id: "card-three",
+        type: "shape",
+        shape: "roundRect",
+        x: 7.4,
+        y: 1,
+        w: 3,
+        h: 1,
+        fill: "#ffffff",
+        decorative: true,
+        readingOrder: 5
+      },
+      {
+        id: "three",
+        type: "text",
+        role: "body",
+        text: "大きな列挙項目その三",
+        x: 7.6,
+        y: 1.2,
+        w: 2.5,
+        h: 0.6,
+        fontSize: 22,
+        bold: false,
+        decorative: false,
+        readingOrder: 6
+      }
+    ];
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "layout.enumeration-hierarchy")).toBe(false);
+  });
+
+  it("does not treat long prose boxes as enumeration cards", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements = [1, 2, 3].map((item) => ({
+      id: `prose-${item}`,
+      type: "text" as const,
+      role: "body" as const,
+      text: "これは報告書で使う長めの説明文です。複数の根拠や背景を一つの段落として示しており、列挙カードではありません。",
+      x: 1,
+      y: item,
+      w: 8,
+      h: 0.8,
+      fontSize: 18,
+      bold: false,
+      decorative: false,
+      readingOrder: item
+    }));
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "layout.enumeration-hierarchy")).toBe(false);
   });
 
   it("flags an opaque shape drawn over text", () => {

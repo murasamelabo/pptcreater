@@ -13,6 +13,9 @@ const JAPANESE_WIDTH_FACTOR = 0.92;
 const ASCII_WIDTH_FACTOR = 0.52;
 const SPACE_WIDTH_FACTOR = 0.32;
 const LINE_HEIGHT_FACTOR = 1.22;
+const BREAK_AFTER_PATTERN = /[、。・,，/／\s]/;
+const BAD_LINE_START_PATTERN = /^[、。，．・,，/／!?！？:：;；）」』】\]\})]/;
+const BAD_LINE_END_PATTERN = /[（「『【\[\({]$/;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -66,27 +69,56 @@ function maxUnitsPerLine(width: number, fontSize: number): number {
   return Math.max(2, width / ((fontSize * TEXT_WIDTH_FACTOR) / 72));
 }
 
-function splitAtBalancedPoint(value: string, maxUnits: number): [string, string] {
+export function isPreformattedText(value: string): boolean {
+  return /(^|\n)[\t ]+\S/.test(value) || /[\t ]+$/.test(value);
+}
+
+function lineQualityPenalty(head: string, tail: string, maxUnits: number): number {
+  const trimmedHead = head.trim();
+  const trimmedTail = tail.trim();
+  let penalty = 0;
+
+  if (!trimmedHead || !trimmedTail) {
+    penalty += 1_000;
+  }
+
+  if (BAD_LINE_END_PATTERN.test(trimmedHead) || BAD_LINE_START_PATTERN.test(trimmedTail)) {
+    penalty += 160;
+  }
+
+  const tailUnits = textUnits(trimmedTail);
+  const minimumTailUnits = Math.min(5, maxUnits * 0.28);
+  if (tailUnits < minimumTailUnits) {
+    penalty += (minimumTailUnits - tailUnits) * 45;
+  }
+
+  return penalty;
+}
+
+function splitAtBalancedPoint(value: string, maxUnits: number, targetUnits = maxUnits): [string, string] {
   const chars = Array.from(value.trim());
   let units = 0;
-  let fallbackIndex = 0;
-  let preferredIndex = 0;
+  let bestIndex = 0;
+  let bestScore = Number.POSITIVE_INFINITY;
 
   for (let index = 0; index < chars.length; index += 1) {
     units += textUnits(chars[index]);
-    if (units <= maxUnits) {
-      fallbackIndex = index + 1;
-      if (/[、。・,，/／\s]/.test(chars[index])) {
-        preferredIndex = index + 1;
-      }
-    }
-
     if (units > maxUnits) {
       break;
     }
+
+    const splitIndex = index + 1;
+    const head = chars.slice(0, splitIndex).join("");
+    const tail = chars.slice(splitIndex).join("");
+    const preferredBreak = BREAK_AFTER_PATTERN.test(chars[index]) ? -18 : 0;
+    const score = Math.abs(units - targetUnits) + lineQualityPenalty(head, tail, maxUnits) + preferredBreak;
+    if (score < bestScore) {
+      bestScore = score;
+      bestIndex = splitIndex;
+    }
   }
 
-  const splitIndex = Math.max(1, preferredIndex || fallbackIndex || Math.ceil(chars.length / 2));
+  const splitIndex = Math.max(1, bestIndex || Math.ceil(chars.length / 2));
   return [chars.slice(0, splitIndex).join("").trim(), chars.slice(splitIndex).join("").trim()];
 }
 
@@ -101,7 +133,10 @@ function wrapParagraph(value: string, maxUnits: number, maxLines: number): strin
       break;
     }
 
-    const [head, tail] = splitAtBalancedPoint(rest, maxUnits);
+    const remainingLines = Math.max(1, maxLines - lines.length);
+    const remainingUnits = textUnits(rest);
+    const targetUnits = Math.min(maxUnits, Math.max(maxUnits * 0.55, remainingUnits / remainingLines));
+    const [head, tail] = splitAtBalancedPoint(rest, maxUnits, targetUnits);
     lines.push(head);
     rest = tail;
   }
@@ -113,15 +148,81 @@ function wrapParagraph(value: string, maxUnits: number, maxLines: number): strin
   return lines.length ? lines : [value];
 }
 
+function joinReflowLines(lines: string[]): string {
+  return lines.reduce((joined, line) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      return joined;
+    }
+
+    if (!joined) {
+      return trimmed;
+    }
+
+    const continuesWithoutSpace = /[-/／]$/.test(joined);
+    const needsSpace = !continuesWithoutSpace && (/[A-Za-z0-9)]$/.test(joined) || /^[A-Za-z0-9(]/.test(trimmed));
+    return `${joined}${needsSpace ? " " : ""}${trimmed}`;
+  }, "");
+}
+
+function isListLine(value: string): boolean {
+  return /^(?:[-*•・✓✔]|\d+[.)．、]|[（(]?\d+[）)]|[A-Za-z][.)])\s*/.test(value.trim());
+}
+
+function shouldReflowManualLines(lines: string[], unitsPerLine: number): boolean {
+  const nonEmptyLines = lines.map((line) => line.trim()).filter(Boolean);
+  if (nonEmptyLines.length <= 1) {
+    return false;
+  }
+
+  if (nonEmptyLines.some((line) => BAD_LINE_START_PATTERN.test(line) || BAD_LINE_END_PATTERN.test(line))) {
+    return true;
+  }
+
+  const compactStructureLimit = Math.min(18, unitsPerLine * 0.72);
+  if (nonEmptyLines.length <= 4 && nonEmptyLines.every((line) => textUnits(line) <= compactStructureLimit)) {
+    return false;
+  }
+
+  return nonEmptyLines.some((line) => textUnits(line) > unitsPerLine * 0.78);
+}
+
+function isAcceptableShortLine(value: string): boolean {
+  return /^[A-Z0-9][A-Za-z0-9 .+/#-]{0,8}$/.test(value.trim());
+}
+
 function normalizeTextLines(element: TextElement, fontSize: number): string {
   const maxLinesByHeight = Math.max(1, Math.floor((element.h * 72) / (fontSize * LINE_HEIGHT_FACTOR)));
   const roleLineCap = element.role === "title" ? 2 : element.role === "caption" ? 2 : 3;
   const lineCap = Math.min(maxLinesByHeight, roleLineCap);
   const unitsPerLine = maxUnitsPerLine(element.w, fontSize);
 
+  if (element.role === "title" && element.text.includes("\n")) {
+    if (!findTextLineBreakIssue(element)) {
+      return element.text.split(/\r?\n/).map((line) => line.trim()).join("\n");
+    }
+
+    return wrapParagraph(joinReflowLines(element.text.split(/\r?\n/)), unitsPerLine, lineCap).join("\n");
+  }
+
   if (element.text.includes("\n") && element.role !== "title") {
     const lines = element.text.split(/\r?\n/);
-    const nonEmptyLineCount = lines.filter((line) => line.trim()).length;
+    const hasBlankLine = lines.some((line) => !line.trim());
+    const nonEmptyLines = lines.filter((line) => line.trim());
+    if (nonEmptyLines.length > 1 && nonEmptyLines.some(isListLine)) {
+      return lines.join("\n");
+    }
+
+    if (!hasBlankLine && !isPreformattedText(element.text)) {
+      if (!shouldReflowManualLines(lines, unitsPerLine)) {
+        return lines.join("\n");
+      }
+
+      const joined = joinReflowLines(lines);
+      return wrapParagraph(joined, unitsPerLine, lineCap).join("\n");
+    }
+
+    const nonEmptyLineCount = nonEmptyLines.length;
     const wrapped = lines.flatMap((line) => {
       const trimmed = line.trim();
       if (!trimmed) {
@@ -150,6 +251,36 @@ function normalizeTextLines(element: TextElement, fontSize: number): string {
   }
 
   return wrapParagraph(element.text, unitsPerLine, lineCap).join("\n");
+}
+
+export function findTextLineBreakIssue(element: TextElement): string | undefined {
+  if (!element.text.includes("\n") || isPreformattedText(element.text)) {
+    return undefined;
+  }
+
+  const lines = element.text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length <= 1) {
+    return undefined;
+  }
+
+  if (lines.some(isListLine)) {
+    return undefined;
+  }
+
+  const badLine = lines.find((line) => BAD_LINE_START_PATTERN.test(line) || BAD_LINE_END_PATTERN.test(line));
+  if (badLine) {
+    return `Line "${badLine}" starts or ends with punctuation that should stay with adjacent text.`;
+  }
+
+  const lastLine = lines[lines.length - 1];
+  const lastLineUnits = textUnits(lastLine);
+  const previousUnits = Math.max(...lines.slice(0, -1).map(textUnits));
+  const minimumLastLineUnits = element.role === "title" ? 5 : 3;
+  if (!isAcceptableShortLine(lastLine) && (lastLineUnits < minimumLastLineUnits || (previousUnits > 0 && lastLineUnits / previousUnits < 0.22))) {
+    return `Last line "${lastLine}" is too short; rebalance the line break or shorten the copy.`;
+  }
+
+  return undefined;
 }
 
 function fitTextElement(element: TextElement, tokens: DesignTokens): TextElement {

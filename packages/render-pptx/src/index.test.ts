@@ -39,6 +39,22 @@ describe("PPTX renderer", () => {
     expect(result.warnings.some((warning) => warning.includes("layout.text-overflow-risk"))).toBe(false);
   });
 
+  it("automatically fixes bad line breaks before rendering", async () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    const title = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
+    if (title?.type === "text") {
+      title.text = "中継局とインターフェイスは、Zero Trustを適用する入口にな\nる";
+      title.w = 6.5;
+      title.h = 2.3;
+      title.fontSize = 30;
+    }
+
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-render-"));
+    const result = await renderDeckToPptx(deck, join(outputDir, "balanced-line-break.pptx"));
+
+    expect(result.warnings.some((warning) => warning.includes("layout.bad-line-break"))).toBe(false);
+  });
+
   it("does not hide non-text out-of-bounds errors by polishing", async () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     deck.slides[0].elements.push({

@@ -172,7 +172,8 @@ Before creating a DeckSpec, clarify these points when they are not already speci
 - Alignment: use a consistent 12-column or card grid. Align card tops, icon centers, and text baselines. Avoid arbitrary x/y positions when a schematic preset can provide the layout.
 - Typography: keep title tracking slightly tight, body text neutral, and line lengths short. If text does not fit naturally, shorten the copy rather than shrinking below accessibility minimums.
 - Line breaks: keep title lines visually balanced (usually 1-2 lines) and body text to short, even lines. Avoid manual ragged line breaks; let \`polish_deck_layout\` rebalance Japanese/English text where possible.
-- Cognitive load: use one visual grammar per slide. If there are more than 3-4 comparable ideas, use \`generate_schematic\` with a list/table/tree instead of placing many custom text boxes.
+- Cognitive load: use one visual grammar per slide. If there are more than 3-4 comparable ideas, use \`generate_schematic\` with a list/table/tree instead of placing many custom text boxes. Body-only enumerations without callout headings, icons, accent rules, or schematic structure are flagged by lint.
+- Blocking layout rules: \`layout.text-overflow-risk\`, \`layout.text-overlap\`, and \`layout.bad-line-break\` must be fixed before final PPTX delivery. Treat \`layout.enumeration-hierarchy\` as a strong design warning.
 - SVG compatibility: pptcreater accepts a safe SVG subset. Prefer \`generate_schematic\`, \`generate_svg\`, and registered assets; avoid unsupported filter effects, external images, scripts, CSS styles, and complex patterns unless sanitized successfully.
 
 ## Content modes

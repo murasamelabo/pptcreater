@@ -275,8 +275,9 @@ function collectSlideAccessibilityNotes(deck: DeckSpec, deckSlide: DeckSpec["sli
 
 export async function renderDeckToPptx(input: unknown, outputPath: string, options: RenderOptions = {}): Promise<RenderResult> {
   const parsedDeck = parseDeckSpec(input);
+  const polishFixableCodes = new Set(["layout.text-overflow-risk", "layout.bad-line-break"]);
   const prePolishErrors = lintDeckSpec(parsedDeck).issues.filter(
-    (item) => item.severity === "error" && item.code !== "layout.text-overflow-risk"
+    (item) => item.severity === "error" && !polishFixableCodes.has(item.code)
   );
   if (prePolishErrors.length > 0 && !options.allowLintErrors) {
     throw new Error(`Deck has ${prePolishErrors.length} lint error(s). Fix them before rendering or pass allowLintErrors.`);

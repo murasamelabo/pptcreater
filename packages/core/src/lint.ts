@@ -1,5 +1,5 @@
 ﻿import { contrastRatio, defaultTokens } from "./color.js";
-import { estimateTextOverflow, SLIDE_WIDE } from "./layout.js";
+import { estimateTextOverflow, findTextLineBreakIssue, SLIDE_WIDE } from "./layout.js";
 import type { DeckSpec, ShapeElement, Slide, SlideElement, TextElement } from "./schema.js";
 import { defaultFontSizeForRole } from "./typography.js";
 
@@ -148,6 +148,18 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
         );
       }
 
+      const lineBreakIssue = findTextLineBreakIssue(element);
+      if (lineBreakIssue) {
+        issues.push(
+          issue(
+            "error",
+            "layout.bad-line-break",
+            `${lineBreakIssue} Avoid orphan lines and punctuation-only breaks.`,
+            `${path}.text`
+          )
+        );
+      }
+
       const foreground = element.color ?? tokens.colors.text;
       const textBackground = element.contrastBackground ?? background;
       const ratio = contrastRatio(foreground, textBackground);
@@ -191,6 +203,23 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
   const textBoxes = slide.elements
     .map((element, elementIndex) => ({ element, elementIndex }))
     .filter((entry): entry is { element: TextElement; elementIndex: number } => entry.element.type === "text");
+
+  const bodyTextBoxes = textBoxes.filter(({ element }) => {
+    const fontSize = element.fontSize ?? defaultFontSizeForRole(element.role, tokens);
+    return element.role === "body" && element.text.length >= 8 && element.text.length <= 40 && fontSize >= 18;
+  });
+  const hierarchyTextBoxes = textBoxes.filter(({ element }) => element.role === "callout" || element.role === "title");
+  const visualElements = slide.elements.filter((element) => element.type !== "text");
+  if (bodyTextBoxes.length >= 3 && hierarchyTextBoxes.length < bodyTextBoxes.length && visualElements.length === 0) {
+    issues.push(
+      issue(
+        "warning",
+        "layout.enumeration-hierarchy",
+        "Large enumerations should use a visual hierarchy: callout headings, icons, accent rules, or a schematic list/table instead of body text boxes only.",
+        `slides.${slideIndex}`
+      )
+    );
+  }
 
   const opaqueShapes = slide.elements.filter(
     (element): element is ShapeElement =>
@@ -242,7 +271,7 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
       if (smallerArea > 0 && overlapArea / smallerArea > 0.25) {
         issues.push(
           issue(
-            "warning",
+            "error",
             "layout.text-overlap",
             `Text elements "${a.id}" and "${b.id}" overlap. Separate them so labels do not collide.`,
             `slides.${slideIndex}.elements.${textBoxes[j].elementIndex}`,
