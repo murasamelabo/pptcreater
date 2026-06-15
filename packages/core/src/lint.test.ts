@@ -113,6 +113,69 @@ describe("DeckSpec linting", () => {
     expect(report.issues.some((issue) => issue.code === "layout.bad-line-break")).toBe(false);
   });
 
+  it("allows compact Japanese label-value structures", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    const body = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "body");
+    if (body?.type === "text") {
+      body.text = "指標\n値";
+      body.w = 2;
+      body.h = 0.8;
+      body.fontSize = 20;
+    }
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "layout.bad-line-break")).toBe(false);
+  });
+
+  it("still flags punctuation-only compact line breaks", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    const body = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "body");
+    if (body?.type === "text") {
+      body.text = "指標\n、値";
+      body.w = 2;
+      body.h = 0.8;
+      body.fontSize = 20;
+    }
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const badBreak = report.issues.find((issue) => issue.code === "layout.bad-line-break");
+
+    expect(badBreak?.severity).toBe("error");
+  });
+
+  it("still flags compact orphan title lines", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    const title = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
+    if (title?.type === "text") {
+      title.text = "中継局と\nる";
+      title.w = 5;
+      title.h = 1.4;
+      title.fontSize = 30;
+    }
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const badBreak = report.issues.find((issue) => issue.code === "layout.bad-line-break");
+
+    expect(badBreak?.severity).toBe("error");
+  });
+
+  it("still flags compact orphan body lines", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    const body = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "body");
+    if (body?.type === "text") {
+      body.text = "中継局と\nる";
+      body.w = 3;
+      body.h = 0.9;
+      body.fontSize = 20;
+    }
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const badBreak = report.issues.find((issue) => issue.code === "layout.bad-line-break");
+
+    expect(badBreak?.severity).toBe("error");
+  });
+
   it("suggests visual hierarchy for body-only enumerations", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     deck.slides[0].elements = [

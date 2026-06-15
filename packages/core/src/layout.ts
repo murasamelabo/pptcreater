@@ -191,6 +191,11 @@ function isAcceptableShortLine(value: string): boolean {
   return /^[A-Z0-9][A-Za-z0-9 .+/#-]{0,8}$/.test(value.trim());
 }
 
+function isCompactManualStructure(element: TextElement, lines: string[]): boolean {
+  const compactStructureLimit = 10;
+  return element.role !== "title" && lines.length === 2 && lines.every((line) => textUnits(line.trim()) <= compactStructureLimit);
+}
+
 function normalizeTextLines(element: TextElement, fontSize: number): string {
   const maxLinesByHeight = Math.max(1, Math.floor((element.h * 72) / (fontSize * LINE_HEIGHT_FACTOR)));
   const roleLineCap = element.role === "title" ? 2 : element.role === "caption" ? 2 : 3;
@@ -277,6 +282,10 @@ export function findTextLineBreakIssue(element: TextElement): string | undefined
   const previousUnits = Math.max(...lines.slice(0, -1).map(textUnits));
   const minimumLastLineUnits = element.role === "title" ? 5 : 3;
   if (!isAcceptableShortLine(lastLine) && (lastLineUnits < minimumLastLineUnits || (previousUnits > 0 && lastLineUnits / previousUnits < 0.22))) {
+    if (isCompactManualStructure(element, lines) && lastLineUnits >= 1.7 && previousUnits <= 6) {
+      return undefined;
+    }
+
     return `Last line "${lastLine}" is too short; rebalance the line break or shorten the copy.`;
   }
 
