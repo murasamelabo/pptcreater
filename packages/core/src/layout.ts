@@ -13,9 +13,16 @@ const JAPANESE_WIDTH_FACTOR = 0.92;
 const ASCII_WIDTH_FACTOR = 0.52;
 const SPACE_WIDTH_FACTOR = 0.32;
 const LINE_HEIGHT_FACTOR = 1.22;
-const BREAK_AFTER_PATTERN = /[、。・,，/／\s]/;
 const BAD_LINE_START_PATTERN = /^[、。，．・,，/／!?！？:：;；）」』】\]\})]/;
 const BAD_LINE_END_PATTERN = /[（「『【\[\({]$/;
+// Characters that must not start a line (closing punctuation, small kana, prolonged sound mark).
+const NO_BREAK_BEFORE_PATTERN = /[、。，．・,.!?！？:：;；)\]\}）」』】〉》〕｝ーぁぃぅぇぉっゃゅょゎ々]/;
+// Characters that must not end a line (opening punctuation).
+const NO_BREAK_AFTER_PATTERN = /[（「『【〔｛(\[\{〈《]/;
+// Letters, digits, kana, and kanji count as line "content"; punctuation does not.
+const CONTENT_CHAR_PATTERN = /[A-Za-z0-9\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
+// An atomic token keeps Latin words, identifiers, and grouped numbers like 150,000 or v1.2 together.
+const WRAP_TOKEN_PATTERN = /[A-Za-z0-9]+(?:[.,_+#%@/'’-][A-Za-z0-9]+)*|\s+|[\s\S]/gu;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -27,13 +34,24 @@ function cloneElement<T extends SlideElement>(element: T): T {
 
 export function estimateTextOverflow(element: TextElement): { overflows: boolean; estimatedLines: number; maxLines: number } {
   const fontSize = element.fontSize ?? (element.role === "title" ? 32 : element.role === "caption" ? 14 : 22);
-  const maxUnitsPerLine = Math.max(1, element.w / ((fontSize * TEXT_WIDTH_FACTOR) / 72));
-  const estimatedLines = element.text
-    .split(/\r?\n/)
-    .reduce((sum, line) => sum + Math.max(1, Math.ceil(textUnits(line) / maxUnitsPerLine)), 0);
+  const maxUnits = maxUnitsPerLine(element.w, fontSize);
+  let estimatedLines = 0;
+  let unbreakableToken = false;
+  for (const rawLine of element.text.split(/\r?\n/)) {
+    if (!rawLine.trim()) {
+      estimatedLines += 1;
+      continue;
+    }
+
+    const wrapped = wrapTokens(rawLine, maxUnits);
+    estimatedLines += Math.max(1, wrapped.lines.length);
+    if (wrapped.overflow) {
+      unbreakableToken = true;
+    }
+  }
   const maxLines = Math.max(1, Math.floor((element.h * 72) / (fontSize * LINE_HEIGHT_FACTOR)));
   return {
-    overflows: estimatedLines > maxLines,
+    overflows: unbreakableToken || estimatedLines > maxLines,
     estimatedLines,
     maxLines
   };
@@ -73,79 +91,95 @@ export function isPreformattedText(value: string): boolean {
   return /(^|\n)[\t ]+\S/.test(value) || /[\t ]+$/.test(value);
 }
 
-function lineQualityPenalty(head: string, tail: string, maxUnits: number): number {
-  const trimmedHead = head.trim();
-  const trimmedTail = tail.trim();
-  let penalty = 0;
-
-  if (!trimmedHead || !trimmedTail) {
-    penalty += 1_000;
-  }
-
-  if (BAD_LINE_END_PATTERN.test(trimmedHead) || BAD_LINE_START_PATTERN.test(trimmedTail)) {
-    penalty += 160;
-  }
-
-  const tailUnits = textUnits(trimmedTail);
-  const minimumTailUnits = Math.min(5, maxUnits * 0.28);
-  if (tailUnits < minimumTailUnits) {
-    penalty += (minimumTailUnits - tailUnits) * 45;
-  }
-
-  return penalty;
+function tokenizeForWrap(value: string): string[] {
+  return value.match(WRAP_TOKEN_PATTERN) ?? [];
 }
 
-function splitAtBalancedPoint(value: string, maxUnits: number, targetUnits = maxUnits): [string, string] {
-  const chars = Array.from(value.trim());
-  let units = 0;
-  let bestIndex = 0;
-  let bestScore = Number.POSITIVE_INFINITY;
-
-  for (let index = 0; index < chars.length; index += 1) {
-    units += textUnits(chars[index]);
-    if (units > maxUnits) {
-      break;
-    }
-
-    const splitIndex = index + 1;
-    const head = chars.slice(0, splitIndex).join("");
-    const tail = chars.slice(splitIndex).join("");
-    const preferredBreak = BREAK_AFTER_PATTERN.test(chars[index]) ? -18 : 0;
-    const score = Math.abs(units - targetUnits) + lineQualityPenalty(head, tail, maxUnits) + preferredBreak;
-    if (score < bestScore) {
-      bestScore = score;
-      bestIndex = splitIndex;
-    }
+function canBreakBetween(left: string, right: string): boolean {
+  if (!left || !right) {
+    return true;
   }
 
-  const splitIndex = Math.max(1, bestIndex || Math.ceil(chars.length / 2));
-  return [chars.slice(0, splitIndex).join("").trim(), chars.slice(splitIndex).join("").trim()];
+  if (NO_BREAK_BEFORE_PATTERN.test(right)) {
+    return false;
+  }
+
+  return !NO_BREAK_AFTER_PATTERN.test(left);
 }
 
-function wrapParagraph(value: string, maxUnits: number, maxLines: number): string[] {
+// Greedy line breaking that never splits an atomic token (Latin word, identifier, or grouped
+// number) and never starts a line with closing punctuation. Reports overflow when a single
+// token is wider than the available line width, which would otherwise force an ugly mid-word break.
+function wrapTokens(value: string, maxUnits: number): { lines: string[]; overflow: boolean } {
+  const tokens = tokenizeForWrap(value);
   const lines: string[] = [];
-  let rest = value.trim();
+  let line = "";
+  let lineUnits = 0;
+  let overflow = false;
 
-  while (rest && lines.length < maxLines) {
-    if (textUnits(rest) <= maxUnits) {
-      lines.push(rest);
-      rest = "";
-      break;
+  for (const token of tokens) {
+    if (/^\s+$/.test(token)) {
+      if (line) {
+        line += " ";
+        lineUnits += SPACE_WIDTH_FACTOR / TEXT_WIDTH_FACTOR;
+      }
+      continue;
     }
 
-    const remainingLines = Math.max(1, maxLines - lines.length);
-    const remainingUnits = textUnits(rest);
-    const targetUnits = Math.min(maxUnits, Math.max(maxUnits * 0.55, remainingUnits / remainingLines));
-    const [head, tail] = splitAtBalancedPoint(rest, maxUnits, targetUnits);
-    lines.push(head);
-    rest = tail;
+    const tokenUnits = textUnits(token);
+    if (line === "") {
+      line = token;
+      lineUnits = tokenUnits;
+      if (tokenUnits > maxUnits) {
+        overflow = true;
+      }
+      continue;
+    }
+
+    if (lineUnits + tokenUnits <= maxUnits) {
+      line += token;
+      lineUnits += tokenUnits;
+      continue;
+    }
+
+    const trimmed = line.replace(/\s+$/, "");
+    if (canBreakBetween(trimmed.slice(-1), token[0])) {
+      lines.push(trimmed);
+      line = token;
+      lineUnits = tokenUnits;
+      if (tokenUnits > maxUnits) {
+        overflow = true;
+      }
+    } else {
+      line += token;
+      lineUnits += tokenUnits;
+    }
   }
 
-  if (rest && lines.length >= maxLines) {
-    lines.push(rest);
+  if (line.trim()) {
+    lines.push(line.trim());
   }
 
-  return lines.length ? lines : [value];
+  return { lines: lines.length ? lines : [value.trim()], overflow };
+}
+
+// Reduce the per-line width as far as possible while keeping the same line count, so the last
+// line is not left noticeably shorter than the others (avoids orphan lines on titles and bodies).
+function wrapBalanced(value: string, maxUnits: number): string[] {
+  const greedy = wrapTokens(value, maxUnits);
+  const lineCount = greedy.lines.length;
+  if (lineCount <= 1 || greedy.overflow) {
+    return greedy.lines;
+  }
+
+  const longestToken = Math.max(...tokenizeForWrap(value).filter((token) => token.trim()).map(textUnits), 0);
+  const balancedCap = Math.max(longestToken, textUnits(value) / lineCount + 0.5);
+  const balanced = wrapTokens(value, balancedCap);
+  return balanced.lines.length === lineCount && !balanced.overflow ? balanced.lines : greedy.lines;
+}
+
+function wrapParagraph(value: string, maxUnits: number): string[] {
+  return wrapBalanced(value.trim(), maxUnits);
 }
 
 function joinReflowLines(lines: string[]): string {
@@ -207,7 +241,7 @@ function normalizeTextLines(element: TextElement, fontSize: number): string {
       return element.text.split(/\r?\n/).map((line) => line.trim()).join("\n");
     }
 
-    return wrapParagraph(joinReflowLines(element.text.split(/\r?\n/)), unitsPerLine, lineCap).join("\n");
+    return wrapParagraph(joinReflowLines(element.text.split(/\r?\n/)), unitsPerLine).join("\n");
   }
 
   if (element.text.includes("\n") && element.role !== "title") {
@@ -224,10 +258,9 @@ function normalizeTextLines(element: TextElement, fontSize: number): string {
       }
 
       const joined = joinReflowLines(lines);
-      return wrapParagraph(joined, unitsPerLine, lineCap).join("\n");
+      return wrapParagraph(joined, unitsPerLine).join("\n");
     }
 
-    const nonEmptyLineCount = nonEmptyLines.length;
     const wrapped = lines.flatMap((line) => {
       const trimmed = line.trim();
       if (!trimmed) {
@@ -238,7 +271,7 @@ function normalizeTextLines(element: TextElement, fontSize: number): string {
         return [line];
       }
 
-      return wrapParagraph(trimmed, unitsPerLine, Math.max(1, lineCap - nonEmptyLineCount + 1));
+      return wrapParagraph(trimmed, unitsPerLine);
     });
     return wrapped.join("\n");
   }
@@ -255,7 +288,7 @@ function normalizeTextLines(element: TextElement, fontSize: number): string {
     return element.text.trim();
   }
 
-  return wrapParagraph(element.text, unitsPerLine, lineCap).join("\n");
+  return wrapParagraph(element.text, unitsPerLine).join("\n");
 }
 
 export function findTextLineBreakIssue(element: TextElement): string | undefined {
@@ -278,15 +311,11 @@ export function findTextLineBreakIssue(element: TextElement): string | undefined
   }
 
   const lastLine = lines[lines.length - 1];
-  const lastLineUnits = textUnits(lastLine);
-  const previousUnits = Math.max(...lines.slice(0, -1).map(textUnits));
-  const minimumLastLineUnits = element.role === "title" ? 5 : 3;
-  if (!isAcceptableShortLine(lastLine) && (lastLineUnits < minimumLastLineUnits || (previousUnits > 0 && lastLineUnits / previousUnits < 0.22))) {
-    if (isCompactManualStructure(element, lines) && lastLineUnits >= 1.7 && previousUnits <= 6) {
-      return undefined;
-    }
-
-    return `Last line "${lastLine}" is too short; rebalance the line break or shorten the copy.`;
+  const lastContentChars = Array.from(lastLine).filter((char) => CONTENT_CHAR_PATTERN.test(char)).length;
+  const previousMaxUnits = Math.max(...lines.slice(0, -1).map(textUnits), 0);
+  const isCompactLabelValue = isCompactManualStructure(element, lines) && previousMaxUnits <= 6;
+  if (lastContentChars <= 1 && !isAcceptableShortLine(lastLine) && !isCompactLabelValue) {
+    return `Last line "${lastLine}" is an orphan; rebalance the line break, widen the box, or shorten the copy.`;
   }
 
   return undefined;
@@ -299,15 +328,17 @@ function fitTextElement(element: TextElement, tokens: DesignTokens): TextElement
 
   for (let attempt = 0; attempt < 18; attempt += 1) {
     const text = normalizeTextLines(next, fontSize);
-    const overflow = estimateTextOverflow({ ...next, text, fontSize });
-    if (!overflow.overflows) {
+    const candidate = { ...next, text, fontSize };
+    const overflow = estimateTextOverflow(candidate);
+    const hasBadBreak = Boolean(findTextLineBreakIssue(candidate));
+    if (!overflow.overflows && !hasBadBreak) {
       next = { ...next, text };
       break;
     }
 
     fontSize = Math.max(minimumFontSize, fontSize - 1);
     if (fontSize === minimumFontSize) {
-      next = { ...next, text };
+      next = { ...next, text: normalizeTextLines(next, fontSize) };
       break;
     }
   }

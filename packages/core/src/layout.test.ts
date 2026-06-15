@@ -159,6 +159,68 @@ describe("layout polish", () => {
     expect(normalizedText.type === "text" ? normalizedText.text : "").toBe("Zero Trust\nArchitecture");
   });
 
+  it("never splits numbers, Latin words, or identifiers across lines", () => {
+    const make = (text: string, w: number): Slide => ({
+      id: "atomic",
+      title: "Atomic",
+      layout: "title-content",
+      elements: [
+        {
+          id: "body",
+          type: "text",
+          role: "body",
+          text,
+          x: 1,
+          y: 1,
+          w,
+          h: 1.6,
+          fontSize: 12,
+          bold: false,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    });
+
+    const numberText = normalizeSlideLayout(make("1 AD ドメインあたり 150,000 オブジェクト未満か。", 2.5)).elements[0];
+    const latinText = normalizeSlideLayout(make("Provisioning Service を確認する", 1.6)).elements[0];
+    const identifierText = normalizeSlideLayout(make("dirSyncEnabled / onPremisesDistinguishedName を比較。", 2.7)).elements[0];
+
+    expect(numberText.type === "text" ? numberText.text : "").not.toMatch(/150,\n/);
+    expect(numberText.type === "text" ? numberText.text : "").toContain("150,000");
+    expect(latinText.type === "text" ? latinText.text : "").not.toMatch(/Provisioni\n/);
+    expect(identifierText.type === "text" ? identifierText.text : "").toContain("onPremisesDistinguishedName");
+  });
+
+  it("does not orphan trailing punctuation when wrapping body text", () => {
+    const slide: Slide = {
+      id: "natural-end",
+      title: "Natural end",
+      layout: "title-content",
+      elements: [
+        {
+          id: "body",
+          type: "text",
+          role: "body",
+          text: "Hybrid Join / device writeback を利用していないか。",
+          x: 1,
+          y: 1,
+          w: 2.6,
+          h: 1.6,
+          fontSize: 11,
+          bold: false,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const text = normalized.elements[0].type === "text" ? normalized.elements[0].text : "";
+
+    expect(text).not.toMatch(/\n。$/);
+  });
+
   it("preserves compact hyphenated or slash continuation lines", () => {
     const slide: Slide = {
       id: "continuation",
