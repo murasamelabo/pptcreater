@@ -35,7 +35,7 @@ export const BUILTIN_SKILL_PACKS: SkillPack[] = [
       "Use one bold assertion title per slide",
       "Prefer modular cards, timelines, flows, and dashboard-like blocks over paragraphs",
       "Use generous whitespace and one restrained accent color",
-      "Use editable native PowerPoint shapes/text for diagrams whenever later editing is expected",
+      "Use editable native PowerPoint shapes/text for simple cards and dividers; for any diagram with arrows or connected nodes, use generate_diagram (ponchi-e) or generate_schematic so connectors stay attached and clean",
       "Use source visuals as inspiration or recreate them as editable objects unless exact quotation is required and rights are clear",
       "Run polish_deck_layout and lint_deck before render_pptx"
     ],

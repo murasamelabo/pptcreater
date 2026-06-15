@@ -25,6 +25,36 @@ describe("ponchi diagram rendering", () => {
       })
     ).toThrow(/unknown target node/);
   });
+
+  it("draws explicit polygon arrowheads instead of relying on SVG markers", () => {
+    const rendered = renderPonchiDiagram({
+      title: "Flow",
+      summary: "A to B",
+      longDescription: "A simple two node flow used to verify that connectors render explicit arrowheads.",
+      nodes: [
+        { id: "a", label: "Source", x: 40, y: 200, w: 180, h: 90, kind: "system" },
+        { id: "b", label: "Target", x: 520, y: 200, w: 180, h: 90, kind: "cloud" }
+      ],
+      arrows: [{ from: "a", to: "b", label: "sync", style: "orthogonal", bidirectional: true }]
+    });
+
+    expect(rendered.svg).toContain("<polygon");
+    expect(rendered.svg).not.toContain("marker-end");
+  });
+
+  it("keeps multi-word node labels from splitting words across lines", () => {
+    const rendered = renderPonchiDiagram({
+      title: "Labels",
+      summary: "wrapping",
+      longDescription: "Verifies that node labels wrap on word boundaries rather than splitting words.",
+      nodes: [{ id: "n", label: "Provisioning Service", x: 40, y: 200, w: 180, h: 96, kind: "cloud" }],
+      arrows: []
+    });
+
+    // The word "Provisioning" must stay whole on one text line (no "Provisio" / "ning" split).
+    expect(rendered.svg).toContain(">Provisioning<");
+    expect(rendered.svg).toContain(">Service<");
+  });
 });
 
 describe("schematic diagram rendering", () => {

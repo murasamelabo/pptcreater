@@ -327,7 +327,7 @@ function heroSlide(theme: Theme, isJapanese: boolean, title: string, subtitle: s
       "panel-body",
       "body",
       isJapanese
-        ? "各スライドは1メッセージ。図・カードは編集可能なPowerPointオブジェクトです。"
+        ? "各スライドは1メッセージ。図やカードは編集可能なPowerPointオブジェクトです。"
         : "One message per slide. Cards and shapes are editable PowerPoint objects.",
       8.1,
       2.7,

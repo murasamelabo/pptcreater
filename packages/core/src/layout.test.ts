@@ -192,6 +192,52 @@ describe("layout polish", () => {
     expect(identifierText.type === "text" ? identifierText.text : "").toContain("onPremisesDistinguishedName");
   });
 
+  it("never splits katakana loanwords or kanji compounds across lines", () => {
+    const make = (text: string, w: number): Slide => ({
+      id: "jp-words",
+      title: "JP words",
+      layout: "title-content",
+      elements: [
+        {
+          id: "body",
+          type: "text",
+          role: "body",
+          text,
+          x: 1,
+          y: 1,
+          w,
+          h: 1.6,
+          fontSize: 11,
+          bold: false,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    });
+
+    const katakana = normalizeSlideLayout(make("1 AD ドメインあたり 150,000 オブジェクト未満か。", 2.4)).elements[0];
+    const member = normalizeSlideLayout(make("同期対象グループが 50,000 メンバー未満か。", 2.4)).elements[0];
+    const kanji = normalizeSlideLayout(make("AD と Entra ID の対象件数、dirSyncEnabled、削除予定数を比較。", 2.6)).elements[0];
+
+    const katakanaText = katakana.type === "text" ? katakana.text : "";
+    const memberText = member.type === "text" ? member.text : "";
+    const kanjiText = kanji.type === "text" ? kanji.text : "";
+
+    // Katakana loanwords stay intact on a single line.
+    for (const line of katakanaText.split("\n")) {
+      expect(line.includes("オ") ? line.includes("オブジェクト") : true).toBe(true);
+    }
+    expect(katakanaText).toContain("オブジェクト");
+    expect(memberText).toContain("メンバー");
+    for (const line of memberText.split("\n")) {
+      expect(line.includes("メ") ? line.includes("メンバー") : true).toBe(true);
+    }
+    // Two-character kanji compounds are never split between lines.
+    expect(kanjiText).toContain("削除");
+    expect(kanjiText).not.toMatch(/削\n/);
+    expect(kanjiText).not.toMatch(/\n除/);
+  });
+
   it("does not orphan trailing punctuation when wrapping body text", () => {
     const slide: Slide = {
       id: "natural-end",

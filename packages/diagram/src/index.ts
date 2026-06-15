@@ -3,17 +3,24 @@
 export const DiagramNodeSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
+  sublabel: z.string().optional(),
   x: z.number().min(0),
   y: z.number().min(0),
   w: z.number().positive().default(160),
   h: z.number().positive().default(72),
-  kind: z.enum(["actor", "system", "process", "data", "note"]).default("process")
+  kind: z.enum(["actor", "system", "process", "data", "note", "cloud"]).default("process"),
+  icon: z.enum(["actor", "system", "process", "data", "note", "cloud", "none"]).optional(),
+  accent: z.string().regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/).optional(),
+  emphasis: z.boolean().default(false)
 });
 
 export const DiagramArrowSchema = z.object({
   from: z.string().min(1),
   to: z.string().min(1),
-  label: z.string().optional()
+  label: z.string().optional(),
+  style: z.enum(["straight", "orthogonal"]).default("orthogonal"),
+  dashed: z.boolean().default(false),
+  bidirectional: z.boolean().default(false)
 });
 
 export const DiagramGroupSchema = z.object({
@@ -151,12 +158,13 @@ const SCHEMATIC_PALETTES: Record<z.infer<typeof SchematicToneSchema>, SchematicP
   }
 };
 
-const NODE_COLORS: Record<PonchiDiagram["nodes"][number]["kind"], string> = {
-  actor: "#dbeafe",
-  system: "#e0f2fe",
-  process: "#ffffff",
-  data: "#dcfce7",
-  note: "#fef9c3"
+const NODE_COLORS: Record<PonchiDiagram["nodes"][number]["kind"], { fill: string; stroke: string; accent: string }> = {
+  actor: { fill: "#eef2ff", stroke: "#c7d2fe", accent: "#4f46e5" },
+  system: { fill: "#eff6ff", stroke: "#bfdbfe", accent: "#2563eb" },
+  process: { fill: "#ffffff", stroke: "#d8dee9", accent: "#0f766e" },
+  data: { fill: "#ecfdf5", stroke: "#bbf7d0", accent: "#059669" },
+  note: { fill: "#fffbeb", stroke: "#fde68a", accent: "#b45309" },
+  cloud: { fill: "#f5f3ff", stroke: "#ddd6fe", accent: "#7c3aed" }
 };
 
 function escapeXml(value: string): string {
@@ -168,13 +176,36 @@ function escapeXml(value: string): string {
 }
 
 function wrapLabel(value: string, maxChars = 14): string[] {
-  if (value.length <= maxChars) {
-    return [value];
+  const text = value.trim();
+  if (text.length <= maxChars) {
+    return [text];
   }
 
+  // Word-aware wrapping for space-separated (Latin) labels so words are never split mid-word.
+  if (/\s/.test(text)) {
+    const words = text.split(/\s+/);
+    const lines: string[] = [];
+    let line = "";
+    for (const word of words) {
+      if (!line) {
+        line = word;
+      } else if ((line + " " + word).length <= maxChars) {
+        line += ` ${word}`;
+      } else {
+        lines.push(line);
+        line = word;
+      }
+    }
+    if (line) {
+      lines.push(line);
+    }
+    return lines.slice(0, 3);
+  }
+
+  // CJK labels have no spaces; fall back to a fixed character count per line.
   const lines: string[] = [];
-  for (let index = 0; index < value.length; index += maxChars) {
-    lines.push(value.slice(index, index + maxChars));
+  for (let index = 0; index < text.length; index += maxChars) {
+    lines.push(text.slice(index, index + maxChars));
   }
   return lines.slice(0, 3);
 }
@@ -379,17 +410,162 @@ function centerOf(node: PonchiDiagram["nodes"][number]): { x: number; y: number 
   return { x: node.x + node.w / 2, y: node.y + node.h / 2 };
 }
 
+type Point = { x: number; y: number };
+
+// Inline, PowerPoint-safe icon glyphs (stroke paths) drawn centered in a 24x24 box.
+function nodeIconGlyph(kind: PonchiDiagram["nodes"][number]["kind"], cx: number, cy: number, color: string): string {
+  const s = `stroke="${color}" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"`;
+  const g = (body: string): string => `<g transform="translate(${cx - 12} ${cy - 12})">${body}</g>`;
+  switch (kind) {
+    case "actor":
+      return g(`<circle cx="12" cy="8" r="3.4" ${s} /><path d="M5.5 19c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" ${s} />`);
+    case "system":
+      return g(`<rect x="4" y="5" width="16" height="5" rx="1.6" ${s} /><rect x="4" y="13" width="16" height="5" rx="1.6" ${s} /><circle cx="7.5" cy="7.5" r="0.9" fill="${color}" /><circle cx="7.5" cy="15.5" r="0.9" fill="${color}" />`);
+    case "data":
+      return g(`<ellipse cx="12" cy="6.5" rx="7" ry="2.8" ${s} /><path d="M5 6.5v11c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8v-11" ${s} /><path d="M5 12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8" ${s} />`);
+    case "cloud":
+      return g(`<path d="M7 17h10a3.4 3.4 0 0 0 .3-6.8A5 5 0 0 0 7.6 9.4 3.8 3.8 0 0 0 7 17z" ${s} />`);
+    case "note":
+      return g(`<path d="M6 4h8l4 4v12H6z" ${s} /><path d="M14 4v4h4" ${s} /><path d="M9 12h6M9 15h6" ${s} />`);
+    default:
+      return g(`<circle cx="12" cy="12" r="7.5" ${s} /><path d="M12 4.5v2M12 17.5v2M4.5 12h2M17.5 12h2" ${s} />`);
+  }
+}
+
+// Point on the border of a node rectangle along the ray from its center toward (tx, ty).
+function edgePoint(node: PonchiDiagram["nodes"][number], tx: number, ty: number): Point {
+  const c = centerOf(node);
+  const dx = tx - c.x;
+  const dy = ty - c.y;
+  if (dx === 0 && dy === 0) {
+    return c;
+  }
+
+  const scale = Math.min(
+    dx !== 0 ? node.w / 2 / Math.abs(dx) : Number.POSITIVE_INFINITY,
+    dy !== 0 ? node.h / 2 / Math.abs(dy) : Number.POSITIVE_INFINITY
+  );
+  return { x: c.x + dx * scale, y: c.y + dy * scale };
+}
+
+function arrowHead(tip: Point, dir: Point, color: string, size = 11): string {
+  const base = { x: tip.x - dir.x * size, y: tip.y - dir.y * size };
+  const px = -dir.y;
+  const py = dir.x;
+  const half = size * 0.55;
+  const a = `${(base.x + px * half).toFixed(1)} ${(base.y + py * half).toFixed(1)}`;
+  const b = `${(base.x - px * half).toFixed(1)} ${(base.y - py * half).toFixed(1)}`;
+  return `<polygon points="${tip.x.toFixed(1)} ${tip.y.toFixed(1)} ${a} ${b}" fill="${color}" />`;
+}
+
+// Build an orthogonal (elbow) or straight connector that starts and ends on the node borders, with
+// an explicit arrowhead (PowerPoint renders SVG markers unreliably, so we draw the head as a polygon).
+function connector(
+  from: PonchiDiagram["nodes"][number],
+  to: PonchiDiagram["nodes"][number],
+  options: { color: string; dashed: boolean; bidirectional: boolean; orthogonal: boolean; label?: string }
+): string {
+  const a = centerOf(from);
+  const b = centerOf(to);
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const horizontal = Math.abs(dx) >= Math.abs(dy);
+  const dash = options.dashed ? ` stroke-dasharray="7 5"` : "";
+  const strokeWidth = 2.4;
+
+  let start: Point;
+  let end: Point;
+  let endDir: Point;
+  let startDir: Point;
+  let path: string;
+
+  if (options.orthogonal && horizontal) {
+    const sx = dx >= 0 ? from.x + from.w : from.x;
+    const ex = dx >= 0 ? to.x : to.x + to.w;
+    start = { x: sx, y: a.y };
+    end = { x: ex, y: b.y };
+    const midX = (sx + ex) / 2;
+    path = `M${start.x} ${start.y} H${midX} V${end.y} H${end.x}`;
+    endDir = { x: Math.sign(ex - midX) || (dx >= 0 ? 1 : -1), y: 0 };
+    startDir = { x: dx >= 0 ? -1 : 1, y: 0 };
+  } else if (options.orthogonal) {
+    const sy = dy >= 0 ? from.y + from.h : from.y;
+    const ey = dy >= 0 ? to.y : to.y + to.h;
+    start = { x: a.x, y: sy };
+    end = { x: b.x, y: ey };
+    const midY = (sy + ey) / 2;
+    path = `M${start.x} ${start.y} V${midY} H${end.x} V${end.y}`;
+    endDir = { x: 0, y: Math.sign(ey - midY) || (dy >= 0 ? 1 : -1) };
+    startDir = { x: 0, y: dy >= 0 ? -1 : 1 };
+  } else {
+    start = edgePoint(from, b.x, b.y);
+    end = edgePoint(to, a.x, a.y);
+    const len = Math.hypot(end.x - start.x, end.y - start.y) || 1;
+    endDir = { x: (end.x - start.x) / len, y: (end.y - start.y) / len };
+    startDir = { x: -endDir.x, y: -endDir.y };
+    path = `M${start.x.toFixed(1)} ${start.y.toFixed(1)} L${end.x.toFixed(1)} ${end.y.toFixed(1)}`;
+  }
+
+  const parts = [
+    `<path d="${path}" fill="none" stroke="${options.color}" stroke-width="${strokeWidth}"${dash} stroke-linejoin="round" stroke-linecap="round" />`,
+    arrowHead(end, endDir, options.color)
+  ];
+  if (options.bidirectional) {
+    parts.push(arrowHead(start, startDir, options.color));
+  }
+
+  if (options.label) {
+    const lx = (start.x + end.x) / 2;
+    const ly = (start.y + end.y) / 2;
+    const chipW = Math.min(220, options.label.length * 9 + 20);
+    parts.push(
+      `<rect x="${(lx - chipW / 2).toFixed(1)}" y="${(ly - 13).toFixed(1)}" width="${chipW}" height="22" rx="11" fill="#ffffff" stroke="${options.color}" stroke-opacity="0.35" />`,
+      `<text x="${lx.toFixed(1)}" y="${(ly + 3).toFixed(1)}" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="600" fill="#334155">${escapeXml(options.label)}</text>`
+    );
+  }
+
+  return parts.join("");
+}
+
+function ponchiNode(node: PonchiDiagram["nodes"][number]): string {
+  const palette = NODE_COLORS[node.kind];
+  const accent = node.accent ?? palette.accent;
+  const c = centerOf(node);
+  const icon = node.icon ?? node.kind;
+  const hasIcon = icon !== "none";
+  const labelLines = wrapLabel(node.label, Math.max(8, Math.floor(node.w / 11)));
+  const sublabelLines = node.sublabel ? wrapLabel(node.sublabel, Math.max(10, Math.floor(node.w / 8))) : [];
+  const iconTop = node.y + 18;
+  const labelStartY = c.y - (labelLines.length - 1) * 9 + (hasIcon ? 12 : 0) - (sublabelLines.length ? 6 : 0);
+
+  const parts = [
+    // Soft shadow for depth (offset translucent rect; opacity renders reliably in PowerPoint).
+    `<rect x="${node.x + 2}" y="${node.y + 4}" width="${node.w}" height="${node.h}" rx="16" fill="#0f172a" fill-opacity="0.06" />`,
+    `<rect x="${node.x}" y="${node.y}" width="${node.w}" height="${node.h}" rx="16" fill="${palette.fill}" stroke="${node.emphasis ? accent : palette.stroke}" stroke-width="${node.emphasis ? 2.4 : 1.4}" />`,
+    `<rect x="${node.x}" y="${node.y}" width="${node.w}" height="6" rx="3" fill="${accent}" />`
+  ];
+
+  if (hasIcon) {
+    parts.push(nodeIconGlyph(icon as PonchiDiagram["nodes"][number]["kind"], c.x, iconTop + 6, accent));
+  }
+
+  labelLines.forEach((line, index) => {
+    parts.push(
+      `<text x="${c.x}" y="${(labelStartY + index * 18).toFixed(1)}" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#0f172a">${escapeXml(line)}</text>`
+    );
+  });
+  sublabelLines.forEach((line, index) => {
+    parts.push(
+      `<text x="${c.x}" y="${(labelStartY + labelLines.length * 18 + index * 15 + 2).toFixed(1)}" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="500" fill="#52606d">${escapeXml(line)}</text>`
+    );
+  });
+
+  return parts.join("");
+}
+
 export function renderPonchiDiagram(input: unknown): { svg: string; summary: string; longDescription: string } {
   const diagram = PonchiDiagramSchema.parse(input);
   const nodesById = new Map(diagram.nodes.map((node) => [node.id, node]));
-
-  const defs = [
-    "<defs>",
-    "<marker id=\"arrow\" markerWidth=\"12\" markerHeight=\"12\" refX=\"10\" refY=\"6\" orient=\"auto\">",
-    "<path d=\"M2,2 L10,6 L2,10 z\" fill=\"#334155\" />",
-    "</marker>",
-    "</defs>"
-  ].join("");
 
   const groups = diagram.groups
     .map((group) => {
@@ -398,14 +574,14 @@ export function renderPonchiDiagram(input: unknown): { svg: string; summary: str
         return "";
       }
 
-      const minX = Math.min(...groupedNodes.map((node) => node.x)) - 16;
-      const minY = Math.min(...groupedNodes.map((node) => node.y)) - 30;
-      const maxX = Math.max(...groupedNodes.map((node) => node.x + node.w)) + 16;
-      const maxY = Math.max(...groupedNodes.map((node) => node.y + node.h)) + 16;
+      const minX = Math.min(...groupedNodes.map((node) => node.x)) - 20;
+      const minY = Math.min(...groupedNodes.map((node) => node.y)) - 38;
+      const maxX = Math.max(...groupedNodes.map((node) => node.x + node.w)) + 20;
+      const maxY = Math.max(...groupedNodes.map((node) => node.y + node.h)) + 20;
 
       return [
-        `<rect x="${minX}" y="${minY}" width="${maxX - minX}" height="${maxY - minY}" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-dasharray="6 4" />`,
-        `<text x="${minX + 12}" y="${minY + 20}" font-family="Arial, sans-serif" font-size="14" fill="#334155">${escapeXml(group.label)}</text>`
+        `<rect x="${minX}" y="${minY}" width="${maxX - minX}" height="${maxY - minY}" rx="20" fill="#f8fafc" fill-opacity="0.7" stroke="#cbd5e1" stroke-dasharray="2 6" stroke-linecap="round" />`,
+        `<text x="${minX + 18}" y="${minY + 24}" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#64748b">${escapeXml(group.label)}</text>`
       ].join("");
     })
     .join("");
@@ -418,35 +594,23 @@ export function renderPonchiDiagram(input: unknown): { svg: string; summary: str
         return "";
       }
 
-      const start = centerOf(from);
-      const end = centerOf(to);
-      const labelX = (start.x + end.x) / 2;
-      const labelY = (start.y + end.y) / 2 - 8;
-
-      return [
-        `<line x1="${start.x}" y1="${start.y}" x2="${end.x}" y2="${end.y}" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />`,
-        arrow.label
-          ? `<text x="${labelX}" y="${labelY}" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#334155">${escapeXml(arrow.label)}</text>`
-          : ""
-      ].join("");
+      return connector(from, to, {
+        color: "#475569",
+        dashed: arrow.dashed,
+        bidirectional: arrow.bidirectional,
+        orthogonal: arrow.style === "orthogonal",
+        label: arrow.label
+      });
     })
     .join("");
 
-  const nodes = diagram.nodes
-    .map((node) => {
-      return [
-        `<rect x="${node.x}" y="${node.y}" width="${node.w}" height="${node.h}" rx="14" fill="${NODE_COLORS[node.kind]}" stroke="#64748b" />`,
-        `<text x="${node.x + node.w / 2}" y="${node.y + node.h / 2 + 5}" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#0f172a">${escapeXml(node.label)}</text>`
-      ].join("");
-    })
-    .join("");
+  const nodes = diagram.nodes.map((node) => ponchiNode(node)).join("");
 
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${diagram.width} ${diagram.height}" role="img">`,
     `<title>${escapeXml(diagram.title)}</title>`,
     `<desc>${escapeXml(diagram.longDescription)}</desc>`,
     `<rect width="${diagram.width}" height="${diagram.height}" fill="#ffffff" />`,
-    defs,
     groups,
     arrows,
     nodes,

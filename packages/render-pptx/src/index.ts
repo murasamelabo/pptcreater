@@ -275,12 +275,23 @@ function collectSlideAccessibilityNotes(deck: DeckSpec, deckSlide: DeckSpec["sli
 
 export async function renderDeckToPptx(input: unknown, outputPath: string, options: RenderOptions = {}): Promise<RenderResult> {
   const parsedDeck = parseDeckSpec(input);
-  const polishFixableCodes = new Set(["layout.text-overflow-risk", "layout.bad-line-break"]);
+  // Errors that layout polish deterministically resolves (text wrapping/fitting and reading-order
+  // reassignment) must not block rendering. Everything else — out-of-bounds shapes, duplicate ids,
+  // low contrast, missing alt text — is a genuine authoring mistake and is surfaced before we render.
+  const polishFixableCodes = new Set([
+    "layout.text-overflow-risk",
+    "layout.bad-line-break",
+    "element.reading-order-duplicate"
+  ]);
   const prePolishErrors = lintDeckSpec(parsedDeck).issues.filter(
     (item) => item.severity === "error" && !polishFixableCodes.has(item.code)
   );
   if (prePolishErrors.length > 0 && !options.allowLintErrors) {
-    throw new Error(`Deck has ${prePolishErrors.length} lint error(s). Fix them before rendering or pass allowLintErrors.`);
+    const summary = prePolishErrors
+      .slice(0, 8)
+      .map((item) => `${item.code} (${item.path})`)
+      .join("; ");
+    throw new Error(`Deck has ${prePolishErrors.length} lint error(s) that layout polish cannot fix: ${summary}.`);
   }
 
   const deck = normalizeDeckLayout(parsedDeck);
@@ -288,7 +299,14 @@ export async function renderDeckToPptx(input: unknown, outputPath: string, optio
   const warnings = lintReport.issues.map((item) => `${item.severity}:${item.code}:${item.path}:${item.message}`);
   const errors = lintReport.issues.filter((item) => item.severity === "error");
   if (errors.length > 0 && !options.allowLintErrors) {
-    throw new Error(`Deck has ${errors.length} lint error(s). Fix them before rendering or pass allowLintErrors.`);
+    const summary = errors
+      .slice(0, 8)
+      .map((item) => `${item.code} (${item.path})`)
+      .join("; ");
+    throw new Error(
+      `Deck still has ${errors.length} lint error(s) after layout polish: ${summary}. ` +
+        "Shorten the copy, enlarge the box, raise contrast, or add alt text."
+    );
   }
   const tokens = deck.tokens ?? defaultTokens(deck.locale);
   const pptx = new PptxGenJSConstructor();

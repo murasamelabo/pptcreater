@@ -9,20 +9,33 @@ export const SLIDE_WIDE = {
 };
 
 const TEXT_WIDTH_FACTOR = 0.52;
-const JAPANESE_WIDTH_FACTOR = 0.92;
-const ASCII_WIDTH_FACTOR = 0.52;
-const SPACE_WIDTH_FACTOR = 0.32;
+// Full-width kana/kanji render at ~1 em; the previous 0.92 under-counted width so PowerPoint
+// fit fewer characters per line than we predicted and re-wrapped (splitting words).
+const JAPANESE_WIDTH_FACTOR = 1.0;
+const ASCII_WIDTH_FACTOR = 0.55;
+const SPACE_WIDTH_FACTOR = 0.3;
 const LINE_HEIGHT_FACTOR = 1.22;
+// Wrap slightly before the true box width so PowerPoint's own greedy wrap never re-breaks a line
+// we already balanced (a re-break is what splits Japanese words and orphans punctuation).
+const LINE_WIDTH_SAFETY = 0.94;
 const BAD_LINE_START_PATTERN = /^[、。，．・,，/／!?！？:：;；）」』】\]\})]/;
 const BAD_LINE_END_PATTERN = /[（「『【\[\({]$/;
-// Characters that must not start a line (closing punctuation, small kana, prolonged sound mark).
-const NO_BREAK_BEFORE_PATTERN = /[、。，．・,.!?！？:：;；)\]\}）」』】〉》〕｝ーぁぃぅぇぉっゃゅょゎ々]/;
+// Characters that must not start a line (closing punctuation, small kana, prolonged sound mark,
+// and a spaced slash separator so "A / B" never wraps to a line beginning with "/").
+const NO_BREAK_BEFORE_PATTERN = /[、。，．・,.!?！？:：;；)\]\}）」』】〉》〕｝ーぁぃぅぇぉっゃゅょゎ々/／]/;
 // Characters that must not end a line (opening punctuation).
 const NO_BREAK_AFTER_PATTERN = /[（「『【〔｛(\[\{〈《]/;
 // Letters, digits, kana, and kanji count as line "content"; punctuation does not.
 const CONTENT_CHAR_PATTERN = /[A-Za-z0-9\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
-// An atomic token keeps Latin words, identifiers, and grouped numbers like 150,000 or v1.2 together.
-const WRAP_TOKEN_PATTERN = /[A-Za-z0-9]+(?:[.,_+#%@/'’-][A-Za-z0-9]+)*|\s+|[\s\S]/gu;
+// Full-width glyphs (kana, kanji, prolonged-sound mark, middle dot, full-width forms) take ~1 em.
+const FULL_WIDTH_PATTERN = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}\u30FC\u30FB\uFF01-\uFF60\uFFE0-\uFFE6]/u;
+// A kanji (Han) ideograph; adjacent Han glyphs stay together so compounds like 削除 are not split.
+const HAN_PATTERN = /\p{Script=Han}/u;
+// A maximal run of katakana stays together so loanwords (オブジェクト, メンバー) never break.
+const KATAKANA_RUN = "[\\u30A0-\\u30FF\\u31F0-\\u31FF\\uFF66-\\uFF9F\\u30FC\\u30FB]+";
+// An atomic token keeps Latin words, identifiers, grouped numbers (150,000, v1.2), and katakana
+// loanwords together; every other character (kanji, hiragana, punctuation) is its own token.
+const WRAP_TOKEN_PATTERN = new RegExp(`[A-Za-z0-9]+(?:[.,_+#%@/'’-][A-Za-z0-9]+)*|${KATAKANA_RUN}|\\s+|[\\s\\S]`, "gu");
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -35,6 +48,7 @@ function cloneElement<T extends SlideElement>(element: T): T {
 export function estimateTextOverflow(element: TextElement): { overflows: boolean; estimatedLines: number; maxLines: number } {
   const fontSize = element.fontSize ?? (element.role === "title" ? 32 : element.role === "caption" ? 14 : 22);
   const maxUnits = maxUnitsPerLine(element.w, fontSize);
+  const hardCap = lineCapacity(element.w, fontSize);
   let estimatedLines = 0;
   let unbreakableToken = false;
   for (const rawLine of element.text.split(/\r?\n/)) {
@@ -45,7 +59,9 @@ export function estimateTextOverflow(element: TextElement): { overflows: boolean
 
     const wrapped = wrapTokens(rawLine, maxUnits);
     estimatedLines += Math.max(1, wrapped.lines.length);
-    if (wrapped.overflow) {
+    // A token wider than the box, or a forced no-break run that still exceeds the real box width,
+    // will be re-wrapped by PowerPoint and must be treated as overflow.
+    if (wrapped.overflow || wrapped.lines.some((line) => textUnits(line) > hardCap + 0.01)) {
       unbreakableToken = true;
     }
   }
@@ -59,14 +75,16 @@ export function estimateTextOverflow(element: TextElement): { overflows: boolean
 
 function textMinimumFontSize(element: TextElement): number {
   if (element.role === "title") {
-    return 28;
+    return 24;
   }
 
   if (element.role === "caption") {
-    return 12;
+    // Captions include hand-placed diagram labels in very small boxes; allow shrinking far enough
+    // to fit them (a non-blocking small-font warning is preferable to overflow or a blocked render).
+    return 8;
   }
 
-  return 20;
+  return 14;
 }
 
 function textUnits(value: string): number {
@@ -75,7 +93,7 @@ function textUnits(value: string): number {
       return sum + SPACE_WIDTH_FACTOR / TEXT_WIDTH_FACTOR;
     }
 
-    if (/[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(char)) {
+    if (FULL_WIDTH_PATTERN.test(char)) {
       return sum + JAPANESE_WIDTH_FACTOR / TEXT_WIDTH_FACTOR;
     }
 
@@ -84,6 +102,14 @@ function textUnits(value: string): number {
 }
 
 function maxUnitsPerLine(width: number, fontSize: number): number {
+  const usableWidth = Math.max(0.1, width * LINE_WIDTH_SAFETY);
+  return Math.max(2, usableWidth / ((fontSize * TEXT_WIDTH_FACTOR) / 72));
+}
+
+// The true number of units a box holds at a font size (no safety margin). Used to validate that a
+// line really overflows, so keeping a kanji compound together (which may slightly exceed the early
+// wrap target) is not mistaken for overflow when it still fits the actual box.
+function lineCapacity(width: number, fontSize: number): number {
   return Math.max(2, width / ((fontSize * TEXT_WIDTH_FACTOR) / 72));
 }
 
@@ -104,7 +130,16 @@ function canBreakBetween(left: string, right: string): boolean {
     return false;
   }
 
-  return !NO_BREAK_AFTER_PATTERN.test(left);
+  if (NO_BREAK_AFTER_PATTERN.test(left)) {
+    return false;
+  }
+
+  // Keep adjacent kanji together so two-character compounds (削除, 場合, 未満) are never split.
+  if (HAN_PATTERN.test(left) && HAN_PATTERN.test(right)) {
+    return false;
+  }
+
+  return true;
 }
 
 // Greedy line breaking that never splits an atomic token (Latin word, identifier, or grouped
@@ -237,8 +272,10 @@ function normalizeTextLines(element: TextElement, fontSize: number): string {
   const unitsPerLine = maxUnitsPerLine(element.w, fontSize);
 
   if (element.role === "title" && element.text.includes("\n")) {
-    if (!findTextLineBreakIssue(element)) {
-      return element.text.split(/\r?\n/).map((line) => line.trim()).join("\n");
+    const manualLines = element.text.split(/\r?\n/).map((line) => line.trim());
+    const exceedsHeight = manualLines.filter(Boolean).length > maxLinesByHeight;
+    if (!findTextLineBreakIssue(element) && !exceedsHeight) {
+      return manualLines.join("\n");
     }
 
     return wrapParagraph(joinReflowLines(element.text.split(/\r?\n/)), unitsPerLine).join("\n");
@@ -253,7 +290,10 @@ function normalizeTextLines(element: TextElement, fontSize: number): string {
     }
 
     if (!hasBlankLine && !isPreformattedText(element.text)) {
-      if (!shouldReflowManualLines(lines, unitsPerLine)) {
+      // When the box is too short for the author's manual breaks, reflow into fewer lines so labels
+      // such as "Active\nDirectory" collapse to one line instead of overflowing a one-line-tall box.
+      const exceedsHeight = nonEmptyLines.length > maxLinesByHeight;
+      if (!exceedsHeight && !shouldReflowManualLines(lines, unitsPerLine)) {
         return lines.join("\n");
       }
 
@@ -326,21 +366,25 @@ function fitTextElement(element: TextElement, tokens: DesignTokens): TextElement
   let fontSize = next.fontSize ?? defaultFontSizeForRole(next.role, tokens);
   const minimumFontSize = Math.min(textMinimumFontSize(next), fontSize);
 
-  for (let attempt = 0; attempt < 18; attempt += 1) {
+  for (let attempt = 0; attempt < 24; attempt += 1) {
     const text = normalizeTextLines(next, fontSize);
     const candidate = { ...next, text, fontSize };
     const overflow = estimateTextOverflow(candidate);
     const hasBadBreak = Boolean(findTextLineBreakIssue(candidate));
-    if (!overflow.overflows && !hasBadBreak) {
+    // Every emitted line must fit the real box at this size, otherwise PowerPoint re-wraps it with
+    // its own greedy rule and splits words. Shrinking until each line fits keeps our breaks authoritative.
+    const lineWidthBudget = lineCapacity(next.w, fontSize);
+    const anyLineTooWide = text.split(/\r?\n/).some((line) => textUnits(line.trim()) > lineWidthBudget + 0.01);
+    if (!overflow.overflows && !hasBadBreak && !anyLineTooWide) {
       next = { ...next, text };
       break;
     }
 
-    fontSize = Math.max(minimumFontSize, fontSize - 1);
-    if (fontSize === minimumFontSize) {
-      next = { ...next, text: normalizeTextLines(next, fontSize) };
+    if (fontSize <= minimumFontSize) {
+      next = { ...next, text };
       break;
     }
+    fontSize = Math.max(minimumFontSize, fontSize - 1);
   }
 
   return { ...next, fontSize };
