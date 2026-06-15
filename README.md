@@ -56,9 +56,11 @@ Available styles: `minimal`, `stylish`, `report`, `presentation`, `technical`. F
 
 From MCP, use `create_pptx` when the user simply asks for a `.pptx`. It creates a styled DeckSpec, lints it, polishes layout, and renders the PowerPoint in one call. Use the lower-level `create_deck` -> `lint_deck` -> `render_pptx` workflow only when you need to manually edit the DeckSpec.
 
-Use `pptcreater polish <deck> --output <polished.deck.json>`, `pptcreater render --polish`, or MCP `polish_deck_layout` before rendering when source content is long or diagrams have many labels. The polish step clamps elements to slide bounds and adjusts text fitting to reduce overflows and misalignment. It is explicit so source-faithful decks are not silently mutated.
+Use `pptcreater polish <deck> --output <polished.deck.json>`, `pptcreater render --polish`, or MCP `polish_deck_layout` before rendering when source content is long or diagrams have many labels. The polish step clamps elements to slide bounds, rebalances Japanese/English line breaks, and adjusts text fitting to reduce overflows and misalignment. `render_pptx` also applies this safeguard automatically before drawing. If text still cannot fit after polish, `layout.text-overflow-risk` is a render-blocking error; shorten the copy, split the slide, or choose a schematic/table/list layout instead of forcing a broken PPTX.
 
 Lint also flags `layout.text-overflow-risk`, `layout.out-of-bounds`, and `layout.text-overlap` so agents can detect and fix collisions and overflow before delivering a deck.
+
+For lower cognitive load, use one visual grammar per slide: `table` for comparisons, `tree` for hierarchy, `flow` / `vertical-flow` for processes, and `list` / `list-horizontal` for 3-4 key points. Avoid many custom text boxes with uneven manual line breaks.
 
 
 Modern slide generation follows these principles: assertion titles, modular cards, bold whitespace, restrained accents, one memorable visual scene per slide, and editable PowerPoint shapes for content that users may revise later. The MCP resource `design://modern-slide-principles` exposes this guidance to AI agents.

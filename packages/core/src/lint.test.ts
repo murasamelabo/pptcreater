@@ -48,6 +48,23 @@ describe("DeckSpec linting", () => {
     expect(report.issues.some((issue) => issue.code === "layout.text-overlap")).toBe(true);
   });
 
+  it("treats text overflow risk as a render-blocking error", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    const title = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
+    if (title?.type === "text") {
+      title.text = "長すぎるタイトル".repeat(30);
+      title.w = 2;
+      title.h = 0.3;
+      title.fontSize = 32;
+    }
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const overflow = report.issues.find((issue) => issue.code === "layout.text-overflow-risk");
+
+    expect(overflow?.severity).toBe("error");
+    expect(report.ok).toBe(false);
+  });
+
   it("flags an opaque shape drawn over text", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     deck.slides[0].elements.push({

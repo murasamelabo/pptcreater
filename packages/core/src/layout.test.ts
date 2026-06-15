@@ -1,5 +1,5 @@
 ﻿import { describe, expect, it } from "vitest";
-import { normalizeDeckLayout, normalizeReadingOrder } from "./layout.js";
+import { normalizeDeckLayout, normalizeReadingOrder, normalizeSlideLayout } from "./layout.js";
 import type { Slide } from "./schema.js";
 import { createSampleDeck } from "./samples.js";
 
@@ -48,6 +48,208 @@ describe("layout polish", () => {
     const polishedText = polished.slides[0].elements.find((element) => element.type === "text");
 
     expect(polishedText?.h).toBeGreaterThanOrEqual(0.2);
+  });
+
+  it("wraps Japanese title text into balanced lines", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    const title = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
+    if (title?.type === "text") {
+      title.text = "守る対象はアカウント単体ではなくエンドツーエンドの経路";
+      title.w = 6.2;
+      title.h = 1.4;
+      title.fontSize = 34;
+    }
+
+    const polished = normalizeDeckLayout(deck);
+    const polishedTitle = polished.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
+
+    expect(polishedTitle?.type === "text" ? polishedTitle.text : "").toContain("\n");
+  });
+
+  it("uses deck typography tokens when fitting text without explicit font size", () => {
+    const deck = createSampleDeck("ja-JP", { styleProfile: "presentation", slideCount: 1 });
+    const title = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
+    if (title?.type === "text") {
+      delete title.fontSize;
+      title.text = "短いタイトル";
+      title.w = 8;
+      title.h = 1.4;
+    }
+
+    const polished = normalizeDeckLayout(deck);
+    const polishedTitle = polished.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
+
+    expect(polishedTitle?.type === "text" ? polishedTitle.fontSize : undefined).toBe(deck.tokens?.typography.titleSize);
+  });
+
+  it("does not increase valid smaller typography tokens during fitting", () => {
+    const deck = createSampleDeck("en-US", { slideCount: 1 });
+    if (deck.tokens) {
+      deck.tokens.typography = {
+        ...deck.tokens.typography,
+        titleSize: 24,
+        bodySize: 16,
+        captionSize: 10
+      };
+    }
+    const title = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
+    if (title?.type === "text") {
+      delete title.fontSize;
+      title.text = "Small token title";
+      title.w = 6;
+      title.h = 1.2;
+    }
+
+    const polished = normalizeDeckLayout(deck);
+    const polishedTitle = polished.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
+
+    expect(polishedTitle?.type === "text" ? polishedTitle.fontSize : undefined).toBe(24);
+  });
+
+  it("does not silently truncate copy that cannot fit", () => {
+    const slide: Slide = {
+      id: "overflow",
+      title: "Overflow",
+      layout: "title-content",
+      elements: [
+        {
+          id: "body",
+          type: "text",
+          role: "body",
+          text: "これは非常に長い本文です。".repeat(20),
+          x: 1,
+          y: 1,
+          w: 2.5,
+          h: 0.45,
+          fontSize: 22,
+          bold: false,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const normalizedText = normalized.elements[0];
+
+    expect(normalizedText.type === "text" ? normalizedText.text : "").not.toContain("…");
+  });
+
+  it("preserves intentional blank lines in non-title text", () => {
+    const slide: Slide = {
+      id: "paragraphs",
+      title: "Paragraphs",
+      layout: "title-content",
+      elements: [
+        {
+          id: "body",
+          type: "text",
+          role: "body",
+          text: "First paragraph\n\nSecond paragraph",
+          x: 1,
+          y: 1,
+          w: 6,
+          h: 2,
+          fontSize: 20,
+          bold: false,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const normalizedText = normalized.elements[0];
+
+    expect(normalizedText.type === "text" ? normalizedText.text : "").toContain("\n\n");
+  });
+
+  it("does not duplicate already wrapped multiline body text", () => {
+    const slide: Slide = {
+      id: "multiline",
+      title: "Multiline",
+      layout: "title-content",
+      elements: [
+        {
+          id: "body",
+          type: "text",
+          role: "body",
+          text: "function x() {\n  return 1;\n}",
+          x: 1,
+          y: 1,
+          w: 6,
+          h: 1.4,
+          fontSize: 20,
+          bold: false,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const normalizedText = normalized.elements[0];
+
+    expect(normalizedText.type === "text" ? normalizedText.text : "").toBe("function x() {\n  return 1;\n}");
+  });
+
+  it("preserves indentation on long preformatted lines", () => {
+    const slide: Slide = {
+      id: "long-code",
+      title: "Long code",
+      layout: "title-content",
+      elements: [
+        {
+          id: "body",
+          type: "text",
+          role: "body",
+          text: "function x() {\n  const value = someVeryLongExpressionThatNeedsWrappingButMustKeepIndentation();\n}",
+          x: 1,
+          y: 1,
+          w: 3,
+          h: 1.4,
+          fontSize: 20,
+          bold: false,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const normalizedText = normalized.elements[0];
+    const lines = normalizedText.type === "text" ? normalizedText.text.split("\n") : [];
+
+    expect(lines[1].startsWith("  ")).toBe(true);
+  });
+
+  it("preserves indentation on single-line preformatted text", () => {
+    const slide: Slide = {
+      id: "single-code",
+      title: "Single code",
+      layout: "title-content",
+      elements: [
+        {
+          id: "body",
+          type: "text",
+          role: "body",
+          text: "  const value = someVeryLongExpressionThatNeedsWrappingButMustKeepIndentation();",
+          x: 1,
+          y: 1,
+          w: 3,
+          h: 0.6,
+          fontSize: 20,
+          bold: false,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const normalizedText = normalized.elements[0];
+
+    expect(normalizedText.type === "text" ? normalizedText.text.startsWith("  ") : false).toBe(true);
   });
 
   it("restacks opaque decorative shapes below overlapping text", () => {

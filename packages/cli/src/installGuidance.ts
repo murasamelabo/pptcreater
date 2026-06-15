@@ -147,8 +147,8 @@ Before creating a DeckSpec, clarify these points when they are not already speci
 6. Use \`plan_source_visual\` for source figures: choose quote, recreate, or inspiration.
 7. Create a visual DeckSpec with editable PowerPoint shapes/text where possible.
 8. Run \`lint_deck\`.
-9. Run \`polish_deck_layout\` only when layout issues or overflow risks are present.
-10. Render with \`render_pptx\` or preview with \`render_studio\`.
+9. Run \`polish_deck_layout\` when layout issues or overflow risks are present. \`render_pptx\` also applies this safeguard automatically.
+10. Render with \`render_pptx\` or preview with \`render_studio\`. If text still cannot fit after polish, shorten or split the slide; do not force-render a broken layout.
 
 ## Design rules
 
@@ -171,6 +171,8 @@ Before creating a DeckSpec, clarify these points when they are not already speci
 - Color system: avoid pure saturated red/green/blue on large areas. Use low-chroma backgrounds, neutral surfaces, and reserve accent colors for thin rules, icons, badges, and one focal object.
 - Alignment: use a consistent 12-column or card grid. Align card tops, icon centers, and text baselines. Avoid arbitrary x/y positions when a schematic preset can provide the layout.
 - Typography: keep title tracking slightly tight, body text neutral, and line lengths short. If text does not fit naturally, shorten the copy rather than shrinking below accessibility minimums.
+- Line breaks: keep title lines visually balanced (usually 1-2 lines) and body text to short, even lines. Avoid manual ragged line breaks; let \`polish_deck_layout\` rebalance Japanese/English text where possible.
+- Cognitive load: use one visual grammar per slide. If there are more than 3-4 comparable ideas, use \`generate_schematic\` with a list/table/tree instead of placing many custom text boxes.
 - SVG compatibility: pptcreater accepts a safe SVG subset. Prefer \`generate_schematic\`, \`generate_svg\`, and registered assets; avoid unsupported filter effects, external images, scripts, CSS styles, and complex patterns unless sanitized successfully.
 
 ## Content modes

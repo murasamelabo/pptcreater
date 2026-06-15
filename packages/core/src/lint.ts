@@ -139,9 +139,9 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
       if (overflow.overflows) {
         issues.push(
           issue(
-            "warning",
+            "error",
             "layout.text-overflow-risk",
-            "Text may overflow its bounding box. Increase the box size, split the text, or reduce font size.",
+            "Text may overflow its bounding box. Shorten the copy, split it across slides, increase the box size, or run polish_deck_layout before rendering.",
             `${path}.text`,
             { estimatedLines: overflow.estimatedLines, maxLines: overflow.maxLines }
           )
