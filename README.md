@@ -36,7 +36,7 @@ pptcreater new `
   --content-mode decision
 ```
 
-The starter visuals are generated as native PowerPoint shapes and text boxes where possible, not flattened screenshots. This means cards, labels, workflow nodes, arrows, and roadmap elements can be edited later in PowerPoint.
+The starter visuals are generated as native PowerPoint shapes and text boxes where possible, not flattened screenshots. This means cards, labels, and roadmap elements can be edited later in PowerPoint. For any diagram with arrows or connected nodes (architecture, flow, sequence, ponchi-e), use `generate_diagram` instead of hand-placing `line`/`rightArrow` shapes: omit node `x`/`y` to get an automatic layered layout, and connectors clip to node borders with real arrowheads and detour through clear gutters when they skip a rank, so arrows never dangle, mis-angle, or pierce a node. The returned SVG is embedded as one accessible `diagram` element. (`lint_deck` emits `diagram.native-connectors` when it detects a connected diagram built from hand-placed arrow shapes.)
 
 Content modes let agents change the deck taste, and each mode selects a styled built-in template automatically:
 

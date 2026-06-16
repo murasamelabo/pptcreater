@@ -83,6 +83,106 @@ describe("DeckSpec linting", () => {
     expect(report.ok).toBe(false);
   });
 
+  it("flags a connected diagram built from hand-placed arrow shapes", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    // Four node-like cards plus a hand-placed arrow shape between them: this is a diagram an agent
+    // should build with generate_diagram, where arrows are routed border-to-border automatically.
+    deck.slides[0].elements.push(
+      { id: "card-a", type: "shape", shape: "roundRect", fill: "#e2e8f0", x: 1, y: 2, w: 1.5, h: 0.8, decorative: true, readingOrder: 300 },
+      { id: "card-b", type: "shape", shape: "roundRect", fill: "#e2e8f0", x: 4, y: 2, w: 1.5, h: 0.8, decorative: true, readingOrder: 301 },
+      { id: "card-c", type: "shape", shape: "roundRect", fill: "#e2e8f0", x: 7, y: 2, w: 1.5, h: 0.8, decorative: true, readingOrder: 302 },
+      { id: "card-d", type: "shape", shape: "roundRect", fill: "#e2e8f0", x: 10, y: 2, w: 1.5, h: 0.8, decorative: true, readingOrder: 303 },
+      {
+        id: "arrow-ab",
+        type: "shape",
+        shape: "line",
+        fill: "none",
+        x: 2.5,
+        y: 2.4,
+        w: 1.5,
+        h: 0,
+        decorative: true,
+        readingOrder: 304,
+        line: { color: "#475569", endArrowType: "triangle" }
+      }
+    );
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const native = report.issues.find((issue) => issue.code === "diagram.native-connectors");
+
+    expect(native?.severity).toBe("warning");
+    expect(native?.message).toMatch(/generate_diagram/);
+  });
+
+  it("does not flag a single decorative divider line as a native connector", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "divider",
+      type: "shape",
+      shape: "line",
+      fill: "none",
+      x: 1,
+      y: 3,
+      w: 6,
+      h: 0,
+      decorative: true,
+      readingOrder: 320,
+      line: { color: "#cbd5e1" }
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "diagram.native-connectors")).toBe(false);
+  });
+
+  it("does not flag a slide that already uses the diagram engine", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push(
+      {
+        id: "engine-diagram",
+        type: "diagram",
+        x: 1,
+        y: 2,
+        w: 10,
+        h: 4,
+        svg: "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\"><rect width=\"960\" height=\"540\" fill=\"#fff\"/></svg>",
+        summary: "engine diagram",
+        longDescription: "A diagram produced by the engine so hand-placed arrows are not needed on this slide.",
+        decorative: false,
+        altText: "Architecture overview produced by the diagram engine",
+        readingOrder: 330
+      },
+      {
+        id: "arrow-extra",
+        type: "shape",
+        shape: "rightArrow",
+        fill: "#475569",
+        x: 2,
+        y: 6.2,
+        w: 1,
+        h: 0.4,
+        decorative: true,
+        readingOrder: 331
+      },
+      {
+        id: "arrow-extra2",
+        type: "shape",
+        shape: "rightArrow",
+        fill: "#475569",
+        x: 4,
+        y: 6.2,
+        w: 1,
+        h: 0.4,
+        decorative: true,
+        readingOrder: 332
+      }
+    );
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "diagram.native-connectors")).toBe(false);
+  });
+
   it("does not flag concise bullet lists as bad line breaks", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     const body = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "body");

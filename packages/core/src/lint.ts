@@ -221,6 +221,36 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
     );
   }
 
+  // Hand-placed connector shapes (arrows) are the main source of dangling/penetrating arrows: an
+  // agent guesses endpoint coordinates, which only happens to line up for a simple horizontal row.
+  // Detect a connected diagram built from native shapes and steer it to the diagram engine, which
+  // routes every arrow border-to-border (and auto-lays-out nodes when coordinates are omitted).
+  const ARROW_HEAD_TYPES = new Set(["arrow", "stealth", "triangle", "diamond", "oval"]);
+  const connectorShapes = slide.elements.filter(
+    (element): element is ShapeElement =>
+      element.type === "shape" &&
+      (element.shape === "rightArrow" ||
+        element.shape === "arrow" ||
+        (element.shape === "line" &&
+          ((element.line?.endArrowType !== undefined && ARROW_HEAD_TYPES.has(element.line.endArrowType)) ||
+            (element.line?.beginArrowType !== undefined && ARROW_HEAD_TYPES.has(element.line.beginArrowType)))))
+  );
+  const nodeLikeShapes = slide.elements.filter(
+    (element) => element.type === "shape" && ["rect", "roundRect", "roundedRect", "ellipse", "oval"].includes(element.shape)
+  );
+  const hasEngineDiagram = slide.elements.some((element) => element.type === "diagram");
+  if (!hasEngineDiagram && (connectorShapes.length >= 2 || (connectorShapes.length >= 1 && nodeLikeShapes.length >= 4))) {
+    issues.push(
+      issue(
+        "warning",
+        "diagram.native-connectors",
+        "This slide draws a connected diagram from hand-placed arrow shapes, which dangle or penetrate nodes unless the layout is a simple row. Build it with generate_diagram (omit node x/y for automatic layout) and embed the returned SVG as a diagram element so every arrow connects border-to-border.",
+        `slides.${slideIndex}`,
+        { connectors: connectorShapes.length, nodes: nodeLikeShapes.length }
+      )
+    );
+  }
+
   const opaqueShapes = slide.elements.filter(
     (element): element is ShapeElement =>
       element.type === "shape" && element.fill !== "none" && (element.fillOpacity === undefined || element.fillOpacity >= 0.6)

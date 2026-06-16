@@ -4,10 +4,18 @@ export const DiagramNodeSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
   sublabel: z.string().optional(),
-  x: z.number().min(0),
-  y: z.number().min(0),
+  // Coordinates are OPTIONAL. Omit them (on every node) to let the engine place nodes
+  // automatically with a layered layout so arrows always connect border-to-border. Supply
+  // explicit x/y only when you need a bespoke layout (then every node must have both).
+  x: z.number().min(0).optional(),
+  y: z.number().min(0).optional(),
   w: z.number().positive().default(160),
   h: z.number().positive().default(72),
+  // Auto-layout hints (ignored when explicit x/y are used):
+  //  - layer: force a column (LR) / row (TB) index, overriding the arrow-derived layer.
+  //  - lane: keep related nodes adjacent within a rank (sorted by lane name).
+  layer: z.number().int().min(0).optional(),
+  lane: z.string().optional(),
   kind: z.enum(["actor", "system", "process", "data", "note", "cloud"]).default("process"),
   icon: z.enum(["actor", "system", "process", "data", "note", "cloud", "none"]).optional(),
   accent: z.string().regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/).optional(),
@@ -36,6 +44,8 @@ export const PonchiDiagramSchema = z
     longDescription: z.string().min(20),
     width: z.number().positive().default(960),
     height: z.number().positive().default(540),
+    // Flow direction for auto-layout: "LR" (left-to-right, default) or "TB" (top-to-bottom).
+    direction: z.enum(["LR", "TB"]).default("LR"),
     nodes: z.array(DiagramNodeSchema).min(1),
     arrows: z.array(DiagramArrowSchema).default([]),
     groups: z.array(DiagramGroupSchema).default([])
@@ -83,9 +93,28 @@ export const PonchiDiagramSchema = z
         }
       });
     });
+
+    // Coordinates are all-or-nothing: either every node is auto-laid-out (no x/y on any node) or
+    // every node is hand-placed (both x and y on every node). A partial mix is ambiguous.
+    const placedCount = diagram.nodes.filter((node) => node.x !== undefined && node.y !== undefined).length;
+    if (placedCount !== 0 && placedCount !== diagram.nodes.length) {
+      diagram.nodes.forEach((node, index) => {
+        if (node.x === undefined || node.y === undefined) {
+          context.addIssue({
+            code: "custom",
+            message:
+              "Mix of auto-laid-out and hand-placed nodes. Either omit x/y on every node (recommended) or set both x and y on every node.",
+            path: ["nodes", index, "x"]
+          });
+        }
+      });
+    }
   });
 
 export type PonchiDiagram = z.infer<typeof PonchiDiagramSchema>;
+export type PonchiNode = z.infer<typeof DiagramNodeSchema>;
+// A node after layout resolution: x/y/w/h are all guaranteed present.
+export type PlacedNode = PonchiNode & { x: number; y: number; w: number; h: number };
 
 export const SchematicKindSchema = z.enum(["table", "tree", "flow", "vertical-flow", "list", "list-horizontal", "list-enumeration", "mockup"]);
 export const SchematicToneSchema = z.enum(["minimal", "cool", "luxury", "report"]).default("minimal");
@@ -406,14 +435,14 @@ export function renderSchematicDiagram(input: unknown): { svg: string; summary: 
 }
 
 
-function centerOf(node: PonchiDiagram["nodes"][number]): { x: number; y: number } {
+function centerOf(node: PlacedNode): { x: number; y: number } {
   return { x: node.x + node.w / 2, y: node.y + node.h / 2 };
 }
 
 type Point = { x: number; y: number };
 
 // Inline, PowerPoint-safe icon glyphs (stroke paths) drawn centered in a 24x24 box.
-function nodeIconGlyph(kind: PonchiDiagram["nodes"][number]["kind"], cx: number, cy: number, color: string): string {
+function nodeIconGlyph(kind: PonchiNode["kind"], cx: number, cy: number, color: string): string {
   const s = `stroke="${color}" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"`;
   const g = (body: string): string => `<g transform="translate(${cx - 12} ${cy - 12})">${body}</g>`;
   switch (kind) {
@@ -433,7 +462,7 @@ function nodeIconGlyph(kind: PonchiDiagram["nodes"][number]["kind"], cx: number,
 }
 
 // Point on the border of a node rectangle along the ray from its center toward (tx, ty).
-function edgePoint(node: PonchiDiagram["nodes"][number], tx: number, ty: number): Point {
+function edgePoint(node: PlacedNode, tx: number, ty: number): Point {
   const c = centerOf(node);
   const dx = tx - c.x;
   const dy = ty - c.y;
@@ -460,10 +489,19 @@ function arrowHead(tip: Point, dir: Point, color: string, size = 11): string {
 
 // Build an orthogonal (elbow) or straight connector that starts and ends on the node borders, with
 // an explicit arrowhead (PowerPoint renders SVG markers unreliably, so we draw the head as a polygon).
+// When `bypass` is set the connector detours through a clear gutter so a skip-rank arrow visibly
+// routes around the nodes it would otherwise pass straight through.
 function connector(
-  from: PonchiDiagram["nodes"][number],
-  to: PonchiDiagram["nodes"][number],
-  options: { color: string; dashed: boolean; bidirectional: boolean; orthogonal: boolean; label?: string }
+  from: PlacedNode,
+  to: PlacedNode,
+  options: {
+    color: string;
+    dashed: boolean;
+    bidirectional: boolean;
+    orthogonal: boolean;
+    label?: string;
+    bypass?: { axis: "over" | "side"; gutter: number };
+  }
 ): string {
   const a = centerOf(from);
   const b = centerOf(to);
@@ -479,7 +517,28 @@ function connector(
   let startDir: Point;
   let path: string;
 
-  if (options.orthogonal && horizontal) {
+  if (options.bypass && options.bypass.axis === "over") {
+    // Route over the top (or bottom) gutter: exit the from-edge nearest the gutter and enter the
+    // matching to-edge, so the arrow clears every node stacked between the two ranks.
+    const gutter = options.bypass.gutter;
+    const sy = gutter <= from.y ? from.y : from.y + from.h;
+    const ey = gutter <= to.y ? to.y : to.y + to.h;
+    start = { x: a.x, y: sy };
+    end = { x: b.x, y: ey };
+    path = `M${start.x} ${start.y} V${gutter} H${end.x} V${end.y}`;
+    endDir = { x: 0, y: gutter <= to.y ? 1 : -1 };
+    startDir = { x: 0, y: gutter <= from.y ? -1 : 1 };
+  } else if (options.bypass) {
+    // Route through a side gutter (left/right of the node band) for top-to-bottom skip arrows.
+    const gutter = options.bypass.gutter;
+    const sx = gutter >= from.x + from.w ? from.x + from.w : from.x;
+    const ex = gutter >= to.x + to.w ? to.x + to.w : to.x;
+    start = { x: sx, y: a.y };
+    end = { x: ex, y: b.y };
+    path = `M${start.x} ${start.y} H${gutter} V${end.y} H${end.x}`;
+    endDir = { x: gutter >= to.x + to.w ? -1 : 1, y: 0 };
+    startDir = { x: gutter >= from.x + from.w ? 1 : -1, y: 0 };
+  } else if (options.orthogonal && horizontal) {
     const sx = dx >= 0 ? from.x + from.w : from.x;
     const ex = dx >= 0 ? to.x : to.x + to.w;
     start = { x: sx, y: a.y };
@@ -527,7 +586,7 @@ function connector(
   return parts.join("");
 }
 
-function ponchiNode(node: PonchiDiagram["nodes"][number]): string {
+function ponchiNode(node: PlacedNode): string {
   const palette = NODE_COLORS[node.kind];
   const accent = node.accent ?? palette.accent;
   const c = centerOf(node);
@@ -546,7 +605,7 @@ function ponchiNode(node: PonchiDiagram["nodes"][number]): string {
   ];
 
   if (hasIcon) {
-    parts.push(nodeIconGlyph(icon as PonchiDiagram["nodes"][number]["kind"], c.x, iconTop + 6, accent));
+    parts.push(nodeIconGlyph(icon as PonchiNode["kind"], c.x, iconTop + 6, accent));
   }
 
   labelLines.forEach((line, index) => {
@@ -563,13 +622,228 @@ function ponchiNode(node: PonchiDiagram["nodes"][number]): string {
   return parts.join("");
 }
 
+// ---------------------------------------------------------------------------
+// Automatic layered layout. When nodes omit x/y, the engine places them so that
+// arrows always connect cleanly border-to-border, even for branching (non-linear)
+// graphs. This removes the need for agents to compute coordinates by hand (the
+// source of dangling/penetrating arrows when a layout is not a simple row).
+// ---------------------------------------------------------------------------
+const AUTO_NODE_W = 176;
+const AUTO_NODE_H = 92;
+const AUTO_COL_GAP = 104;
+const AUTO_ROW_GAP = 46;
+const AUTO_MARGIN = 60;
+
+// Longest-path layering from the arrow graph: sources sit at rank 0 and every target is pushed at
+// least one rank past its deepest source. Cycles are bounded by the node count so this terminates.
+function diagramRanks(diagram: PonchiDiagram): Map<string, number> {
+  const rank = new Map<string, number>();
+  for (const node of diagram.nodes) {
+    rank.set(node.id, 0);
+  }
+
+  const edges = diagram.arrows.filter((arrow) => arrow.from !== arrow.to && rank.has(arrow.from) && rank.has(arrow.to));
+  for (let iteration = 0; iteration < diagram.nodes.length; iteration += 1) {
+    let changed = false;
+    for (const edge of edges) {
+      const source = rank.get(edge.from) ?? 0;
+      const target = rank.get(edge.to) ?? 0;
+      if (target < source + 1) {
+        rank.set(edge.to, source + 1);
+        changed = true;
+      }
+    }
+    if (!changed) {
+      break;
+    }
+  }
+
+  // Explicit layer hints win over the derived layering.
+  for (const node of diagram.nodes) {
+    if (typeof node.layer === "number") {
+      rank.set(node.id, node.layer);
+    }
+  }
+
+  return rank;
+}
+
+function placeRanks(ranks: PonchiNode[][], rowsMode: boolean): { nodes: PlacedNode[]; width: number; height: number } {
+  const w = AUTO_NODE_W;
+  const h = AUTO_NODE_H;
+  const rankCount = ranks.length;
+  const maxInRank = Math.max(1, ...ranks.map((rank) => rank.length));
+  const placed: PlacedNode[] = [];
+
+  if (rowsMode) {
+    // Each rank is a row; nodes spread horizontally, ranks stack downward.
+    const contentW = maxInRank * w + (maxInRank - 1) * AUTO_COL_GAP;
+    const contentH = rankCount * h + (rankCount - 1) * AUTO_ROW_GAP;
+    ranks.forEach((rank, rankIndex) => {
+      const y = AUTO_MARGIN + rankIndex * (h + AUTO_ROW_GAP);
+      const rowW = rank.length * w + (rank.length - 1) * AUTO_COL_GAP;
+      const startX = AUTO_MARGIN + (contentW - rowW) / 2;
+      rank.forEach((node, columnIndex) => {
+        placed.push({ ...node, x: startX + columnIndex * (w + AUTO_COL_GAP), y, w, h });
+      });
+    });
+    return { nodes: placed, width: contentW + 2 * AUTO_MARGIN, height: contentH + 2 * AUTO_MARGIN };
+  }
+
+  // Each rank is a column; nodes stack downward, ranks march rightward.
+  const contentW = rankCount * w + (rankCount - 1) * AUTO_COL_GAP;
+  const contentH = maxInRank * h + (maxInRank - 1) * AUTO_ROW_GAP;
+  ranks.forEach((rank, rankIndex) => {
+    const x = AUTO_MARGIN + rankIndex * (w + AUTO_COL_GAP);
+    const colH = rank.length * h + (rank.length - 1) * AUTO_ROW_GAP;
+    const startY = AUTO_MARGIN + (contentH - colH) / 2;
+    rank.forEach((node, rowIndex) => {
+      placed.push({ ...node, x, y: startY + rowIndex * (h + AUTO_ROW_GAP), w, h });
+    });
+  });
+  return { nodes: placed, width: contentW + 2 * AUTO_MARGIN, height: contentH + 2 * AUTO_MARGIN };
+}
+
+function autoLayout(diagram: PonchiDiagram): { nodes: PlacedNode[]; width: number; height: number } {
+  const orderIndex = new Map(diagram.nodes.map((node, index) => [node.id, index]));
+  const orderWithinRank = (rank: PonchiNode[]): PonchiNode[] =>
+    [...rank].sort((a, b) => {
+      const laneCompare = (a.lane ?? "").localeCompare(b.lane ?? "");
+      return laneCompare !== 0 ? laneCompare : (orderIndex.get(a.id) ?? 0) - (orderIndex.get(b.id) ?? 0);
+    });
+
+  const hasArrows = diagram.arrows.some((arrow) => arrow.from !== arrow.to);
+  if (!hasArrows) {
+    // No connections: arrange in a near-square grid so a bag of cards reads cleanly.
+    const columns = Math.max(1, Math.round(Math.sqrt(diagram.nodes.length)));
+    const rows: PonchiNode[][] = [];
+    for (let index = 0; index < diagram.nodes.length; index += columns) {
+      rows.push(diagram.nodes.slice(index, index + columns));
+    }
+    return placeRanks(rows, true);
+  }
+
+  const rankOf = diagramRanks(diagram);
+  const byRank = new Map<number, PonchiNode[]>();
+  for (const node of diagram.nodes) {
+    const value = rankOf.get(node.id) ?? 0;
+    const bucket = byRank.get(value) ?? [];
+    bucket.push(node);
+    byRank.set(value, bucket);
+  }
+
+  const ranks = [...byRank.keys()].sort((a, b) => a - b).map((key) => orderWithinRank(byRank.get(key) ?? []));
+  return placeRanks(ranks, diagram.direction === "TB");
+}
+
+// Resolve every node to absolute coordinates: hand-placed coordinates pass through unchanged,
+// otherwise the auto-layout assigns them and reports the canvas size needed to frame the result.
+function resolveLayout(diagram: PonchiDiagram): { nodes: PlacedNode[]; width: number; height: number } {
+  const allPlaced = diagram.nodes.every((node) => node.x !== undefined && node.y !== undefined);
+  if (allPlaced) {
+    return {
+      nodes: diagram.nodes.map((node) => ({ ...node, x: node.x ?? 0, y: node.y ?? 0, w: node.w, h: node.h })),
+      width: diagram.width,
+      height: diagram.height
+    };
+  }
+  return autoLayout(diagram);
+}
+
+// Decide whether an arrow needs to detour around intermediate nodes, and through which gutter. A
+// direct orthogonal elbow can pass straight through a node that sits between the two ranks (a
+// skip-rank arrow); when that happens we route the connector through a clear gutter (over/under for
+// left-to-right flows, to the side for top-to-bottom flows) so the connection stays legible. The
+// gutter side is chosen to avoid the from/to node's own neighbours, so the detour never re-enters a
+// node it just left.
+function bypassFor(
+  from: PlacedNode,
+  to: PlacedNode,
+  nodes: PlacedNode[],
+  direction: "LR" | "TB",
+  canvasWidth: number,
+  canvasHeight: number
+): { axis: "over" | "side"; gutter: number } | undefined {
+  const horizontal = direction !== "TB";
+  const fromCx = from.x + from.w / 2;
+  const fromCy = from.y + from.h / 2;
+  const toCx = to.x + to.w / 2;
+  const toCy = to.y + to.h / 2;
+  const tolerance = 2;
+  const others = nodes.filter((node) => node.id !== from.id && node.id !== to.id);
+
+  // A node "crosses" the elbow when its centre sits between the endpoints on the primary axis and it
+  // covers either endpoint's lane on the cross axis (the elbow's two straight runs sit on those lanes).
+  const crossingNodes = others.filter((node) => {
+    const nodeCx = node.x + node.w / 2;
+    const nodeCy = node.y + node.h / 2;
+    if (horizontal) {
+      const betweenX = nodeCx > Math.min(fromCx, toCx) + tolerance && nodeCx < Math.max(fromCx, toCx) - tolerance;
+      const coversLane = (node.y < fromCy && node.y + node.h > fromCy) || (node.y < toCy && node.y + node.h > toCy);
+      return betweenX && coversLane;
+    }
+    const betweenY = nodeCy > Math.min(fromCy, toCy) + tolerance && nodeCy < Math.max(fromCy, toCy) - tolerance;
+    const coversLane = (node.x < fromCx && node.x + node.w > fromCx) || (node.x < toCx && node.x + node.w > toCx);
+    return betweenY && coversLane;
+  });
+
+  if (crossingNodes.length === 0) {
+    return undefined;
+  }
+
+  // Does `node` have a neighbour in the given direction that an exit toward that gutter would cross?
+  const neighbour = (node: PlacedNode, side: "up" | "down" | "left" | "right"): boolean =>
+    others.some((other) => {
+      if (side === "up" || side === "down") {
+        const xOverlap = other.x < node.x + node.w - tolerance && other.x + other.w > node.x + tolerance;
+        if (!xOverlap) {
+          return false;
+        }
+        return side === "up" ? other.y + other.h <= node.y + tolerance : other.y >= node.y + node.h - tolerance;
+      }
+      const yOverlap = other.y < node.y + node.h - tolerance && other.y + other.h > node.y + tolerance;
+      if (!yOverlap) {
+        return false;
+      }
+      return side === "left" ? other.x + other.w <= node.x + tolerance : other.x >= node.x + node.w - tolerance;
+    });
+
+  if (horizontal) {
+    const overClear = !neighbour(from, "up") && !neighbour(to, "up");
+    const underClear = !neighbour(from, "down") && !neighbour(to, "down");
+    const spread = [from, to, ...crossingNodes];
+    const preferOver = overClear || (!underClear && fromCy <= canvasHeight / 2);
+    if (preferOver) {
+      const gutter = Math.min(...spread.map((node) => node.y)) - AUTO_ROW_GAP * 0.55;
+      return { axis: "over", gutter: Math.max(12, gutter) };
+    }
+    const gutter = Math.max(...spread.map((node) => node.y + node.h)) + AUTO_ROW_GAP * 0.55;
+    return { axis: "over", gutter: Math.min(canvasHeight - 12, gutter) };
+  }
+
+  const rightClear = !neighbour(from, "right") && !neighbour(to, "right");
+  const leftClear = !neighbour(from, "left") && !neighbour(to, "left");
+  const spread = [from, to, ...crossingNodes];
+  const preferRight = rightClear || (!leftClear && fromCx <= canvasWidth / 2);
+  if (preferRight) {
+    const gutter = Math.max(...spread.map((node) => node.x + node.w)) + AUTO_COL_GAP * 0.5;
+    return { axis: "side", gutter: Math.min(canvasWidth - 12, gutter) };
+  }
+  const gutter = Math.min(...spread.map((node) => node.x)) - AUTO_COL_GAP * 0.5;
+  return { axis: "side", gutter: Math.max(12, gutter) };
+}
+
 export function renderPonchiDiagram(input: unknown): { svg: string; summary: string; longDescription: string } {
   const diagram = PonchiDiagramSchema.parse(input);
-  const nodesById = new Map(diagram.nodes.map((node) => [node.id, node]));
+  const layout = resolveLayout(diagram);
+  const placedNodes = layout.nodes;
+  const canvasWidth = layout.width;
+  const canvasHeight = layout.height;
+  const nodesById = new Map(placedNodes.map((node) => [node.id, node]));
 
   const groups = diagram.groups
     .map((group) => {
-      const groupedNodes = group.nodeIds.map((id) => nodesById.get(id)).filter((node): node is NonNullable<typeof node> => Boolean(node));
+      const groupedNodes = group.nodeIds.map((id) => nodesById.get(id)).filter((node): node is PlacedNode => Boolean(node));
       if (groupedNodes.length === 0) {
         return "";
       }
@@ -599,18 +873,19 @@ export function renderPonchiDiagram(input: unknown): { svg: string; summary: str
         dashed: arrow.dashed,
         bidirectional: arrow.bidirectional,
         orthogonal: arrow.style === "orthogonal",
-        label: arrow.label
+        label: arrow.label,
+        bypass: arrow.style === "orthogonal" ? bypassFor(from, to, placedNodes, diagram.direction, canvasWidth, canvasHeight) : undefined
       });
     })
     .join("");
 
-  const nodes = diagram.nodes.map((node) => ponchiNode(node)).join("");
+  const nodes = placedNodes.map((node) => ponchiNode(node)).join("");
 
   const svg = [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${diagram.width} ${diagram.height}" role="img">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${canvasWidth} ${canvasHeight}" role="img">`,
     `<title>${escapeXml(diagram.title)}</title>`,
     `<desc>${escapeXml(diagram.longDescription)}</desc>`,
-    `<rect width="${diagram.width}" height="${diagram.height}" fill="#ffffff" />`,
+    `<rect width="${canvasWidth}" height="${canvasHeight}" fill="#ffffff" />`,
     groups,
     arrows,
     nodes,

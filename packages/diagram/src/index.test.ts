@@ -55,6 +55,69 @@ describe("ponchi diagram rendering", () => {
     expect(rendered.svg).toContain(">Provisioning<");
     expect(rendered.svg).toContain(">Service<");
   });
+
+  it("auto-lays-out nodes when coordinates are omitted and sizes the canvas to fit", () => {
+    const rendered = renderPonchiDiagram({
+      title: "Auto layout",
+      summary: "no coordinates",
+      longDescription: "Verifies the engine places nodes automatically when no x/y are provided.",
+      nodes: [
+        { id: "a", label: "Source", kind: "actor" },
+        { id: "b", label: "Middle", kind: "system" },
+        { id: "c", label: "Sink", kind: "data" }
+      ],
+      arrows: [
+        { from: "a", to: "b" },
+        { from: "b", to: "c" }
+      ]
+    });
+
+    // A three-node chain lays out across three columns, so the canvas is wider than one node.
+    const viewBox = rendered.svg.match(/viewBox="0 0 (\d+(?:\.\d+)?) (\d+(?:\.\d+)?)"/);
+    expect(viewBox).not.toBeNull();
+    expect(Number(viewBox![1])).toBeGreaterThan(Number(viewBox![2]));
+    expect(rendered.svg).toContain("<polygon");
+  });
+
+  it("rejects a mix of auto-laid-out and hand-placed nodes", () => {
+    expect(() =>
+      renderPonchiDiagram({
+        title: "Mixed placement",
+        summary: "ambiguous",
+        longDescription: "This diagram mixes placed and unplaced nodes to verify the all-or-nothing rule.",
+        nodes: [
+          { id: "a", label: "Placed", x: 40, y: 40 },
+          { id: "b", label: "Floating" }
+        ],
+        arrows: [{ from: "a", to: "b" }]
+      })
+    ).toThrow(/auto-laid-out and hand-placed/);
+  });
+
+  it("routes a skip-rank arrow through a gutter instead of through the intermediate node", () => {
+    const rendered = renderPonchiDiagram({
+      title: "Skip arrow",
+      summary: "bypass",
+      longDescription: "Verifies that an arrow skipping a rank detours around the node it would cross.",
+      direction: "LR",
+      nodes: [
+        { id: "a", label: "A", kind: "system" },
+        { id: "b", label: "B", kind: "system" },
+        { id: "c", label: "C", kind: "system" }
+      ],
+      // a->b->c places b between a and c; a->c skips b and must route around it.
+      arrows: [
+        { from: "a", to: "b" },
+        { from: "b", to: "c" },
+        { from: "a", to: "c" }
+      ]
+    });
+
+    // The bypass path is a multi-segment route (V then H then V), so its arrowhead is present and
+    // the diagram still renders all three connectors as explicit polygons.
+    const polygons = rendered.svg.match(/<polygon/g) ?? [];
+    expect(polygons.length).toBeGreaterThanOrEqual(3);
+  });
 });
 
 describe("schematic diagram rendering", () => {

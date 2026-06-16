@@ -18,6 +18,11 @@ const LINE_HEIGHT_FACTOR = 1.22;
 // Wrap slightly before the true box width so PowerPoint's own greedy wrap never re-breaks a line
 // we already balanced (a re-break is what splits Japanese words and orphans punctuation).
 const LINE_WIDTH_SAFETY = 0.94;
+// Width reserved (inches) for renderer text padding plus glyph-advance variance between fonts. Some
+// renderers (LibreOffice, used for PNG/JPG previews) ignore Japanese kinsoku, so if an emitted line
+// is even slightly wider than the real box they re-wrap it and push "、"/"。" to the next line start.
+// Reserving this margin keeps every emitted line comfortably inside the box so no re-wrap happens.
+const TEXT_BOX_INSET = 0.06;
 const BAD_LINE_START_PATTERN = /^[、。，．・,，/／!?！？:：;；）」』】\]\})]/;
 const BAD_LINE_END_PATTERN = /[（「『【\[\({]$/;
 // Characters that must not start a line (closing punctuation, small kana, prolonged sound mark,
@@ -84,7 +89,10 @@ function textMinimumFontSize(element: TextElement): number {
     return 8;
   }
 
-  return 14;
+  // Dense Japanese body cards must be able to shrink below the previous 14pt floor: when a line
+  // cannot fit the box at 14pt, a renderer without kinsoku re-wraps it and orphans punctuation.
+  // Allowing 11pt keeps lines inside the box (the small-font warning is non-blocking).
+  return 11;
 }
 
 function textUnits(value: string): number {
@@ -102,15 +110,17 @@ function textUnits(value: string): number {
 }
 
 function maxUnitsPerLine(width: number, fontSize: number): number {
-  const usableWidth = Math.max(0.1, width * LINE_WIDTH_SAFETY);
+  const usableWidth = Math.max(0.1, (width - TEXT_BOX_INSET) * LINE_WIDTH_SAFETY);
   return Math.max(2, usableWidth / ((fontSize * TEXT_WIDTH_FACTOR) / 72));
 }
 
-// The true number of units a box holds at a font size (no safety margin). Used to validate that a
-// line really overflows, so keeping a kanji compound together (which may slightly exceed the early
-// wrap target) is not mistaken for overflow when it still fits the actual box.
+// The true number of units a box holds at a font size (no early-wrap safety margin, but still net of
+// renderer padding). Used to validate that a line really overflows, so keeping a kanji compound
+// together (which may slightly exceed the early wrap target) is not mistaken for overflow when it
+// still fits the actual box.
 function lineCapacity(width: number, fontSize: number): number {
-  return Math.max(2, width / ((fontSize * TEXT_WIDTH_FACTOR) / 72));
+  const usableWidth = Math.max(0.1, width - TEXT_BOX_INSET);
+  return Math.max(2, usableWidth / ((fontSize * TEXT_WIDTH_FACTOR) / 72));
 }
 
 export function isPreformattedText(value: string): boolean {
