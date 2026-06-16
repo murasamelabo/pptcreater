@@ -164,6 +164,8 @@ When creating PowerPoint presentations, slide decks, proposal materials, templat
 
 For stronger project-level behavior, add the same instruction to `.github/copilot-instructions.md` in repositories where slide creation should always use `pptcreater`.
 
+Avoid falling back to PowerPoint COM automation, ad-hoc scripts, or manual PPTX generation for normal deck creation. If you generate local SVG/PNG/JPEG/GIF/WebP files during research, reference them from DeckSpec `image.path` as workspace-local files and still call `render_pptx`; pptcreater will sanitize SVGs and embed the files safely.
+
 ## Install project guidance files
 
 You can install project-level guidance files so GitHub Copilot and Claude Code know to brief first and use pptcreater for slide work.

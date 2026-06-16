@@ -178,6 +178,22 @@ async function ensureSafeDirectoryPath(outputRoot: string, targetDirectory: stri
   }
 }
 
+async function assertNoSymlinkPathComponents(root: string, resolvedPath: string): Promise<void> {
+  const relativePath = relative(root, resolvedPath);
+  if (relativePath.startsWith("..") || isAbsolute(relativePath)) {
+    throw new Error("image.path must stay inside the current workspace.");
+  }
+
+  let current = root;
+  for (const segment of relativePath.split(/[\\/]+/).filter(Boolean)) {
+    current = resolve(current, segment);
+    const stats = await lstat(current);
+    if (stats.isSymbolicLink()) {
+      throw new Error("image.path cannot contain symbolic links.");
+    }
+  }
+}
+
 async function prepareMcpOutputPath(outputPath: string, overwrite: boolean): Promise<string> {
   const { outputRoot, resolvedOutputPath } = resolveMcpOutputPath(outputPath);
   const targetDirectory = dirname(resolvedOutputPath);
@@ -202,16 +218,36 @@ async function prepareMcpOutputPath(outputPath: string, overwrite: boolean): Pro
   return resolvedOutputPath;
 }
 
-function rejectLocalImagePaths(deck: DeckSpec): void {
-  deck.slides.forEach((slide, slideIndex) => {
-    slide.elements.forEach((element, elementIndex) => {
-      if (element.type === "image" && element.path) {
-        throw new Error(
-          `MCP render_pptx does not accept local image.path values at slides.${slideIndex}.elements.${elementIndex}. Use dataUri or registered assets.`
-        );
-      }
-    });
-  });
+async function assertSafeLocalImagePaths(deck: DeckSpec): Promise<void> {
+  const workspaceRoot = await realpath(process.cwd());
+  await Promise.all(
+    deck.slides.flatMap((slide, slideIndex) =>
+      slide.elements.map(async (element, elementIndex) => {
+        if (element.type === "image" && element.path) {
+          if (element.path.includes("\0")) {
+            throw new Error(`image.path cannot contain null bytes at slides.${slideIndex}.elements.${elementIndex}.`);
+          }
+
+          const extension = extname(element.path).toLowerCase();
+          if (![".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp"].includes(extension)) {
+            throw new Error(`image.path must be SVG, PNG, JPEG, GIF, or WebP at slides.${slideIndex}.elements.${elementIndex}.`);
+          }
+
+        const resolvedPath = resolve(process.cwd(), element.path);
+        await assertNoSymlinkPathComponents(resolve(process.cwd()), resolvedPath);
+        const realPath = await realpath(resolvedPath);
+        if (!isPathInside(realPath, workspaceRoot)) {
+          throw new Error(`image.path must stay inside the current workspace at slides.${slideIndex}.elements.${elementIndex}. Use image.dataUri for external files.`);
+        }
+
+        const stats = await lstat(realPath);
+        if (!stats.isFile()) {
+          throw new Error(`image.path must reference a regular non-symlink file at slides.${slideIndex}.elements.${elementIndex}.`);
+        }
+        }
+      })
+    )
+  );
 }
 
 export function createPptcreaterMcpServer(): McpServer {
@@ -350,7 +386,7 @@ export function createPptcreaterMcpServer(): McpServer {
     },
     async ({ deck, outputPath, overwrite, polishLayout }) => {
       const parsedDeck = ensureSourceReferenceSlide(parseDeckSpec(deck));
-      rejectLocalImagePaths(parsedDeck);
+      await assertSafeLocalImagePaths(parsedDeck);
       const resolvedOutputPath = await prepareMcpOutputPath(outputPath, overwrite);
       if (extname(resolvedOutputPath).toLowerCase() !== ".pptx") {
         throw new Error("render_pptx outputPath must end with .pptx.");
@@ -655,7 +691,7 @@ export function createPptcreaterMcpServer(): McpServer {
               version: "0.1",
               description: "Use create_pptx for direct PPTX requests. Use create_deck for examples and lint_deck before render_pptx when manually editing a DeckSpec.",
               templateField: "DeckSpec.template must be the id of a template returned by search_templates. Register reusable custom templates with register_template.",
-              assetFlow: "Use search_assets to find registered SVG assets. Use generate_schematic for table/tree/flow/list/mockup visuals, generate_diagram for architecture/network/sequence ponchi-e with nodes, lanes, and connectors, and register_svg_asset for reusable SVGs before referencing their sanitized SVG in DeckSpec elements.",
+              assetFlow: "Use search_assets to find registered SVG assets. Use generate_schematic for table/tree/flow/list/mockup visuals, generate_diagram for architecture/network/sequence ponchi-e with nodes, lanes, and connectors, and register_svg_asset for reusable SVGs before referencing their sanitized SVG in DeckSpec elements. If research produces local SVG/PNG/JPEG/GIF/WebP files, keep them inside the workspace, reference them with DeckSpec image.path, and still call render_pptx; do not switch to PowerPoint COM or ad-hoc PPTX generation.",
               shapeFlow: "Native shape elements (rect, roundRect, ellipse, line, rightArrow) are for simple editable cards, dividers, badges, and accent bars only. Do NOT hand-place line/rightArrow shapes to build connectors or architecture/flow diagrams: PowerPoint re-flows them so arrows end up detached, mis-angled, or hidden behind boxes. For ANY diagram with arrows or connected nodes, call generate_diagram (ponchi-e) or generate_schematic and embed the returned SVG as a single diagram element.",
               diagramFlow: "generate_diagram renders an architecture/flow ponchi-e as one clean SVG (immune to PowerPoint re-layout): connectors clip to node borders with real arrowheads and detour through gutters when an arrow skips a rank, nodes carry kind-based icons (actor/system/process/data/note/cloud) and accent bars, and groups render as lanes. OMIT node x/y to get automatic layered layout — supply only nodes (id, label, kind) and arrows (from, to), set direction 'LR'/'TB', and optionally node.layer/lane to steer placement. Use arrow.style 'orthogonal' for elbow routing, arrow.bidirectional for two-way links, and node.sublabel/emphasis for hierarchy. Prefer this over hand-built arrow shapes for every conceptual diagram; do not compute coordinates by hand unless you need a bespoke layout (then set both x and y on every node).",
               contentFlow: "Before rendering, call review_content with the deck locale and contentMode. It applies different writing rules for presentation, report, technical, handout, and decision decks. For Japanese report/technical/handout decks, prefer a short topic-label title plus a separate 50-character slide message. For Japanese presentation/decision decks, concise assertion titles are allowed. For English decks, prefer action titles: short complete-sentence takeaways supported by 3-5 proof points.",

@@ -1,5 +1,6 @@
-﻿import { readFile, writeFile } from "node:fs/promises";
+﻿import { lstat, readFile, realpath, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
+import { extname, isAbsolute, relative, resolve } from "node:path";
 import { sanitizeSvg } from "@pptcreater/assets-svg";
 import {
   defaultFontSizeForRole,
@@ -40,6 +41,14 @@ type PptxPresentation = {
 };
 
 const PptxGenJSConstructor = require("pptxgenjs") as { new (): PptxPresentation };
+const MAX_LOCAL_IMAGE_BYTES = 20 * 1024 * 1024;
+const RASTER_IMAGE_MIME_TYPES: Record<string, string> = {
+  ".gif": "image/gif",
+  ".jpeg": "image/jpeg",
+  ".jpg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp"
+};
 
 export type RenderOptions = {
   allowLintErrors?: boolean;
@@ -59,10 +68,100 @@ function svgDataUri(svg: string): string {
   return `data:image/svg+xml;base64,${Buffer.from(sanitizeSvg(svg), "utf8").toString("base64")}`;
 }
 
-function assertSafeImageDataUri(dataUri: string): void {
-  if (!/^data:image\/(?:png|jpe?g|gif|webp);base64,[a-zA-Z0-9+/=\s]+$/i.test(dataUri)) {
-    throw new Error("image.dataUri must be a base64 PNG, JPEG, GIF, or WebP image.");
+function isPathInside(child: string, parent: string): boolean {
+  const childRelative = relative(parent, child);
+  return childRelative === "" || (!childRelative.startsWith("..") && !isAbsolute(childRelative));
+}
+
+async function assertNoSymlinkPathComponents(workspaceRoot: string, resolvedPath: string): Promise<void> {
+  const relativePath = relative(workspaceRoot, resolvedPath);
+  if (relativePath.startsWith("..") || isAbsolute(relativePath)) {
+    throw new Error("image.path must stay inside the current workspace. Use image.dataUri for external files.");
   }
+
+  let current = workspaceRoot;
+  for (const segment of relativePath.split(/[\\/]+/).filter(Boolean)) {
+    current = resolve(current, segment);
+    const stats = await lstat(current);
+    if (stats.isSymbolicLink()) {
+      throw new Error("image.path cannot contain symbolic links.");
+    }
+  }
+}
+
+async function localImagePathToDataUri(path: string, workspaceRoot = process.cwd()): Promise<string> {
+  if (path.includes("\0")) {
+    throw new Error("image.path cannot contain null bytes.");
+  }
+
+  const extension = extname(path).toLowerCase();
+  const isSvg = extension === ".svg";
+  const mimeType = RASTER_IMAGE_MIME_TYPES[extension];
+  if (!isSvg && !mimeType) {
+    throw new Error("image.path must point to an SVG, PNG, JPEG, GIF, or WebP file.");
+  }
+
+  const root = await realpath(workspaceRoot);
+  const resolvedPath = resolve(workspaceRoot, path);
+  await assertNoSymlinkPathComponents(resolve(workspaceRoot), resolvedPath);
+  const realPath = await realpath(resolvedPath);
+  if (!isPathInside(realPath, root)) {
+    throw new Error("image.path must stay inside the current workspace. Use image.dataUri for external files.");
+  }
+
+  const stats = await lstat(realPath);
+  if (!stats.isFile()) {
+    throw new Error("image.path must reference a regular non-symlink file.");
+  }
+
+  if (stats.size > MAX_LOCAL_IMAGE_BYTES) {
+    throw new Error(`image.path file is too large. Maximum size is ${MAX_LOCAL_IMAGE_BYTES} bytes.`);
+  }
+
+  if (isSvg) {
+    return svgDataUri(await readFile(realPath, "utf8"));
+  }
+
+  return `data:${mimeType};base64,${(await readFile(realPath)).toString("base64")}`;
+}
+
+async function inlineLocalImagePaths(deck: DeckSpec): Promise<DeckSpec> {
+  const slides = await Promise.all(
+    deck.slides.map(async (slide) => ({
+      ...slide,
+      elements: await Promise.all(
+        slide.elements.map(async (element) => {
+          if (element.type !== "image" || !element.path || element.dataUri) {
+            return element;
+          }
+
+          return {
+            ...element,
+            path: undefined,
+            dataUri: await localImagePathToDataUri(element.path)
+          };
+        })
+      )
+    }))
+  );
+
+  return {
+    ...deck,
+    slides
+  };
+}
+
+function safeImageDataUri(dataUri: string): string {
+  const match = /^data:image\/(svg\+xml|png|jpe?g|gif|webp);base64,([a-zA-Z0-9+/=\s]+)$/i.exec(dataUri);
+  if (!match) {
+    throw new Error("image.dataUri must be a base64 SVG, PNG, JPEG, GIF, or WebP image.");
+  }
+
+  if (match[1].toLowerCase() === "svg+xml") {
+    return svgDataUri(Buffer.from(match[2].replace(/\s+/g, ""), "base64").toString("utf8"));
+  }
+
+  return dataUri;
 }
 
 function sortedElements(elements: SlideElement[]): SlideElement[] {
@@ -160,8 +259,7 @@ function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpec, sli
 
   if (element.type === "image") {
     if (element.dataUri) {
-      assertSafeImageDataUri(element.dataUri);
-      slide.addImage({ data: element.dataUri, altText: element.decorative ? "" : element.altText, ...position });
+      slide.addImage({ data: safeImageDataUri(element.dataUri), altText: element.decorative ? "" : element.altText, ...position });
     } else if (element.path) {
       slide.addImage({ path: element.path, altText: element.decorative ? "" : element.altText, ...position });
     }
@@ -275,7 +373,7 @@ function collectSlideAccessibilityNotes(deck: DeckSpec, deckSlide: DeckSpec["sli
 }
 
 export async function renderDeckToPptx(input: unknown, outputPath: string, options: RenderOptions = {}): Promise<RenderResult> {
-  const parsedDeck = ensureSourceReferenceSlide(parseDeckSpec(input));
+  const parsedDeck = await inlineLocalImagePaths(ensureSourceReferenceSlide(parseDeckSpec(input)));
   // Errors that layout polish deterministically resolves (text wrapping/fitting and reading-order
   // reassignment) must not block rendering. Everything else — out-of-bounds shapes, duplicate ids,
   // low contrast, missing alt text — is a genuine authoring mistake and is surfaced before we render.

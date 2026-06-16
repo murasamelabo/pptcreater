@@ -151,6 +151,7 @@ Before creating a DeckSpec, clarify these points when they are not already speci
 10. Run \`lint_deck\`.
 11. Run \`polish_deck_layout\` when layout issues or overflow risks are present. \`render_pptx\` also applies this safeguard automatically.
 12. Render with \`render_pptx\` or preview with \`render_studio\`. If text still cannot fit after polish, shorten or split the slide; do not force-render a broken layout.
+13. Do not bypass pptcreater with PowerPoint COM automation or ad-hoc PPTX scripts for normal deck creation. If research produces local SVG/PNG/JPEG/GIF/WebP files, reference workspace-local files via DeckSpec \`image.path\` and still call \`render_pptx\`; pptcreater embeds them safely.
 
 ## Design rules
 
