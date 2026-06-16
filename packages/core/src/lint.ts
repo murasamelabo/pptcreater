@@ -2,6 +2,7 @@
 import { reviewDeckContent } from "./content.js";
 import { estimateTextOverflow, findTextLineBreakIssue, SLIDE_WIDE } from "./layout.js";
 import type { DeckSpec, ShapeElement, Slide, SlideElement, TextElement } from "./schema.js";
+import { hasCompleteSourceReferenceSlide } from "./sourceReferences.js";
 import { defaultFontSizeForRole } from "./typography.js";
 
 export type LintSeverity = "error" | "warning" | "suggestion";
@@ -420,9 +421,23 @@ export function lintDeckSpec(deck: DeckSpec): LintReport {
     sourceIdCounts.set(source.id, (sourceIdCounts.get(source.id) ?? 0) + 1);
   });
   const sourcesById = new Map(deck.metadata.sources.map((source) => [source.id, source]));
+  const urlSourceCount = deck.metadata.sources.filter((source) => Boolean(source.url)).length;
+  const hasFinalReferenceSlide = hasCompleteSourceReferenceSlide(deck);
   const referencedSourceIds = new Set(
     deck.slides.flatMap((slide) => slide.elements.map((element) => element.sourceId).filter((sourceId): sourceId is string => Boolean(sourceId)))
   );
+
+  if (urlSourceCount > 0 && !hasFinalReferenceSlide) {
+    issues.push(
+      issue(
+        "error",
+        "source.reference-slide-missing",
+        "Decks that use external source URLs must collect the actual reference URLs on the final slide.",
+        "slides",
+        { sourceCount: urlSourceCount }
+      )
+    );
+  }
 
   deck.metadata.sources.forEach((source, sourceIndex) => {
     if ((sourceIdCounts.get(source.id) ?? 0) > 1) {
@@ -437,7 +452,7 @@ export function lintDeckSpec(deck: DeckSpec): LintReport {
       );
     }
 
-    if ((source.usage === "quote" || source.usage === "recreate") && !source.attribution) {
+    if ((source.usage === "quote" || source.usage === "recreate") && !source.attribution && !source.url) {
       issues.push(
         issue(
           "error",
@@ -449,7 +464,7 @@ export function lintDeckSpec(deck: DeckSpec): LintReport {
       );
     }
 
-    if ((source.usage === "quote" || source.usage === "recreate") && !referencedSourceIds.has(source.id)) {
+    if ((source.usage === "quote" || source.usage === "recreate") && !referencedSourceIds.has(source.id) && !source.url) {
       issues.push(
         issue(
           "error",
@@ -497,7 +512,7 @@ export function lintDeckSpec(deck: DeckSpec): LintReport {
         return;
       }
 
-      if ((source.usage === "quote" || source.usage === "recreate") && !element.citation) {
+      if ((source.usage === "quote" || source.usage === "recreate") && !element.citation && !source.url) {
         issues.push(
           issue(
             "error",

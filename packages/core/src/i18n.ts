@@ -48,6 +48,8 @@ const LINT_MESSAGES: Record<Locale, Record<string, (issue: LintIssue) => string>
     "visual.svg-text-small": (issue) =>
       `Embedded SVG text may be hard to read after scaling (${issue.details?.effectiveFontSize ?? "?"}pt).`,
     "diagram.long-description-short": () => "Complex diagrams should include a useful longDescription for speaker notes and accessibility review.",
+    "source.reference-slide-missing": (issue) =>
+      `Add a final references slide that lists the actual external source URLs (${issue.details?.sourceCount ?? "?"} source(s)).`,
     "slide.title-duplicate": () => "Each slide needs a unique, descriptive title for navigation.",
     "content.title-generic": () => "Slide title is generic. Use a title that explains this slide's specific point.",
     "content.title-too-long": (issue) =>
@@ -74,6 +76,8 @@ const LINT_MESSAGES: Record<Locale, Record<string, (issue: LintIssue) => string>
     "visual.svg-text-small": (issue) =>
       `SVG内部の文字が縮小後に読みにくい可能性があります（推定 ${issue.details?.effectiveFontSize ?? "?"}pt）。`,
     "diagram.long-description-short": () => "複雑な図には、speaker notesとアクセシビリティ確認に使えるlongDescriptionを追加してください。",
+    "source.reference-slide-missing": (issue) =>
+      `外部サイトを参照した場合は、最後のスライドに実際の参考URL・出典をまとめてください（${issue.details?.sourceCount ?? "?"}件）。`,
     "slide.title-duplicate": () => "各スライドには、ナビゲーション用の一意で説明的なタイトルが必要です。",
     "content.title-generic": () => "スライドタイトルが汎用的です。このスライド固有の話題や要点が分かる見出しにしてください。",
     "content.title-too-long": (issue) =>

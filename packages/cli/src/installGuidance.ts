@@ -145,11 +145,12 @@ Before creating a DeckSpec, clarify these points when they are not already speci
 4. Use \`search_templates\` and \`search_assets\` before creating new assets.
 5. Use \`generate_schematic\` for tables, trees, horizontal/vertical flows, list layouts, and mockup-style visuals. Do not freehand complex SVG unless the preset cannot express the structure.
 6. Use \`plan_source_visual\` for source figures: choose quote, recreate, or inspiration.
-7. Create a visual DeckSpec with editable PowerPoint shapes/text where possible.
-8. Run \`review_content\` (or CLI \`pptcreater content-review\`) before linting. It applies locale/content-mode writing rules: Japanese report/technical/handout decks use a short topic title + slide message, Japanese presentation/decision decks allow concise assertion titles, and English decks prefer action titles.
-9. Run \`lint_deck\`.
-10. Run \`polish_deck_layout\` when layout issues or overflow risks are present. \`render_pptx\` also applies this safeguard automatically.
-11. Render with \`render_pptx\` or preview with \`render_studio\`. If text still cannot fit after polish, shorten or split the slide; do not force-render a broken layout.
+7. When external websites are used as references, record each one in \`metadata.sources\` with its actual \`url\`. The final slide must collect these URLs; \`polish_deck_layout\`, \`render_pptx\`, and \`render_studio\` append/update it automatically.
+8. Create a visual DeckSpec with editable PowerPoint shapes/text where possible.
+9. Run \`review_content\` (or CLI \`pptcreater content-review\`) before linting. It applies locale/content-mode writing rules: Japanese report/technical/handout decks use a short topic title + slide message, Japanese presentation/decision decks allow concise assertion titles, and English decks prefer action titles.
+10. Run \`lint_deck\`.
+11. Run \`polish_deck_layout\` when layout issues or overflow risks are present. \`render_pptx\` also applies this safeguard automatically.
+12. Render with \`render_pptx\` or preview with \`render_studio\`. If text still cannot fit after polish, shorten or split the slide; do not force-render a broken layout.
 
 ## Design rules
 

@@ -6,6 +6,7 @@ export * from "./lint.js";
 export * from "./samples.js";
 export * from "./schema.js";
 export * from "./skillPacks.js";
+export * from "./sourceReferences.js";
 export * from "./sourceVisuals.js";
 export * from "./templates.js";
 export * from "./typography.js";

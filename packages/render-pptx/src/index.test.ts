@@ -1,9 +1,13 @@
 ﻿import { describe, expect, it } from "vitest";
-import { mkdtemp } from "node:fs/promises";
+import { readFile, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createSampleDeck } from "@pptcreater/core";
 import { renderDeckToPptx } from "./index.js";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const JSZip = require("jszip") as { loadAsync(data: Buffer): Promise<{ file(name: string): { async(type: "string"): Promise<string> } | null }> };
 
 describe("PPTX renderer", () => {
   it("refuses to render decks with lint errors by default", async () => {
@@ -71,5 +75,26 @@ describe("PPTX renderer", () => {
     });
 
     await expect(renderDeckToPptx(deck, "should-not-render-out-of-bounds.pptx")).rejects.toThrow(/lint error/);
+  });
+
+  it("automatically appends final source references before rendering", async () => {
+    const deck = createSampleDeck("en-US", { slideCount: 1 });
+    deck.metadata.sources = [
+      {
+        id: "source-1",
+        title: "Reference article",
+        url: "https://example.com/reference",
+        usage: "inspiration"
+      }
+    ];
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-render-"));
+    const outputPath = join(outputDir, "references.pptx");
+
+    await renderDeckToPptx(deck, outputPath);
+
+    const zip = await JSZip.loadAsync(await readFile(outputPath));
+    const slide2 = await zip.file("ppt/slides/slide2.xml")?.async("string");
+    expect(slide2).toContain("References and sources");
+    expect(slide2).toContain("https://example.com/reference");
   });
 });

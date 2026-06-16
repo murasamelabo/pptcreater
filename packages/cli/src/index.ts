@@ -7,6 +7,7 @@ import { renderPonchiDiagram, renderSchematicDiagram } from "@pptcreater/diagram
 import {
   cliMessage,
   createSampleDeck,
+  ensureSourceReferenceSlide,
   getContentGuidance,
   getDefaultTemplateRegistryPath,
   listAllTemplates,
@@ -226,7 +227,7 @@ program
   .argument("<deck>", "DeckSpec JSON path")
   .requiredOption("-o, --output <path>", "Output polished DeckSpec JSON path")
   .action(commandAction(async (deckPath: string, options: { output: string }) => {
-    const polished = normalizeDeckLayout(parseDeckSpec(await readJson(deckPath)));
+    const polished = normalizeDeckLayout(ensureSourceReferenceSlide(parseDeckSpec(await readJson(deckPath))));
     await writeJson(options.output, polished);
     console.log(cliMessage(outputLocale(polished.locale), "cli.created", { path: options.output }));
   }));
@@ -254,7 +255,7 @@ program
   .argument("<deck>", "DeckSpec JSON path")
   .requiredOption("-o, --output <path>", "Output HTML path")
   .action(commandAction(async (deckPath: string, options: { output: string }) => {
-    const deck = parseDeckSpec(await readJson(deckPath));
+    const deck = ensureSourceReferenceSlide(parseDeckSpec(await readJson(deckPath)));
     await mkdir(dirname(options.output), { recursive: true });
     await writeFile(options.output, renderStudioHtml(deck, outputLocale(deck.locale)), "utf8");
     console.log(cliMessage(outputLocale(deck.locale), "cli.studioCreated", { path: options.output }));

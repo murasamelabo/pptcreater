@@ -9,6 +9,7 @@ import {
   ContentModeSchema,
   createSampleDeck,
   DeckSpecSchema,
+  ensureSourceReferenceSlide,
   getContentGuidance,
   getDefaultTemplateRegistryPath,
   listSkillPacks,
@@ -327,7 +328,7 @@ export function createPptcreaterMcpServer(): McpServer {
       }
     },
     async ({ deck, locale }) => {
-      const polished = normalizeDeckLayout(parseDeckSpec(deck));
+      const polished = normalizeDeckLayout(ensureSourceReferenceSlide(parseDeckSpec(deck)));
       return jsonText({
         deck: polished,
         lint: localizeLintReport(lintDeckSpec(polished), locale ?? polished.locale)
@@ -348,7 +349,7 @@ export function createPptcreaterMcpServer(): McpServer {
       }
     },
     async ({ deck, outputPath, overwrite, polishLayout }) => {
-      const parsedDeck = parseDeckSpec(deck);
+      const parsedDeck = ensureSourceReferenceSlide(parseDeckSpec(deck));
       rejectLocalImagePaths(parsedDeck);
       const resolvedOutputPath = await prepareMcpOutputPath(outputPath, overwrite);
       if (extname(resolvedOutputPath).toLowerCase() !== ".pptx") {
@@ -627,6 +628,7 @@ export function createPptcreaterMcpServer(): McpServer {
             "- Quote: only when exact fidelity is required and usage rights are clear. Add `metadata.sources[].usage = quote`, `sourceId`, and `citation`.",
             "- Recreate: preferred for explanatory slides because PowerPoint objects remain editable and can be localized/simplified.",
             "- Inspiration: use when rights are unclear or the original is too detailed; do not copy the original visual.",
+            "- References slide: whenever an external URL is used, add it to `metadata.sources[].url`. `render_pptx`, `render_studio`, and `polish_deck_layout` append/update the final references slide with the actual URLs. Per-slide citations are optional for URL-backed sources when the final references slide is complete.",
             "",
             "Use the `plan_source_visual` tool to present these choices to the agent/user before rendering."
           ].join("\n")
@@ -659,7 +661,8 @@ export function createPptcreaterMcpServer(): McpServer {
               contentFlow: "Before rendering, call review_content with the deck locale and contentMode. It applies different writing rules for presentation, report, technical, handout, and decision decks. For Japanese report/technical/handout decks, prefer a short topic-label title plus a separate 50-character slide message. For Japanese presentation/decision decks, concise assertion titles are allowed. For English decks, prefer action titles: short complete-sentence takeaways supported by 3-5 proof points.",
               layoutGuardrails: "render_pptx always applies layout polish (token-aware Japanese/Latin wrapping, font auto-fit, manual-break reflow) and reading-order normalization before drawing, so most overflow, mid-word/kanji splits, orphaned punctuation, and decorative-over-text overlaps are fixed automatically. It still blocks only when content genuinely cannot fit (a box far too small even at the minimum font), low contrast, missing alt text, duplicate ids, out-of-bounds shapes, or SVG-internal diagram text that would render below 8pt; the error lists each offending code and path. Fix those by shortening copy, enlarging the box/diagram, reducing labels, or moving dense content into a generate_diagram/generate_schematic visual.",
               cognitiveLoad: "Use one visual grammar per slide. Prefer table for comparisons, tree for hierarchy, generate_diagram for architecture/flow with connectors, flow/vertical-flow for processes, and list/list-horizontal for 3-4 key points. Avoid many custom text boxes with uneven manual line breaks or body-only enumerations. Let layout polish wrap Japanese text instead of hand-coding line breaks. When embedding an SVG diagram that contains <text>, keep the slide element large enough that its internal labels remain at least 8pt after viewBox scaling; otherwise split the diagram or remove labels.",
-              sourceVisuals: "Use metadata.sources plus element.sourceId/citation when quoting, recreating, or using source visuals as inspiration. Prefer editable shape/text objects for recreated visuals.",
+              sourceReferences: "Whenever a deck uses external websites, record each source in metadata.sources with the actual url. render_pptx, render_studio, and polish_deck_layout automatically append/update the final references slide (参考URL・出典 / References and sources) so the last slide contains all external URLs. Per-slide citations are optional for URL-backed sources when the final references slide is complete.",
+              sourceVisuals: "Use metadata.sources plus element.sourceId/citation when quoting, recreating, or using source visuals as inspiration. Prefer editable shape/text objects for recreated visuals. For URL-backed sources, final-slide references can replace per-slide citation text.",
               requiredVisualAccessibility: "Non-decorative SVG, image, and diagram elements require altText. Diagram elements also require summary and longDescription.",
               recommendedWorkflow: ["create_pptx for direct output", "search_templates", "search_assets", "generate_schematic for structured visuals", "create_deck or custom DeckSpec", "review_content", "lint_deck", "render_pptx or render_studio"]
             },

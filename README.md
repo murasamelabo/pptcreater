@@ -288,6 +288,8 @@ The default deck generator follows the design reference principles: three-second
 
 When using source visuals, prefer recreation as editable PowerPoint shapes when the goal is explanation, localization, simplification, or later editing. Quote original figures only when exact fidelity is required and usage rights are clear; record attribution in `metadata.sources`, `sourceId`, and `citation`.
 
+When a deck uses external websites as references, record each source in `metadata.sources` with its actual `url`. `render_pptx`, `render_studio`, and `polish_deck_layout` automatically add or update the final references slide (`参考URL・出典` / `References and sources`) so the deck ends with a consolidated list of reference URLs. Per-slide citations are optional for URL-backed sources as long as the final references slide contains the actual URLs.
+
 ## Design principles
 
 - One slide, one message

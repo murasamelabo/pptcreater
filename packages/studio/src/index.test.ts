@@ -10,4 +10,21 @@ describe("Studio preview", () => {
     expect(html).toContain("スライド");
     expect(html).toContain("lint");
   });
+
+  it("adds final source references to Studio previews", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.metadata.sources = [
+      {
+        id: "source-1",
+        title: "Reference article",
+        url: "https://example.com/source",
+        usage: "inspiration"
+      }
+    ];
+
+    const html = renderStudioHtml(deck);
+
+    expect(html).toContain("参考URL・出典");
+    expect(html).toContain("https://example.com/source");
+  });
 });

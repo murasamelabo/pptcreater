@@ -1,5 +1,5 @@
 ﻿import { sanitizeSvg, searchSvgAssets } from "@pptcreater/assets-svg";
-import { listSkillPacks, listTemplates, lintDeckSpec, localizeLintReport, parseDeckSpec, type DeckSpec, type Locale } from "@pptcreater/core";
+import { ensureSourceReferenceSlide, listSkillPacks, listTemplates, lintDeckSpec, localizeLintReport, parseDeckSpec, type DeckSpec, type Locale } from "@pptcreater/core";
 
 type StudioLabels = {
   title: string;
@@ -118,7 +118,7 @@ function sourceCitations(deck: DeckSpec, slide: DeckSpec["slides"][number]): str
 }
 
 export function renderStudioHtml(input: unknown, localeOverride?: Locale): string {
-  const deck = parseDeckSpec(input);
+  const deck = ensureSourceReferenceSlide(parseDeckSpec(input));
   const locale = localeOverride ?? deck.locale;
   const labels = LABELS[locale];
   const lintReport = localizeLintReport(lintDeckSpec(deck), locale);

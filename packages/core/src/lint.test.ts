@@ -1,5 +1,5 @@
 ﻿import { describe, expect, it } from "vitest";
-import { createSampleDeck, lintDeckSpec, parseDeckSpec } from "./index.js";
+import { createSampleDeck, ensureSourceReferenceSlide, lintDeckSpec, parseDeckSpec } from "./index.js";
 
 describe("DeckSpec linting", () => {
   it("accepts the generated sample deck", () => {
@@ -619,6 +619,113 @@ describe("DeckSpec linting", () => {
     expect(report.ok).toBe(false);
     expect(report.issues.some((issue) => issue.code === "source.attribution-missing")).toBe(true);
     expect(report.issues.some((issue) => issue.code === "source.citation-missing")).toBe(true);
+  });
+
+  it("requires external source URLs to appear on the final references slide", () => {
+    const deck = createSampleDeck("ja-JP");
+    deck.metadata.sources = [
+      {
+        id: "source-1",
+        title: "Microsoft reference",
+        url: "https://learn.microsoft.com/azure/example",
+        usage: "inspiration"
+      }
+    ];
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.ok).toBe(false);
+    expect(report.issues.some((issue) => issue.code === "source.reference-slide-missing")).toBe(true);
+  });
+
+  it("adds a final references slide with actual source URLs", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.metadata.sources = [
+      {
+        id: "source-1",
+        title: "Microsoft reference",
+        url: "https://learn.microsoft.com/azure/example",
+        usage: "inspiration"
+      },
+      {
+        id: "source-2",
+        title: "AWS reference",
+        url: "https://aws.amazon.com/architecture/icons/",
+        usage: "inspiration"
+      }
+    ];
+
+    const withReferences = ensureSourceReferenceSlide(parseDeckSpec(deck));
+    const finalSlide = withReferences.slides.at(-1);
+
+    expect(finalSlide?.title).toBe("参考URL・出典");
+    expect(finalSlide?.elements.some((element) => element.type === "text" && element.text.includes("https://learn.microsoft.com/azure/example"))).toBe(true);
+    expect(finalSlide?.speakerNotes).toContain("https://aws.amazon.com/architecture/icons/");
+    expect(lintDeckSpec(withReferences).issues.some((issue) => issue.code === "source.reference-slide-missing")).toBe(false);
+  });
+
+  it("updates a generated references slide when source URLs change", () => {
+    const deck = createSampleDeck("en-US", { slideCount: 1 });
+    deck.metadata.sources = [
+      {
+        id: "source-1",
+        title: "Old source",
+        url: "https://example.com/old",
+        usage: "inspiration"
+      }
+    ];
+    const withOldReferences = ensureSourceReferenceSlide(parseDeckSpec(deck));
+    const updatedDeck = {
+      ...withOldReferences,
+      metadata: {
+        ...withOldReferences.metadata,
+        sources: [
+          {
+            id: "source-2",
+            title: "New source",
+            url: "https://example.com/new",
+            usage: "inspiration" as const
+          }
+        ]
+      }
+    };
+
+    const withNewReferences = ensureSourceReferenceSlide(parseDeckSpec(updatedDeck));
+    const finalText = withNewReferences.slides.at(-1)?.elements.map((element) => (element.type === "text" ? element.text : "")).join("\n");
+
+    expect(finalText).toContain("https://example.com/new");
+    expect(finalText).not.toContain("https://example.com/old");
+  });
+
+  it("allows URL sources to be collected only on the final references slide", () => {
+    const deck = createSampleDeck("en-US", { slideCount: 1 });
+    deck.metadata.sources = [
+      {
+        id: "source-1",
+        title: "Reference article",
+        url: "https://example.com/reference",
+        usage: "quote"
+      }
+    ];
+    deck.slides[0].elements.push({
+      id: "source-visual",
+      type: "svg",
+      svg: "<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>",
+      altText: "Quoted source visual",
+      sourceId: "source-1",
+      x: 1,
+      y: 3,
+      w: 2,
+      h: 2,
+      readingOrder: 20,
+      decorative: false
+    });
+
+    const report = lintDeckSpec(ensureSourceReferenceSlide(parseDeckSpec(deck)));
+
+    expect(report.issues.some((issue) => issue.code === "source.citation-missing")).toBe(false);
+    expect(report.issues.some((issue) => issue.code === "source.visual-reference-missing")).toBe(false);
+    expect(report.issues.some((issue) => issue.code === "source.attribution-missing")).toBe(false);
   });
 
   it("requires quoted or recreated sources to be referenced by elements", () => {

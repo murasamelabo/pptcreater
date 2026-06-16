@@ -4,6 +4,7 @@ import { sanitizeSvg } from "@pptcreater/assets-svg";
 import {
   defaultFontSizeForRole,
   defaultTokens,
+  ensureSourceReferenceSlide,
   lintDeckSpec,
   normalizeDeckLayout,
   normalizeReadingOrder,
@@ -274,7 +275,7 @@ function collectSlideAccessibilityNotes(deck: DeckSpec, deckSlide: DeckSpec["sli
 }
 
 export async function renderDeckToPptx(input: unknown, outputPath: string, options: RenderOptions = {}): Promise<RenderResult> {
-  const parsedDeck = parseDeckSpec(input);
+  const parsedDeck = ensureSourceReferenceSlide(parseDeckSpec(input));
   // Errors that layout polish deterministically resolves (text wrapping/fitting and reading-order
   // reassignment) must not block rendering. Everything else — out-of-bounds shapes, duplicate ids,
   // low contrast, missing alt text — is a genuine authoring mistake and is surfaced before we render.
