@@ -439,6 +439,59 @@ describe("DeckSpec linting", () => {
     expect(report.issues.some((issue) => issue.code === "layout.enumeration-hierarchy")).toBe(false);
   });
 
+  it("flags Japanese technical titles that read like document sentences", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1, contentMode: "technical" });
+    deck.metadata.contentMode = "technical";
+    deck.slides[0].elements = [
+      {
+        id: "title",
+        type: "text",
+        role: "title",
+        text: "露出グラフに攻撃活動を重ね、blast radius と最短経路を推定する",
+        x: 0.8,
+        y: 0.7,
+        w: 11,
+        h: 1.2,
+        fontSize: 30,
+        bold: true,
+        decorative: false,
+        readingOrder: 1
+      }
+    ];
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "content.title-too-long")).toBe(true);
+    expect(report.issues.some((issue) => issue.code === "content.ja-title-claim-like")).toBe(true);
+    expect(report.issues.some((issue) => issue.code === "content.ja-message-missing")).toBe(true);
+  });
+
+  it("allows a Japanese presentation action title when it is concise", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1, contentMode: "presentation" });
+    deck.metadata.contentMode = "presentation";
+    const title = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
+    if (title?.type === "text") {
+      title.text = "初動の時間負けを縮める";
+    }
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "content.ja-title-claim-like")).toBe(false);
+  });
+
+  it("flags English generic topic titles", () => {
+    const deck = createSampleDeck("en-US", { slideCount: 1, contentMode: "decision" });
+    deck.metadata.contentMode = "decision";
+    const title = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
+    if (title?.type === "text") {
+      title.text = "Overview";
+    }
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "content.title-generic")).toBe(true);
+  });
+
   it("flags an opaque shape drawn over text", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     deck.slides[0].elements.push({

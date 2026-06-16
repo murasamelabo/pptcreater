@@ -6,8 +6,10 @@ import { z } from "zod";
 import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, searchAllSvgAssets } from "@pptcreater/assets-svg";
 import { renderPonchiDiagram, renderSchematicDiagram } from "@pptcreater/diagram";
 import {
+  ContentModeSchema,
   createSampleDeck,
   DeckSpecSchema,
+  getContentGuidance,
   getDefaultTemplateRegistryPath,
   listSkillPacks,
   lintDeckSpec,
@@ -18,6 +20,7 @@ import {
   planSourceVisualStrategy,
   recommendTemplateForContentMode,
   registerTemplateManifest,
+  reviewDeckContent,
   searchTemplates,
   STYLE_PROFILES,
   TemplateManifestSchema,
@@ -288,6 +291,28 @@ export function createPptcreaterMcpServer(): McpServer {
     async ({ deck, locale }) => {
       const parsedDeck = parseDeckSpec(deck);
       return jsonText(localizeLintReport(lintDeckSpec(parsedDeck), locale ?? parsedDeck.locale));
+    }
+  );
+
+  server.registerTool(
+    "review_content",
+    {
+      title: "Review slide content writing",
+      description:
+        "Return bilingual, content-mode-specific slide writing guidance and optionally review a DeckSpec for verbose titles, missing slide messages, prose-like body text, and excessive bullets. Use before rendering when AI-generated slide copy reads like a document.",
+      inputSchema: {
+        deck: DeckSpecSchema.optional(),
+        locale: LocaleSchema.optional(),
+        contentMode: ContentModeSchema.optional()
+      }
+    },
+    async ({ deck, locale, contentMode }) => {
+      if (!deck) {
+        return jsonText({ guidance: getContentGuidance(locale ?? "ja-JP", contentMode ?? "presentation"), issues: [] });
+      }
+
+      const parsedDeck = parseDeckSpec(deck);
+      return jsonText(reviewDeckContent(parsedDeck, locale ?? parsedDeck.locale, contentMode ?? parsedDeck.metadata.contentMode ?? "presentation"));
     }
   );
 
@@ -564,7 +589,7 @@ export function createPptcreaterMcpServer(): McpServer {
             "",
             "Use these as style guidance, not as a license to copy specific third-party slides.",
             "",
-            "- Lead with a strong assertion title, not a topic label.",
+            "- Choose the content framework before writing: Japanese report/technical decks usually split topic title + slide message; English executive/presentation decks usually use action titles.",
             "- Use a modular grid: cards, bands, large numerals, timelines, and process blocks.",
             "- Build one memorable visual scene per slide.",
             "- Keep typography bold, sparse, and hierarchical.",
@@ -573,7 +598,7 @@ export function createPptcreaterMcpServer(): McpServer {
             "- For report decks, use more structure and evidence blocks.",
             "- For presentation decks, use fewer words and more visual contrast.",
             "- For technical decks, use architecture, concept, boundary, and flow diagrams.",
-            "- Run `polish_deck_layout` and `lint_deck` before rendering."
+            "- Run `review_content`, `polish_deck_layout`, and `lint_deck` before rendering."
           ].join("\n")
         }
       ]
@@ -630,11 +655,12 @@ export function createPptcreaterMcpServer(): McpServer {
               assetFlow: "Use search_assets to find registered SVG assets. Use generate_schematic for table/tree/flow/list/mockup visuals, generate_diagram for architecture/network/sequence ponchi-e with nodes, lanes, and connectors, and register_svg_asset for reusable SVGs before referencing their sanitized SVG in DeckSpec elements.",
               shapeFlow: "Native shape elements (rect, roundRect, ellipse, line, rightArrow) are for simple editable cards, dividers, badges, and accent bars only. Do NOT hand-place line/rightArrow shapes to build connectors or architecture/flow diagrams: PowerPoint re-flows them so arrows end up detached, mis-angled, or hidden behind boxes. For ANY diagram with arrows or connected nodes, call generate_diagram (ponchi-e) or generate_schematic and embed the returned SVG as a single diagram element.",
               diagramFlow: "generate_diagram renders an architecture/flow ponchi-e as one clean SVG (immune to PowerPoint re-layout): connectors clip to node borders with real arrowheads and detour through gutters when an arrow skips a rank, nodes carry kind-based icons (actor/system/process/data/note/cloud) and accent bars, and groups render as lanes. OMIT node x/y to get automatic layered layout — supply only nodes (id, label, kind) and arrows (from, to), set direction 'LR'/'TB', and optionally node.layer/lane to steer placement. Use arrow.style 'orthogonal' for elbow routing, arrow.bidirectional for two-way links, and node.sublabel/emphasis for hierarchy. Prefer this over hand-built arrow shapes for every conceptual diagram; do not compute coordinates by hand unless you need a bespoke layout (then set both x and y on every node).",
+              contentFlow: "Before rendering, call review_content with the deck locale and contentMode. It applies different writing rules for presentation, report, technical, handout, and decision decks. For Japanese report/technical/handout decks, prefer a short topic-label title plus a separate 50-character slide message. For Japanese presentation/decision decks, concise assertion titles are allowed. For English decks, prefer action titles: short complete-sentence takeaways supported by 3-5 proof points.",
               layoutGuardrails: "render_pptx always applies layout polish (token-aware Japanese/Latin wrapping, font auto-fit, manual-break reflow) and reading-order normalization before drawing, so most overflow, mid-word/kanji splits, orphaned punctuation, and decorative-over-text overlaps are fixed automatically. It still blocks only when content genuinely cannot fit (a box far too small even at the minimum font), low contrast, missing alt text, duplicate ids, or out-of-bounds shapes; the error lists each offending code and path. Fix those by shortening copy, enlarging the box, or moving dense content into a generate_diagram/generate_schematic visual.",
               cognitiveLoad: "Use one visual grammar per slide. Prefer table for comparisons, tree for hierarchy, generate_diagram for architecture/flow with connectors, flow/vertical-flow for processes, and list/list-horizontal for 3-4 key points. Avoid many custom text boxes with uneven manual line breaks or body-only enumerations. Let layout polish wrap Japanese text instead of hand-coding line breaks.",
               sourceVisuals: "Use metadata.sources plus element.sourceId/citation when quoting, recreating, or using source visuals as inspiration. Prefer editable shape/text objects for recreated visuals.",
               requiredVisualAccessibility: "Non-decorative SVG, image, and diagram elements require altText. Diagram elements also require summary and longDescription.",
-              recommendedWorkflow: ["create_pptx for direct output", "search_templates", "search_assets", "generate_schematic for structured visuals", "create_deck or custom DeckSpec", "lint_deck", "render_pptx or render_studio"]
+              recommendedWorkflow: ["create_pptx for direct output", "search_templates", "search_assets", "generate_schematic for structured visuals", "create_deck or custom DeckSpec", "review_content", "lint_deck", "render_pptx or render_studio"]
             },
             null,
             2
@@ -668,7 +694,7 @@ export function createPptcreaterMcpServer(): McpServer {
                     "3. 発表用、配布用、非同期レビュー用、Web公開用のどれに近いですか？",
                     "4. 希望する枚数、時間、章立てはありますか？",
                     "5. 使いたいテンプレート、ブランド色、アイコン、ロゴ、図表、データソースはありますか？",
-                    "回答後、search_templates と search_assets を使い、図・アイコンを含むDeckSpecを作成し、lint_deck後に render_pptx または render_studio を使ってください。"
+                    "回答後、search_templates と search_assets を使い、図・アイコンを含むDeckSpecを作成し、review_content と lint_deck 後に render_pptx または render_studio を使ってください。"
                   ].join("\n")
                 : [
                     "Before creating slides, ask the user these questions one at a time, then create a visual DeckSpec:",
@@ -677,7 +703,7 @@ export function createPptcreaterMcpServer(): McpServer {
                     "3. Is this for live presentation, handout, async review, or public sharing?",
                     "4. What slide count, time limit, or section structure is desired?",
                     "5. Are there templates, brand colors, icons, logos, diagrams, or data sources to reuse?",
-                    "After the answers, use search_templates and search_assets, create a DeckSpec with diagrams/icons, run lint_deck, then render_pptx or render_studio."
+                    "After the answers, use search_templates and search_assets, create a DeckSpec with diagrams/icons, run review_content and lint_deck, then render_pptx or render_studio."
                   ].join("\n")
           }
         }
@@ -724,7 +750,7 @@ export function createPptcreaterMcpServer(): McpServer {
           role: "user",
           content: {
             type: "text",
-            text: `Create a concise accessible DeckSpec about "${topic}" for locale ${locale}. Use one message per slide, explicit readingOrder, altText for visuals, and run lint_deck before rendering.`
+            text: `Create a concise accessible DeckSpec about "${topic}" for locale ${locale}. Use the content-mode-specific rules from review_content (Japanese report/technical: topic title + slide message; English: action title), one message per slide, explicit readingOrder, altText for visuals, and run review_content plus lint_deck before rendering.`
           }
         }
       ]

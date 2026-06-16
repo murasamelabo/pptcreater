@@ -1,4 +1,5 @@
 ﻿export * from "./color.js";
+export * from "./content.js";
 export * from "./i18n.js";
 export * from "./layout.js";
 export * from "./lint.js";

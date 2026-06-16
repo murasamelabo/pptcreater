@@ -54,16 +54,24 @@ pptcreater new --output examples\deck.json --locale ja-JP --content-mode present
 
 Available styles: `minimal`, `stylish`, `report`, `presentation`, `technical`. From MCP, use `recommend_template` to get the template and style for a content mode, or pass `styleProfile` to `create_deck`. Built-in styled templates (`modern-simple`, `stylish-editorial`, `report-formal`, `presentation-bold`, `technical-architecture`) are listed by `pptcreater template list` and MCP `search_templates`.
 
-From MCP, use `create_pptx` when the user simply asks for a `.pptx`. It creates a styled DeckSpec, lints it, polishes layout, and renders the PowerPoint in one call. Use the lower-level `create_deck` -> `lint_deck` -> `render_pptx` workflow only when you need to manually edit the DeckSpec.
+From MCP, use `create_pptx` when the user simply asks for a `.pptx`. It creates a styled DeckSpec, lints it, polishes layout, and renders the PowerPoint in one call. Use the lower-level `create_deck` -> `review_content` -> `lint_deck` -> `render_pptx` workflow only when you need to manually edit the DeckSpec.
+
+`review_content` / `pptcreater content-review` provides the content-writing guardrail that prevents AI-generated decks from reading like long documents. It switches rules by locale and `contentMode`:
+
+- Japanese `report`, `technical`, and `handout`: use a short topic-label title plus a separate slide message (one factual claim, about 50 characters or fewer).
+- Japanese `presentation` and `decision`: concise assertion titles are allowed, but they must stay glanceable and avoid stuffing conditions into the title.
+- English modes: prefer action titles — short, specific complete-sentence takeaways supported by 3-5 proof points.
+
+It flags generic titles, verbose document-like titles, missing Japanese slide messages, long supporting messages, prose-like body text, and excessive bullets.
 
 Use `pptcreater polish <deck> --output <polished.deck.json>`, `pptcreater render --polish`, or MCP `polish_deck_layout` before rendering when source content is long or diagrams have many labels. The polish step clamps elements to slide bounds, rebalances Japanese/English line breaks (without splitting numbers like 150,000, Latin words/identifiers like onPremisesDistinguishedName, or leaving orphan punctuation/single characters), and adjusts text fitting to reduce overflows and misalignment. `render_pptx` also applies this safeguard automatically before drawing. If text still cannot fit after polish, `layout.text-overflow-risk` and `layout.bad-line-break` are render-blocking errors; widen the box, shorten the copy, split the slide, or choose a schematic/table/list layout instead of forcing a broken PPTX.
 
-Lint blocks `layout.text-overflow-risk`, `layout.out-of-bounds`, `layout.text-overlap`, and `layout.bad-line-break` so agents must fix overflow, collision, and orphan lines before delivering a deck. `layout.enumeration-hierarchy` warns when body-only enumerations should be converted to callout headings, icons, accent rules, or schematic list/table layouts.
+Lint blocks `layout.text-overflow-risk`, `layout.out-of-bounds`, `layout.text-overlap`, and `layout.bad-line-break` so agents must fix overflow, collision, and orphan lines before delivering a deck. Content-quality rules from `review_content` are also included in `lint_deck` as warnings/suggestions. `layout.enumeration-hierarchy` warns when body-only enumerations should be converted to callout headings, icons, accent rules, or schematic list/table layouts.
 
 For lower cognitive load, use one visual grammar per slide: `table` for comparisons, `tree` for hierarchy, `flow` / `vertical-flow` for processes, and `list` / `list-horizontal` for 3-4 key points. Avoid many custom text boxes with uneven manual line breaks.
 
 
-Modern slide generation follows these principles: assertion titles, modular cards, bold whitespace, restrained accents, one memorable visual scene per slide, and editable PowerPoint shapes for content that users may revise later. The MCP resource `design://modern-slide-principles` exposes this guidance to AI agents.
+Modern slide generation follows these principles: content-mode-aware titles/messages, modular cards, bold whitespace, restrained accents, one memorable visual scene per slide, and editable PowerPoint shapes for content that users may revise later. The MCP resource `design://modern-slide-principles` exposes this guidance to AI agents.
 
 ## Slideland-style schematic presets
 
@@ -151,7 +159,7 @@ Register the MCP server in your user-level MCP configuration on each terminal. U
 Add this to your global Copilot instructions so slide-related requests prefer this tool:
 
 ```text
-When creating PowerPoint presentations, slide decks, proposal materials, templates, SVG icons, business diagrams, or accessible presentation materials, prefer the pptcreater MCP. Use create_pptx for direct PPTX output. For custom DeckSpecs, first use interview_slide_brief when purpose, audience, or volume is unclear, use generate_schematic for table/tree/flow/list/mockup visuals, then run lint_deck and render_pptx or render_studio.
+When creating PowerPoint presentations, slide decks, proposal materials, templates, SVG icons, business diagrams, or accessible presentation materials, prefer the pptcreater MCP. Use create_pptx for direct PPTX output. For custom DeckSpecs, first use interview_slide_brief when purpose, audience, or volume is unclear, use review_content to apply locale/content-mode writing rules, use generate_schematic for table/tree/flow/list/mockup visuals, then run lint_deck and render_pptx or render_studio.
 ```
 
 For stronger project-level behavior, add the same instruction to `.github/copilot-instructions.md` in repositories where slide creation should always use `pptcreater`.

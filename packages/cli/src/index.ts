@@ -7,6 +7,7 @@ import { renderPonchiDiagram, renderSchematicDiagram } from "@pptcreater/diagram
 import {
   cliMessage,
   createSampleDeck,
+  getContentGuidance,
   getDefaultTemplateRegistryPath,
   listAllTemplates,
   listSkillPacks,
@@ -15,6 +16,7 @@ import {
   normalizeDeckLayout,
   parseDeckSpec,
   registerTemplateManifest,
+  reviewDeckContent,
   STYLE_PROFILES,
   type ContentMode,
   type Locale,
@@ -188,6 +190,34 @@ program
     if (!report.ok) {
       process.exitCode = 1;
     }
+  }));
+
+program
+  .command("content-review")
+  .description("Review slide titles/messages/body copy against locale and content-mode writing guidelines.")
+  .argument("[deck]", "DeckSpec JSON path")
+  .option("--locale <locale>", "Guidance locale when no deck is provided", "ja-JP")
+  .option("--content-mode <mode>", "presentation, report, technical, handout, or decision", parseContentMode)
+  .option("--json", "Emit JSON", false)
+  .action(commandAction(async (deckPath: string | undefined, options: { locale: string; contentMode?: ContentMode; json: boolean }) => {
+    let report: ReturnType<typeof reviewDeckContent>;
+    if (deckPath) {
+      const parsedDeck = parseDeckSpec(await readJson(deckPath));
+      report = reviewDeckContent(parsedDeck, parsedDeck.locale, options.contentMode ?? parsedDeck.metadata.contentMode ?? "presentation");
+    } else {
+      report = { guidance: getContentGuidance(asLocale(options.locale), options.contentMode ?? "presentation"), issues: [] };
+    }
+
+    if (options.json) {
+      console.log(JSON.stringify(report, null, 2));
+      return;
+    }
+
+    console.log(report.guidance.titleModel);
+    console.log(report.guidance.messageModel);
+    console.log(report.guidance.bodyModel);
+    report.guidance.rules.forEach((rule) => console.log(`- ${rule}`));
+    report.issues.forEach((item) => console.log(`${item.severity.toUpperCase()} ${item.code} ${item.path}: ${item.message}`));
   }));
 
 program

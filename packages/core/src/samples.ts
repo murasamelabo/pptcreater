@@ -463,53 +463,77 @@ export function createSampleDeck(locale: Locale, options: CreateSampleDeckOption
       ];
 
   const slides = [
-    {
-      id: "slide-1",
-      title: isJapanese ? "3秒で要点が伝わるスライドを標準化する" : "Standardize slides that pass the three-second glance test",
-      layout: "hero",
-      speakerNotes: isJapanese
-        ? `目的: ${purpose}。聴衆: ${audience}。${modeGuidance}`
-        : `Purpose: ${purpose}. Audience: ${audience}. ${modeGuidance}`,
-      elements: heroSlide(
-        theme,
-        isJapanese,
-        isJapanese ? "3秒で要点が伝わるスライドを標準化する" : "Standardize slides that pass the three-second glance test",
-        isJapanese ? "用途・聴衆・ボリュームを先に固定し、編集可能な図形で表現します。" : "Brief purpose, audience, and volume first; express it with editable shapes.",
-        audience
-      )
-    },
-    {
-      id: "slide-2",
-      title: isJapanese ? "ヒアリングから可視化までを1つの流れにする" : "Turn briefing and visuals into one flow",
-      layout: "steps",
-      speakerNotes: isJapanese ? "目的と聴衆を確認し、構成・可視化・検証へ進めます。" : "Clarify purpose and audience, then structure, visualize, and verify.",
-      elements: stepSlide(
-        theme,
-        isJapanese,
-        isJapanese ? "ヒアリングから可視化までを1つの流れにする" : "Turn briefing and visuals into one flow",
-        steps,
-        isJapanese ? "先に聞くほど、後のスライドは短く・強く・見やすくなります。" : "Better upfront briefing makes later slides shorter, stronger, and clearer."
-      )
-    },
-    {
-      id: "slide-3",
-      title: isJapanese ? "スライドは装飾ではなく情報UIとして設計する" : "Design slides as information interfaces",
-      layout: "cards",
-      speakerNotes: isJapanese ? "カード・テキストは編集可能なPowerPointオブジェクトです。" : "Cards and text are editable PowerPoint objects.",
-      elements: cardSlide(theme, isJapanese, isJapanese ? "スライドは装飾ではなく情報UIとして設計する" : "Design slides as information interfaces", qualityCards)
-    },
+    (() => {
+      const useJapaneseTopicTitles = isJapanese && (contentMode === "report" || contentMode === "technical" || contentMode === "handout");
+      const title = useJapaneseTopicTitles
+        ? "AIスライド品質標準"
+        : isJapanese
+          ? "3秒で要点が伝わるスライドを標準化する"
+          : "Standardize slides that pass the three-second glance test";
+      return {
+        id: "slide-1",
+        title,
+        layout: "hero",
+        speakerNotes: isJapanese
+          ? `目的: ${purpose}。聴衆: ${audience}。${modeGuidance}`
+          : `Purpose: ${purpose}. Audience: ${audience}. ${modeGuidance}`,
+        elements: heroSlide(
+          theme,
+          isJapanese,
+          title,
+          isJapanese ? "用途・聴衆・ボリュームを先に固定し、編集可能な図形で表現します。" : "Brief purpose, audience, and volume first; express it with editable shapes.",
+          audience
+        )
+      };
+    })(),
+    (() => {
+      const useJapaneseTopicTitles = isJapanese && (contentMode === "report" || contentMode === "technical" || contentMode === "handout");
+      const title = useJapaneseTopicTitles
+        ? "ヒアリングから可視化までの流れ"
+        : isJapanese
+          ? "ヒアリングから可視化までを1つの流れにする"
+          : "Turn briefing and visuals into one flow";
+      return {
+        id: "slide-2",
+        title,
+        layout: "steps",
+        speakerNotes: isJapanese ? "目的と聴衆を確認し、構成・可視化・検証へ進めます。" : "Clarify purpose and audience, then structure, visualize, and verify.",
+        elements: stepSlide(
+          theme,
+          isJapanese,
+          title,
+          steps,
+          isJapanese ? "先に聞くほど、後のスライドは短く・強く・見やすくなります。" : "Better upfront briefing makes later slides shorter, stronger, and clearer."
+        )
+      };
+    })(),
+    (() => {
+      const useJapaneseTopicTitles = isJapanese && (contentMode === "report" || contentMode === "technical" || contentMode === "handout");
+      const title = useJapaneseTopicTitles
+        ? "情報UIとしてのスライド設計"
+        : isJapanese
+          ? "スライドは装飾ではなく情報UIとして設計する"
+          : "Design slides as information interfaces";
+      return {
+        id: "slide-3",
+        title,
+        layout: "cards",
+        speakerNotes: isJapanese ? "カード・テキストは編集可能なPowerPointオブジェクトです。" : "Cards and text are editable PowerPoint objects.",
+        elements: cardSlide(theme, isJapanese, title, qualityCards)
+      };
+    })(),
     {
       id: "slide-4",
-      title: isJapanese ? "用途に合わせてスタイルを選ぶ" : "Choose the style for the purpose",
+      title: isJapanese ? "用途別スタイル選定" : "Choose the style for the purpose",
       layout: "closing",
       speakerNotes: isJapanese ? "presentation / report / technical で見た目が切り替わります。" : "presentation, report, and technical change the look automatically.",
       elements: closingSlide(
         theme,
         isJapanese,
-        isJapanese ? "用途に合わせてスタイルを選ぶ" : "Choose the style for the purpose",
+        isJapanese ? "用途別スタイル選定" : "Choose the style for the purpose",
         isJapanese
-          ? `現在のスタイル: ${styleProfile}。テンプレート: ${templateId}。lint と polish で被り・はみ出しを抑えます。`
-          : `Current style: ${styleProfile}. Template: ${templateId}. Lint and polish reduce overlap and overflow.`
+          ? `現在のスタイル: ${styleProfile}。テンプレート: ${templateId}。`
+          : `Style: ${styleProfile}; template: ${templateId}; lint and polish reduce layout risk.`
       )
     }
   ];
@@ -529,3 +553,4 @@ export function createSampleDeck(locale: Locale, options: CreateSampleDeckOption
     slides: slides.slice(0, targetSlideCount)
   };
 }
+

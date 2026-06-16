@@ -33,6 +33,7 @@ export const BUILTIN_SKILL_PACKS: SkillPack[] = [
     density: "medium",
     rules: [
       "Use one bold assertion title per slide",
+      "Before writing slide copy, choose the content mode and run review_content: Japanese report/technical decks split topic title + slide message, while English executive decks use action titles",
       "Prefer modular cards, timelines, flows, and dashboard-like blocks over paragraphs",
       "Use generous whitespace and one restrained accent color",
       "Use editable native PowerPoint shapes/text for simple cards and dividers; for any diagram with arrows or connected nodes, use generate_diagram (ponchi-e, omit node x/y for automatic layout) or generate_schematic so connectors stay attached and clean — never hand-place line/rightArrow shapes as connectors",
@@ -50,7 +51,7 @@ export const BUILTIN_SKILL_PACKS: SkillPack[] = [
     density: "medium",
     rules: [
       "最初に目的、聴衆、利用場面、期待する行動を確認する",
-      "3秒で要点が伝わる主張タイトルを作る",
+      "contentMode に応じて見出しを変える: report/technical/handout は「短い話題タイトル + 50字以内のスライドメッセージ」、presentation/decision は3秒で要点が伝わる短い主張タイトル",
       "各スライドに図、アイコン、データ表現、比較カードのいずれかを入れる",
       "矢印やノードのつながりがある図は generate_diagram（ポンチ絵、ノードの x/y を省略すれば自動レイアウト）か generate_schematic を使い、line/rightArrow を手で並べて接続線を作らない",
       "発表用と配布用で情報密度を変える",
@@ -100,6 +101,7 @@ export const BUILTIN_SKILL_PACKS: SkillPack[] = [
     rules: [
       "Clarify purpose, audience, delivery context, and desired action first",
       "Use assertion titles that pass the three-second glance test",
+      "Run review_content and adjust title/message/body rules for presentation, report, technical, handout, or decision mode",
       "Include a diagram, icon, data visual, comparison card, or process visual on each slide",
       "For any diagram with arrows or connected nodes use generate_diagram (ponchi-e; omit node x/y for automatic layout) or generate_schematic — never hand-place line/rightArrow shapes as connectors",
       "Adjust information density for live presentation versus handout use",
@@ -143,12 +145,13 @@ export const BUILTIN_SKILL_PACKS: SkillPack[] = [
     id: "consulting-ja",
     name: "Consulting Japanese",
     locale: "ja-JP",
-    description: "簡潔な結論タイトルと余白を重視する日本語コンサルティング資料向け方針。",
+    description: "資料種別に応じて、短い話題タイトル + スライドメッセージ、または短い主張タイトルを使い分ける日本語コンサルティング資料向け方針。",
     designDirection: "minimal-consulting",
     density: "medium",
     rules: [
       "各スライドは1つの主張に絞る",
-      "タイトルは結論型にする",
+      "報告書/技術文書ではタイトルは短い話題ラベルにし、主張は50字以内のスライドメッセージに分ける",
+      "発表/意思決定資料では、短い主張タイトルを使ってもよい",
       "詳細はspeaker notesへ移す",
       "図表は要点を直接ラベル化する"
     ],

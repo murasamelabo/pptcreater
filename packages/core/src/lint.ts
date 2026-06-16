@@ -1,4 +1,5 @@
 ﻿import { contrastRatio, defaultTokens } from "./color.js";
+import { reviewDeckContent } from "./content.js";
 import { estimateTextOverflow, findTextLineBreakIssue, SLIDE_WIDE } from "./layout.js";
 import type { DeckSpec, ShapeElement, Slide, SlideElement, TextElement } from "./schema.js";
 import { defaultFontSizeForRole } from "./typography.js";
@@ -439,6 +440,7 @@ export function lintDeckSpec(deck: DeckSpec): LintReport {
 
     issues.push(...lintSlide(slide, slideIndex, deck));
   });
+  issues.push(...reviewDeckContent(deck).issues);
 
   return {
     ok: !issues.some((item) => item.severity === "error"),

@@ -146,14 +146,15 @@ Before creating a DeckSpec, clarify these points when they are not already speci
 5. Use \`generate_schematic\` for tables, trees, horizontal/vertical flows, list layouts, and mockup-style visuals. Do not freehand complex SVG unless the preset cannot express the structure.
 6. Use \`plan_source_visual\` for source figures: choose quote, recreate, or inspiration.
 7. Create a visual DeckSpec with editable PowerPoint shapes/text where possible.
-8. Run \`lint_deck\`.
-9. Run \`polish_deck_layout\` when layout issues or overflow risks are present. \`render_pptx\` also applies this safeguard automatically.
-10. Render with \`render_pptx\` or preview with \`render_studio\`. If text still cannot fit after polish, shorten or split the slide; do not force-render a broken layout.
+8. Run \`review_content\` (or CLI \`pptcreater content-review\`) before linting. It applies locale/content-mode writing rules: Japanese report/technical/handout decks use a short topic title + slide message, Japanese presentation/decision decks allow concise assertion titles, and English decks prefer action titles.
+9. Run \`lint_deck\`.
+10. Run \`polish_deck_layout\` when layout issues or overflow risks are present. \`render_pptx\` also applies this safeguard automatically.
+11. Render with \`render_pptx\` or preview with \`render_studio\`. If text still cannot fit after polish, shorten or split the slide; do not force-render a broken layout.
 
 ## Design rules
 
 - One slide, one message.
-- Use assertion titles, not topic labels.
+- Choose title/message style by content mode and locale: Japanese report/technical/handout = topic title + short slide message; Japanese presentation/decision = concise assertion title; English = action title.
 - Prefer editable PowerPoint shapes/text over flattened images.
 - Use modular cards, timelines, flows, architecture diagrams, and concept maps.
 - Keep signal-to-noise high: remove decorative clutter.
@@ -194,7 +195,7 @@ Read ${skillsPathForInstruction} before creating PowerPoint presentations or sli
 
 When creating slides, use the pptcreater MCP. If purpose, audience, delivery format, slide count, or source assets are unclear, ask a short briefing before creating the DeckSpec.
 
-After the brief is clear, create a visual DeckSpec with editable PowerPoint objects where possible, run lint_deck, optionally run polish_deck_layout, then render_pptx or render_studio.
+After the brief is clear, create a visual DeckSpec with editable PowerPoint objects where possible, run review_content and lint_deck, optionally run polish_deck_layout, then render_pptx or render_studio.
 ${COPILOT_BLOCK_END}`;
 }
 
@@ -202,7 +203,7 @@ function claudeInstructionBlock(skillsPathForInstruction: string): string {
   return `${CLAUDE_BLOCK_START}
 Before creating PowerPoint presentations or slide decks, read ${skillsPathForInstruction}.
 
-Use the pptcreater MCP for slide work. Start by clarifying purpose, audience, delivery mode, volume, and available source assets when they are unclear. Prefer editable PowerPoint shapes/text over flattened images. Run lint_deck before rendering, and use polish_deck_layout only when needed.
+Use the pptcreater MCP for slide work. Start by clarifying purpose, audience, delivery mode, volume, and available source assets when they are unclear. Prefer editable PowerPoint shapes/text over flattened images. Run review_content and lint_deck before rendering, and use polish_deck_layout only when needed.
 ${CLAUDE_BLOCK_END}`;
 }
 
