@@ -183,6 +183,65 @@ describe("DeckSpec linting", () => {
     expect(report.issues.some((issue) => issue.code === "diagram.native-connectors")).toBe(false);
   });
 
+  it("blocks embedded SVG diagrams whose internal text becomes unreadably small", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "tiny-svg-diagram",
+      type: "diagram",
+      x: 1,
+      y: 2,
+      w: 5,
+      h: 2.75,
+      svg: [
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1200 660\">",
+        "<rect width=\"1200\" height=\"660\" fill=\"#fff\"/>",
+        "<text x=\"100\" y=\"120\" font-size=\"15\">Prediction</text>",
+        "<text x=\"420\" y=\"120\" font-size=\"15\">Blast Radius</text>",
+        "<text x=\"760\" y=\"120\" font-size=\"15\">Enforcement</text>",
+        "</svg>"
+      ].join(""),
+      summary: "Tiny internal text diagram",
+      longDescription: "A large SVG canvas with labels that become too small when the whole diagram is scaled down on a slide.",
+      decorative: false,
+      altText: "Diagram with tiny text",
+      readingOrder: 340
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const tinySvg = report.issues.find((issue) => issue.code === "visual.svg-text-too-small");
+
+    expect(tinySvg?.severity).toBe("error");
+    expect(report.ok).toBe(false);
+  });
+
+  it("allows embedded SVG diagrams whose internal text remains readable after scaling", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "readable-svg-diagram",
+      type: "diagram",
+      x: 1,
+      y: 2,
+      w: 10,
+      h: 4,
+      svg: [
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\">",
+        "<rect width=\"960\" height=\"540\" fill=\"#fff\"/>",
+        "<text x=\"100\" y=\"120\" font-size=\"18\">Prediction</text>",
+        "<text x=\"420\" y=\"120\" font-size=\"18\">Enforcement</text>",
+        "</svg>"
+      ].join(""),
+      summary: "Readable internal text diagram",
+      longDescription: "A diagram with labels that remain readable after scaling into the slide area.",
+      decorative: false,
+      altText: "Readable diagram",
+      readingOrder: 340
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "visual.svg-text-too-small")).toBe(false);
+  });
+
   it("does not flag concise bullet lists as bad line breaks", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     const body = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "body");

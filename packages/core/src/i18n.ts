@@ -43,6 +43,10 @@ const LINT_MESSAGES: Record<Locale, Record<string, (issue: LintIssue) => string>
     "text.low-contrast": (issue) =>
       `Text contrast ratio ${issue.details?.ratio ?? "?"} is below ${issue.details?.minimumRatio ?? "?"}:1.`,
     "visual.alt-text-missing": () => "Non-decorative visual elements require concise altText.",
+    "visual.svg-text-too-small": (issue) =>
+      `Embedded SVG text will render too small (${issue.details?.effectiveFontSize ?? "?"}pt). Enlarge the diagram, simplify labels, or split the visual.`,
+    "visual.svg-text-small": (issue) =>
+      `Embedded SVG text may be hard to read after scaling (${issue.details?.effectiveFontSize ?? "?"}pt).`,
     "diagram.long-description-short": () => "Complex diagrams should include a useful longDescription for speaker notes and accessibility review.",
     "slide.title-duplicate": () => "Each slide needs a unique, descriptive title for navigation.",
     "content.title-generic": () => "Slide title is generic. Use a title that explains this slide's specific point.",
@@ -65,6 +69,10 @@ const LINT_MESSAGES: Record<Locale, Record<string, (issue: LintIssue) => string>
     "text.low-contrast": (issue) =>
       `テキストのコントラスト比 ${issue.details?.ratio ?? "?"} は基準 ${issue.details?.minimumRatio ?? "?"}:1 を下回っています。`,
     "visual.alt-text-missing": () => "装飾目的ではない視覚要素には、簡潔なaltTextが必要です。",
+    "visual.svg-text-too-small": (issue) =>
+      `SVG内部の文字がスライド上で小さすぎます（推定 ${issue.details?.effectiveFontSize ?? "?"}pt）。図を大きくする、ラベルを減らす、または分割してください。`,
+    "visual.svg-text-small": (issue) =>
+      `SVG内部の文字が縮小後に読みにくい可能性があります（推定 ${issue.details?.effectiveFontSize ?? "?"}pt）。`,
     "diagram.long-description-short": () => "複雑な図には、speaker notesとアクセシビリティ確認に使えるlongDescriptionを追加してください。",
     "slide.title-duplicate": () => "各スライドには、ナビゲーション用の一意で説明的なタイトルが必要です。",
     "content.title-generic": () => "スライドタイトルが汎用的です。このスライド固有の話題や要点が分かる見出しにしてください。",

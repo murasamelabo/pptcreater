@@ -51,6 +51,98 @@ function requiresAltText(element: SlideElement): boolean {
   return ["svg", "image", "diagram", "shape"].includes(element.type) && !element.decorative;
 }
 
+function parseSvgViewBox(svg: string): { width: number; height: number } | undefined {
+  const viewBox = /viewBox\s*=\s*["']\s*[-+]?\d*\.?\d+\s+[-+]?\d*\.?\d+\s+([-+]?\d*\.?\d+)\s+([-+]?\d*\.?\d+)\s*["']/iu.exec(svg);
+  if (viewBox) {
+    const width = Number(viewBox[1]);
+    const height = Number(viewBox[2]);
+    return width > 0 && height > 0 ? { width, height } : undefined;
+  }
+
+  const width = /<svg\b[^>]*\bwidth\s*=\s*["']\s*([0-9.]+)/iu.exec(svg);
+  const height = /<svg\b[^>]*\bheight\s*=\s*["']\s*([0-9.]+)/iu.exec(svg);
+  if (!width || !height) {
+    return undefined;
+  }
+
+  const parsedWidth = Number(width[1]);
+  const parsedHeight = Number(height[1]);
+  return parsedWidth > 0 && parsedHeight > 0 ? { width: parsedWidth, height: parsedHeight } : undefined;
+}
+
+function svgFontSizes(svg: string): number[] {
+  const sizes = new Set<number>();
+  const regexes = [
+    /\bfont-size\s*=\s*["']\s*([0-9.]+)(?:px|pt)?\s*["']/giu,
+    /\bfont-size\s*:\s*([0-9.]+)(?:px|pt)?/giu
+  ];
+
+  regexes.forEach((regex) => {
+    for (const match of svg.matchAll(regex)) {
+      const size = Number(match[1]);
+      if (Number.isFinite(size) && size > 0) {
+        sizes.add(size);
+      }
+    }
+  });
+
+  return [...sizes];
+}
+
+function svgTextElementCount(svg: string): number {
+  return (svg.match(/<text\b/giu) ?? []).length;
+}
+
+function lintEmbeddedSvgText(element: Extract<SlideElement, { type: "svg" | "diagram" }>, path: string): LintIssue[] {
+  const viewBox = parseSvgViewBox(element.svg);
+  const fontSizes = svgFontSizes(element.svg);
+  if (!viewBox || fontSizes.length === 0) {
+    return [];
+  }
+
+  const scale = Math.min((element.w * 72) / viewBox.width, (element.h * 72) / viewBox.height);
+  const minimumSvgFont = Math.min(...fontSizes);
+  const effectiveFontSize = minimumSvgFont * scale;
+  const textCount = svgTextElementCount(element.svg);
+  const issues: LintIssue[] = [];
+
+  if (effectiveFontSize < 8) {
+    issues.push(
+      issue(
+        "error",
+        "visual.svg-text-too-small",
+        "Embedded SVG text will render too small to read at this slide size. Enlarge the SVG element, simplify/split the diagram, or use generate_diagram/generate_schematic with fewer labels.",
+        `${path}.svg`,
+        {
+          effectiveFontSize: Number(effectiveFontSize.toFixed(1)),
+          minimumFontSize: 8,
+          svgFontSize: minimumSvgFont,
+          viewBoxWidth: viewBox.width,
+          viewBoxHeight: viewBox.height,
+          textCount
+        }
+      )
+    );
+  } else if (effectiveFontSize < 10 && textCount >= 4) {
+    issues.push(
+      issue(
+        "warning",
+        "visual.svg-text-small",
+        "Embedded SVG text is likely hard to read after scaling. Prefer a larger diagram area, fewer labels, or a split/detail slide.",
+        `${path}.svg`,
+        {
+          effectiveFontSize: Number(effectiveFontSize.toFixed(1)),
+          recommendedFontSize: 10,
+          svgFontSize: minimumSvgFont,
+          textCount
+        }
+      )
+    );
+  }
+
+  return issues;
+}
+
 function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[] {
   const issues: LintIssue[] = [];
   const tokens = deck.tokens ?? defaultTokens(deck.locale);
@@ -198,6 +290,10 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
           `${path}.longDescription`
         )
       );
+    }
+
+    if (element.type === "svg" || element.type === "diagram") {
+      issues.push(...lintEmbeddedSvgText(element, path));
     }
   });
 
