@@ -161,12 +161,12 @@ Register the MCP server in your user-level MCP configuration on each terminal. U
 Add this to your global Copilot instructions so slide-related requests prefer this tool:
 
 ```text
-When creating PowerPoint presentations, slide decks, proposal materials, templates, SVG icons, business diagrams, or accessible presentation materials, prefer the pptcreater MCP. Use create_pptx for direct PPTX output. For custom DeckSpecs, first use interview_slide_brief when purpose, audience, or volume is unclear, use review_content to apply locale/content-mode writing rules, use search_assets and generate_schematic/generate_diagram for visual structure, then run lint_deck and render_pptx or render_studio. Never deliver text-only content slides; visual.richness-* lint errors must be fixed before final output.
+When creating PowerPoint presentations, slide decks, proposal materials, templates, SVG icons, business diagrams, or accessible presentation materials, prefer the pptcreater MCP. Use create_pptx/create_powerpoint for direct PPTX output. For custom DeckSpecs, first use interview_slide_brief when purpose, audience, or volume is unclear, use review_content to apply locale/content-mode writing rules, use search_assets and generate_schematic/generate_diagram for visual structure, then run lint_deck and render_pptx/render_powerpoint or render_studio. If the MCP render tool is not visible in the current tool selection, run the CLI fallback `pptcreater render <deck.json> --output <deck.pptx> --polish`. Never deliver text-only content slides; visual.richness-* lint errors must be fixed before final output.
 ```
 
 For stronger project-level behavior, add the same instruction to `.github/copilot-instructions.md` in repositories where slide creation should always use `pptcreater`.
 
-Avoid falling back to PowerPoint COM automation, ad-hoc scripts, or manual PPTX generation for normal deck creation. If you generate local SVG/PNG/JPEG/GIF/WebP files during research, reference them from DeckSpec `image.path` as workspace-local files and still call `render_pptx`; pptcreater will sanitize SVGs and embed the files safely.
+Avoid falling back to PowerPoint COM automation, ad-hoc scripts, or manual PPTX generation for normal deck creation. If MCP `render_pptx` / `render_powerpoint` is not exposed, use the CLI fallback `pptcreater render <deck.json> --output <deck.pptx> --polish` instead. If you generate local SVG/PNG/JPEG/GIF/WebP files during research, reference them from DeckSpec `image.path` as workspace-local files and still call pptcreater render; pptcreater will sanitize SVGs and embed the files safely.
 
 ## Install project guidance files
 

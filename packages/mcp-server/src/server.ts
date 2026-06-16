@@ -255,6 +255,69 @@ export function createPptcreaterMcpServer(): McpServer {
     name: "pptcreater",
     version: "0.1.0"
   });
+  const createPowerPointInputSchema = {
+    locale: z.enum(["ja-JP", "en-US"]).default("ja-JP"),
+    purpose: z.string().optional(),
+    audience: z.string().optional(),
+    slideCount: z.number().int().min(1).max(4).optional(),
+    contentMode: z.enum(["presentation", "report", "technical", "handout", "decision"]).optional(),
+    styleProfile: z.enum(STYLE_PROFILES).optional(),
+    outputPath: z.string().min(1),
+    overwrite: z.boolean().default(false)
+  };
+  const renderPowerPointInputSchema = {
+    deck: DeckSpecSchema,
+    outputPath: z.string().min(1),
+    overwrite: z.boolean().default(false),
+    polishLayout: z.boolean().default(false)
+  };
+  const createPowerPoint = async ({
+    locale,
+    purpose,
+    audience,
+    slideCount,
+    contentMode,
+    styleProfile,
+    outputPath,
+    overwrite
+  }: {
+    locale: "ja-JP" | "en-US";
+    purpose?: string;
+    audience?: string;
+    slideCount?: number;
+    contentMode?: "presentation" | "report" | "technical" | "handout" | "decision";
+    styleProfile?: (typeof STYLE_PROFILES)[number];
+    outputPath: string;
+    overwrite: boolean;
+  }) => {
+    const deck = createSampleDeck(locale, { purpose, audience, slideCount, contentMode, styleProfile });
+    const lint = localizeLintReport(lintDeckSpec(deck), locale);
+    const resolvedOutputPath = await prepareMcpOutputPath(outputPath, overwrite);
+    if (extname(resolvedOutputPath).toLowerCase() !== ".pptx") {
+      throw new Error("create_pptx outputPath must end with .pptx.");
+    }
+    const render = await renderDeckToPptx(deck, resolvedOutputPath, { polishLayout: true });
+    return jsonText({ deck, lint, render });
+  };
+  const renderPowerPoint = async ({
+    deck,
+    outputPath,
+    overwrite,
+    polishLayout
+  }: {
+    deck: DeckSpec;
+    outputPath: string;
+    overwrite: boolean;
+    polishLayout: boolean;
+  }) => {
+    const parsedDeck = ensureSourceReferenceSlide(parseDeckSpec(deck));
+    await assertSafeLocalImagePaths(parsedDeck);
+    const resolvedOutputPath = await prepareMcpOutputPath(outputPath, overwrite);
+    if (extname(resolvedOutputPath).toLowerCase() !== ".pptx") {
+      throw new Error("render_pptx outputPath must end with .pptx.");
+    }
+    return jsonText(await renderDeckToPptx(parsedDeck, resolvedOutputPath, { polishLayout }));
+  };
 
   server.registerTool(
     "create_deck",
@@ -279,28 +342,21 @@ export function createPptcreaterMcpServer(): McpServer {
     {
       title: "Create and render PowerPoint",
       description:
-        "One-shot safe workflow: create a styled DeckSpec with built-in layout, icons, and visual backgrounds, lint it, then render it to .pptx. Use this when the user asks to create a PPTX directly.",
-      inputSchema: {
-        locale: z.enum(["ja-JP", "en-US"]).default("ja-JP"),
-        purpose: z.string().optional(),
-        audience: z.string().optional(),
-        slideCount: z.number().int().min(1).max(4).optional(),
-        contentMode: z.enum(["presentation", "report", "technical", "handout", "decision"]).optional(),
-        styleProfile: z.enum(STYLE_PROFILES).optional(),
-        outputPath: z.string().min(1),
-        overwrite: z.boolean().default(false)
-      }
+        "One-shot safe workflow: create a styled DeckSpec with built-in layout, icons, visual backgrounds, lint, polish, and render it to .pptx. Use this instead of PowerPoint COM when the user asks to create a PPTX directly.",
+      inputSchema: createPowerPointInputSchema
     },
-    async ({ locale, purpose, audience, slideCount, contentMode, styleProfile, outputPath, overwrite }) => {
-      const deck = createSampleDeck(locale, { purpose, audience, slideCount, contentMode, styleProfile });
-      const lint = localizeLintReport(lintDeckSpec(deck), locale);
-      const resolvedOutputPath = await prepareMcpOutputPath(outputPath, overwrite);
-      if (extname(resolvedOutputPath).toLowerCase() !== ".pptx") {
-        throw new Error("create_pptx outputPath must end with .pptx.");
-      }
-      const render = await renderDeckToPptx(deck, resolvedOutputPath, { polishLayout: true });
-      return jsonText({ deck, lint, render });
-    }
+    createPowerPoint
+  );
+
+  server.registerTool(
+    "create_powerpoint",
+    {
+      title: "Create PowerPoint with pptcreater",
+      description:
+        "Alias for create_pptx. One-shot PowerPoint generation through pptcreater; use when tool search surfaces PowerPoint wording but not create_pptx. Never fall back to PowerPoint COM for normal deck creation.",
+      inputSchema: createPowerPointInputSchema
+    },
+    createPowerPoint
   );
 
   server.registerTool(
@@ -376,23 +432,22 @@ export function createPptcreaterMcpServer(): McpServer {
     "render_pptx",
     {
       title: "Render PowerPoint",
-      description: "Render a DeckSpec to a local .pptx path.",
-      inputSchema: {
-        deck: DeckSpecSchema,
-        outputPath: z.string().min(1),
-        overwrite: z.boolean().default(false),
-        polishLayout: z.boolean().default(false)
-      }
+      description:
+        "Render a DeckSpec to a local .pptx path through pptcreater. This is the normal final output path; use CLI `pptcreater render` if this MCP tool is not visible, and do not use PowerPoint COM.",
+      inputSchema: renderPowerPointInputSchema
     },
-    async ({ deck, outputPath, overwrite, polishLayout }) => {
-      const parsedDeck = ensureSourceReferenceSlide(parseDeckSpec(deck));
-      await assertSafeLocalImagePaths(parsedDeck);
-      const resolvedOutputPath = await prepareMcpOutputPath(outputPath, overwrite);
-      if (extname(resolvedOutputPath).toLowerCase() !== ".pptx") {
-        throw new Error("render_pptx outputPath must end with .pptx.");
-      }
-      return jsonText(await renderDeckToPptx(parsedDeck, resolvedOutputPath, { polishLayout }));
-    }
+    renderPowerPoint
+  );
+
+  server.registerTool(
+    "render_powerpoint",
+    {
+      title: "Render PowerPoint with pptcreater",
+      description:
+        "Alias for render_pptx. Render a DeckSpec to .pptx through pptcreater when tool search surfaces PowerPoint wording but not render_pptx. If no render MCP tool is visible, run CLI `pptcreater render <deck> --output <file>.pptx --polish`; never use PowerPoint COM for normal output.",
+      inputSchema: renderPowerPointInputSchema
+    },
+    renderPowerPoint
   );
 
   server.registerTool(
@@ -689,9 +744,9 @@ export function createPptcreaterMcpServer(): McpServer {
           text: JSON.stringify(
             {
               version: "0.1",
-              description: "Use create_pptx for direct PPTX requests. Use create_deck for examples and lint_deck before render_pptx when manually editing a DeckSpec.",
+              description: "Use create_pptx/create_powerpoint for direct PPTX requests. Use create_deck for examples and lint_deck before render_pptx/render_powerpoint when manually editing a DeckSpec. If MCP render tools are not visible, use CLI `pptcreater render <deck.json> --output <deck.pptx> --polish`; never use PowerPoint COM for normal output.",
               templateField: "DeckSpec.template must be the id of a template returned by search_templates. Register reusable custom templates with register_template.",
-              assetFlow: "Use search_assets to find registered SVG assets. Use generate_schematic for table/tree/flow/list/mockup visuals, generate_diagram for architecture/network/sequence ponchi-e with nodes, lanes, and connectors, and register_svg_asset for reusable SVGs before referencing their sanitized SVG in DeckSpec elements. If research produces local SVG/PNG/JPEG/GIF/WebP files, keep them inside the workspace, reference them with DeckSpec image.path, and still call render_pptx; do not switch to PowerPoint COM or ad-hoc PPTX generation.",
+              assetFlow: "Use search_assets to find registered SVG assets. Use generate_schematic for table/tree/flow/list/mockup visuals, generate_diagram for architecture/network/sequence ponchi-e with nodes, lanes, and connectors, and register_svg_asset for reusable SVGs before referencing their sanitized SVG in DeckSpec elements. If research produces local SVG/PNG/JPEG/GIF/WebP files, keep them inside the workspace, reference them with DeckSpec image.path, and still call render_pptx/render_powerpoint or CLI `pptcreater render`; do not switch to PowerPoint COM or ad-hoc PPTX generation.",
               shapeFlow: "Native shape elements (rect, roundRect, ellipse, line, rightArrow) are for simple editable cards, dividers, badges, and accent bars only. Do NOT hand-place line/rightArrow shapes to build connectors or architecture/flow diagrams: PowerPoint re-flows them so arrows end up detached, mis-angled, or hidden behind boxes. For ANY diagram with arrows or connected nodes, call generate_diagram (ponchi-e) or generate_schematic and embed the returned SVG as a single diagram element.",
               diagramFlow: "generate_diagram renders an architecture/flow ponchi-e as one clean SVG (immune to PowerPoint re-layout): connectors clip to node borders with real arrowheads and detour through gutters when an arrow skips a rank, nodes carry kind-based icons (actor/system/process/data/note/cloud) and accent bars, and groups render as lanes. OMIT node x/y to get automatic layered layout — supply only nodes (id, label, kind) and arrows (from, to), set direction 'LR'/'TB', and optionally node.layer/lane to steer placement. Use arrow.style 'orthogonal' for elbow routing, arrow.bidirectional for two-way links, and node.sublabel/emphasis for hierarchy. Prefer this over hand-built arrow shapes for every conceptual diagram; do not compute coordinates by hand unless you need a bespoke layout (then set both x and y on every node).",
               contentFlow: "Before rendering, call review_content with the deck locale and contentMode. It applies different writing rules for presentation, report, technical, handout, and decision decks. For Japanese report/technical/handout decks, prefer a short topic-label title plus a separate 50-character slide message. For Japanese presentation/decision decks, concise assertion titles are allowed. For English decks, prefer action titles: short complete-sentence takeaways supported by 3-5 proof points.",
@@ -700,7 +755,7 @@ export function createPptcreaterMcpServer(): McpServer {
               sourceReferences: "Whenever a deck uses external websites, record each source in metadata.sources with the actual url. render_pptx, render_studio, and polish_deck_layout automatically append/update the final references slide (参考URL・出典 / References and sources) so the last slide contains all external URLs. Per-slide citations are optional for URL-backed sources when the final references slide is complete.",
               sourceVisuals: "Use metadata.sources plus element.sourceId/citation when quoting, recreating, or using source visuals as inspiration. Prefer editable shape/text objects for recreated visuals. For URL-backed sources, final-slide references can replace per-slide citation text.",
               requiredVisualAccessibility: "Non-decorative SVG, image, and diagram elements require altText. Diagram elements also require summary and longDescription.",
-              recommendedWorkflow: ["create_pptx for direct output", "search_templates", "search_assets", "generate_schematic for structured visuals", "create_deck or custom DeckSpec", "review_content", "lint_deck", "render_pptx or render_studio"]
+              recommendedWorkflow: ["create_pptx/create_powerpoint for direct output", "search_templates", "search_assets", "generate_schematic for structured visuals", "create_deck or custom DeckSpec", "review_content", "lint_deck", "render_pptx/render_powerpoint or render_studio", "CLI fallback if render MCP tools are hidden: pptcreater render <deck.json> --output <deck.pptx> --polish"]
             },
             null,
             2

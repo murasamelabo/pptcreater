@@ -141,7 +141,7 @@ Before creating a DeckSpec, clarify these points when they are not already speci
 
 1. Use pptcreater MCP resources/tools where available.
 2. Use \`interview_slide_brief\` when the request is underspecified.
-3. For a direct PPTX request, prefer \`create_pptx\` first. It creates, lints, polishes, and renders with safe defaults.
+3. For a direct PPTX request, prefer \`create_pptx\` or \`create_powerpoint\` first. It creates, lints, polishes, and renders with safe defaults.
 4. Use \`search_templates\` and \`search_assets\` before creating new assets.
 5. Use \`generate_schematic\` for tables, trees, horizontal/vertical flows, list layouts, and mockup-style visuals. Do not freehand complex SVG unless the preset cannot express the structure.
 6. Use \`plan_source_visual\` for source figures: choose quote, recreate, or inspiration.
@@ -150,8 +150,9 @@ Before creating a DeckSpec, clarify these points when they are not already speci
 9. Run \`review_content\` (or CLI \`pptcreater content-review\`) before linting. It applies locale/content-mode writing rules: Japanese report/technical/handout decks use a short topic title + slide message, Japanese presentation/decision decks allow concise assertion titles, and English decks prefer action titles.
 10. Run \`lint_deck\`.
 11. Run \`polish_deck_layout\` when layout issues or overflow risks are present. \`render_pptx\` also applies this safeguard automatically.
-12. Render with \`render_pptx\` or preview with \`render_studio\`. If text still cannot fit after polish, shorten or split the slide; do not force-render a broken layout.
-13. Do not bypass pptcreater with PowerPoint COM automation or ad-hoc PPTX scripts for normal deck creation. If research produces local SVG/PNG/JPEG/GIF/WebP files, reference workspace-local files via DeckSpec \`image.path\` and still call \`render_pptx\`; pptcreater embeds them safely.
+12. Render with \`render_pptx\` / \`render_powerpoint\` or preview with \`render_studio\`. If text still cannot fit after polish, shorten or split the slide; do not force-render a broken layout.
+13. If MCP render tools are not visible in the current tool selection, use the CLI fallback: \`pptcreater render <deck.json> --output <deck.pptx> --polish\`.
+14. Do not bypass pptcreater with PowerPoint COM automation or ad-hoc PPTX scripts for normal deck creation. If research produces local SVG/PNG/JPEG/GIF/WebP files, reference workspace-local files via DeckSpec \`image.path\` and still call pptcreater render; pptcreater embeds them safely.
 
 ## Design rules
 
@@ -200,7 +201,7 @@ Read ${skillsPathForInstruction} before creating PowerPoint presentations or sli
 
 When creating slides, use the pptcreater MCP. If purpose, audience, delivery format, slide count, or source assets are unclear, ask a short briefing before creating the DeckSpec.
 
-After the brief is clear, create a visual DeckSpec with editable PowerPoint objects where possible, run review_content and lint_deck, optionally run polish_deck_layout, then render_pptx or render_studio.
+After the brief is clear, create a visual DeckSpec with editable PowerPoint objects where possible, run review_content and lint_deck, optionally run polish_deck_layout, then render_pptx/render_powerpoint or render_studio. If MCP render tools are unavailable, run CLI: pptcreater render <deck.json> --output <deck.pptx> --polish. Never use PowerPoint COM or ad-hoc PPTX scripts for normal output.
 ${COPILOT_BLOCK_END}`;
 }
 
@@ -208,7 +209,7 @@ function claudeInstructionBlock(skillsPathForInstruction: string): string {
   return `${CLAUDE_BLOCK_START}
 Before creating PowerPoint presentations or slide decks, read ${skillsPathForInstruction}.
 
-Use the pptcreater MCP for slide work. Start by clarifying purpose, audience, delivery mode, volume, and available source assets when they are unclear. Prefer editable PowerPoint shapes/text over flattened images. Run review_content and lint_deck before rendering, and use polish_deck_layout only when needed.
+Use the pptcreater MCP for slide work. Start by clarifying purpose, audience, delivery mode, volume, and available source assets when they are unclear. Prefer editable PowerPoint shapes/text over flattened images. Run review_content and lint_deck before rendering, and use polish_deck_layout only when needed. Render with render_pptx/render_powerpoint, or CLI \`pptcreater render <deck.json> --output <deck.pptx> --polish\` if MCP render tools are not visible. Never use PowerPoint COM or ad-hoc PPTX scripts for normal output.
 ${CLAUDE_BLOCK_END}`;
 }
 
