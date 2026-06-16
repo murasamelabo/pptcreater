@@ -227,15 +227,18 @@ From an MCP-capable AI agent, use:
 
 SVG icons can be registered as sanitized reusable assets. Use this for icons, logos, simple illustrations, and diagram parts that should be reused across decks.
 
-pptcreater includes generated, free-to-use generic icon presets for UI, business, security, data, flow, and slide-design patterns (57 presets including `check`, `warning`, `info`, `table`, `tree`, `list`, `lock`, `key`, `laptop`, `chart-up`, `shield`, `workflow`, `rocket`, and `presentation`). These bundled preset SVG files are visible under `assets\svg\presets\`.
+pptcreater includes generated, free-to-use generic icon presets for UI, business, security, data, flow, slide-design, and cloud architecture patterns. In addition to base icons such as `check`, `table`, `tree`, `lock`, `workflow`, and `presentation`, `search_assets` includes Microsoft/Azure/Entra/Microsoft 365/Power Platform/Dynamics 365, AWS, and Google Cloud/Workspace preset pictograms such as `preset-azure-architecture`, `preset-entra-identity`, `preset-aws-cloud`, and `preset-google-cloud`. These vendor presets are generated generic pictograms, not official logos or product icons. Bundled preset SVG files are visible under `assets\svg\presets\`.
 
 ```powershell
 pptcreater asset search cloud
+pptcreater asset search azure
+pptcreater asset search aws
+pptcreater asset search "google cloud"
 pptcreater icon workflow --color "#315f9f"
 pptcreater asset sources
 ```
 
-`asset sources` lists upstream catalogs that agents can inspect before registering external SVGs, including Fluent UI System Icons, Google Material Symbols, AWS Architecture Icons, Azure Architecture Icons, Entra, Microsoft 365, Dynamics 365, Power Platform, and Google Cloud icons. Those vendor icon sets are not bundled in this repository; always follow the upstream license and brand terms before registering vendor-specific icons.
+`asset sources` lists upstream catalogs that agents can inspect before registering exact official SVGs, including Fluent UI System Icons, Google Material Symbols, AWS Architecture Icons, Azure Architecture Icons, Entra, Microsoft 365, Dynamics 365, Power Platform, and Google Cloud icons. Use the bundled generated presets when a generic cloud/service pictogram is enough; use upstream official icon packs only after checking each license and brand term.
 
 ```powershell
 pptcreater asset register .\icons\rocket.svg `

@@ -784,7 +784,203 @@ const ICON_COLOR_BY_NAME: Partial<Record<BuiltinIconName, string>> = {
   cloud: "#0284c7"
 };
 
-export const BUILTIN_SVG_ASSETS: SvgAsset[] = BUILTIN_ICON_NAMES.map((name) => createSimpleIconSvg(name, ICON_COLOR_BY_NAME[name] ?? "#1d4ed8"));
+type VendorPresetDefinition = {
+  id: string;
+  title: string;
+  description: string;
+  tags: string[];
+  iconName: BuiltinIconName;
+  color: string;
+  accentColor: string;
+  backgroundColor: string;
+};
+
+const VENDOR_PRESET_DEFINITIONS: VendorPresetDefinition[] = [
+  {
+    id: "preset-microsoft-cloud",
+    title: "Microsoft cloud preset",
+    description: "Generated generic pictogram for Microsoft cloud platform slides. Not an official Microsoft logo or product icon.",
+    tags: ["preset", "cloud", "microsoft", "azure", "architecture", "generic", "not-official"],
+    iconName: "cloud",
+    color: "#2563eb",
+    accentColor: "#60a5fa",
+    backgroundColor: "#eff6ff"
+  },
+  {
+    id: "preset-azure-architecture",
+    title: "Azure architecture preset",
+    description: "Generated generic pictogram for Azure architecture diagrams. Not an official Azure architecture icon.",
+    tags: ["preset", "azure", "microsoft", "architecture", "cloud", "generic", "not-official"],
+    iconName: "layers",
+    color: "#1d4ed8",
+    accentColor: "#38bdf8",
+    backgroundColor: "#eef6ff"
+  },
+  {
+    id: "preset-entra-identity",
+    title: "Microsoft Entra identity preset",
+    description: "Generated generic pictogram for Entra ID, identity, access, and authentication slides. Not an official Entra icon.",
+    tags: ["preset", "microsoft", "entra", "identity", "access", "authentication", "security", "generic", "not-official"],
+    iconName: "key",
+    color: "#334155",
+    accentColor: "#7c3aed",
+    backgroundColor: "#f5f3ff"
+  },
+  {
+    id: "preset-microsoft-365-collaboration",
+    title: "Microsoft 365 collaboration preset",
+    description: "Generated generic pictogram for Microsoft 365 collaboration and productivity slides. Not an official Microsoft 365 icon.",
+    tags: ["preset", "microsoft", "microsoft-365", "m365", "collaboration", "productivity", "generic", "not-official"],
+    iconName: "user-group",
+    color: "#2563eb",
+    accentColor: "#22c55e",
+    backgroundColor: "#f0fdf4"
+  },
+  {
+    id: "preset-power-platform-automation",
+    title: "Power Platform automation preset",
+    description: "Generated generic pictogram for Power Platform automation, apps, and workflow slides. Not an official Power Platform icon.",
+    tags: ["preset", "microsoft", "power-platform", "powerapps", "power-automate", "automation", "workflow", "generic", "not-official"],
+    iconName: "workflow",
+    color: "#7c3aed",
+    accentColor: "#a78bfa",
+    backgroundColor: "#faf5ff"
+  },
+  {
+    id: "preset-dynamics-365-business-apps",
+    title: "Dynamics 365 business apps preset",
+    description: "Generated generic pictogram for Dynamics 365 business application slides. Not an official Dynamics 365 icon.",
+    tags: ["preset", "microsoft", "dynamics-365", "business-apps", "crm", "erp", "generic", "not-official"],
+    iconName: "building",
+    color: "#0f766e",
+    accentColor: "#2dd4bf",
+    backgroundColor: "#f0fdfa"
+  },
+  {
+    id: "preset-aws-cloud",
+    title: "AWS cloud preset",
+    description: "Generated generic pictogram for AWS cloud architecture slides. Not an official AWS architecture icon.",
+    tags: ["preset", "aws", "amazon-web-services", "cloud", "architecture", "generic", "not-official"],
+    iconName: "cloud",
+    color: "#b45309",
+    accentColor: "#f59e0b",
+    backgroundColor: "#fff7ed"
+  },
+  {
+    id: "preset-aws-compute",
+    title: "AWS compute preset",
+    description: "Generated generic pictogram for AWS compute workloads. Not an official AWS architecture icon.",
+    tags: ["preset", "aws", "amazon-web-services", "compute", "ec2", "container", "server", "generic", "not-official"],
+    iconName: "server",
+    color: "#92400e",
+    accentColor: "#fb923c",
+    backgroundColor: "#fff7ed"
+  },
+  {
+    id: "preset-aws-storage",
+    title: "AWS storage preset",
+    description: "Generated generic pictogram for AWS storage and data services. Not an official AWS architecture icon.",
+    tags: ["preset", "aws", "amazon-web-services", "storage", "s3", "database", "data", "generic", "not-official"],
+    iconName: "database",
+    color: "#854d0e",
+    accentColor: "#fbbf24",
+    backgroundColor: "#fffbeb"
+  },
+  {
+    id: "preset-aws-networking",
+    title: "AWS networking preset",
+    description: "Generated generic pictogram for AWS networking and connectivity slides. Not an official AWS architecture icon.",
+    tags: ["preset", "aws", "amazon-web-services", "network", "networking", "vpc", "connectivity", "generic", "not-official"],
+    iconName: "globe",
+    color: "#0369a1",
+    accentColor: "#38bdf8",
+    backgroundColor: "#f0f9ff"
+  },
+  {
+    id: "preset-aws-security",
+    title: "AWS security preset",
+    description: "Generated generic pictogram for AWS security and governance slides. Not an official AWS architecture icon.",
+    tags: ["preset", "aws", "amazon-web-services", "security", "governance", "iam", "shield", "generic", "not-official"],
+    iconName: "shield",
+    color: "#0f766e",
+    accentColor: "#2dd4bf",
+    backgroundColor: "#f0fdfa"
+  },
+  {
+    id: "preset-google-cloud",
+    title: "Google Cloud preset",
+    description: "Generated generic pictogram for Google Cloud architecture slides. Not an official Google Cloud icon.",
+    tags: ["preset", "google", "google-cloud", "gcp", "cloud", "architecture", "generic", "not-official"],
+    iconName: "cloud",
+    color: "#1d4ed8",
+    accentColor: "#f59e0b",
+    backgroundColor: "#f8fafc"
+  },
+  {
+    id: "preset-google-compute",
+    title: "Google Cloud compute preset",
+    description: "Generated generic pictogram for Google Cloud compute workloads. Not an official Google Cloud icon.",
+    tags: ["preset", "google", "google-cloud", "gcp", "compute", "container", "server", "generic", "not-official"],
+    iconName: "server",
+    color: "#2563eb",
+    accentColor: "#22c55e",
+    backgroundColor: "#eff6ff"
+  },
+  {
+    id: "preset-google-data-analytics",
+    title: "Google Cloud data analytics preset",
+    description: "Generated generic pictogram for Google Cloud data, analytics, and BI slides. Not an official Google Cloud icon.",
+    tags: ["preset", "google", "google-cloud", "gcp", "data", "analytics", "database", "bigquery", "generic", "not-official"],
+    iconName: "chart-bar",
+    color: "#166534",
+    accentColor: "#60a5fa",
+    backgroundColor: "#f0fdf4"
+  },
+  {
+    id: "preset-google-ai",
+    title: "Google Cloud AI preset",
+    description: "Generated generic pictogram for Google Cloud AI and machine learning slides. Not an official Google Cloud icon.",
+    tags: ["preset", "google", "google-cloud", "gcp", "ai", "machine-learning", "vertex-ai", "spark", "generic", "not-official"],
+    iconName: "spark",
+    color: "#7c3aed",
+    accentColor: "#facc15",
+    backgroundColor: "#faf5ff"
+  },
+  {
+    id: "preset-google-workspace",
+    title: "Google Workspace preset",
+    description: "Generated generic pictogram for Google Workspace collaboration slides. Not an official Google Workspace icon.",
+    tags: ["preset", "google", "google-workspace", "workspace", "collaboration", "productivity", "generic", "not-official"],
+    iconName: "folder",
+    color: "#1d4ed8",
+    accentColor: "#22c55e",
+    backgroundColor: "#f8fafc"
+  }
+];
+
+function createVendorPresetSvgAsset(definition: VendorPresetDefinition): SvgAsset {
+  const iconPath = BUILTIN_ICON_DEFINITIONS[definition.iconName].path;
+
+  return SvgAssetSchema.parse({
+    id: definition.id,
+    title: definition.title,
+    description: definition.description,
+    tags: definition.tags,
+    license: "generated-free; not an official vendor icon; verify upstream brand terms for official logos/icons",
+    decorative: false,
+    altText: definition.title,
+    svg: sanitizeSvg(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none"><rect x="4" y="4" width="56" height="56" rx="14" fill="${definition.backgroundColor}" stroke="#cbd5e1" stroke-width="1.5"/><circle cx="48" cy="16" r="5" fill="${definition.accentColor}" opacity="0.24"/><path d="M14 49h36" stroke="${definition.accentColor}" stroke-width="4" stroke-linecap="round" opacity="0.88"/><g transform="translate(12 12) scale(2)" stroke="${definition.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconPath}</g></svg>`
+    )
+  });
+}
+
+export const VENDOR_PRESET_SVG_ASSETS: SvgAsset[] = VENDOR_PRESET_DEFINITIONS.map(createVendorPresetSvgAsset);
+
+export const BUILTIN_SVG_ASSETS: SvgAsset[] = [
+  ...BUILTIN_ICON_NAMES.map((name) => createSimpleIconSvg(name, ICON_COLOR_BY_NAME[name] ?? "#1d4ed8")),
+  ...VENDOR_PRESET_SVG_ASSETS
+];
 
 function defaultConfigRoot(): string {
   if (process.env.PPTCREATER_HOME) {

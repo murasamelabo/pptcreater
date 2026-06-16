@@ -2,7 +2,7 @@
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { BUILTIN_ICON_NAMES, createSimpleIconSvg, registerSvgAsset, sanitizeSvg, searchAllSvgAssets } from "./index.js";
+import { BUILTIN_ICON_NAMES, BUILTIN_SVG_ASSETS, createSimpleIconSvg, registerSvgAsset, sanitizeSvg, searchAllSvgAssets } from "./index.js";
 
 describe("SVG assets", () => {
   it("removes active and external SVG content", () => {
@@ -25,6 +25,23 @@ describe("SVG assets", () => {
   it("bundles a broad icon set for slide UI patterns", () => {
     expect(BUILTIN_ICON_NAMES.length).toBeGreaterThanOrEqual(40);
     expect(BUILTIN_ICON_NAMES).toEqual(expect.arrayContaining(["table", "tree", "list", "lock", "key", "laptop"]));
+  });
+
+  it("bundles Microsoft, AWS, and Google cloud preset assets", async () => {
+    expect(BUILTIN_SVG_ASSETS.length).toBeGreaterThanOrEqual(60);
+
+    const [azureAssets, entraAssets, awsAssets, googleAssets] = await Promise.all([
+      searchAllSvgAssets("azure"),
+      searchAllSvgAssets("entra"),
+      searchAllSvgAssets("aws"),
+      searchAllSvgAssets("google cloud")
+    ]);
+
+    expect(azureAssets.map((asset) => asset.id)).toEqual(expect.arrayContaining(["preset-azure-architecture"]));
+    expect(entraAssets.map((asset) => asset.id)).toEqual(expect.arrayContaining(["preset-entra-identity"]));
+    expect(awsAssets.map((asset) => asset.id)).toEqual(expect.arrayContaining(["preset-aws-cloud", "preset-aws-compute"]));
+    expect(googleAssets.map((asset) => asset.id)).toEqual(expect.arrayContaining(["preset-google-cloud", "preset-google-data-analytics"]));
+    expect(awsAssets.find((asset) => asset.id === "preset-aws-cloud")?.license).toContain("not an official vendor icon");
   });
 
   it("keeps safe SVG pattern fills", () => {

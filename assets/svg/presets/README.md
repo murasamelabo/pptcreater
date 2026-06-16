@@ -2,16 +2,19 @@
 
 This folder makes pptcreater's built-in generic icon presets visible in the repository.
 
-These are small generated SVG icons bundled with pptcreater for immediate use. They are separate from external vendor catalogs such as Fluent UI, Google Material Symbols, AWS Architecture Icons, Azure Architecture Icons, and Google Cloud Icons. Vendor catalogs are listed through `pptcreater asset sources`, but their full icon sets are not bundled because users must follow each upstream license and brand guideline.
+These are small generated SVG icons bundled with pptcreater for immediate use. The Microsoft/AWS/Google cloud presets are generic pictograms for architecture slides, not official vendor logos or product icons. External vendor catalogs such as Fluent UI, Google Material Symbols, AWS Architecture Icons, Azure Architecture Icons, and Google Cloud Icons are listed through `pptcreater asset sources`; use those upstream icon sets only after checking each license and brand guideline.
 
 ## Use
 
 ```powershell
 pptcreater asset search cloud
+pptcreater asset search azure
+pptcreater asset search aws
+pptcreater asset search "google cloud"
 pptcreater icon workflow --color "#315f9f"
 ```
 
-## Available presets (57)
+## Available presets (73)
 
 - `check`: Check mark for completion or approval.
 - `warning`: Warning triangle for risks or cautions.
@@ -70,3 +73,19 @@ pptcreater icon workflow --color "#315f9f"
 - `spark`: Spark for emphasis, quality, or AI moments.
 - `rocket`: Rocket for launch, acceleration, or growth.
 - `presentation`: Presentation screen for slide decks or reporting.
+- `preset-microsoft-cloud`: Generated generic pictogram for Microsoft cloud platform slides. Not an official Microsoft logo or product icon.
+- `preset-azure-architecture`: Generated generic pictogram for Azure architecture diagrams. Not an official Azure architecture icon.
+- `preset-entra-identity`: Generated generic pictogram for Entra ID, identity, access, and authentication slides. Not an official Entra icon.
+- `preset-microsoft-365-collaboration`: Generated generic pictogram for Microsoft 365 collaboration and productivity slides. Not an official Microsoft 365 icon.
+- `preset-power-platform-automation`: Generated generic pictogram for Power Platform automation, apps, and workflow slides. Not an official Power Platform icon.
+- `preset-dynamics-365-business-apps`: Generated generic pictogram for Dynamics 365 business application slides. Not an official Dynamics 365 icon.
+- `preset-aws-cloud`: Generated generic pictogram for AWS cloud architecture slides. Not an official AWS architecture icon.
+- `preset-aws-compute`: Generated generic pictogram for AWS compute workloads. Not an official AWS architecture icon.
+- `preset-aws-storage`: Generated generic pictogram for AWS storage and data services. Not an official AWS architecture icon.
+- `preset-aws-networking`: Generated generic pictogram for AWS networking and connectivity slides. Not an official AWS architecture icon.
+- `preset-aws-security`: Generated generic pictogram for AWS security and governance slides. Not an official AWS architecture icon.
+- `preset-google-cloud`: Generated generic pictogram for Google Cloud architecture slides. Not an official Google Cloud icon.
+- `preset-google-compute`: Generated generic pictogram for Google Cloud compute workloads. Not an official Google Cloud icon.
+- `preset-google-data-analytics`: Generated generic pictogram for Google Cloud data, analytics, and BI slides. Not an official Google Cloud icon.
+- `preset-google-ai`: Generated generic pictogram for Google Cloud AI and machine learning slides. Not an official Google Cloud icon.
+- `preset-google-workspace`: Generated generic pictogram for Google Workspace collaboration slides. Not an official Google Workspace icon.
