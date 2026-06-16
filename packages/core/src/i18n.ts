@@ -47,6 +47,9 @@ const LINT_MESSAGES: Record<Locale, Record<string, (issue: LintIssue) => string>
       `Embedded SVG text will render too small (${issue.details?.effectiveFontSize ?? "?"}pt). Enlarge the diagram, simplify labels, or split the visual.`,
     "visual.svg-text-small": (issue) =>
       `Embedded SVG text may be hard to read after scaling (${issue.details?.effectiveFontSize ?? "?"}pt).`,
+    "visual.richness-missing": () => "Content slides must include visual structure such as a schematic, diagram, icon/card composition, or image.",
+    "visual.richness-deck": (issue) =>
+      `Deck is too text-heavy for pptcreater output (${issue.details?.richSlides ?? "?"}/${issue.details?.contentSlides ?? "?"} rich content slides). Add diagrams, schematics, icons, or images.`,
     "diagram.long-description-short": () => "Complex diagrams should include a useful longDescription for speaker notes and accessibility review.",
     "source.reference-slide-missing": (issue) =>
       `Add a final references slide that lists the actual external source URLs (${issue.details?.sourceCount ?? "?"} source(s)).`,
@@ -75,6 +78,9 @@ const LINT_MESSAGES: Record<Locale, Record<string, (issue: LintIssue) => string>
       `SVG内部の文字がスライド上で小さすぎます（推定 ${issue.details?.effectiveFontSize ?? "?"}pt）。図を大きくする、ラベルを減らす、または分割してください。`,
     "visual.svg-text-small": (issue) =>
       `SVG内部の文字が縮小後に読みにくい可能性があります（推定 ${issue.details?.effectiveFontSize ?? "?"}pt）。`,
+    "visual.richness-missing": () => "本文スライドには、図解・構成図・アイコン付きカード・画像などの視覚構造が必要です。",
+    "visual.richness-deck": (issue) =>
+      `pptcreaterの出力として文字中心すぎます（リッチな本文スライド ${issue.details?.richSlides ?? "?"}/${issue.details?.contentSlides ?? "?"}）。図解、構成図、アイコン、画像を追加してください。`,
     "diagram.long-description-short": () => "複雑な図には、speaker notesとアクセシビリティ確認に使えるlongDescriptionを追加してください。",
     "source.reference-slide-missing": (issue) =>
       `外部サイトを参照した場合は、最後のスライドに実際の参考URL・出典をまとめてください（${issue.details?.sourceCount ?? "?"}件）。`,

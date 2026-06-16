@@ -591,6 +591,241 @@ describe("DeckSpec linting", () => {
     expect(report.issues.some((issue) => issue.code === "visual.alt-text-missing")).toBe(true);
   });
 
+  it("blocks text-only content slides so pptcreater output stays visually rich", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1, contentMode: "report" });
+    deck.slides[0].elements = [
+      {
+        id: "title",
+        type: "text",
+        role: "title",
+        text: "企業概要",
+        x: 0.8,
+        y: 0.6,
+        w: 11,
+        h: 0.7,
+        fontSize: 32,
+        color: "#0f172a",
+        contrastBackground: "#ffffff",
+        bold: true,
+        decorative: false,
+        readingOrder: 1
+      },
+      {
+        id: "body",
+        type: "text",
+        role: "body",
+        text: "主力事業、組織、顧客理解の観点を文章だけで説明します。事業領域の違いや部門ごとの特徴も、図解やカード構造を使わずに長い本文で並べてしまっています。",
+        x: 0.9,
+        y: 1.8,
+        w: 10.5,
+        h: 1,
+        fontSize: 22,
+        color: "#0f172a",
+        contrastBackground: "#ffffff",
+        bold: false,
+        decorative: false,
+        readingOrder: 2
+      },
+      {
+        id: "body-2",
+        type: "text",
+        role: "body",
+        text: "本来は事業マップ、部門構造、顧客接点を表やポンチ絵で示すべき内容です。",
+        x: 0.9,
+        y: 2.95,
+        w: 10.5,
+        h: 0.8,
+        fontSize: 22,
+        color: "#0f172a",
+        contrastBackground: "#ffffff",
+        bold: false,
+        decorative: false,
+        readingOrder: 3
+      }
+    ];
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.ok).toBe(false);
+    expect(report.issues.some((issue) => issue.code === "visual.richness-missing")).toBe(true);
+  });
+
+  it("allows sparse cover or section slides without forcing decoration", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1, contentMode: "presentation" });
+    deck.slides[0] = {
+      id: "cover",
+      title: "表紙",
+      layout: "cover",
+      elements: [
+        {
+          id: "title",
+          type: "text",
+          role: "title",
+          text: "企業紹介",
+          x: 0.8,
+          y: 2,
+          w: 11,
+          h: 0.8,
+          fontSize: 36,
+          color: "#0f172a",
+          contrastBackground: "#ffffff",
+          bold: true,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "visual.richness-missing")).toBe(false);
+  });
+
+  it("blocks whole decks that are mostly text-only", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 4, contentMode: "report" });
+    deck.slides.forEach((slide, index) => {
+      slide.elements = [
+        {
+          id: `title-${index}`,
+          type: "text",
+          role: "title",
+          text: slide.title,
+          x: 0.8,
+          y: 0.6,
+          w: 11,
+          h: 0.7,
+          fontSize: 30,
+          color: "#0f172a",
+          contrastBackground: "#ffffff",
+          bold: true,
+          decorative: false,
+          readingOrder: 1
+        },
+        {
+          id: `body-${index}`,
+          type: "text",
+          role: "body",
+          text: "箇条書きだけで構成された、視覚構造のないスライドです。読み手は各項目の関係性や優先度を自分で解釈する必要があり、pptcreater の出力として不十分です。",
+          x: 0.9,
+          y: 1.8,
+          w: 10.5,
+          h: 1,
+          fontSize: 22,
+          color: "#0f172a",
+          contrastBackground: "#ffffff",
+          bold: false,
+          decorative: false,
+          readingOrder: 2
+        },
+        {
+          id: `body-extra-${index}`,
+          type: "text",
+          role: "body",
+          text: "図解、表、アイコン、カード構造のいずれもなく、読み手にとって単調な資料です。",
+          x: 0.9,
+          y: 3,
+          w: 10.5,
+          h: 0.8,
+          fontSize: 22,
+          color: "#0f172a",
+          contrastBackground: "#ffffff",
+          bold: false,
+          decorative: false,
+          readingOrder: 3
+        }
+      ];
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.ok).toBe(false);
+    expect(report.issues.some((issue) => issue.code === "visual.richness-deck")).toBe(true);
+  });
+
+  it("allows decks that use shape/card composition without SVG diagrams", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 4, contentMode: "report" });
+    deck.slides.forEach((slide, index) => {
+      slide.layout = "title-content";
+      slide.elements = [
+        {
+          id: `title-${index}`,
+          type: "text",
+          role: "title",
+          text: slide.title,
+          x: 0.8,
+          y: 0.6,
+          w: 11,
+          h: 0.7,
+          fontSize: 30,
+          color: "#0f172a",
+          contrastBackground: "#ffffff",
+          bold: true,
+          decorative: false,
+          readingOrder: 1
+        },
+        {
+          id: `card-${index}-a`,
+          type: "shape",
+          shape: "roundRect",
+          x: 0.9,
+          y: 1.8,
+          w: 3.2,
+          h: 1.6,
+          fill: "#eff6ff",
+          line: { color: "#93c5fd" },
+          decorative: true,
+          readingOrder: 2
+        },
+        {
+          id: `card-${index}-b`,
+          type: "shape",
+          shape: "roundRect",
+          x: 4.5,
+          y: 1.8,
+          w: 3.2,
+          h: 1.6,
+          fill: "#f0fdf4",
+          line: { color: "#86efac" },
+          decorative: true,
+          readingOrder: 3
+        },
+        {
+          id: `card-${index}-c`,
+          type: "shape",
+          shape: "roundRect",
+          x: 8.1,
+          y: 1.8,
+          w: 3.2,
+          h: 1.6,
+          fill: "#fff7ed",
+          line: { color: "#fdba74" },
+          decorative: true,
+          readingOrder: 4
+        },
+        {
+          id: `body-${index}`,
+          type: "text",
+          role: "body",
+          text: "カード構造で情報を分割しているため、文字だけのスライドではありません。",
+          x: 1.1,
+          y: 2.1,
+          w: 9.5,
+          h: 0.6,
+          fontSize: 22,
+          color: "#0f172a",
+          contrastBackground: "#ffffff",
+          bold: false,
+          decorative: false,
+          readingOrder: 5
+        }
+      ];
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "visual.richness-deck")).toBe(false);
+  });
+
   it("requires citation metadata for quoted source visuals", () => {
     const deck = createSampleDeck("en-US");
     deck.metadata.sources = [
@@ -726,6 +961,62 @@ describe("DeckSpec linting", () => {
     expect(report.issues.some((issue) => issue.code === "source.citation-missing")).toBe(false);
     expect(report.issues.some((issue) => issue.code === "source.visual-reference-missing")).toBe(false);
     expect(report.issues.some((issue) => issue.code === "source.attribution-missing")).toBe(false);
+  });
+
+  it("does not require visual richness on a manually authored final references slide", () => {
+    const deck = createSampleDeck("en-US", { slideCount: 1 });
+    deck.metadata.sources = [
+      {
+        id: "source-1",
+        title: "Reference article",
+        url: "https://example.com/reference",
+        usage: "inspiration"
+      }
+    ];
+    deck.slides.push({
+      id: "manual-reference-list",
+      title: "Useful links",
+      layout: "title-content",
+      elements: [
+        {
+          id: "manual-ref-title",
+          type: "text",
+          role: "title",
+          text: "Useful links",
+          x: 0.8,
+          y: 0.6,
+          w: 10,
+          h: 0.7,
+          fontSize: 32,
+          color: "#0f172a",
+          contrastBackground: "#ffffff",
+          bold: true,
+          decorative: false,
+          readingOrder: 1
+        },
+        {
+          id: "manual-ref-url",
+          type: "text",
+          role: "body",
+          text: "https://example.com/reference",
+          x: 0.9,
+          y: 1.8,
+          w: 10.5,
+          h: 0.5,
+          fontSize: 22,
+          color: "#0f172a",
+          contrastBackground: "#ffffff",
+          bold: false,
+          decorative: false,
+          readingOrder: 2
+        }
+      ]
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "source.reference-slide-missing")).toBe(false);
+    expect(report.issues.some((issue) => issue.path === "slides.1" && issue.code === "visual.richness-missing")).toBe(false);
   });
 
   it("requires quoted or recreated sources to be referenced by elements", () => {

@@ -52,6 +52,50 @@ function requiresAltText(element: SlideElement): boolean {
   return ["svg", "image", "diagram", "shape"].includes(element.type) && !element.decorative;
 }
 
+function hasReferenceSlideMarkers(slide: Slide): boolean {
+  return slide.layout === "references" || slide.id === "source-references" || slide.title === "参考URL・出典" || slide.title === "References and sources";
+}
+
+function isReferenceSlide(slide: Slide, deck: DeckSpec, slideIndex: number): boolean {
+  const hasUrlSources = deck.metadata.sources.some((source) => Boolean(source.url));
+  return hasReferenceSlideMarkers(slide) || (hasUrlSources && slideIndex === deck.slides.length - 1 && hasCompleteSourceReferenceSlide(deck));
+}
+
+function isContentSlide(slide: Slide, deck: DeckSpec, slideIndex: number): boolean {
+  if (isReferenceSlide(slide, deck, slideIndex)) {
+    return false;
+  }
+
+  if (["cover", "title", "section", "divider", "closing", "references"].includes(slide.layout ?? "")) {
+    return false;
+  }
+
+  const bodyTextCount = slide.elements.filter((element) => element.type === "text" && element.role === "body").length;
+  return textLength(slide) >= 100 || bodyTextCount >= 2 || slide.elements.length >= 4;
+}
+
+function visualRichnessLevel(slide: Slide): number {
+  return slide.elements.reduce((score, element) => {
+    if (element.type === "diagram") {
+      return score + 4;
+    }
+
+    if (element.type === "svg" || element.type === "image") {
+      return score + 3;
+    }
+
+    if (element.type === "shape") {
+      return score + 1;
+    }
+
+    if (element.type === "text" && (element.role === "callout" || element.role === "subtitle")) {
+      return score + 1;
+    }
+
+    return score;
+  }, 0);
+}
+
 function parseSvgViewBox(svg: string): { width: number; height: number } | undefined {
   const viewBox = /viewBox\s*=\s*["']\s*[-+]?\d*\.?\d+\s+[-+]?\d*\.?\d+\s+([-+]?\d*\.?\d+)\s+([-+]?\d*\.?\d+)\s*["']/iu.exec(svg);
   if (viewBox) {
@@ -308,6 +352,18 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
   });
   const hierarchyTextBoxes = textBoxes.filter(({ element }) => element.role === "callout" || element.role === "title");
   const visualElements = slide.elements.filter((element) => element.type !== "text");
+  if (isContentSlide(slide, deck, slideIndex) && visualRichnessLevel(slide) < 3) {
+    issues.push(
+      issue(
+        "error",
+        "visual.richness-missing",
+        "Content slides must include a meaningful visual structure, such as generate_schematic, generate_diagram, registered icons, images, or card/shape composition. Do not deliver text-only slides.",
+        `slides.${slideIndex}`,
+        { richnessScore: visualRichnessLevel(slide) }
+      )
+    );
+  }
+
   if (bodyTextBoxes.length >= 3 && hierarchyTextBoxes.length < bodyTextBoxes.length && visualElements.length === 0) {
     issues.push(
       issue(
@@ -423,6 +479,12 @@ export function lintDeckSpec(deck: DeckSpec): LintReport {
   const sourcesById = new Map(deck.metadata.sources.map((source) => [source.id, source]));
   const urlSourceCount = deck.metadata.sources.filter((source) => Boolean(source.url)).length;
   const hasFinalReferenceSlide = hasCompleteSourceReferenceSlide(deck);
+  const contentSlides = deck.slides.filter((slide, slideIndex) => isContentSlide(slide, deck, slideIndex));
+  const contentSlideCount = contentSlides.length;
+  const richContentSlideCount = contentSlides.filter((slide) => visualRichnessLevel(slide) >= 3).length;
+  const substantiveVisualCount = contentSlides.flatMap((slide) =>
+    slide.elements.filter((element) => element.type === "svg" || element.type === "image" || element.type === "diagram")
+  ).length;
   const referencedSourceIds = new Set(
     deck.slides.flatMap((slide) => slide.elements.map((element) => element.sourceId).filter((sourceId): sourceId is string => Boolean(sourceId)))
   );
@@ -435,6 +497,22 @@ export function lintDeckSpec(deck: DeckSpec): LintReport {
         "Decks that use external source URLs must collect the actual reference URLs on the final slide.",
         "slides",
         { sourceCount: urlSourceCount }
+      )
+    );
+  }
+
+  if (contentSlideCount >= 3 && richContentSlideCount / contentSlideCount < 0.75) {
+    issues.push(
+      issue(
+        "error",
+        "visual.richness-deck",
+        "The deck is too text-heavy for pptcreater output. At least 75% of content slides should use visual structure, and the deck should include diagrams, schematics, icons, or images.",
+        "slides",
+        {
+          contentSlides: contentSlideCount,
+          richSlides: richContentSlideCount,
+          substantiveVisuals: substantiveVisualCount
+        }
       )
     );
   }
