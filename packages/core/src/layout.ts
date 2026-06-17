@@ -384,6 +384,28 @@ function isListLine(value: string): boolean {
   return /^(?:[-*•・✓✔]|\d+[.)．、]|[（(]?\d+[）)]|[A-Za-z][.)])\s*/.test(value.trim());
 }
 
+function isListMarkerOnly(value: string): boolean {
+  return /^(?:[-*•・✓✔]|\d+[.)．、]|[（(]?\d+[）)]|[A-Za-z][.)])\s*$/.test(value.trim());
+}
+
+function startsWithBadJapaneseContinuation(value: string): boolean {
+  return /^[ぁ-んー]\p{Script=Han}/u.test(value.trim());
+}
+
+function isBadContinuationLine(previous: string, current: string): boolean {
+  const trimmed = current.trim();
+  if (!trimmed || isListLine(trimmed)) {
+    return false;
+  }
+
+  const currentContentChars = contentCharacterCount(trimmed);
+  if (currentContentChars <= 1 && !isAcceptableShortLine(trimmed)) {
+    return true;
+  }
+
+  return previous.trim().length > 0 && startsWithBadJapaneseContinuation(trimmed);
+}
+
 function shouldReflowManualLines(lines: string[], unitsPerLine: number): boolean {
   const nonEmptyLines = lines.map((line) => line.trim()).filter(Boolean);
   if (nonEmptyLines.length <= 1) {
@@ -487,7 +509,19 @@ export function findTextLineBreakIssue(element: TextElement): string | undefined
     return undefined;
   }
 
-  if (lines.some(isListLine)) {
+  const markerOnlyLine = lines.find(isListMarkerOnly);
+  if (markerOnlyLine) {
+    return `Line "${markerOnlyLine}" is only a list marker; keep the marker with its item text.`;
+  }
+
+  const hasListStructure = lines.some(isListLine);
+  if (hasListStructure) {
+    for (let index = 1; index < lines.length; index += 1) {
+      if (isBadContinuationLine(lines[index - 1], lines[index])) {
+        return `Line "${lines[index]}" looks like a broken continuation inside a list; rebalance the line break, widen the box, or shorten the copy.`;
+      }
+    }
+
     return undefined;
   }
 
@@ -496,12 +530,18 @@ export function findTextLineBreakIssue(element: TextElement): string | undefined
     return `Line "${badLine}" starts or ends with punctuation that should stay with adjacent text.`;
   }
 
-  const lastLine = lines[lines.length - 1];
-  const lastContentChars = Array.from(lastLine).filter((char) => CONTENT_CHAR_PATTERN.test(char)).length;
   const previousMaxUnits = Math.max(...lines.slice(0, -1).map(textUnits), 0);
   const isCompactLabelValue = isCompactManualStructure(element, lines) && previousMaxUnits <= 6;
-  if (lastContentChars <= 1 && !isAcceptableShortLine(lastLine) && !isCompactLabelValue) {
-    return `Last line "${lastLine}" is an orphan; rebalance the line break, widen the box, or shorten the copy.`;
+  for (let index = 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    const contentChars = Array.from(line).filter((char) => CONTENT_CHAR_PATTERN.test(char)).length;
+    if (contentChars <= 1 && !isAcceptableShortLine(line) && !isCompactLabelValue) {
+      return `Line "${line}" is an orphan; rebalance the line break, widen the box, or shorten the copy.`;
+    }
+
+    if (!isCompactLabelValue && isBadContinuationLine(lines[index - 1], line)) {
+      return `Line "${line}" looks like a broken continuation; rebalance the line break, widen the box, or shorten the copy.`;
+    }
   }
 
   return undefined;

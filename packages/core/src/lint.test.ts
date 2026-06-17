@@ -324,6 +324,40 @@ describe("DeckSpec linting", () => {
     expect(report.issues.some((issue) => issue.code === "layout.bad-line-break")).toBe(false);
   });
 
+  it("flags orphaned continuation lines inside bullet lists", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    const body = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "body");
+    if (body?.type === "text") {
+      body.text = "• 後続attack-chain stageは部分観測に留ま\nる";
+      body.w = 5;
+      body.h = 1.2;
+      body.fontSize = 16;
+    }
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const badBreak = report.issues.find((issue) => issue.code === "layout.bad-line-break");
+
+    expect(badBreak?.severity).toBe("error");
+    expect(report.ok).toBe(false);
+  });
+
+  it("flags empty bullet markers before wrapped content", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    const body = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "body");
+    if (body?.type === "text") {
+      body.text = "• identity compromiseを直接示すSigninLogs sampleがない\n•\nDeviceTvmSecureConfigurationAssessmentが0 rows";
+      body.w = 5.5;
+      body.h = 1.7;
+      body.fontSize = 14;
+    }
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const badBreak = report.issues.find((issue) => issue.code === "layout.bad-line-break");
+
+    expect(badBreak?.severity).toBe("error");
+    expect(report.ok).toBe(false);
+  });
+
   it("allows short alphanumeric final title lines", () => {
     const deck = createSampleDeck("en-US", { slideCount: 1 });
     const title = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
