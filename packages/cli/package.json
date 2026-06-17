@@ -1,7 +1,11 @@
 ﻿{
   "name": "@pptcreater/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": ">=10"
+  },
   "bin": {
     "pptcreater": "./dist/index.js"
   },
@@ -11,11 +15,11 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@pptcreater/assets-svg": "0.1.0",
-    "@pptcreater/core": "0.1.0",
-    "@pptcreater/diagram": "0.1.0",
-    "@pptcreater/render-pptx": "0.1.0",
-    "@pptcreater/studio": "0.1.0",
+    "@pptcreater/assets-svg": "0.1.1",
+    "@pptcreater/core": "0.1.1",
+    "@pptcreater/diagram": "0.1.1",
+    "@pptcreater/render-pptx": "0.1.1",
+    "@pptcreater/studio": "0.1.1",
     "commander": "^15.0.0"
   },
   "devDependencies": {

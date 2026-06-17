@@ -253,7 +253,7 @@ async function assertSafeLocalImagePaths(deck: DeckSpec): Promise<void> {
 export function createPptcreaterMcpServer(): McpServer {
   const server = new McpServer({
     name: "pptcreater",
-    version: "0.1.0"
+    version: "0.1.1"
   });
   const createPowerPointInputSchema = {
     locale: z.enum(["ja-JP", "en-US"]).default("ja-JP"),

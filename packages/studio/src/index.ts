@@ -84,7 +84,7 @@ function nativeShapePreview(slide: DeckSpec["slides"][number]): string {
         const top = (element.y / 7.5) * 100;
         const width = (element.w / 13.333) * 100;
         const height = (element.h / 7.5) * 100;
-        const fontSize = Math.max(10, Math.round((element.fontSize ?? 18) * 0.52));
+        const fontSize = Math.max(8, Math.round((element.fontSize ?? 18) * 0.52));
         const weight = element.bold ? 700 : 400;
         const align = element.align ?? "left";
         return `<div class="native-text native-text-${element.role}" style="left:${left}%;top:${top}%;width:${width}%;height:${height}%;font-size:${fontSize}px;font-weight:${weight};color:${element.color ?? "#0f172a"};text-align:${align};">${escapeHtml(element.text)}</div>`;
@@ -164,6 +164,7 @@ export function renderStudioHtml(input: unknown, localeOverride?: Locale): strin
     figure img { max-width: 100%; height: auto; border-radius: 12px; }
     .native-canvas { position: relative; aspect-ratio: 16 / 9; min-height: 360px; background: #fff; border-radius: 16px; overflow: hidden; }
     .native-shape, .native-text, .native-svg { position: absolute; box-sizing: border-box; }
+    .native-text { overflow: hidden; white-space: pre-wrap; line-height: 1.15; overflow-wrap: normal; }
     .native-svg svg { width: 100%; height: 100%; display: block; }
     .native-line { height: 2px !important; border-left: 0 !important; border-right: 0 !important; border-bottom: 0 !important; }
     .issue { border-left: 5px solid var(--line); padding: 10px 12px; margin: 10px 0; background: #f8fafc; }

@@ -78,9 +78,9 @@ function createSourceReferenceSlide(deck: DeckSpec, existingTitle?: string): Sli
   const title = existingTitle ?? uniqueSlideTitle(deck, sourceReferenceTitle(deck.locale));
   const columns = sources.length > 7 ? 2 : 1;
   const rows = Math.ceil(sources.length / columns);
-  const top = 1.82;
+  const top = 2.08;
   const rowGap = 0.08;
-  const usableHeight = 5.1;
+  const usableHeight = 4.84;
   const rowHeight = Math.max(0.42, usableHeight / Math.max(rows, 1) - rowGap);
   const fontSize = rows > 9 ? 12 : rows > 7 ? 13 : 14;
   const columnWidth = columns === 2 ? 5.65 : 11.45;
@@ -99,7 +99,7 @@ function createSourceReferenceSlide(deck: DeckSpec, existingTitle?: string): Sli
         x: 0.75,
         y: 0.58,
         w: 11.8,
-        h: 0.55,
+        h: 0.9,
         fontSize: Math.max(28, tokens.typography.titleSize - 4),
         color: tokens.colors.text,
         contrastBackground: tokens.colors.background,
@@ -113,7 +113,7 @@ function createSourceReferenceSlide(deck: DeckSpec, existingTitle?: string): Sli
         role: "body",
         text: sourceReferenceMessage(deck.locale, sources.length),
         x: 0.78,
-        y: 1.18,
+        y: 1.48,
         w: 11.6,
         h: 0.42,
         fontSize: 20,

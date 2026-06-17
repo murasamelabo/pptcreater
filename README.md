@@ -15,6 +15,11 @@ Agent-friendly PowerPoint creation toolkit focused on concise, well-designed, ac
 
 ## Quick start
 
+Prerequisites:
+
+- Node.js `>=22.12.0`
+- npm `>=10`
+
 ```powershell
 npm install
 npm run build
@@ -134,12 +139,54 @@ To use it from another terminal after cloning this repository:
 ```powershell
 git clone https://github.com/murasamelabo/pptcreater.git C:\tools\pptcreater
 cd C:\tools\pptcreater
-git checkout murasamelabo/plan-slide-tool
+git checkout v0.1.1
 npm install
 npm run build
 npm link
 pptcreater --help
 ```
+
+For development or quick follow-up, use `main` instead of a release tag. For stable operational use, pin a tag such as `v0.1.1`, record that tag/commit in the consuming project, and update deliberately after smoke testing.
+
+## Updating an existing installation
+
+When `pptcreater` is installed as a normal Git clone, updates are easy to track and roll back:
+
+```powershell
+cd C:\tools\pptcreater
+git status
+git fetch --tags origin
+git checkout v0.1.1
+npm install
+npm run build
+npm link
+pptcreater --help
+```
+
+If you intentionally track active development, replace `git checkout v0.1.1` with:
+
+```powershell
+git checkout main
+git pull --ff-only origin main
+```
+
+After updating, run a smoke test before using it from Copilot or Claude Code:
+
+```powershell
+pptcreater new --output generated\smoke.deck.json --locale ja-JP --content-mode report
+pptcreater render generated\smoke.deck.json --output generated\smoke.pptx --polish
+pptcreater studio generated\smoke.deck.json --output generated\smoke.html --language ja-JP
+```
+
+MCP configuration normally does not change as long as the clone path stays `C:\tools\pptcreater` and the server path remains `C:\tools\pptcreater\packages\mcp-server\dist\index.js`. Restart the MCP client after rebuilding.
+
+## Release strategy
+
+- GitHub Releases are the stable distribution channel for now; the package remains `private` and is not published to npm yet.
+- Use semantic tags (`v0.1.x`) for operator-facing fixes and document the tag in consuming projects.
+- `main` may move quickly while layout, template, and diagram quality improves; pin a release tag for repeatable deck generation.
+- Before creating a release, run `npm run build`, `npm test`, and render a smoke deck with `--polish`.
+- If a release regresses, roll back with `git checkout <previous-tag>` followed by `npm install`, `npm run build`, and MCP restart.
 
 ## Use automatically from new GitHub Copilot projects
 

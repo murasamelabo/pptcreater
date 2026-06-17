@@ -23,7 +23,7 @@ const LINE_WIDTH_SAFETY = 0.94;
 // is even slightly wider than the real box they re-wrap it and push "、"/"。" to the next line start.
 // Reserving this margin keeps every emitted line comfortably inside the box so no re-wrap happens.
 const TEXT_BOX_INSET = 0.06;
-const BAD_LINE_START_PATTERN = /^[、。，．・,，/／!?！？:：;；）」』】\]\})]/;
+const BAD_LINE_START_PATTERN = /^[、。，．・,，!?！？:：;；）」』】\]\})]/;
 const BAD_LINE_END_PATTERN = /[（「『【\[\({]$/;
 // Characters that must not start a line (closing punctuation, small kana, prolonged sound mark,
 // and a spaced slash separator so "A / B" never wraps to a line beginning with "/").
@@ -40,7 +40,7 @@ const HAN_PATTERN = /\p{Script=Han}/u;
 const KATAKANA_RUN = "[\\u30A0-\\u30FF\\u31F0-\\u31FF\\uFF66-\\uFF9F\\u30FC\\u30FB]+";
 // An atomic token keeps Latin words, identifiers, grouped numbers (150,000, v1.2), and katakana
 // loanwords together; every other character (kanji, hiragana, punctuation) is its own token.
-const WRAP_TOKEN_PATTERN = new RegExp(`[A-Za-z0-9]+(?:[.,_+#%@/'’-][A-Za-z0-9]+)*|${KATAKANA_RUN}|\\s+|[\\s\\S]`, "gu");
+const WRAP_TOKEN_PATTERN = new RegExp(`[A-Za-z0-9]+(?:[.,_+#%@'’-][A-Za-z0-9]+)*|${KATAKANA_RUN}|\\s+|[\\s\\S]`, "gu");
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -83,16 +83,35 @@ function textMinimumFontSize(element: TextElement): number {
     return 24;
   }
 
+  if (element.role === "callout" || element.role === "subtitle") {
+    return 14;
+  }
+
   if (element.role === "caption") {
     // Captions include hand-placed diagram labels in very small boxes; allow shrinking far enough
     // to fit them (a non-blocking small-font warning is preferable to overflow or a blocked render).
-    return 8;
+    return 8.5;
   }
 
-  // Dense Japanese body cards must be able to shrink below the previous 14pt floor: when a line
-  // cannot fit the box at 14pt, a renderer without kinsoku re-wraps it and orphans punctuation.
-  // Allowing 11pt keeps lines inside the box (the small-font warning is non-blocking).
-  return 11;
+  // Dense Japanese report cards still need a practical floor; below 12pt, projected decks and
+  // Studio/PDF previews become visibly fragile even when the text technically fits.
+  return 12;
+}
+
+export function textReadableMinimumFontSize(element: TextElement): number {
+  if (element.role === "title") {
+    return 24;
+  }
+
+  if (element.role === "callout" || element.role === "subtitle") {
+    return 14;
+  }
+
+  if (element.role === "caption") {
+    return 8.5;
+  }
+
+  return 12;
 }
 
 function textUnits(value: string): number {
@@ -227,6 +246,123 @@ function wrapParagraph(value: string, maxUnits: number): string[] {
   return wrapBalanced(value.trim(), maxUnits);
 }
 
+function wrapLineIfOverwide(value: string, maxUnits: number): string[] {
+  return textUnits(value.trim()) > maxUnits ? wrapParagraph(value.trim(), maxUnits) : [value];
+}
+
+function splitOverwideToken(token: string, maxUnits: number): string[] {
+  if (/^[A-Za-z0-9_]+(?:[.,_+#%@'’-][A-Za-z0-9_]+)*$/.test(token)) {
+    return [token];
+  }
+
+  const chunks: string[] = [];
+  let chunk = "";
+  for (const char of Array.from(token)) {
+    if (chunk && textUnits(`${chunk}${char}`) > maxUnits) {
+      chunks.push(chunk);
+      chunk = char;
+    } else {
+      chunk += char;
+    }
+  }
+
+  if (chunk) {
+    chunks.push(chunk);
+  }
+
+  return chunks.length ? chunks : [token];
+}
+
+function hardWrapLineToWidth(value: string, maxUnits: number): string[] {
+  const tokens = tokenizeForWrap(value.trim()).filter((token) => token.length > 0);
+  const lines: string[] = [];
+  let line = "";
+
+  const pushLine = () => {
+    if (line.trim()) {
+      lines.push(line.trim());
+      line = "";
+    }
+  };
+
+  for (const token of tokens) {
+    if (/^\s+$/.test(token)) {
+      if (line && !line.endsWith(" ")) {
+        line += " ";
+      }
+      continue;
+    }
+
+    const candidates = textUnits(token) > maxUnits ? splitOverwideToken(token, maxUnits) : [token];
+    for (const candidate of candidates) {
+      const nextLine = `${line}${candidate}`;
+      if (!line || textUnits(nextLine) <= maxUnits) {
+        line = nextLine;
+        continue;
+      }
+
+      pushLine();
+      line = candidate;
+    }
+  }
+
+  pushLine();
+  return repairHardWrappedLines(lines.length ? lines : [value.trim()]);
+}
+
+function contentCharacterCount(value: string): number {
+  return Array.from(value).filter((char) => CONTENT_CHAR_PATTERN.test(char)).length;
+}
+
+function movePreviousTailToLine(previous: string, current: string): [string, string] {
+  const previousChars = Array.from(previous.trimEnd());
+  while (previousChars.length > 0) {
+    const char = previousChars.pop() ?? "";
+    if (!char.trim()) {
+      continue;
+    }
+
+    return [previousChars.join("").trimEnd(), `${char}${current}`.trim()];
+  }
+
+  return [previous, current];
+}
+
+function repairHardWrappedLines(lines: string[]): string[] {
+  const repaired = [...lines];
+  for (let index = 1; index < repaired.length; index += 1) {
+    const current = repaired[index].trim();
+    if (/^[/／|｜]+$/.test(current)) {
+      if (index + 1 < repaired.length) {
+        repaired[index + 1] = `${current} ${repaired[index + 1].trimStart()}`.trim();
+        repaired.splice(index, 1);
+        index -= 1;
+      } else {
+        repaired[index - 1] = `${repaired[index - 1].trimEnd()} ${current}`.trim();
+        repaired.splice(index, 1);
+        index -= 1;
+      }
+      continue;
+    }
+
+    if (contentCharacterCount(current) <= 1 && repaired[index - 1].trim().length > 1) {
+      const [previous, next] = movePreviousTailToLine(repaired[index - 1], current);
+      repaired[index - 1] = previous;
+      repaired[index] = next;
+    }
+  }
+
+  return repaired.filter((line) => line.trim());
+}
+
+function enforceLineWidths(value: string, width: number, fontSize: number): string {
+  const maxUnits = maxUnitsPerLine(width, fontSize);
+  return value
+    .split(/\r?\n/)
+    .flatMap((line) => (textUnits(line.trim()) > maxUnits ? hardWrapLineToWidth(line, maxUnits) : [line]))
+    .join("\n");
+}
+
 function joinReflowLines(lines: string[]): string {
   return lines.reduce((joined, line) => {
     const trimmed = line.trim();
@@ -296,7 +432,7 @@ function normalizeTextLines(element: TextElement, fontSize: number): string {
     const hasBlankLine = lines.some((line) => !line.trim());
     const nonEmptyLines = lines.filter((line) => line.trim());
     if (nonEmptyLines.length > 1 && nonEmptyLines.some(isListLine)) {
-      return lines.join("\n");
+      return lines.flatMap((line) => (line.trim() ? wrapLineIfOverwide(line, unitsPerLine) : [line])).join("\n");
     }
 
     if (!hasBlankLine && !isPreformattedText(element.text)) {
@@ -373,7 +509,7 @@ export function findTextLineBreakIssue(element: TextElement): string | undefined
 
 function fitTextElement(element: TextElement, tokens: DesignTokens): TextElement {
   let next: TextElement = cloneElement(element);
-  let fontSize = next.fontSize ?? defaultFontSizeForRole(next.role, tokens);
+  let fontSize = Math.max(next.fontSize ?? defaultFontSizeForRole(next.role, tokens), textReadableMinimumFontSize(next));
   const minimumFontSize = Math.min(textMinimumFontSize(next), fontSize);
 
   for (let attempt = 0; attempt < 24; attempt += 1) {
@@ -391,13 +527,73 @@ function fitTextElement(element: TextElement, tokens: DesignTokens): TextElement
     }
 
     if (fontSize <= minimumFontSize) {
-      next = { ...next, text };
+      next = { ...next, text: isPreformattedText(text) ? text : enforceLineWidths(text, next.w, fontSize) };
       break;
     }
     fontSize = Math.max(minimumFontSize, fontSize - 1);
   }
 
   return { ...next, fontSize };
+}
+
+function requiredTextHeightInches(element: TextElement, fontSize: number): number {
+  const overflow = estimateTextOverflow({ ...element, fontSize });
+  return Math.max(element.h, (overflow.estimatedLines * fontSize * LINE_HEIGHT_FACTOR) / 72);
+}
+
+function requiredTextWidthInches(element: TextElement, fontSize: number): number {
+  const longestLineUnits = Math.max(...element.text.split(/\r?\n/).map((line) => textUnits(line.trim())), 0);
+  return Math.max(element.w, (longestLineUnits * ((fontSize * TEXT_WIDTH_FACTOR) / 72)) / LINE_WIDTH_SAFETY + TEXT_BOX_INSET);
+}
+
+function nearlyEqual(a: number, b: number, tolerance = 0.04): boolean {
+  return Math.abs(a - b) <= tolerance;
+}
+
+function isRoundedCardShape(element: SlideElement): element is Extract<SlideElement, { type: "shape" }> {
+  return element.type === "shape" && (element.shape === "roundRect" || element.shape === "roundedRect") && element.fill !== "none" && element.w >= 1 && element.h >= 0.45;
+}
+
+function isCardEdgeAccentBar(element: SlideElement): element is Extract<SlideElement, { type: "shape" }> {
+  return element.type === "shape" && element.shape === "rect" && element.fill !== "none" && element.decorative && element.w <= 0.22 && element.h >= 0.45;
+}
+
+function normalizeCardAccentBars(elements: SlideElement[]): SlideElement[] {
+  const cards = elements.filter(isRoundedCardShape);
+  if (cards.length === 0) {
+    return elements;
+  }
+
+  return elements.map((element) => {
+    if (!isCardEdgeAccentBar(element)) {
+      return element;
+    }
+
+    const card = cards.find(
+      (candidate) =>
+        candidate.id !== element.id &&
+        nearlyEqual(candidate.x, element.x) &&
+        nearlyEqual(candidate.y, element.y) &&
+        nearlyEqual(candidate.h, element.h) &&
+        candidate.w > element.w * 4
+    );
+    if (!card) {
+      return element;
+    }
+
+    const insetY = Math.min(0.16, Math.max(0.05, card.h * 0.08));
+    const insetX = Math.min(0.08, Math.max(0.03, card.w * 0.01));
+    return {
+      ...element,
+      shape: "roundRect",
+      x: card.x + insetX,
+      y: card.y + insetY,
+      w: Math.min(element.w, 0.14),
+      h: Math.max(0.08, card.h - insetY * 2),
+      radius: Math.min(0.06, element.w / 2),
+      line: { color: element.fill, width: 0.1 }
+    };
+  });
 }
 
 function fitElementToSlide(element: SlideElement, tokens: DesignTokens): SlideElement {
@@ -414,7 +610,24 @@ function fitElementToSlide(element: SlideElement, tokens: DesignTokens): SlideEl
   }
 
   if (next.type === "text") {
-    return fitTextElement(next, tokens);
+    let fitted = fitTextElement(next, tokens);
+    const fittedFontSize = fitted.fontSize ?? defaultFontSizeForRole(fitted.role, tokens);
+    const requiredWidth = requiredTextWidthInches(fitted, fittedFontSize);
+    if (requiredWidth > fitted.w && fitted.x + fitted.w < SLIDE_WIDE.width) {
+      fitted = fitTextElement({
+        ...fitted,
+        w: clamp(requiredWidth, fitted.w, SLIDE_WIDE.width - fitted.x)
+      }, tokens);
+    }
+    const requiredHeight = requiredTextHeightInches(fitted, fitted.fontSize ?? defaultFontSizeForRole(fitted.role, tokens));
+    if (requiredHeight > fitted.h) {
+      return {
+        ...fitted,
+        h: clamp(requiredHeight, fitted.h, SLIDE_WIDE.height - fitted.y)
+      };
+    }
+
+    return fitted;
   }
 
   return next;
@@ -423,7 +636,7 @@ function fitElementToSlide(element: SlideElement, tokens: DesignTokens): SlideEl
 export function normalizeSlideLayout(slide: Slide, tokens: DesignTokens = defaultTokens("en-US")): Slide {
   return normalizeReadingOrder({
     ...slide,
-    elements: slide.elements.map((element) => fitElementToSlide(element, tokens))
+    elements: normalizeCardAccentBars(slide.elements.map((element) => fitElementToSlide(element, tokens)))
   });
 }
 

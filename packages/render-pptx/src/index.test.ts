@@ -60,6 +60,41 @@ describe("PPTX renderer", () => {
     expect(result.warnings.some((warning) => warning.includes("layout.bad-line-break"))).toBe(false);
   });
 
+  it("automatically shapes rounded-card accent bars before rendering", async () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push(
+      {
+        id: "card",
+        type: "shape",
+        shape: "roundRect",
+        x: 1,
+        y: 3,
+        w: 4,
+        h: 1.6,
+        fill: "#ffffff",
+        decorative: true,
+        readingOrder: 200
+      },
+      {
+        id: "bar",
+        type: "shape",
+        shape: "rect",
+        x: 1,
+        y: 3,
+        w: 0.12,
+        h: 1.6,
+        fill: "#8f3d35",
+        decorative: true,
+        readingOrder: 201
+      }
+    );
+
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-render-"));
+    const result = await renderDeckToPptx(deck, join(outputDir, "accent-bar.pptx"));
+
+    expect(result.warnings.some((warning) => warning.includes("layout.card-accent-bar-unshaped"))).toBe(false);
+  });
+
   it("does not hide non-text out-of-bounds errors by polishing", async () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     deck.slides[0].elements.push({

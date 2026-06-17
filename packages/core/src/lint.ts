@@ -1,6 +1,6 @@
 ﻿import { contrastRatio, defaultTokens } from "./color.js";
 import { reviewDeckContent } from "./content.js";
-import { estimateTextOverflow, findTextLineBreakIssue, SLIDE_WIDE } from "./layout.js";
+import { estimateTextOverflow, findTextLineBreakIssue, SLIDE_WIDE, textReadableMinimumFontSize } from "./layout.js";
 import type { DeckSpec, ShapeElement, Slide, SlideElement, TextElement } from "./schema.js";
 import { hasCompleteSourceReferenceSlide } from "./sourceReferences.js";
 import { defaultFontSizeForRole } from "./typography.js";
@@ -36,7 +36,23 @@ function textLength(slide: Slide): number {
   }, 0);
 }
 
-function textElementMinimumSize(element: TextElement): number {
+function textElementMinimumSize(element: TextElement, deck: DeckSpec): number {
+  if (deck.template === "report-formal" || deck.metadata.contentMode === "report" || deck.metadata.contentMode === "handout") {
+    if (element.role === "title") {
+      return 24;
+    }
+
+    if (element.role === "caption") {
+      return 8.5;
+    }
+
+    if (element.role === "callout" || element.role === "subtitle") {
+      return 14;
+    }
+
+    return 12;
+  }
+
   if (element.role === "title") {
     return 28;
   }
@@ -246,7 +262,7 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
 
     if (element.type === "text") {
       const fontSize = element.fontSize ?? defaultFontSizeForRole(element.role, tokens);
-      const minimum = textElementMinimumSize(element);
+      const minimum = textElementMinimumSize(element, deck);
       if (fontSize < minimum) {
         issues.push(
           issue(
@@ -255,6 +271,19 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
             `Text font size ${fontSize}pt is below the recommended ${minimum}pt for ${element.role}.`,
             `${path}.fontSize`,
             { fontSize, minimum, role: element.role }
+          )
+        );
+      }
+
+      const readableMinimum = textReadableMinimumFontSize(element);
+      if (fontSize < readableMinimum) {
+        issues.push(
+          issue(
+            "error",
+            "layout.text-too-small-to-read",
+            "Text is below the practical readable size for this role. Enlarge the element, shorten the copy, split the slide, or run polish_deck_layout before rendering.",
+            `${path}.fontSize`,
+            { fontSize, minimum: readableMinimum, role: element.role }
           )
         );
       }
@@ -409,6 +438,45 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
     (element): element is ShapeElement =>
       element.type === "shape" && element.fill !== "none" && (element.fillOpacity === undefined || element.fillOpacity >= 0.6)
   );
+
+  const roundedCards = slide.elements.filter(
+    (element): element is ShapeElement =>
+      element.type === "shape" && (element.shape === "roundRect" || element.shape === "roundedRect") && element.fill !== "none" && element.w >= 1 && element.h >= 0.45
+  );
+  slide.elements.forEach((element, elementIndex) => {
+    if (
+      element.type !== "shape" ||
+      element.shape !== "rect" ||
+      element.fill === "none" ||
+      !element.decorative ||
+      element.w > 0.22 ||
+      element.h < 0.45
+    ) {
+      return;
+    }
+
+    const flushCard = roundedCards.find(
+      (card) =>
+        card.id !== element.id &&
+        Math.abs(card.x - element.x) <= 0.04 &&
+        Math.abs(card.y - element.y) <= 0.04 &&
+        Math.abs(card.h - element.h) <= 0.04 &&
+        card.w > element.w * 4
+    );
+    if (!flushCard) {
+      return;
+    }
+
+    issues.push(
+      issue(
+        "error",
+        "layout.card-accent-bar-unshaped",
+        "A square accent bar is flush with a rounded card edge. Run polish_deck_layout so the bar is inset and rounded, or model the card as a single SVG/diagram.",
+        `slides.${slideIndex}.elements.${elementIndex}`,
+        { cardId: flushCard.id }
+      )
+    );
+  });
 
   textBoxes.forEach(({ element: text, elementIndex }) => {
     const textOrder = text.readingOrder ?? Number.MAX_SAFE_INTEGER;

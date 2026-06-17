@@ -1,7 +1,11 @@
 ﻿{
   "name": "@pptcreater/studio",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": ">=10"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -14,8 +18,8 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@pptcreater/assets-svg": "0.1.0",
-    "@pptcreater/core": "0.1.0"
+    "@pptcreater/assets-svg": "0.1.1",
+    "@pptcreater/core": "0.1.1"
   },
   "devDependencies": {
     "typescript": "^5.9.3"

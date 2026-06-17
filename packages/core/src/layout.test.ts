@@ -483,6 +483,123 @@ describe("layout polish", () => {
     expect(polishedTitle?.type === "text" ? polishedTitle.fontSize : undefined).toBe(24);
   });
 
+  it("raises very small body and callout text to practical readable floors when it fits", () => {
+    const slide: Slide = {
+      id: "small-text",
+      title: "Small text",
+      layout: "title-content",
+      elements: [
+        {
+          id: "body",
+          type: "text",
+          role: "body",
+          text: "Short body",
+          x: 1,
+          y: 1,
+          w: 4,
+          h: 0.8,
+          fontSize: 9,
+          bold: false,
+          decorative: false,
+          readingOrder: 1
+        },
+        {
+          id: "callout",
+          type: "text",
+          role: "callout",
+          text: "Key",
+          x: 1,
+          y: 2,
+          w: 4,
+          h: 0.8,
+          fontSize: 10,
+          bold: true,
+          decorative: false,
+          readingOrder: 2
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const body = normalized.elements.find((element) => element.id === "body");
+    const callout = normalized.elements.find((element) => element.id === "callout");
+
+    expect(body?.type === "text" ? body.fontSize : undefined).toBe(12);
+    expect(callout?.type === "text" ? callout.fontSize : undefined).toBe(14);
+  });
+
+  it("insets square accent bars that are flush with rounded card edges", () => {
+    const slide: Slide = {
+      id: "accent-bars",
+      title: "Accent bars",
+      layout: "title-content",
+      elements: [
+        {
+          id: "card",
+          type: "shape",
+          shape: "roundRect",
+          x: 1,
+          y: 1,
+          w: 4,
+          h: 2,
+          fill: "#ffffff",
+          decorative: true,
+          readingOrder: 1
+        },
+        {
+          id: "bar",
+          type: "shape",
+          shape: "rect",
+          x: 1,
+          y: 1,
+          w: 0.12,
+          h: 2,
+          fill: "#8f3d35",
+          decorative: true,
+          readingOrder: 2
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const bar = normalized.elements.find((element) => element.id === "bar");
+
+    expect(bar?.type === "shape" ? bar.shape : undefined).toBe("roundRect");
+    expect(bar?.x ?? 0).toBeGreaterThan(1);
+    expect(bar?.y ?? 0).toBeGreaterThan(1);
+    expect(bar?.h ?? 99).toBeLessThan(2);
+  });
+
+  it("expands short two-line labels instead of shrinking below readable floors", () => {
+    const slide: Slide = {
+      id: "short-label",
+      title: "Short label",
+      layout: "title-content",
+      elements: [
+        {
+          id: "label",
+          type: "text",
+          role: "callout",
+          text: "Evidence\ncollection",
+          x: 1,
+          y: 1,
+          w: 1.63,
+          h: 0.42,
+          fontSize: 12,
+          bold: true,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const label = normalized.elements[0];
+
+    expect(label.type === "text" ? label.fontSize : undefined).toBe(14);
+    expect(label.h).toBeGreaterThan(0.42);
+  });
+
   it("does not silently truncate copy that cannot fit", () => {
     const slide: Slide = {
       id: "overflow",

@@ -66,6 +66,73 @@ describe("DeckSpec linting", () => {
     expect(report.ok).toBe(false);
   });
 
+  it("treats unreadably small text as a render-blocking error", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    const callout = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "callout");
+    if (callout?.type === "text") {
+      callout.text = "Key";
+      callout.fontSize = 10;
+      callout.w = 4;
+      callout.h = 0.8;
+    }
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const small = report.issues.find((issue) => issue.code === "layout.text-too-small-to-read");
+
+    expect(small?.severity).toBe("error");
+    expect(report.ok).toBe(false);
+  });
+
+  it("flags square accent bars flush with rounded card edges", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements = [
+      {
+        id: "card",
+        type: "shape",
+        shape: "roundRect",
+        x: 1,
+        y: 1,
+        w: 4,
+        h: 2,
+        fill: "#ffffff",
+        decorative: true,
+        readingOrder: 1
+      },
+      {
+        id: "bar",
+        type: "shape",
+        shape: "rect",
+        x: 1,
+        y: 1,
+        w: 0.12,
+        h: 2,
+        fill: "#8f3d35",
+        decorative: true,
+        readingOrder: 2
+      },
+      {
+        id: "text",
+        type: "text",
+        role: "body",
+        text: "Card text",
+        x: 1.4,
+        y: 1.4,
+        w: 3,
+        h: 0.7,
+        fontSize: 18,
+        bold: false,
+        decorative: false,
+        readingOrder: 3
+      }
+    ];
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const bar = report.issues.find((issue) => issue.code === "layout.card-accent-bar-unshaped");
+
+    expect(bar?.severity).toBe("error");
+    expect(report.ok).toBe(false);
+  });
+
   it("flags bad orphan line breaks", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     const title = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
@@ -589,6 +656,66 @@ describe("DeckSpec linting", () => {
 
     expect(report.ok).toBe(false);
     expect(report.issues.some((issue) => issue.code === "visual.alt-text-missing")).toBe(true);
+  });
+
+  it("uses calibrated small-font recommendations for report-formal decks", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1, contentMode: "report" });
+    deck.template = "report-formal";
+    deck.slides[0].elements = [
+      {
+        id: "title",
+        type: "text",
+        role: "title",
+        text: "短い報告見出し",
+        x: 0.8,
+        y: 0.6,
+        w: 7,
+        h: 0.7,
+        fontSize: 24,
+        color: "#24211d",
+        contrastBackground: "#fbfaf7",
+        bold: true,
+        decorative: false,
+        readingOrder: 1
+      },
+      {
+        id: "body",
+        type: "text",
+        role: "body",
+        text: "短い本文",
+        x: 0.8,
+        y: 1.5,
+        w: 5,
+        h: 0.5,
+        fontSize: 12,
+        color: "#24211d",
+        contrastBackground: "#fbfaf7",
+        bold: false,
+        decorative: false,
+        readingOrder: 2
+      },
+      {
+        id: "caption",
+        type: "text",
+        role: "caption",
+        text: "注釈",
+        x: 0.8,
+        y: 2.2,
+        w: 5,
+        h: 0.3,
+        fontSize: 8.5,
+        color: "#24211d",
+        contrastBackground: "#fbfaf7",
+        bold: false,
+        decorative: false,
+        readingOrder: 3
+      }
+    ];
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "text.small-font")).toBe(false);
+    expect(report.issues.some((issue) => issue.code === "layout.text-too-small-to-read")).toBe(false);
   });
 
   it("blocks text-only content slides so pptcreater output stays visually rich", () => {

@@ -39,6 +39,9 @@ const LINT_MESSAGES: Record<Locale, Record<string, (issue: LintIssue) => string>
     "element.reading-order-duplicate": () => "Two elements share the same reading order.",
     "text.small-font": (issue) =>
       `Text font size ${issue.details?.fontSize ?? "?"}pt is below the recommended ${issue.details?.minimum ?? "?"}pt for ${issue.details?.role ?? "text"}.`,
+    "layout.text-too-small-to-read": (issue) =>
+      `Text font size ${issue.details?.fontSize ?? "?"}pt is below the practical readable minimum ${issue.details?.minimum ?? "?"}pt for ${issue.details?.role ?? "text"}.`,
+    "layout.card-accent-bar-unshaped": () => "A square accent bar is flush with a rounded card edge. Run layout polish so the bar is inset and rounded.",
     "text.long-copy": () => "Text block is long. Prefer concise phrases and move detail to notes.",
     "text.low-contrast": (issue) =>
       `Text contrast ratio ${issue.details?.ratio ?? "?"} is below ${issue.details?.minimumRatio ?? "?"}:1.`,
@@ -70,6 +73,9 @@ const LINT_MESSAGES: Record<Locale, Record<string, (issue: LintIssue) => string>
     "element.reading-order-duplicate": () => "複数の要素が同じreadingOrderを持っています。",
     "text.small-font": (issue) =>
       `フォントサイズ ${issue.details?.fontSize ?? "?"}pt は ${issue.details?.role ?? "text"} 推奨値 ${issue.details?.minimum ?? "?"}pt を下回っています。`,
+    "layout.text-too-small-to-read": (issue) =>
+      `フォントサイズ ${issue.details?.fontSize ?? "?"}pt は ${issue.details?.role ?? "text"} の実用可読下限 ${issue.details?.minimum ?? "?"}pt を下回っています。`,
+    "layout.card-accent-bar-unshaped": () => "角丸カードの端に四角いアクセントバーが密着しています。layout polishで内側に寄せた角丸バーへ整形してください。",
     "text.long-copy": () => "テキストブロックが長すぎます。簡潔なフレーズにし、詳細はnotesへ移してください。",
     "text.low-contrast": (issue) =>
       `テキストのコントラスト比 ${issue.details?.ratio ?? "?"} は基準 ${issue.details?.minimumRatio ?? "?"}:1 を下回っています。`,

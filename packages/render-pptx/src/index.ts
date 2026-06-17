@@ -380,6 +380,8 @@ export async function renderDeckToPptx(input: unknown, outputPath: string, optio
   const polishFixableCodes = new Set([
     "layout.text-overflow-risk",
     "layout.bad-line-break",
+    "layout.text-too-small-to-read",
+    "layout.card-accent-bar-unshaped",
     "element.reading-order-duplicate"
   ]);
   const prePolishErrors = lintDeckSpec(parsedDeck).issues.filter(

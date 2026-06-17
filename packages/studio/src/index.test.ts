@@ -27,4 +27,10 @@ describe("Studio preview", () => {
     expect(html).toContain("参考URL・出典");
     expect(html).toContain("https://example.com/source");
   });
+
+  it("clips native preview text like a slide canvas", () => {
+    const html = renderStudioHtml(createSampleDeck("ja-JP"));
+
+    expect(html).toContain(".native-text { overflow: hidden; white-space: pre-wrap; line-height: 1.15; overflow-wrap: normal; }");
+  });
 });
