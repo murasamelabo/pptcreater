@@ -204,6 +204,103 @@ function escapeXml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
+const FULL_WIDTH_LABEL_PATTERN = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}\u30FC\u30FB\uFF01-\uFF60\uFFE0-\uFFE6]/u;
+const LABEL_TOKEN_PATTERN = /[A-Za-z0-9]+(?:[._+#%@/'’-][A-Za-z0-9]+)*|[\u30A0-\u30FF\u31F0-\u31FF\uFF66-\uFF9F\u30FC\u30FB]+|\s+|[\s\S]/gu;
+const HAN_LABEL_PATTERN = /\p{Script=Han}/u;
+const NO_BREAK_BEFORE_LABEL_PATTERN = /^[、。，．・,.!?！？:：;；)\]\}）」』】〉》〕｝ー%％/／]$/u;
+const NO_BREAK_AFTER_LABEL_PATTERN = /^[（「『【〔｛(\[\{〈《]$/u;
+
+function labelUnits(value: string): number {
+  return Array.from(value).reduce((sum, char) => {
+    if (/\s/.test(char)) {
+      return sum + 0.35;
+    }
+
+    if (FULL_WIDTH_LABEL_PATTERN.test(char)) {
+      return sum + 1;
+    }
+
+    return sum + 0.58;
+  }, 0);
+}
+
+function labelWidth(value: string, fontSize: number): number {
+  return labelUnits(value) * fontSize;
+}
+
+function clipLabelToWidth(value: string, maxWidth: number, fontSize: number): string {
+  if (labelWidth(value, fontSize) <= maxWidth) {
+    return value;
+  }
+
+  const ellipsis = "…";
+  let clipped = "";
+  for (const char of Array.from(value)) {
+    if (labelWidth(`${clipped}${char}${ellipsis}`, fontSize) > maxWidth) {
+      break;
+    }
+    clipped += char;
+  }
+
+  return clipped ? `${clipped}${ellipsis}` : ellipsis;
+}
+
+function hardWrapOverwideLine(value: string, maxWidth: number, fontSize: number, maxLines: number): string[] {
+  if (labelWidth(value, fontSize) <= maxWidth) {
+    return [value];
+  }
+
+  // Preserve unbroken Latin identifiers by clipping them instead of creating unreadable mid-word
+  // fragments. CJK/mixed labels can still be split by grapheme as a last-resort overflow guard.
+  if (!FULL_WIDTH_LABEL_PATTERN.test(value) && !/\s/.test(value)) {
+    return [clipLabelToWidth(value, maxWidth, fontSize)];
+  }
+
+  const lines: string[] = [];
+  let line = "";
+  for (const char of Array.from(value)) {
+    const candidate = `${line}${char}`;
+    if (!line || labelWidth(candidate, fontSize) <= maxWidth) {
+      line = candidate;
+      continue;
+    }
+
+    lines.push(line);
+    line = char;
+    if (lines.length === maxLines) {
+      break;
+    }
+  }
+
+  if (line && lines.length < maxLines) {
+    lines.push(line);
+  }
+
+  if (lines.length === maxLines && labelWidth(lines[lines.length - 1], fontSize) > maxWidth) {
+    lines[lines.length - 1] = clipLabelToWidth(lines[lines.length - 1], maxWidth, fontSize);
+  }
+
+  return lines;
+}
+
+function enforceLabelLineWidths(lines: string[], maxWidth: number, fontSize: number, maxLines: number): string[] {
+  const fitted: string[] = [];
+  for (const line of lines) {
+    const remaining = maxLines - fitted.length;
+    if (remaining <= 0) {
+      break;
+    }
+
+    fitted.push(...hardWrapOverwideLine(line, maxWidth, fontSize, remaining));
+  }
+
+  if (fitted.length > maxLines) {
+    return fitted.slice(0, maxLines);
+  }
+
+  return fitted;
+}
+
 function wrapLabel(value: string, maxChars = 14): string[] {
   const text = value.trim();
   if (text.length <= maxChars) {
@@ -237,6 +334,75 @@ function wrapLabel(value: string, maxChars = 14): string[] {
     lines.push(text.slice(index, index + maxChars));
   }
   return lines.slice(0, 3);
+}
+
+function wrapLabelToWidth(value: string, maxWidth: number, fontSize: number, maxLines: number, truncate = false): string[] {
+  const text = value.trim();
+  if (!text) {
+    return [];
+  }
+
+  if (labelWidth(text, fontSize) <= maxWidth) {
+    return [text];
+  }
+
+  const tokens = text.match(LABEL_TOKEN_PATTERN) ?? [text];
+  const lines: string[] = [];
+  let line = "";
+  const lineLimit = truncate ? maxLines : Number.MAX_SAFE_INTEGER;
+
+  for (const token of tokens) {
+    if (/^\s+$/.test(token)) {
+      if (line && !line.endsWith(" ")) {
+        line += " ";
+      }
+      continue;
+    }
+
+    const candidate = `${line}${token}`;
+    if (!line || labelWidth(candidate.trimEnd(), fontSize) <= maxWidth) {
+      if (!line && labelWidth(token, fontSize) > maxWidth) {
+        lines.push(...hardWrapOverwideLine(token, maxWidth, fontSize, lineLimit - lines.length));
+        line = "";
+      } else {
+        line = candidate;
+      }
+      continue;
+    }
+
+    const trimmed = line.trimEnd();
+    const left = trimmed.slice(-1);
+    const right = token[0] ?? "";
+    const tokenStartsWithNoBreak = NO_BREAK_BEFORE_LABEL_PATTERN.test(right);
+    const lineEndsWithNoBreak = NO_BREAK_AFTER_LABEL_PATTERN.test(left);
+    const splitsKanjiCompound = HAN_LABEL_PATTERN.test(left) && HAN_LABEL_PATTERN.test(right);
+    if (trimmed && !tokenStartsWithNoBreak && !lineEndsWithNoBreak && !splitsKanjiCompound) {
+      lines.push(trimmed);
+      line = token;
+    } else {
+      line = candidate;
+    }
+  }
+
+  if (line.trim()) {
+    lines.push(line.trim());
+  }
+
+  return enforceLabelLineWidths(lines, maxWidth, fontSize, lineLimit);
+}
+
+function fitLabel(value: string, maxWidth: number, options: { preferredSize: number; minimumSize: number; maxLines: number }): { lines: string[]; size: number } {
+  for (let size = options.preferredSize; size >= options.minimumSize; size -= 0.5) {
+    const lines = wrapLabelToWidth(value, maxWidth, size, options.maxLines);
+    if (lines.length <= options.maxLines && lines.every((line) => labelWidth(line, size) <= maxWidth)) {
+      return { lines, size };
+    }
+  }
+
+  return {
+    lines: enforceLabelLineWidths(wrapLabelToWidth(value, maxWidth, options.minimumSize, options.maxLines, true), maxWidth, options.minimumSize, options.maxLines),
+    size: options.minimumSize
+  };
 }
 
 function textBlock(lines: string[], x: number, y: number, options: { size?: number; color: string; weight?: number; anchor?: "start" | "middle" }): string {
@@ -592,10 +758,27 @@ function ponchiNode(node: PlacedNode): string {
   const c = centerOf(node);
   const icon = node.icon ?? node.kind;
   const hasIcon = icon !== "none";
-  const labelLines = wrapLabel(node.label, Math.max(8, Math.floor(node.w / 11)));
-  const sublabelLines = node.sublabel ? wrapLabel(node.sublabel, Math.max(10, Math.floor(node.w / 8))) : [];
+  const textMaxWidth = Math.max(48, node.w - 32);
+  const labelFit = fitLabel(node.label, textMaxWidth, {
+    preferredSize: 15,
+    minimumSize: 11,
+    maxLines: node.sublabel ? 2 : 3
+  });
+  const sublabelFit = node.sublabel
+    ? fitLabel(node.sublabel, textMaxWidth, {
+        preferredSize: 12,
+        minimumSize: 9,
+        maxLines: 2
+      })
+    : undefined;
+  const labelLines = labelFit.lines;
+  const sublabelLines = sublabelFit?.lines ?? [];
   const iconTop = node.y + 18;
-  const labelStartY = c.y - (labelLines.length - 1) * 9 + (hasIcon ? 12 : 0) - (sublabelLines.length ? 6 : 0);
+  const labelLineHeight = labelFit.size * 1.22;
+  const sublabelLineHeight = (sublabelFit?.size ?? 12) * 1.2;
+  const textBlockHeight = Math.max(0, (labelLines.length - 1) * labelLineHeight) + (sublabelLines.length ? labelFit.size + sublabelLines.length * sublabelLineHeight : labelFit.size);
+  const preferredStartY = hasIcon ? node.y + 44 : c.y - textBlockHeight / 2 + labelFit.size * 0.75;
+  const labelStartY = Math.min(Math.max(node.y + 24, preferredStartY), node.y + node.h - textBlockHeight + labelFit.size * 0.75 - 10);
 
   const parts = [
     // Soft shadow for depth (offset translucent rect; opacity renders reliably in PowerPoint).
@@ -610,12 +793,12 @@ function ponchiNode(node: PlacedNode): string {
 
   labelLines.forEach((line, index) => {
     parts.push(
-      `<text x="${c.x}" y="${(labelStartY + index * 18).toFixed(1)}" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#0f172a">${escapeXml(line)}</text>`
+      `<text x="${c.x}" y="${(labelStartY + index * labelLineHeight).toFixed(1)}" text-anchor="middle" font-family="Arial, sans-serif" font-size="${labelFit.size}" font-weight="700" fill="#0f172a">${escapeXml(line)}</text>`
     );
   });
   sublabelLines.forEach((line, index) => {
     parts.push(
-      `<text x="${c.x}" y="${(labelStartY + labelLines.length * 18 + index * 15 + 2).toFixed(1)}" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="500" fill="#52606d">${escapeXml(line)}</text>`
+      `<text x="${c.x}" y="${(labelStartY + labelLines.length * labelLineHeight + index * sublabelLineHeight + 2).toFixed(1)}" text-anchor="middle" font-family="Arial, sans-serif" font-size="${sublabelFit?.size ?? 12}" font-weight="500" fill="#52606d">${escapeXml(line)}</text>`
     );
   });
 

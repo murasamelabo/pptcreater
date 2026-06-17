@@ -1,5 +1,28 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { renderPonchiDiagram, renderSchematicDiagram } from "./index.js";
+
+const TEST_FULL_WIDTH_PATTERN = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}\u30FC\u30FB\uFF01-\uFF60\uFFE0-\uFFE6]/u;
+
+function estimatedSvgTextWidth(value: string, fontSize: number): number {
+  return Array.from(value).reduce((sum, char) => {
+    if (/\s/.test(char)) {
+      return sum + fontSize * 0.35;
+    }
+
+    if (TEST_FULL_WIDTH_PATTERN.test(char)) {
+      return sum + fontSize;
+    }
+
+    return sum + fontSize * 0.58;
+  }, 0);
+}
+
+function nodeTextLines(svg: string): Array<{ text: string; fontSize: number }> {
+  return [...svg.matchAll(/<text\b[^>]*font-size="([0-9.]+)"[^>]*>(.*?)<\/text>/gu)].map((match) => ({
+    fontSize: Number(match[1]),
+    text: match[2]
+  }));
+}
 
 describe("ponchi diagram rendering", () => {
   it("rejects arrows that reference unknown nodes", () => {
@@ -54,6 +77,66 @@ describe("ponchi diagram rendering", () => {
     // The word "Provisioning" must stay whole on one text line (no "Provisio" / "ning" split).
     expect(rendered.svg).toContain(">Provisioning<");
     expect(rendered.svg).toContain(">Service<");
+  });
+
+  it("wraps mixed Japanese and English node labels inside the node width", () => {
+    const rendered = renderPonchiDiagram({
+      title: "Mixed labels",
+      summary: "mixed label wrapping",
+      longDescription: "Verifies that mixed Japanese and English architecture labels are wrapped by visual width so they stay inside their nodes.",
+      nodes: [
+        {
+          id: "asset",
+          label: "保護対象資産 デバイス / ユーザー / IP",
+          x: 40,
+          y: 200,
+          w: 176,
+          h: 92,
+          kind: "actor"
+        }
+      ],
+      arrows: []
+    });
+
+    expect(rendered.svg).toContain(">保護対象資産<");
+    expect(rendered.svg).toContain(">デバイス / ユーザー /<");
+    expect(rendered.svg).toContain(">IP<");
+    expect(rendered.svg).not.toContain(">保護対象資産 デバイス /<");
+  });
+
+  it("prevents overwide unspaced node labels from escaping the card", () => {
+    const rendered = renderPonchiDiagram({
+      title: "Long labels",
+      summary: "long label wrapping",
+      longDescription: "Verifies that emergency wrapping or clipping prevents unspaced labels from escaping a node.",
+      nodes: [
+        {
+          id: "kanji",
+          label: "保護対象資産認証基盤監査証跡管理責任者",
+          x: 40,
+          y: 80,
+          w: 176,
+          h: 92,
+          kind: "system"
+        },
+        {
+          id: "latin",
+          label: "SuperLongProvisioningServiceIdentifier",
+          x: 40,
+          y: 220,
+          w: 176,
+          h: 92,
+          kind: "system"
+        }
+      ],
+      arrows: []
+    });
+
+    for (const line of nodeTextLines(rendered.svg)) {
+      expect(estimatedSvgTextWidth(line.text, line.fontSize)).toBeLessThanOrEqual(144);
+    }
+    expect(rendered.svg).toContain("SuperLong");
+    expect(rendered.svg).toContain("…");
   });
 
   it("auto-lays-out nodes when coordinates are omitted and sizes the canvas to fit", () => {

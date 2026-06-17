@@ -90,6 +90,14 @@ function nativeShapePreview(slide: DeckSpec["slides"][number]): string {
         return `<div class="native-text native-text-${element.role}" style="left:${left}%;top:${top}%;width:${width}%;height:${height}%;font-size:${fontSize}px;font-weight:${weight};color:${element.color ?? "#0f172a"};text-align:${align};">${escapeHtml(element.text)}</div>`;
       }
 
+      if (element.type === "svg" || element.type === "diagram") {
+        const left = (element.x / 13.333) * 100;
+        const top = (element.y / 7.5) * 100;
+        const width = (element.w / 13.333) * 100;
+        const height = (element.h / 7.5) * 100;
+        return `<div class="native-svg" style="left:${left}%;top:${top}%;width:${width}%;height:${height}%;">${sanitizeSvg(element.svg)}</div>`;
+      }
+
       return "";
     })
     .join("");
@@ -99,8 +107,15 @@ function nativeShapePreview(slide: DeckSpec["slides"][number]): string {
 
 function visualElements(slide: DeckSpec["slides"][number]): string {
   return sortedElements(slide.elements)
-    .filter((element) => element.type === "svg" || element.type === "diagram")
-    .map((element) => `<figure><div class="svg-frame">${sanitizeSvg(element.svg)}</div><figcaption>${escapeHtml(element.altText ?? ("summary" in element ? element.summary : ""))}</figcaption></figure>`)
+    .filter((element) => element.type === "image")
+    .map((element) => {
+      const source = element.dataUri ?? element.path;
+      if (!source) {
+        return "";
+      }
+
+      return `<figure><img src="${escapeHtml(source)}" alt="${escapeHtml(element.altText ?? "")}" /><figcaption>${escapeHtml(element.description ?? element.altText ?? "")}</figcaption></figure>`;
+    })
     .join("");
 }
 
@@ -146,8 +161,10 @@ export function renderStudioHtml(input: unknown, localeOverride?: Locale): strin
     .text-body { font-size: 20px; }
     .text-caption { color: var(--muted); font-size: 14px; }
     .svg-frame svg { max-width: 100%; height: auto; border-radius: 12px; }
+    figure img { max-width: 100%; height: auto; border-radius: 12px; }
     .native-canvas { position: relative; aspect-ratio: 16 / 9; min-height: 360px; background: #fff; border-radius: 16px; overflow: hidden; }
-    .native-shape, .native-text { position: absolute; box-sizing: border-box; }
+    .native-shape, .native-text, .native-svg { position: absolute; box-sizing: border-box; }
+    .native-svg svg { width: 100%; height: 100%; display: block; }
     .native-line { height: 2px !important; border-left: 0 !important; border-right: 0 !important; border-bottom: 0 !important; }
     .issue { border-left: 5px solid var(--line); padding: 10px 12px; margin: 10px 0; background: #f8fafc; }
     .issue.error { border-color: var(--danger); }
