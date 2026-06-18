@@ -160,14 +160,14 @@ To use it from another terminal after cloning this repository:
 ```powershell
 git clone https://github.com/murasamelabo/pptcreater.git C:\tools\pptcreater
 cd C:\tools\pptcreater
-git checkout v0.1.1
+git checkout v0.1.2
 npm install
 npm run build
 npm link
 pptcreater --help
 ```
 
-For development or quick follow-up, use `main` instead of a release tag. For stable operational use, pin a tag such as `v0.1.1`, record that tag/commit in the consuming project, and update deliberately after smoke testing.
+For development or quick follow-up, use `main` instead of a release tag. For stable operational use, pin a tag such as `v0.1.2`, record that tag/commit in the consuming project, and update deliberately after smoke testing.
 
 ## Updating an existing installation
 
@@ -177,14 +177,14 @@ When `pptcreater` is installed as a normal Git clone, updates are easy to track 
 cd C:\tools\pptcreater
 git status
 git fetch --tags origin
-git checkout v0.1.1
+git checkout v0.1.2
 npm install
 npm run build
 npm link
 pptcreater --help
 ```
 
-If you intentionally track active development, replace `git checkout v0.1.1` with:
+If you intentionally track active development, replace `git checkout v0.1.2` with:
 
 ```powershell
 git checkout main
