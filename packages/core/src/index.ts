@@ -4,6 +4,7 @@ export * from "./content.js";
 export * from "./i18n.js";
 export * from "./layout.js";
 export * from "./lint.js";
+export * from "./rules.js";
 export * from "./samples.js";
 export * from "./schema.js";
 export * from "./skillPacks.js";

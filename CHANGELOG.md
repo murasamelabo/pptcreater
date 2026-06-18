@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.1.4 - 2026-06-18
+
+- Added expanded generated provider preset assets for Microsoft/Azure/Entra/Microsoft 365/Power Platform/Dynamics 365, AWS, and Google Cloud/Workspace architecture slides.
+- Added official icon source catalog guidance for Fluent UI, Google Material Symbols, AWS Architecture Icons, Azure/Entra/Microsoft 365/Dynamics 365/Power Platform icons, and Google Cloud icons through CLI/MCP surfaces.
+- Added MCP `list_icon_sources` for agents that need tool-based access to upstream icon catalog and licensing guidance before registering exact official SVGs.
+- Added first-pass slide creation rules via CLI `pptcreater rules`, MCP `get_slide_creation_rules`, and `design://slide-creation-rules` so agents constrain layout/content/visual choices before lint/render.
+
 ## v0.1.3 - 2026-06-18
 
 - Blocked large technical SVG diagrams from rendering as flattened `image` elements; agents must use native editable diagram elements instead of delivering crushed diagram images.

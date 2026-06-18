@@ -1,8 +1,8 @@
-﻿import { mkdir, mkdtemp, utimes, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { BUILTIN_ICON_NAMES, BUILTIN_SVG_ASSETS, createSimpleIconSvg, registerSvgAsset, sanitizeSvg, searchAllSvgAssets } from "./index.js";
+import { BUILTIN_ICON_NAMES, BUILTIN_SVG_ASSETS, createSimpleIconSvg, listIconSourceCatalogs, registerSvgAsset, sanitizeSvg, searchAllSvgAssets } from "./index.js";
 
 describe("SVG assets", () => {
   it("removes active and external SVG content", () => {
@@ -28,20 +28,53 @@ describe("SVG assets", () => {
   });
 
   it("bundles Microsoft, AWS, and Google cloud preset assets", async () => {
-    expect(BUILTIN_SVG_ASSETS.length).toBeGreaterThanOrEqual(60);
+    expect(BUILTIN_SVG_ASSETS.length).toBeGreaterThanOrEqual(85);
 
-    const [azureAssets, entraAssets, awsAssets, googleAssets] = await Promise.all([
+    const [azureAssets, entraAssets, awsAssets, googleAssets, awsAiAssets, googleIdentityAssets] = await Promise.all([
       searchAllSvgAssets("azure"),
       searchAllSvgAssets("entra"),
       searchAllSvgAssets("aws"),
-      searchAllSvgAssets("google cloud")
+      searchAllSvgAssets("google cloud"),
+      searchAllSvgAssets("aws ai"),
+      searchAllSvgAssets("google cloud identity")
     ]);
 
-    expect(azureAssets.map((asset) => asset.id)).toEqual(expect.arrayContaining(["preset-azure-architecture"]));
-    expect(entraAssets.map((asset) => asset.id)).toEqual(expect.arrayContaining(["preset-entra-identity"]));
-    expect(awsAssets.map((asset) => asset.id)).toEqual(expect.arrayContaining(["preset-aws-cloud", "preset-aws-compute"]));
-    expect(googleAssets.map((asset) => asset.id)).toEqual(expect.arrayContaining(["preset-google-cloud", "preset-google-data-analytics"]));
+    expect(azureAssets.map((asset) => asset.id)).toEqual(expect.arrayContaining(["preset-azure-architecture", "preset-azure-compute", "preset-azure-ai"]));
+    expect(entraAssets.map((asset) => asset.id)).toEqual(expect.arrayContaining(["preset-entra-identity", "preset-entra-privileged-access"]));
+    expect(awsAssets.map((asset) => asset.id)).toEqual(expect.arrayContaining(["preset-aws-cloud", "preset-aws-compute", "preset-aws-analytics"]));
+    expect(googleAssets.map((asset) => asset.id)).toEqual(expect.arrayContaining(["preset-google-cloud", "preset-google-data-analytics", "preset-google-kubernetes"]));
+    expect(awsAiAssets.map((asset) => asset.id)).toContain("preset-aws-ai-ml");
+    expect(googleIdentityAssets.map((asset) => asset.id)).toContain("preset-google-identity");
     expect(awsAssets.find((asset) => asset.id === "preset-aws-cloud")?.license).toContain("not an official vendor icon");
+  });
+
+  it("lists official icon source catalogs for vendor assets", () => {
+    const sourceIds = listIconSourceCatalogs().map((source) => source.id);
+
+    expect(sourceIds).toEqual(
+      expect.arrayContaining([
+        "fluentui-system-icons",
+        "google-material-symbols",
+        "aws-architecture-icons",
+        "azure-architecture-icons",
+        "entra-architecture-icons",
+        "microsoft-365-architecture-icons",
+        "dynamics-365-icons",
+        "power-platform-icons",
+        "google-cloud-icons"
+      ])
+    );
+  });
+
+  it("keeps repository preset SVG files in sync with built-ins", async () => {
+    await Promise.all(
+      BUILTIN_SVG_ASSETS.map(async (asset) => {
+        const fileName = asset.id.startsWith("icon-") ? asset.id.slice("icon-".length) : asset.id;
+        const svg = await readFile(join(process.cwd(), "assets", "svg", "presets", `${fileName}.svg`), "utf8");
+
+        expect(svg.replace(/^\uFEFF/, "").trim()).toBe(asset.svg);
+      })
+    );
   });
 
   it("keeps safe SVG pattern fills", () => {

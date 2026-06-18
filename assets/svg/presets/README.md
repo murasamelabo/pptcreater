@@ -14,7 +14,7 @@ pptcreater asset search "google cloud"
 pptcreater icon workflow --color "#315f9f"
 ```
 
-## Available presets (73)
+## Available presets (91)
 
 - `check`: Check mark for completion or approval.
 - `warning`: Warning triangle for risks or cautions.
@@ -76,16 +76,34 @@ pptcreater icon workflow --color "#315f9f"
 - `preset-microsoft-cloud`: Generated generic pictogram for Microsoft cloud platform slides. Not an official Microsoft logo or product icon.
 - `preset-azure-architecture`: Generated generic pictogram for Azure architecture diagrams. Not an official Azure architecture icon.
 - `preset-entra-identity`: Generated generic pictogram for Entra ID, identity, access, and authentication slides. Not an official Entra icon.
+- `preset-entra-privileged-access`: Generated generic pictogram for privileged identity, admin roles, and access governance slides. Not an official Entra icon.
+- `preset-azure-compute`: Generated generic pictogram for Azure virtual machines, app hosting, containers, and compute workloads. Not an official Azure architecture icon.
+- `preset-azure-storage`: Generated generic pictogram for Azure storage, backup, and data persistence slides. Not an official Azure architecture icon.
+- `preset-azure-networking`: Generated generic pictogram for Azure networking, connectivity, and perimeter architecture slides. Not an official Azure architecture icon.
+- `preset-azure-security`: Generated generic pictogram for Azure security, governance, and compliance slides. Not an official Azure architecture icon.
+- `preset-azure-ai`: Generated generic pictogram for Azure AI, Foundry, and machine learning slides. Not an official Azure architecture icon.
 - `preset-microsoft-365-collaboration`: Generated generic pictogram for Microsoft 365 collaboration and productivity slides. Not an official Microsoft 365 icon.
 - `preset-power-platform-automation`: Generated generic pictogram for Power Platform automation, apps, and workflow slides. Not an official Power Platform icon.
 - `preset-dynamics-365-business-apps`: Generated generic pictogram for Dynamics 365 business application slides. Not an official Dynamics 365 icon.
 - `preset-aws-cloud`: Generated generic pictogram for AWS cloud architecture slides. Not an official AWS architecture icon.
+- `preset-aws-database`: Generated generic pictogram for AWS managed databases and data persistence slides. Not an official AWS architecture icon.
+- `preset-aws-analytics`: Generated generic pictogram for AWS analytics, BI, and data pipeline slides. Not an official AWS architecture icon.
+- `preset-aws-ai-ml`: Generated generic pictogram for AWS AI, machine learning, and generative AI slides. Not an official AWS architecture icon.
+- `preset-aws-containers`: Generated generic pictogram for AWS container and orchestration slides. Not an official AWS architecture icon.
+- `preset-aws-integration`: Generated generic pictogram for AWS messaging, eventing, and integration slides. Not an official AWS architecture icon.
+- `preset-aws-observability`: Generated generic pictogram for AWS monitoring, logging, and operational visibility slides. Not an official AWS architecture icon.
 - `preset-aws-compute`: Generated generic pictogram for AWS compute workloads. Not an official AWS architecture icon.
 - `preset-aws-storage`: Generated generic pictogram for AWS storage and data services. Not an official AWS architecture icon.
 - `preset-aws-networking`: Generated generic pictogram for AWS networking and connectivity slides. Not an official AWS architecture icon.
 - `preset-aws-security`: Generated generic pictogram for AWS security and governance slides. Not an official AWS architecture icon.
 - `preset-google-cloud`: Generated generic pictogram for Google Cloud architecture slides. Not an official Google Cloud icon.
 - `preset-google-compute`: Generated generic pictogram for Google Cloud compute workloads. Not an official Google Cloud icon.
+- `preset-google-storage`: Generated generic pictogram for Google Cloud storage and object data slides. Not an official Google Cloud icon.
+- `preset-google-networking`: Generated generic pictogram for Google Cloud networking, load balancing, and connectivity slides. Not an official Google Cloud icon.
+- `preset-google-security`: Generated generic pictogram for Google Cloud security, IAM, and governance slides. Not an official Google Cloud icon.
+- `preset-google-kubernetes`: Generated generic pictogram for Google Kubernetes Engine and container platform slides. Not an official Google Cloud icon.
+- `preset-google-serverless`: Generated generic pictogram for Google Cloud serverless and event-driven application slides. Not an official Google Cloud icon.
+- `preset-google-identity`: Generated generic pictogram for Google Cloud identity and access management slides. Not an official Google Cloud icon.
 - `preset-google-data-analytics`: Generated generic pictogram for Google Cloud data, analytics, and BI slides. Not an official Google Cloud icon.
 - `preset-google-ai`: Generated generic pictogram for Google Cloud AI and machine learning slides. Not an official Google Cloud icon.
 - `preset-google-workspace`: Generated generic pictogram for Google Workspace collaboration slides. Not an official Google Workspace icon.

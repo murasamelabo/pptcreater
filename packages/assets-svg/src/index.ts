@@ -827,6 +827,66 @@ const VENDOR_PRESET_DEFINITIONS: VendorPresetDefinition[] = [
     backgroundColor: "#f5f3ff"
   },
   {
+    id: "preset-entra-privileged-access",
+    title: "Microsoft Entra privileged access preset",
+    description: "Generated generic pictogram for privileged identity, admin roles, and access governance slides. Not an official Entra icon.",
+    tags: ["preset", "microsoft", "entra", "privileged-access", "identity-governance", "admin", "pam", "pim", "security", "generic", "not-official"],
+    iconName: "lock",
+    color: "#312e81",
+    accentColor: "#a78bfa",
+    backgroundColor: "#f5f3ff"
+  },
+  {
+    id: "preset-azure-compute",
+    title: "Azure compute preset",
+    description: "Generated generic pictogram for Azure virtual machines, app hosting, containers, and compute workloads. Not an official Azure architecture icon.",
+    tags: ["preset", "azure", "microsoft", "compute", "virtual-machine", "container", "app-service", "server", "generic", "not-official"],
+    iconName: "server",
+    color: "#1e40af",
+    accentColor: "#38bdf8",
+    backgroundColor: "#eff6ff"
+  },
+  {
+    id: "preset-azure-storage",
+    title: "Azure storage preset",
+    description: "Generated generic pictogram for Azure storage, backup, and data persistence slides. Not an official Azure architecture icon.",
+    tags: ["preset", "azure", "microsoft", "storage", "blob", "backup", "database", "data", "generic", "not-official"],
+    iconName: "database",
+    color: "#0369a1",
+    accentColor: "#60a5fa",
+    backgroundColor: "#f0f9ff"
+  },
+  {
+    id: "preset-azure-networking",
+    title: "Azure networking preset",
+    description: "Generated generic pictogram for Azure networking, connectivity, and perimeter architecture slides. Not an official Azure architecture icon.",
+    tags: ["preset", "azure", "microsoft", "network", "networking", "vnet", "firewall", "connectivity", "generic", "not-official"],
+    iconName: "globe",
+    color: "#0f766e",
+    accentColor: "#38bdf8",
+    backgroundColor: "#ecfeff"
+  },
+  {
+    id: "preset-azure-security",
+    title: "Azure security preset",
+    description: "Generated generic pictogram for Azure security, governance, and compliance slides. Not an official Azure architecture icon.",
+    tags: ["preset", "azure", "microsoft", "security", "governance", "compliance", "defender", "shield", "generic", "not-official"],
+    iconName: "shield",
+    color: "#0f766e",
+    accentColor: "#22c55e",
+    backgroundColor: "#f0fdfa"
+  },
+  {
+    id: "preset-azure-ai",
+    title: "Azure AI preset",
+    description: "Generated generic pictogram for Azure AI, Foundry, and machine learning slides. Not an official Azure architecture icon.",
+    tags: ["preset", "azure", "microsoft", "ai", "foundry", "machine-learning", "openai", "spark", "generic", "not-official"],
+    iconName: "spark",
+    color: "#6d28d9",
+    accentColor: "#60a5fa",
+    backgroundColor: "#faf5ff"
+  },
+  {
     id: "preset-microsoft-365-collaboration",
     title: "Microsoft 365 collaboration preset",
     description: "Generated generic pictogram for Microsoft 365 collaboration and productivity slides. Not an official Microsoft 365 icon.",
@@ -865,6 +925,66 @@ const VENDOR_PRESET_DEFINITIONS: VendorPresetDefinition[] = [
     color: "#b45309",
     accentColor: "#f59e0b",
     backgroundColor: "#fff7ed"
+  },
+  {
+    id: "preset-aws-database",
+    title: "AWS database preset",
+    description: "Generated generic pictogram for AWS managed databases and data persistence slides. Not an official AWS architecture icon.",
+    tags: ["preset", "aws", "amazon-web-services", "database", "rds", "dynamodb", "data", "storage", "generic", "not-official"],
+    iconName: "database",
+    color: "#854d0e",
+    accentColor: "#f59e0b",
+    backgroundColor: "#fffbeb"
+  },
+  {
+    id: "preset-aws-analytics",
+    title: "AWS analytics preset",
+    description: "Generated generic pictogram for AWS analytics, BI, and data pipeline slides. Not an official AWS architecture icon.",
+    tags: ["preset", "aws", "amazon-web-services", "analytics", "data-pipeline", "bi", "chart", "generic", "not-official"],
+    iconName: "chart-bar",
+    color: "#a16207",
+    accentColor: "#facc15",
+    backgroundColor: "#fefce8"
+  },
+  {
+    id: "preset-aws-ai-ml",
+    title: "AWS AI/ML preset",
+    description: "Generated generic pictogram for AWS AI, machine learning, and generative AI slides. Not an official AWS architecture icon.",
+    tags: ["preset", "aws", "amazon-web-services", "ai", "ml", "machine-learning", "bedrock", "sagemaker", "generic", "not-official"],
+    iconName: "spark",
+    color: "#7c2d12",
+    accentColor: "#fb923c",
+    backgroundColor: "#fff7ed"
+  },
+  {
+    id: "preset-aws-containers",
+    title: "AWS containers preset",
+    description: "Generated generic pictogram for AWS container and orchestration slides. Not an official AWS architecture icon.",
+    tags: ["preset", "aws", "amazon-web-services", "containers", "eks", "ecs", "orchestration", "layers", "generic", "not-official"],
+    iconName: "layers",
+    color: "#92400e",
+    accentColor: "#f97316",
+    backgroundColor: "#fff7ed"
+  },
+  {
+    id: "preset-aws-integration",
+    title: "AWS integration preset",
+    description: "Generated generic pictogram for AWS messaging, eventing, and integration slides. Not an official AWS architecture icon.",
+    tags: ["preset", "aws", "amazon-web-services", "integration", "messaging", "eventbridge", "queue", "workflow", "generic", "not-official"],
+    iconName: "workflow",
+    color: "#7c2d12",
+    accentColor: "#f59e0b",
+    backgroundColor: "#fff7ed"
+  },
+  {
+    id: "preset-aws-observability",
+    title: "AWS observability preset",
+    description: "Generated generic pictogram for AWS monitoring, logging, and operational visibility slides. Not an official AWS architecture icon.",
+    tags: ["preset", "aws", "amazon-web-services", "observability", "monitoring", "logging", "cloudwatch", "visibility", "generic", "not-official"],
+    iconName: "eye",
+    color: "#0369a1",
+    accentColor: "#f59e0b",
+    backgroundColor: "#f0f9ff"
   },
   {
     id: "preset-aws-compute",
@@ -925,6 +1045,66 @@ const VENDOR_PRESET_DEFINITIONS: VendorPresetDefinition[] = [
     color: "#2563eb",
     accentColor: "#22c55e",
     backgroundColor: "#eff6ff"
+  },
+  {
+    id: "preset-google-storage",
+    title: "Google Cloud storage preset",
+    description: "Generated generic pictogram for Google Cloud storage and object data slides. Not an official Google Cloud icon.",
+    tags: ["preset", "google", "google-cloud", "gcp", "storage", "cloud-storage", "database", "data", "generic", "not-official"],
+    iconName: "database",
+    color: "#1d4ed8",
+    accentColor: "#facc15",
+    backgroundColor: "#eff6ff"
+  },
+  {
+    id: "preset-google-networking",
+    title: "Google Cloud networking preset",
+    description: "Generated generic pictogram for Google Cloud networking, load balancing, and connectivity slides. Not an official Google Cloud icon.",
+    tags: ["preset", "google", "google-cloud", "gcp", "network", "networking", "load-balancing", "connectivity", "generic", "not-official"],
+    iconName: "globe",
+    color: "#1d4ed8",
+    accentColor: "#22c55e",
+    backgroundColor: "#f8fafc"
+  },
+  {
+    id: "preset-google-security",
+    title: "Google Cloud security preset",
+    description: "Generated generic pictogram for Google Cloud security, IAM, and governance slides. Not an official Google Cloud icon.",
+    tags: ["preset", "google", "google-cloud", "gcp", "security", "iam", "governance", "shield", "generic", "not-official"],
+    iconName: "shield",
+    color: "#166534",
+    accentColor: "#60a5fa",
+    backgroundColor: "#f0fdf4"
+  },
+  {
+    id: "preset-google-kubernetes",
+    title: "Google Kubernetes preset",
+    description: "Generated generic pictogram for Google Kubernetes Engine and container platform slides. Not an official Google Cloud icon.",
+    tags: ["preset", "google", "google-cloud", "gcp", "kubernetes", "gke", "containers", "orchestration", "generic", "not-official"],
+    iconName: "layers",
+    color: "#1d4ed8",
+    accentColor: "#22c55e",
+    backgroundColor: "#eff6ff"
+  },
+  {
+    id: "preset-google-serverless",
+    title: "Google Cloud serverless preset",
+    description: "Generated generic pictogram for Google Cloud serverless and event-driven application slides. Not an official Google Cloud icon.",
+    tags: ["preset", "google", "google-cloud", "gcp", "serverless", "cloud-run", "functions", "event-driven", "generic", "not-official"],
+    iconName: "rocket",
+    color: "#b45309",
+    accentColor: "#60a5fa",
+    backgroundColor: "#fff7ed"
+  },
+  {
+    id: "preset-google-identity",
+    title: "Google Cloud identity preset",
+    description: "Generated generic pictogram for Google Cloud identity and access management slides. Not an official Google Cloud icon.",
+    tags: ["preset", "google", "google-cloud", "gcp", "identity", "iam", "access", "key", "generic", "not-official"],
+    iconName: "key",
+    color: "#334155",
+    accentColor: "#22c55e",
+    backgroundColor: "#f8fafc"
   },
   {
     id: "preset-google-data-analytics",

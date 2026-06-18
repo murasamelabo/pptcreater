@@ -160,14 +160,14 @@ To use it from another terminal after cloning this repository:
 ```powershell
 git clone https://github.com/murasamelabo/pptcreater.git C:\tools\pptcreater
 cd C:\tools\pptcreater
-git checkout v0.1.3
+git checkout v0.1.4
 npm install
 npm run build
 npm link
 pptcreater --help
 ```
 
-For development or quick follow-up, use `main` instead of a release tag. For stable operational use, pin a tag such as `v0.1.3`, record that tag/commit in the consuming project, and update deliberately after smoke testing.
+For development or quick follow-up, use `main` instead of a release tag. For stable operational use, pin a tag such as `v0.1.4`, record that tag/commit in the consuming project, and update deliberately after smoke testing.
 
 ## Updating an existing installation
 
@@ -177,14 +177,14 @@ When `pptcreater` is installed as a normal Git clone, updates are easy to track 
 cd C:\tools\pptcreater
 git status
 git fetch --tags origin
-git checkout v0.1.3
+git checkout v0.1.4
 npm install
 npm run build
 npm link
 pptcreater --help
 ```
 
-If you intentionally track active development, replace `git checkout v0.1.3` with:
+If you intentionally track active development, replace `git checkout v0.1.4` with:
 
 ```powershell
 git checkout main
@@ -229,7 +229,7 @@ Register the MCP server in your user-level MCP configuration on each terminal. U
 Add this to your global Copilot instructions so slide-related requests prefer this tool:
 
 ```text
-When creating PowerPoint presentations, slide decks, proposal materials, templates, SVG icons, business diagrams, or accessible presentation materials, prefer the pptcreater MCP. Use create_pptx/create_powerpoint for direct PPTX output. For custom DeckSpecs, first use interview_slide_brief when purpose, audience, or volume is unclear, use review_content to apply locale/content-mode writing rules, use search_assets and generate_native_diagram/generate_schematic for visual structure, then run lint_deck and render_pptx/render_powerpoint or render_studio. If the MCP render tool is not visible in the current tool selection, run the CLI fallback `pptcreater render <deck.json> --output <deck.pptx> --polish`. Never deliver text-only content slides, flattened editable diagrams, or unlabeled box-and-arrow diagrams; visual.richness-*, diagram.image-svg-not-editable, and diagram.visible-labels-missing lint findings must be fixed before final output.
+When creating PowerPoint presentations, slide decks, proposal materials, templates, SVG icons, business diagrams, or accessible presentation materials, prefer the pptcreater MCP. Use create_pptx/create_powerpoint for direct PPTX output. For custom DeckSpecs, first call get_slide_creation_rules and keep the first draft inside those constraints; use interview_slide_brief when purpose, audience, or volume is unclear, use review_content to apply locale/content-mode writing rules, use search_assets and generate_native_diagram/generate_schematic for visual structure, then run lint_deck and render_pptx/render_powerpoint or render_studio. If the MCP render tool is not visible in the current tool selection, run the CLI fallback `pptcreater render <deck.json> --output <deck.pptx> --polish`. Never deliver text-only content slides, flattened editable diagrams, or unlabeled box-and-arrow diagrams; visual.richness-*, diagram.image-svg-not-editable, and diagram.visible-labels-missing lint findings must be fixed before final output.
 ```
 
 For stronger project-level behavior, add the same instruction to `.github/copilot-instructions.md` in repositories where slide creation should always use `pptcreater`.
@@ -299,7 +299,7 @@ From an MCP-capable AI agent, use:
 
 SVG icons can be registered as sanitized reusable assets. Use this for icons, logos, simple illustrations, and diagram parts that should be reused across decks.
 
-pptcreater includes generated, free-to-use generic icon presets for UI, business, security, data, flow, slide-design, and cloud architecture patterns. In addition to base icons such as `check`, `table`, `tree`, `lock`, `workflow`, and `presentation`, `search_assets` includes Microsoft/Azure/Entra/Microsoft 365/Power Platform/Dynamics 365, AWS, and Google Cloud/Workspace preset pictograms such as `preset-azure-architecture`, `preset-entra-identity`, `preset-aws-cloud`, and `preset-google-cloud`. These vendor presets are generated generic pictograms, not official logos or product icons. Bundled preset SVG files are visible under `assets\svg\presets\`.
+pptcreater includes generated, free-to-use generic icon presets for UI, business, security, data, flow, slide-design, and cloud architecture patterns. In addition to base icons such as `check`, `table`, `tree`, `lock`, `workflow`, and `presentation`, `search_assets` includes Microsoft/Azure/Entra/Microsoft 365/Power Platform/Dynamics 365, AWS, and Google Cloud/Workspace preset pictograms such as `preset-azure-architecture`, `preset-entra-identity`, `preset-entra-privileged-access`, `preset-aws-cloud`, `preset-aws-ai-ml`, `preset-google-cloud`, and `preset-google-kubernetes`. These vendor presets are generated generic pictograms, not official logos or product icons. The generated preset catalog is documented under `assets\svg\presets\`.
 
 ```powershell
 pptcreater asset search cloud
@@ -336,6 +336,7 @@ From an MCP-capable AI agent, use:
 
 - `asset://registration-guide` to read the registration workflow.
 - `asset://icon-sources` to discover known upstream icon catalogs and licensing guidance notes.
+- `list_icon_sources` when a tool result is preferable to reading the MCP resource.
 - `search_assets` before registering a new SVG, to avoid duplicates.
 - `generate_native_diagram` before embedding architecture/security/control-plane/ponchi-e diagrams as SVG images; it returns editable DeckSpec `shape`/`text` elements.
 - `generate_schematic` before freehand SVG when the visual is a table, tree, flow, list, or mockup.
@@ -348,8 +349,16 @@ To force both registries under a custom base directory, set `PPTCREATER_HOME`. T
 
 Good slide design depends on purpose, audience, delivery mode, and volume. The built-in skill packs `slide-briefing-ja` and `slide-briefing-en` define intake questions for AI agents.
 
+To reduce repeated lint/render fixes, fetch the first-pass rules before writing custom DeckSpec:
+
+```powershell
+pptcreater rules --locale ja-JP --content-mode technical
+pptcreater rules --locale ja-JP --content-mode technical --json
+```
+
 From MCP, use:
 
+- `get_slide_creation_rules` before manually writing DeckSpec, so content length, layout slots, visual grammar, alt text, sources, and diagram choices are constrained up front.
 - `interview_slide_brief` when the user's request does not specify purpose, audience, delivery context, or slide count.
 - `create_pptx` when the user wants a PowerPoint file directly.
 - `create_deck` with `purpose`, `audience`, `slideCount`, and `contentMode` when those details are known and you need to inspect or edit DeckSpec.

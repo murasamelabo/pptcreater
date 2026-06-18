@@ -13,6 +13,7 @@ import {
   getBusinessDeckGuidance,
   getContentGuidance,
   getDefaultTemplateRegistryPath,
+  getSlideCreationRules,
   listAllTemplates,
   listSkillPacks,
   lintDeckSpec,
@@ -24,6 +25,7 @@ import {
   reviewBusinessDeck,
   reviewDeckContent,
   STYLE_PROFILES,
+  formatSlideCreationRules,
   type BusinessStyleMode,
   type ContentMode,
   type Locale,
@@ -129,7 +131,7 @@ const program = new Command();
 program
   .name("pptcreater")
   .description("Create concise accessible PowerPoint decks from DeckSpec.")
-  .version("0.1.3")
+  .version("0.1.4")
   .option("--language <locale>", "CLI output language: ja-JP or en-US");
 
 program
@@ -188,6 +190,17 @@ program
       styleProfile: options.style
     }));
     console.log(cliMessage(outputLocale(locale), "cli.created", { path: options.output }));
+  }));
+
+program
+  .command("rules")
+  .description("Print first-pass slide generation rules to reduce lint/render retry loops.")
+  .option("--locale <locale>", "Rules locale", "ja-JP")
+  .option("--content-mode <mode>", "presentation, report, technical, handout, or decision", parseContentMode, "presentation")
+  .option("--json", "Emit JSON", false)
+  .action(commandAction((options: { locale: string; contentMode: ContentMode; json: boolean }) => {
+    const rules = getSlideCreationRules(asLocale(options.locale), options.contentMode);
+    console.log(options.json ? JSON.stringify(rules, null, 2) : formatSlideCreationRules(rules));
   }));
 
 program
