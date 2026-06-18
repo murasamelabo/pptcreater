@@ -56,6 +56,10 @@ const LINT_MESSAGES: Record<Locale, Record<string, (issue: LintIssue) => string>
     "diagram.long-description-short": () => "Complex diagrams should include a useful longDescription for speaker notes and accessibility review.",
     "diagram.visible-labels-missing": () =>
       "The diagram SVG has shapes/connectors but no visible labels. Add SVG <text> labels/callouts or rebuild it with generate_diagram/generate_schematic; alt text alone is not visible.",
+    "diagram.image-svg-not-editable": () =>
+      "This looks like a diagram embedded as an SVG image. Recreate it with generate_native_diagram so boxes, connectors, and labels remain editable PowerPoint objects; use image SVG only when exact fidelity is required.",
+    "diagram.native-connectors": () =>
+      "This connected diagram uses hand-placed arrow shapes. Use generate_native_diagram for editable PowerPoint objects with automatic spacing and connector routing.",
     "source.reference-slide-missing": (issue) =>
       `Add a final references slide that lists the actual external source URLs (${issue.details?.sourceCount ?? "?"} source(s)).`,
     "slide.title-duplicate": () => "Each slide needs a unique, descriptive title for navigation.",
@@ -92,6 +96,10 @@ const LINT_MESSAGES: Record<Locale, Record<string, (issue: LintIssue) => string>
     "diagram.long-description-short": () => "複雑な図には、speaker notesとアクセシビリティ確認に使えるlongDescriptionを追加してください。",
     "diagram.visible-labels-missing": () =>
       "図のSVGに図形・コネクタはありますが、見えるラベルがありません。SVG内に<text>ラベル/吹き出しを追加するか、generate_diagram/generate_schematicで作り直してください。alt textだけでは閲覧者に見えません。",
+    "diagram.image-svg-not-editable": () =>
+      "構成図がSVG画像として埋め込まれている可能性があります。箱・コネクタ・ラベルをPowerPoint上で編集できるよう、generate_native_diagramで作り直してください。image SVGは厳密な見た目の再現が必要な場合に限定します。",
+    "diagram.native-connectors": () =>
+      "手置きの矢印図形で接続図を作っています。間隔調整とコネクタ経路を自動化しつつ編集可能なPowerPointオブジェクトにするため、generate_native_diagramを使ってください。",
     "source.reference-slide-missing": (issue) =>
       `外部サイトを参照した場合は、最後のスライドに実際の参考URL・出典をまとめてください（${issue.details?.sourceCount ?? "?"}件）。`,
     "slide.title-duplicate": () => "各スライドには、ナビゲーション用の一意で説明的なタイトルが必要です。",

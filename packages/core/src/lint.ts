@@ -68,6 +68,31 @@ function requiresAltText(element: SlideElement): boolean {
   return ["svg", "image", "diagram", "shape"].includes(element.type) && !element.decorative;
 }
 
+function isSvgImageElement(element: SlideElement): boolean {
+  if (element.type !== "image") {
+    return false;
+  }
+
+  return Boolean(element.path?.toLowerCase().endsWith(".svg") || /^data:image\/svg\+xml(?:[;,]|$)/iu.test(element.dataUri ?? ""));
+}
+
+function isLikelyDiagramImage(element: Extract<SlideElement, { type: "image" }>, deck: DeckSpec): boolean {
+  const clueText = [element.id, element.path, element.description, element.altText, deck.metadata.subject, deck.metadata.contentMode, deck.title]
+    .filter((value): value is string => Boolean(value))
+    .join(" ");
+  const diagramPattern = /diagram|architecture|flow|schematic|ponchi|marketplace|governance|control|policy|decision|security|構成|構成図|図解|フロー|ポンチ|統制|管理|判定|セキュリティ/iu;
+
+  return deck.metadata.contentMode === "technical" || diagramPattern.test(clueText);
+}
+
+function isGeneratedNativeDiagramConnector(element: ShapeElement): boolean {
+  return /(?:^|-)connector-\d+-\d+$/u.test(element.id);
+}
+
+function isGeneratedNativeDiagramNode(element: SlideElement): boolean {
+  return element.type === "shape" && /(?:^|-)node-[a-zA-Z0-9._-]+-\d+$/u.test(element.id);
+}
+
 function hasReferenceSlideMarkers(slide: Slide): boolean {
   return slide.layout === "references" || slide.id === "source-references" || slide.title === "参考URL・出典" || slide.title === "References and sources";
 }
@@ -492,6 +517,18 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
       issues.push(...lintVisibleDiagramLabels(element, path));
       issues.push(...lintEmbeddedSvgText(element, path));
     }
+
+    if (element.type === "image" && !element.decorative && isSvgImageElement(element) && element.w * element.h >= 8 && isLikelyDiagramImage(element, deck)) {
+      issues.push(
+        issue(
+          "warning",
+          "diagram.image-svg-not-editable",
+          "This looks like a diagram embedded as an SVG image, so labels and boxes will be flattened and may become hard to edit or read after scaling. Recreate architecture/flow/ponchi-e visuals with generate_native_diagram so PowerPoint shapes, connectors, and labels stay editable; use image SVG only when exact fidelity is required.",
+          path,
+          { renderedArea: Number((element.w * element.h).toFixed(2)) }
+        )
+      );
+    }
   });
 
   const textBoxes = slide.elements
@@ -545,12 +582,14 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
     (element) => element.type === "shape" && ["rect", "roundRect", "roundedRect", "ellipse", "oval"].includes(element.shape)
   );
   const hasEngineDiagram = slide.elements.some((element) => element.type === "diagram");
-  if (!hasEngineDiagram && (connectorShapes.length >= 2 || (connectorShapes.length >= 1 && nodeLikeShapes.length >= 4))) {
+  const hasGeneratedNativeDiagram =
+    connectorShapes.length > 0 && connectorShapes.every(isGeneratedNativeDiagramConnector) && nodeLikeShapes.some(isGeneratedNativeDiagramNode);
+  if (!hasEngineDiagram && !hasGeneratedNativeDiagram && (connectorShapes.length >= 2 || (connectorShapes.length >= 1 && nodeLikeShapes.length >= 4))) {
     issues.push(
       issue(
         "warning",
         "diagram.native-connectors",
-        "This slide draws a connected diagram from hand-placed arrow shapes, which dangle or penetrate nodes unless the layout is a simple row. Build it with generate_diagram (omit node x/y for automatic layout) and embed the returned SVG as a diagram element so every arrow connects border-to-border.",
+        "This slide draws a connected diagram from hand-placed arrow shapes, which can dangle, pierce nodes, or become uneven unless the layout is a simple row. Build it with generate_native_diagram so connectors, boxes, and labels remain editable PowerPoint objects with automatic spacing; use generate_diagram SVG only when you need a single fixed illustration.",
         `slides.${slideIndex}`,
         { connectors: connectorShapes.length, nodes: nodeLikeShapes.length }
       )

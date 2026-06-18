@@ -4,7 +4,7 @@ import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, searchAllSvgAssets } from "@pptcreater/assets-svg";
-import { renderPonchiDiagram, renderSchematicDiagram } from "@pptcreater/diagram";
+import { renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram } from "@pptcreater/diagram";
 import {
   BUSINESS_STYLE_MODES,
   createEditWithCopilotPrompt,
@@ -628,12 +628,35 @@ export function createPptcreaterMcpServer(): McpServer {
     {
       title: "Generate ponchi-e diagram",
       description:
-        "Render an architecture/flow ponchi-e as one clean, accessible SVG with visible labels. Omit node x/y to get automatic layered layout: just give nodes (id, label, kind) and arrows (from, to); set diagram.direction 'LR' or 'TB' for flow direction and optional node.layer/lane hints. Connectors clip to node borders with real arrowheads and detour through clear gutters when they skip a rank (no detached, mis-angled, or node-piercing arrows), nodes get kind-based icons (actor/system/process/data/note/cloud) and accent bars, and groups render as lanes. Always prefer this over hand-placing native line/rightArrow shapes for any diagram with arrows or connected nodes. Never embed shape-only SVG diagrams: every meaningful node/lane/decision/flow needs readable SVG <text> labels or callouts; altText/summary/longDescription alone is not visible to slide viewers. Embed the returned SVG as a single DeckSpec diagram element (with summary and longDescription).",
+        "Render an architecture/flow ponchi-e as one fixed accessible SVG with visible labels. Prefer generate_native_diagram for most architecture, flow, security, and ponchi-e slides because it returns editable PowerPoint shape/text elements. Use this SVG tool only when a single fixed illustration is required. Omit node x/y to get automatic layered layout: just give nodes (id, label, kind) and arrows (from, to); set diagram.direction 'LR' or 'TB' and optional node.layer/lane hints. Never embed shape-only SVG diagrams: every meaningful node/lane/decision/flow needs readable SVG <text> labels or callouts; altText/summary/longDescription alone is not visible to slide viewers.",
       inputSchema: {
         diagram: z.unknown()
       }
     },
     async ({ diagram }) => jsonText(renderPonchiDiagram(diagram))
+  );
+
+  server.registerTool(
+    "generate_native_diagram",
+    {
+      title: "Generate editable PowerPoint ponchi-e diagram",
+      description:
+        "Generate an architecture/flow/security ponchi-e as native DeckSpec shape/text elements, not an image or SVG. Use this first for diagrams like Private Marketplace, enterprise control planes, decision flows, and security architectures. It preserves aspect ratio inside the requested slide frame, spaces nodes automatically when x/y are omitted, routes connector line segments border-to-border, keeps labels as editable PowerPoint text, and returns warnings when a dense diagram should be split. Insert the returned elements directly into a slide.elements array; do not wrap them in image/svg/diagram.",
+      inputSchema: {
+        diagram: z.unknown(),
+        frame: z
+          .object({
+            x: z.number().min(0).default(0.75),
+            y: z.number().min(0).default(1.55),
+            w: z.number().positive().default(11.85),
+            h: z.number().positive().default(5.35)
+          })
+          .optional(),
+        idPrefix: z.string().min(1).max(60).default("native-diagram"),
+        readingOrderStart: z.number().int().min(0).default(100)
+      }
+    },
+    async ({ diagram, frame, idPrefix, readingOrderStart }) => jsonText(renderNativePonchiDiagram(diagram, { frame, idPrefix, readingOrderStart }))
   );
 
   server.registerTool(
@@ -752,7 +775,7 @@ export function createPptcreaterMcpServer(): McpServer {
             "- For report decks, use more structure and evidence blocks.",
             "- For presentation decks, use fewer words and more visual contrast.",
             "- For technical decks, use architecture, concept, boundary, and flow diagrams.",
-            "- Diagrams must be visually self-explanatory: do not deliver SVGs that contain only boxes/connectors with explanation only in alt text or notes. Add readable node/flow labels or use generate_diagram/generate_schematic.",
+            "- Diagrams must be visually self-explanatory and editable where possible: use generate_native_diagram for architecture/flow/security ponchi-e diagrams, and do not flatten boxes/connectors/labels into image.path SVG unless exact fidelity is required.",
             "- Run `review_content`, `polish_deck_layout`, and `lint_deck` before rendering."
           ].join("\n")
         }
@@ -840,17 +863,17 @@ export function createPptcreaterMcpServer(): McpServer {
               version: "0.1",
               description: "Use create_pptx/create_powerpoint for direct PPTX requests. Use create_deck for examples and lint_deck before render_pptx/render_powerpoint when manually editing a DeckSpec. If MCP render tools are not visible, use CLI `pptcreater render <deck.json> --output <deck.pptx> --polish`; never use PowerPoint COM for normal output.",
               templateField: "DeckSpec.template must be the id of a template returned by search_templates. Register reusable custom templates with register_template.",
-              assetFlow: "Use search_assets to find registered SVG assets. Use generate_schematic for table/tree/flow/list/mockup visuals, generate_diagram for architecture/network/sequence ponchi-e with nodes, lanes, and connectors, and register_svg_asset for reusable SVGs before referencing their sanitized SVG in DeckSpec elements. If research produces local SVG/PNG/JPEG/GIF/WebP files, keep them inside the workspace, reference them with DeckSpec image.path, and still call render_pptx/render_powerpoint or CLI `pptcreater render`; do not switch to PowerPoint COM or ad-hoc PPTX generation.",
-              shapeFlow: "Native shape elements (rect, roundRect, ellipse, line, rightArrow) are for simple editable cards, dividers, badges, and accent bars only. Do NOT hand-place line/rightArrow shapes to build connectors or architecture/flow diagrams: PowerPoint re-flows them so arrows end up detached, mis-angled, or hidden behind boxes. For ANY diagram with arrows or connected nodes, call generate_diagram (ponchi-e) or generate_schematic and embed the returned SVG as a single diagram element.",
-              diagramFlow: "generate_diagram renders an architecture/flow ponchi-e as one clean SVG (immune to PowerPoint re-layout): connectors clip to node borders with real arrowheads and detour through gutters when an arrow skips a rank, nodes carry kind-based icons (actor/system/process/data/note/cloud) and accent bars, and groups render as lanes. OMIT node x/y to get automatic layered layout — supply only nodes (id, label, kind) and arrows (from, to), set direction 'LR'/'TB', and optionally node.layer/lane to steer placement. Use arrow.style 'orthogonal' for elbow routing, arrow.bidirectional for two-way links, and node.sublabel/emphasis for hierarchy. Prefer this over hand-built arrow shapes for every conceptual diagram; do not compute coordinates by hand unless you need a bespoke layout (then set both x and y on every node).",
+              assetFlow: "Use search_assets to find registered SVG assets. Use generate_native_diagram for architecture/network/sequence/security ponchi-e diagrams that should remain editable in PowerPoint, generate_schematic for table/tree/flow/list/mockup visuals, generate_diagram only when a single fixed SVG illustration is required, and register_svg_asset for reusable SVGs. If research produces local SVG/PNG/JPEG/GIF/WebP files, keep them inside the workspace, reference them with DeckSpec image.path only for logos/photos/source quotes/exact-fidelity figures, and still call render_pptx/render_powerpoint or CLI `pptcreater render`; do not switch to PowerPoint COM or ad-hoc PPTX generation.",
+              shapeFlow: "Use native shape/text elements for editable cards, dividers, badges, accent bars, and generator-created ponchi-e diagrams. Do NOT hand-place line/rightArrow shapes for connected architecture/flow diagrams: use generate_native_diagram so spacing, border-to-border connector routing, labels, and reading order are generated consistently.",
+              diagramFlow: "generate_native_diagram returns DeckSpec shape/text elements, not SVG/image. Insert its elements directly into slide.elements to keep nodes, labels, group lanes, and connectors editable in PowerPoint. Omit node x/y to get automatic layered layout — supply only nodes (id, label, kind) and arrows (from, to), set direction 'LR'/'TB', and optionally node.layer/lane to steer placement. Use arrow.style 'orthogonal', arrow.bidirectional, arrow.label, node.sublabel, and node.emphasis for hierarchy. Use generate_diagram SVG only when you intentionally need a fixed single illustration.",
               businessFlow: "For consulting-style, executive, customer-facing, important meeting, or internal-friendly business decks, call plan_business_deck before writing DeckSpec. It creates purpose/audience/reader-action framing, 3-5 section architecture, slide-level message/evidence/reading-path plans, and human-review flags. After DeckSpec generation, call review_business_deck alongside review_content and lint_deck.",
               contentFlow: "Before rendering, call review_content with the deck locale and contentMode. It applies different writing rules for presentation, report, technical, handout, and decision decks. For Japanese report/technical/handout decks, prefer a short topic-label title plus a separate 50-character slide message. For Japanese presentation/decision decks, concise assertion titles are allowed. For English decks, prefer action titles: short complete-sentence takeaways supported by 3-5 proof points.",
-              layoutGuardrails: "render_pptx always applies layout polish (token-aware Japanese/Latin wrapping, font auto-fit, manual-break reflow) and reading-order normalization before drawing, so most overflow, mid-word/kanji splits, orphaned punctuation, and decorative-over-text overlaps are fixed automatically. It still blocks only when content genuinely cannot fit (a box far too small even at the minimum font), low contrast, missing alt text, duplicate ids, out-of-bounds shapes, or SVG-internal diagram text that would render below 8pt; the error lists each offending code and path. Fix those by shortening copy, enlarging the box/diagram, reducing labels, or moving dense content into a generate_diagram/generate_schematic visual.",
-              cognitiveLoad: "Use one visual grammar per slide. Prefer table for comparisons, tree for hierarchy, generate_diagram for architecture/flow with connectors, flow/vertical-flow for processes, and list/list-horizontal for 3-4 key points. Avoid many custom text boxes with uneven manual line breaks or body-only enumerations. Let layout polish wrap Japanese text instead of hand-coding line breaks. Content slides must not be text-only: fix visual.richness-missing and visual.richness-deck by adding generate_schematic, generate_diagram, registered icons, images, or card/shape composition so at least 75% of content slides have visual structure. When embedding an SVG diagram that contains <text>, keep the slide element large enough that its internal labels remain at least 8pt after viewBox scaling; otherwise split the diagram or remove labels.",
+              layoutGuardrails: "render_pptx always applies layout polish (token-aware Japanese/Latin wrapping, font auto-fit, manual-break reflow) and reading-order normalization before drawing, so most overflow, mid-word/kanji splits, orphaned punctuation, and decorative-over-text overlaps are fixed automatically. It still blocks only when content genuinely cannot fit (a box far too small even at the minimum font), low contrast, missing alt text, duplicate ids, out-of-bounds shapes, or SVG-internal diagram text that would render below 8pt; the error lists each offending code and path. Fix those by shortening copy, enlarging the box/diagram, reducing labels, moving dense content into generate_native_diagram/generate_schematic, or splitting dense diagrams across slides.",
+              cognitiveLoad: "Use one visual grammar per slide. Prefer table for comparisons, tree for hierarchy, generate_native_diagram for architecture/security/flow with editable connectors, flow/vertical-flow for processes, and list/list-horizontal for 3-4 key points. Avoid many custom text boxes with uneven manual line breaks or body-only enumerations. Let layout polish wrap Japanese text instead of hand-coding line breaks. Content slides must not be text-only: fix visual.richness-missing and visual.richness-deck by adding generate_schematic, generate_native_diagram, registered icons, images, or card/shape composition so at least 75% of content slides have visual structure. When embedding SVG diagrams, keep internal labels at least 8pt after scaling or recreate/split them.",
               sourceReferences: "Whenever a deck uses external websites, record each source in metadata.sources with the actual url. render_pptx, render_studio, and polish_deck_layout automatically append/update the final references slide (参考URL・出典 / References and sources) so the last slide contains all external URLs. Per-slide citations are optional for URL-backed sources when the final references slide is complete.",
               sourceVisuals: "Use metadata.sources plus element.sourceId/citation when quoting, recreating, or using source visuals as inspiration. Prefer editable shape/text objects for recreated visuals. For URL-backed sources, final-slide references can replace per-slide citation text.",
               requiredVisualAccessibility: "Non-decorative SVG, image, and diagram elements require altText. Diagram elements also require summary and longDescription.",
-              recommendedWorkflow: ["plan_business_deck for business/executive/customer-facing decks", "create_pptx/create_powerpoint for direct output", "search_templates", "search_assets", "generate_schematic for structured visuals", "create_deck or custom DeckSpec", "review_business_deck for storyline/section/emphasis checks", "review_content", "lint_deck", "render_pptx/render_powerpoint or render_studio", "CLI fallback if render MCP tools are hidden: pptcreater render <deck.json> --output <deck.pptx> --polish"]
+              recommendedWorkflow: ["plan_business_deck for business/executive/customer-facing decks", "create_pptx/create_powerpoint for direct output", "search_templates", "search_assets", "generate_native_diagram for editable ponchi-e/architecture/security diagrams", "generate_schematic for structured visuals", "create_deck or custom DeckSpec", "review_business_deck for storyline/section/emphasis checks", "review_content", "lint_deck", "render_pptx/render_powerpoint or render_studio", "CLI fallback if render MCP tools are hidden: pptcreater render <deck.json> --output <deck.pptx> --polish"]
             },
             null,
             2

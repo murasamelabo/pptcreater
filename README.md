@@ -8,7 +8,7 @@ Agent-friendly PowerPoint creation toolkit focused on concise, well-designed, ac
 - Design and accessibility linting before rendering
 - Accessible template and skill-pack primitives
 - SVG asset sanitizing/search/generation helpers
-- A simple ponchi-e/diagram SVG DSL plus preset schematics for tables, trees, flows, lists, and mockups
+- A ponchi-e/diagram DSL that can emit editable PowerPoint shape/text elements, plus SVG output and preset schematics for tables, trees, flows, lists, and mockups
 - PowerPoint `.pptx` rendering
 - CLI and MCP surfaces for GitHub Copilot, Claude Code, and other agent workflows
 - Static Studio HTML previews for reviewing slides, lint issues, templates, skills, and SVG assets
@@ -41,7 +41,7 @@ pptcreater new `
   --content-mode decision
 ```
 
-The starter visuals are generated as native PowerPoint shapes and text boxes where possible, not flattened screenshots. This means cards, labels, and roadmap elements can be edited later in PowerPoint. For any diagram with arrows or connected nodes (architecture, flow, sequence, ponchi-e), use `generate_diagram` instead of hand-placing `line`/`rightArrow` shapes: omit node `x`/`y` to get an automatic layered layout, and connectors clip to node borders with real arrowheads and detour through clear gutters when they skip a rank, so arrows never dangle, mis-angle, or pierce a node. The returned SVG is embedded as one accessible `diagram` element with visible node/flow labels. (`lint_deck` emits `diagram.native-connectors` when it detects a connected diagram built from hand-placed arrow shapes and `diagram.visible-labels-missing` when a diagram SVG contains only boxes/connectors without visible labels.)
+The starter visuals are generated as native PowerPoint shapes and text boxes where possible, not flattened screenshots. This means cards, labels, roadmap elements, and most architecture/flow ponchi-e diagrams can be edited later in PowerPoint. For any diagram with arrows or connected nodes (architecture, flow, sequence, security, ponchi-e), use `generate_native_diagram` instead of embedding a local SVG as `image.path` or hand-placing `line`/`rightArrow` shapes: omit node `x`/`y` to get an automatic layered layout, and insert the returned `shape`/`text` elements directly into `slide.elements`. The generator preserves the diagram aspect ratio inside the requested slide frame, routes connectors border-to-border, keeps labels as editable text, and returns density warnings when a diagram should be split. Use `generate_diagram` only when you intentionally need a single fixed SVG illustration. (`lint_deck` emits `diagram.native-connectors` for hand-placed arrow diagrams, `diagram.image-svg-not-editable` for large technical SVG images that should be recreated natively, and `diagram.visible-labels-missing` when a diagram SVG contains only boxes/connectors without visible labels.)
 
 Content modes let agents change the deck taste, and each mode selects a styled built-in template automatically:
 
@@ -91,11 +91,11 @@ MCP tools:
 
 Use `pptcreater polish <deck> --output <polished.deck.json>`, `pptcreater render --polish`, or MCP `polish_deck_layout` before rendering when source content is long or diagrams have many labels. The polish step clamps elements to slide bounds, rebalances Japanese/English line breaks (without splitting numbers like 150,000, Latin words/identifiers like onPremisesDistinguishedName, or leaving orphan punctuation/single characters), and adjusts text fitting to reduce overflows and misalignment. `render_pptx` also applies this safeguard automatically before drawing. If text still cannot fit after polish, `layout.text-overflow-risk` and `layout.bad-line-break` are render-blocking errors; widen the box, shorten the copy, split the slide, or choose a schematic/table/list layout instead of forcing a broken PPTX.
 
-`visual.richness-missing` and `visual.richness-deck` are also render-blocking: pptcreater should not deliver text-only content slides. Add `generate_schematic`, `generate_diagram`, registered icons, images, or card/shape composition so at least 75% of content slides have visual structure.
+`visual.richness-missing` and `visual.richness-deck` are also render-blocking: pptcreater should not deliver text-only content slides. Add `generate_native_diagram`, `generate_schematic`, registered icons, images, or card/shape composition so at least 75% of content slides have visual structure.
 
 Lint blocks `layout.text-overflow-risk`, `layout.out-of-bounds`, `layout.text-overlap`, `layout.bad-line-break`, `diagram.visible-labels-missing`, and `visual.svg-text-too-small` so agents must fix overflow, collision, orphan lines, unlabeled diagrams, and unreadably tiny SVG-internal diagram labels before delivering a deck. Content-quality rules from `review_content` are also included in `lint_deck` as warnings/suggestions. `layout.enumeration-hierarchy` warns when body-only enumerations should be converted to callout headings, icons, accent rules, or schematic list/table layouts.
 
-For lower cognitive load, use one visual grammar per slide: `table` for comparisons, `tree` for hierarchy, `flow` / `vertical-flow` for processes, and `list` / `list-horizontal` for 3-4 key points. Avoid many custom text boxes with uneven manual line breaks. Diagrams must be visually self-explanatory on the slide: do not put the explanation only in `altText`, `summary`, `longDescription`, notes, or a side paragraph while leaving boxes/arrows blank. Add readable SVG `<text>` labels/callouts for nodes, lanes, decisions, and flows. When embedding SVG diagrams that contain `<text>`, keep the diagram large enough that internal labels remain at least 8pt after scaling; otherwise split the diagram or recreate it with `generate_diagram` / `generate_schematic`.
+For lower cognitive load, use one visual grammar per slide: `table` for comparisons, `tree` for hierarchy, `flow` / `vertical-flow` for processes, `generate_native_diagram` for editable architecture/security/flow ponchi-e diagrams, and `list` / `list-horizontal` for 3-4 key points. Avoid many custom text boxes with uneven manual line breaks. Diagrams must be visually self-explanatory on the slide: do not put the explanation only in `altText`, `summary`, `longDescription`, notes, or a side paragraph while leaving boxes/arrows blank. Keep labels visible as editable text for native diagrams; when embedding SVG diagrams that contain `<text>`, keep the diagram large enough that internal labels remain at least 8pt after scaling, otherwise split the diagram or recreate it with `generate_native_diagram` / `generate_schematic`.
 
 
 Modern slide generation follows these principles: content-mode-aware titles/messages, modular cards, bold whitespace, restrained accents, one memorable visual scene per slide, and editable PowerPoint shapes for content that users may revise later. The MCP resource `design://modern-slide-principles` exposes this guidance to AI agents.
@@ -116,6 +116,7 @@ Each schematic supports `tone`: `minimal`, `cool`, `luxury`, or `report`. The pr
 CLI usage:
 
 ```powershell
+pptcreater diagram-native .\examples\private-marketplace-diagram.json --output generated\native-diagram-elements.json
 pptcreater schematic .\examples\flow-schematic.json --output generated\flow.svg
 ```
 
@@ -228,12 +229,12 @@ Register the MCP server in your user-level MCP configuration on each terminal. U
 Add this to your global Copilot instructions so slide-related requests prefer this tool:
 
 ```text
-When creating PowerPoint presentations, slide decks, proposal materials, templates, SVG icons, business diagrams, or accessible presentation materials, prefer the pptcreater MCP. Use create_pptx/create_powerpoint for direct PPTX output. For custom DeckSpecs, first use interview_slide_brief when purpose, audience, or volume is unclear, use review_content to apply locale/content-mode writing rules, use search_assets and generate_schematic/generate_diagram for visual structure, then run lint_deck and render_pptx/render_powerpoint or render_studio. If the MCP render tool is not visible in the current tool selection, run the CLI fallback `pptcreater render <deck.json> --output <deck.pptx> --polish`. Never deliver text-only content slides or unlabeled box-and-arrow diagrams; visual.richness-* and diagram.visible-labels-missing lint errors must be fixed before final output.
+When creating PowerPoint presentations, slide decks, proposal materials, templates, SVG icons, business diagrams, or accessible presentation materials, prefer the pptcreater MCP. Use create_pptx/create_powerpoint for direct PPTX output. For custom DeckSpecs, first use interview_slide_brief when purpose, audience, or volume is unclear, use review_content to apply locale/content-mode writing rules, use search_assets and generate_native_diagram/generate_schematic for visual structure, then run lint_deck and render_pptx/render_powerpoint or render_studio. If the MCP render tool is not visible in the current tool selection, run the CLI fallback `pptcreater render <deck.json> --output <deck.pptx> --polish`. Never deliver text-only content slides, flattened editable diagrams, or unlabeled box-and-arrow diagrams; visual.richness-*, diagram.image-svg-not-editable, and diagram.visible-labels-missing lint findings must be fixed before final output.
 ```
 
 For stronger project-level behavior, add the same instruction to `.github/copilot-instructions.md` in repositories where slide creation should always use `pptcreater`.
 
-Avoid falling back to PowerPoint COM automation, ad-hoc scripts, or manual PPTX generation for normal deck creation. If MCP `render_pptx` / `render_powerpoint` is not exposed, use the CLI fallback `pptcreater render <deck.json> --output <deck.pptx> --polish` instead. If you generate local SVG/PNG/JPEG/GIF/WebP files during research, reference them from DeckSpec `image.path` as workspace-local files and still call pptcreater render; pptcreater will sanitize SVGs and embed the files safely.
+Avoid falling back to PowerPoint COM automation, ad-hoc scripts, or manual PPTX generation for normal deck creation. If MCP `render_pptx` / `render_powerpoint` is not exposed, use the CLI fallback `pptcreater render <deck.json> --output <deck.pptx> --polish` instead. If you generate local SVG/PNG/JPEG/GIF/WebP files during research, reference them from DeckSpec `image.path` only for logos/photos/source quotes/exact-fidelity figures and still call pptcreater render; pptcreater will sanitize SVGs and embed the files safely.
 
 ## Install project guidance files
 
@@ -336,6 +337,7 @@ From an MCP-capable AI agent, use:
 - `asset://registration-guide` to read the registration workflow.
 - `asset://icon-sources` to discover known upstream icon catalogs and licensing guidance notes.
 - `search_assets` before registering a new SVG, to avoid duplicates.
+- `generate_native_diagram` before embedding architecture/security/control-plane/ponchi-e diagrams as SVG images; it returns editable DeckSpec `shape`/`text` elements.
 - `generate_schematic` before freehand SVG when the visual is a table, tree, flow, list, or mockup.
 - `register_svg_asset` to sanitize and register the asset with `id`, `title`, `description`, `tags`, `license`, `decorative`, `altText`, and `svg`.
 - `search_assets` again after registration to reuse the asset in future DeckSpecs.
@@ -351,6 +353,7 @@ From MCP, use:
 - `interview_slide_brief` when the user's request does not specify purpose, audience, delivery context, or slide count.
 - `create_pptx` when the user wants a PowerPoint file directly.
 - `create_deck` with `purpose`, `audience`, `slideCount`, and `contentMode` when those details are known and you need to inspect or edit DeckSpec.
+- `generate_native_diagram` for editable architecture/security/control-plane/ponchi-e diagrams before attempting SVG image generation.
 - `generate_schematic` for table/tree/flow/list/mockup visuals before attempting custom SVG.
 - `design://modern-slide-principles` when the agent needs modern slide composition guidance.
 - `plan_source_visual` when summarizing a source document or URL that contains figures. It helps the agent choose whether to quote the original figure, recreate it as editable PowerPoint objects, or use it only as inspiration.

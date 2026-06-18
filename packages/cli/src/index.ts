@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { Command, InvalidArgumentError } from "commander";
 import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, searchAllSvgAssets, type BuiltinIconName } from "@pptcreater/assets-svg";
-import { renderPonchiDiagram, renderSchematicDiagram } from "@pptcreater/diagram";
+import { renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram } from "@pptcreater/diagram";
 import {
   BUSINESS_STYLE_MODES,
   cliMessage,
@@ -526,6 +526,51 @@ program
     await writeFile(options.output, `\uFEFF${result.svg}\n`, "utf8");
     console.log(`Created ${options.output}`);
   }));
+
+program
+  .command("diagram-native")
+  .description("Render a ponchi-e diagram JSON file to editable DeckSpec shape/text elements.")
+  .argument("<diagram>", "Diagram JSON path")
+  .requiredOption("-o, --output <path>", "Output JSON path")
+  .option("--frame-x <number>", "Slide frame x in inches", Number)
+  .option("--frame-y <number>", "Slide frame y in inches", Number)
+  .option("--frame-w <number>", "Slide frame width in inches", Number)
+  .option("--frame-h <number>", "Slide frame height in inches", Number)
+  .option("--id-prefix <prefix>", "Generated element id prefix", "native-diagram")
+  .option("--reading-order-start <number>", "First readingOrder value", Number)
+  .action(
+    commandAction(
+      async (
+        diagramPath: string,
+        options: {
+          output: string;
+          frameX?: number;
+          frameY?: number;
+          frameW?: number;
+          frameH?: number;
+          idPrefix: string;
+          readingOrderStart?: number;
+        }
+      ) => {
+        const frame =
+          options.frameX !== undefined || options.frameY !== undefined || options.frameW !== undefined || options.frameH !== undefined
+            ? {
+                x: options.frameX,
+                y: options.frameY,
+                w: options.frameW,
+                h: options.frameH
+              }
+            : undefined;
+        const result = renderNativePonchiDiagram(await readJson(diagramPath), {
+          frame,
+          idPrefix: options.idPrefix,
+          readingOrderStart: options.readingOrderStart
+        });
+        await writeFile(options.output, `\uFEFF${JSON.stringify(result, null, 2)}\n`, "utf8");
+        console.log(`Created ${options.output}`);
+      }
+    )
+  );
 
 program
   .command("schematic")

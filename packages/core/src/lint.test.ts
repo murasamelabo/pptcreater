@@ -178,7 +178,45 @@ describe("DeckSpec linting", () => {
     const native = report.issues.find((issue) => issue.code === "diagram.native-connectors");
 
     expect(native?.severity).toBe("warning");
-    expect(native?.message).toMatch(/generate_diagram/);
+    expect(native?.message).toMatch(/generate_native_diagram/);
+  });
+
+  it("does not flag native diagram generator connectors as hand-placed arrows", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push(
+      { id: "arch-node-a-0", type: "shape", shape: "roundRect", fill: "#e2e8f0", x: 1, y: 2, w: 2, h: 1, decorative: true, readingOrder: 300 },
+      { id: "arch-node-b-1", type: "shape", shape: "roundRect", fill: "#e2e8f0", x: 5, y: 2, w: 2, h: 1, decorative: true, readingOrder: 301 },
+      {
+        id: "arch-connector-0-0",
+        type: "shape",
+        shape: "line",
+        fill: "none",
+        x: 3,
+        y: 2.5,
+        w: 2,
+        h: 0,
+        decorative: true,
+        readingOrder: 302,
+        line: { color: "#475569", endArrowType: "triangle" }
+      },
+      {
+        id: "arch-connector-1-0",
+        type: "shape",
+        shape: "line",
+        fill: "none",
+        x: 3,
+        y: 2.8,
+        w: 2,
+        h: 0,
+        decorative: true,
+        readingOrder: 303,
+        line: { color: "#475569", endArrowType: "triangle" }
+      }
+    );
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "diagram.native-connectors")).toBe(false);
   });
 
   it("does not flag a single decorative divider line as a native connector", () => {
@@ -248,6 +286,50 @@ describe("DeckSpec linting", () => {
     const report = lintDeckSpec(parseDeckSpec(deck));
 
     expect(report.issues.some((issue) => issue.code === "diagram.native-connectors")).toBe(false);
+  });
+
+  it("warns when a large technical diagram is embedded as a flattened SVG image", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.metadata.contentMode = "technical";
+    deck.slides[0].elements.push({
+      id: "private-marketplace-diagram",
+      type: "image",
+      path: "generated-assets\\vscode-private-extension-marketplace.svg",
+      x: 0.7,
+      y: 1.5,
+      w: 12,
+      h: 5.2,
+      description: "Private Marketplace architecture diagram",
+      decorative: false,
+      altText: "Private Marketplace architecture diagram",
+      readingOrder: 340
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const issue = report.issues.find((item) => item.code === "diagram.image-svg-not-editable");
+
+    expect(issue?.severity).toBe("warning");
+    expect(issue?.message).toMatch(/generate_native_diagram/);
+  });
+
+  it("does not warn for small SVG image assets", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "small-icon",
+      type: "image",
+      dataUri: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjwvc3ZnPg==",
+      x: 1,
+      y: 1,
+      w: 0.4,
+      h: 0.4,
+      description: "Small icon",
+      decorative: true,
+      readingOrder: 341
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "diagram.image-svg-not-editable")).toBe(false);
   });
 
   it("blocks embedded SVG diagrams whose internal text becomes unreadably small", () => {

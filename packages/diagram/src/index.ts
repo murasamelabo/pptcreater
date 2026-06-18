@@ -116,6 +116,70 @@ export type PonchiNode = z.infer<typeof DiagramNodeSchema>;
 // A node after layout resolution: x/y/w/h are all guaranteed present.
 export type PlacedNode = PonchiNode & { x: number; y: number; w: number; h: number };
 
+export const NativeDiagramFrameSchema = z.object({
+  x: z.number().min(0).default(0.75),
+  y: z.number().min(0).default(1.55),
+  w: z.number().positive().default(11.85),
+  h: z.number().positive().default(5.35)
+});
+
+export const NativePonchiRenderOptionsSchema = z.object({
+  frame: NativeDiagramFrameSchema.default({ x: 0.75, y: 1.55, w: 11.85, h: 5.35 }),
+  idPrefix: z
+    .string()
+    .min(1)
+    .regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,59}$/)
+    .default("native-diagram"),
+  readingOrderStart: z.number().int().min(0).default(100)
+});
+
+export type NativeDiagramFrame = z.infer<typeof NativeDiagramFrameSchema>;
+export type NativePonchiRenderOptions = z.infer<typeof NativePonchiRenderOptionsSchema>;
+
+export type NativeDiagramShapeElement = {
+  id: string;
+  type: "shape";
+  shape: "rect" | "roundRect" | "ellipse" | "line";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  fill: string;
+  fillOpacity?: number;
+  line?: {
+    color?: string;
+    width?: number;
+    dash?: "solid" | "dash" | "dashDot";
+    beginArrowType?: "none" | "arrow" | "diamond" | "oval" | "stealth" | "triangle";
+    endArrowType?: "none" | "arrow" | "diamond" | "oval" | "stealth" | "triangle";
+  };
+  radius?: number;
+  decorative: boolean;
+  altText?: string;
+  readingOrder: number;
+};
+
+export type NativeDiagramTextElement = {
+  id: string;
+  type: "text";
+  role: "body" | "caption";
+  text: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  fontSize: number;
+  color: string;
+  contrastBackground?: string;
+  bold: boolean;
+  align: "left" | "center";
+  valign: "top" | "middle";
+  decorative: boolean;
+  readingOrder: number;
+};
+
+export type NativeDiagramElement = NativeDiagramShapeElement | NativeDiagramTextElement;
+
 export const SchematicKindSchema = z.enum(["table", "tree", "flow", "vertical-flow", "list", "list-horizontal", "list-enumeration", "mockup"]);
 export const SchematicToneSchema = z.enum(["minimal", "cool", "luxury", "report"]).default("minimal");
 
@@ -606,6 +670,16 @@ function centerOf(node: PlacedNode): { x: number; y: number } {
 }
 
 type Point = { x: number; y: number };
+type NativeRect = { x: number; y: number; w: number; h: number };
+type ConnectorOptions = {
+  color: string;
+  dashed: boolean;
+  bidirectional: boolean;
+  orthogonal: boolean;
+  label?: string;
+  bypass?: { axis: "over" | "side"; gutter: number };
+};
+type ConnectorRoute = { points: Point[]; startDir: Point; endDir: Point };
 
 // Inline, PowerPoint-safe icon glyphs (stroke paths) drawn centered in a 24x24 box.
 function nodeIconGlyph(kind: PonchiNode["kind"], cx: number, cy: number, color: string): string {
@@ -653,35 +727,18 @@ function arrowHead(tip: Point, dir: Point, color: string, size = 11): string {
   return `<polygon points="${tip.x.toFixed(1)} ${tip.y.toFixed(1)} ${a} ${b}" fill="${color}" />`;
 }
 
-// Build an orthogonal (elbow) or straight connector that starts and ends on the node borders, with
-// an explicit arrowhead (PowerPoint renders SVG markers unreliably, so we draw the head as a polygon).
-// When `bypass` is set the connector detours through a clear gutter so a skip-rank arrow visibly
-// routes around the nodes it would otherwise pass straight through.
-function connector(
-  from: PlacedNode,
-  to: PlacedNode,
-  options: {
-    color: string;
-    dashed: boolean;
-    bidirectional: boolean;
-    orthogonal: boolean;
-    label?: string;
-    bypass?: { axis: "over" | "side"; gutter: number };
-  }
-): string {
+function connectorRoute(from: PlacedNode, to: PlacedNode, options: ConnectorOptions): ConnectorRoute {
   const a = centerOf(from);
   const b = centerOf(to);
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const horizontal = Math.abs(dx) >= Math.abs(dy);
-  const dash = options.dashed ? ` stroke-dasharray="7 5"` : "";
-  const strokeWidth = 2.4;
 
   let start: Point;
   let end: Point;
   let endDir: Point;
   let startDir: Point;
-  let path: string;
+  let points: Point[];
 
   if (options.bypass && options.bypass.axis === "over") {
     // Route over the top (or bottom) gutter: exit the from-edge nearest the gutter and enter the
@@ -691,7 +748,7 @@ function connector(
     const ey = gutter <= to.y ? to.y : to.y + to.h;
     start = { x: a.x, y: sy };
     end = { x: b.x, y: ey };
-    path = `M${start.x} ${start.y} V${gutter} H${end.x} V${end.y}`;
+    points = [start, { x: start.x, y: gutter }, { x: end.x, y: gutter }, end];
     endDir = { x: 0, y: gutter <= to.y ? 1 : -1 };
     startDir = { x: 0, y: gutter <= from.y ? -1 : 1 };
   } else if (options.bypass) {
@@ -701,7 +758,7 @@ function connector(
     const ex = gutter >= to.x + to.w ? to.x + to.w : to.x;
     start = { x: sx, y: a.y };
     end = { x: ex, y: b.y };
-    path = `M${start.x} ${start.y} H${gutter} V${end.y} H${end.x}`;
+    points = [start, { x: gutter, y: start.y }, { x: gutter, y: end.y }, end];
     endDir = { x: gutter >= to.x + to.w ? -1 : 1, y: 0 };
     startDir = { x: gutter >= from.x + from.w ? 1 : -1, y: 0 };
   } else if (options.orthogonal && horizontal) {
@@ -710,7 +767,7 @@ function connector(
     start = { x: sx, y: a.y };
     end = { x: ex, y: b.y };
     const midX = (sx + ex) / 2;
-    path = `M${start.x} ${start.y} H${midX} V${end.y} H${end.x}`;
+    points = [start, { x: midX, y: start.y }, { x: midX, y: end.y }, end];
     endDir = { x: Math.sign(ex - midX) || (dx >= 0 ? 1 : -1), y: 0 };
     startDir = { x: dx >= 0 ? -1 : 1, y: 0 };
   } else if (options.orthogonal) {
@@ -719,7 +776,7 @@ function connector(
     start = { x: a.x, y: sy };
     end = { x: b.x, y: ey };
     const midY = (sy + ey) / 2;
-    path = `M${start.x} ${start.y} V${midY} H${end.x} V${end.y}`;
+    points = [start, { x: start.x, y: midY }, { x: end.x, y: midY }, end];
     endDir = { x: 0, y: Math.sign(ey - midY) || (dy >= 0 ? 1 : -1) };
     startDir = { x: 0, y: dy >= 0 ? -1 : 1 };
   } else {
@@ -728,20 +785,41 @@ function connector(
     const len = Math.hypot(end.x - start.x, end.y - start.y) || 1;
     endDir = { x: (end.x - start.x) / len, y: (end.y - start.y) / len };
     startDir = { x: -endDir.x, y: -endDir.y };
-    path = `M${start.x.toFixed(1)} ${start.y.toFixed(1)} L${end.x.toFixed(1)} ${end.y.toFixed(1)}`;
+    points = [start, end];
   }
 
+  return { points, startDir, endDir };
+}
+
+function svgPathFromPoints(points: Point[]): string {
+  return points
+    .map((point, index) => `${index === 0 ? "M" : "L"}${point.x.toFixed(1)} ${point.y.toFixed(1)}`)
+    .join(" ");
+}
+
+// Build an orthogonal (elbow) or straight connector that starts and ends on the node borders, with
+// an explicit arrowhead (PowerPoint renders SVG markers unreliably, so we draw the head as a polygon).
+// When `bypass` is set the connector detours through a clear gutter so a skip-rank arrow visibly
+// routes around the nodes it would otherwise pass straight through.
+function connector(from: PlacedNode, to: PlacedNode, options: ConnectorOptions): string {
+  const route = connectorRoute(from, to, options);
+  const start = route.points[0];
+  const end = route.points[route.points.length - 1];
+  const dash = options.dashed ? ` stroke-dasharray="7 5"` : "";
+  const strokeWidth = 2.4;
+
   const parts = [
-    `<path d="${path}" fill="none" stroke="${options.color}" stroke-width="${strokeWidth}"${dash} stroke-linejoin="round" stroke-linecap="round" />`,
-    arrowHead(end, endDir, options.color)
+    `<path d="${svgPathFromPoints(route.points)}" fill="none" stroke="${options.color}" stroke-width="${strokeWidth}"${dash} stroke-linejoin="round" stroke-linecap="round" />`,
+    arrowHead(end, route.endDir, options.color)
   ];
   if (options.bidirectional) {
-    parts.push(arrowHead(start, startDir, options.color));
+    parts.push(arrowHead(start, route.startDir, options.color));
   }
 
   if (options.label) {
-    const lx = (start.x + end.x) / 2;
-    const ly = (start.y + end.y) / 2;
+    const placement = connectorLabelPlacement(route.points, [], { x: 0, y: 0, w: Number.MAX_SAFE_INTEGER, h: Number.MAX_SAFE_INTEGER });
+    const lx = placement.anchor.x;
+    const ly = placement.anchor.y;
     const chipW = Math.min(220, options.label.length * 9 + 20);
     parts.push(
       `<rect x="${(lx - chipW / 2).toFixed(1)}" y="${(ly - 13).toFixed(1)}" width="${chipW}" height="22" rx="11" fill="#ffffff" stroke="${options.color}" stroke-opacity="0.35" />`,
@@ -995,25 +1073,41 @@ function bypassFor(
     const overClear = !neighbour(from, "up") && !neighbour(to, "up");
     const underClear = !neighbour(from, "down") && !neighbour(to, "down");
     const spread = [from, to, ...crossingNodes];
+    const overGutter = Math.min(...spread.map((node) => node.y)) - AUTO_ROW_GAP * 0.55;
+    const underGutter = Math.max(...spread.map((node) => node.y + node.h)) + AUTO_ROW_GAP * 0.55;
+    const overFits = overGutter >= 12;
+    const underFits = underGutter <= canvasHeight - 12;
     const preferOver = overClear || (!underClear && fromCy <= canvasHeight / 2);
-    if (preferOver) {
-      const gutter = Math.min(...spread.map((node) => node.y)) - AUTO_ROW_GAP * 0.55;
-      return { axis: "over", gutter: Math.max(12, gutter) };
+    if (preferOver && overFits) {
+      return { axis: "over", gutter: overGutter };
     }
-    const gutter = Math.max(...spread.map((node) => node.y + node.h)) + AUTO_ROW_GAP * 0.55;
-    return { axis: "over", gutter: Math.min(canvasHeight - 12, gutter) };
+    if (underClear && underFits) {
+      return { axis: "over", gutter: underGutter };
+    }
+    if (overClear && overFits) {
+      return { axis: "over", gutter: overGutter };
+    }
+    return { axis: "over", gutter: preferOver ? Math.max(12, overGutter) : Math.min(canvasHeight - 12, underGutter) };
   }
 
   const rightClear = !neighbour(from, "right") && !neighbour(to, "right");
   const leftClear = !neighbour(from, "left") && !neighbour(to, "left");
   const spread = [from, to, ...crossingNodes];
+  const rightGutter = Math.max(...spread.map((node) => node.x + node.w)) + AUTO_COL_GAP * 0.5;
+  const leftGutter = Math.min(...spread.map((node) => node.x)) - AUTO_COL_GAP * 0.5;
+  const rightFits = rightGutter <= canvasWidth - 12;
+  const leftFits = leftGutter >= 12;
   const preferRight = rightClear || (!leftClear && fromCx <= canvasWidth / 2);
-  if (preferRight) {
-    const gutter = Math.max(...spread.map((node) => node.x + node.w)) + AUTO_COL_GAP * 0.5;
-    return { axis: "side", gutter: Math.min(canvasWidth - 12, gutter) };
+  if (preferRight && rightFits) {
+    return { axis: "side", gutter: rightGutter };
   }
-  const gutter = Math.min(...spread.map((node) => node.x)) - AUTO_COL_GAP * 0.5;
-  return { axis: "side", gutter: Math.max(12, gutter) };
+  if (leftClear && leftFits) {
+    return { axis: "side", gutter: leftGutter };
+  }
+  if (rightClear && rightFits) {
+    return { axis: "side", gutter: rightGutter };
+  }
+  return { axis: "side", gutter: preferRight ? Math.min(canvasWidth - 12, rightGutter) : Math.max(12, leftGutter) };
 }
 
 export function renderPonchiDiagram(input: unknown): { svg: string; summary: string; longDescription: string } {
@@ -1079,5 +1173,453 @@ export function renderPonchiDiagram(input: unknown): { svg: string; summary: str
     svg,
     summary: diagram.summary,
     longDescription: diagram.longDescription
+  };
+}
+
+function inches(value: number): number {
+  return Number(value.toFixed(3));
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function transformPoint(point: Point, origin: Point, scale: number): Point {
+  return {
+    x: origin.x + point.x * scale,
+    y: origin.y + point.y * scale
+  };
+}
+
+function transformRect(node: { x: number; y: number; w: number; h: number }, origin: Point, scale: number): NativeRect {
+  return {
+    x: inches(origin.x + node.x * scale),
+    y: inches(origin.y + node.y * scale),
+    w: inches(node.w * scale),
+    h: inches(node.h * scale)
+  };
+}
+
+function nativeTextFit(value: string, widthInches: number, options: { preferredSize: number; minimumSize: number; maxLines: number }): { text: string; size: number; lineCount: number } {
+  const maxWidthPoints = Math.max(24, widthInches * 72 - 10);
+  const fitted = fitLabel(value, maxWidthPoints, options);
+  return {
+    text: fitted.lines.join("\n"),
+    size: fitted.size,
+    lineCount: fitted.lines.length
+  };
+}
+
+function nativeTextHeight(lineCount: number, fontSize: number): number {
+  return inches(Math.max(0.18, (lineCount * fontSize * 1.2) / 72));
+}
+
+function nativeShape(
+  id: string,
+  shape: NativeDiagramShapeElement["shape"],
+  rect: NativeRect,
+  options: {
+    fill?: string;
+    fillOpacity?: number;
+    line?: NativeDiagramShapeElement["line"];
+    radius?: number;
+    decorative?: boolean;
+    altText?: string;
+    readingOrder: number;
+  }
+): NativeDiagramShapeElement {
+  return {
+    id,
+    type: "shape",
+    shape,
+    x: inches(rect.x),
+    y: inches(rect.y),
+    w: inches(Math.max(0.001, rect.w)),
+    h: inches(Math.max(0, rect.h)),
+    fill: options.fill ?? "none",
+    fillOpacity: options.fillOpacity,
+    line: options.line,
+    radius: options.radius,
+    decorative: options.decorative ?? true,
+    altText: options.altText,
+    readingOrder: options.readingOrder
+  };
+}
+
+function nativeText(
+  id: string,
+  text: string,
+  rect: NativeRect,
+  options: {
+    fontSize: number;
+    color: string;
+    contrastBackground?: string;
+    bold?: boolean;
+    align?: "left" | "center";
+    valign?: "top" | "middle";
+    role?: "body" | "caption";
+    readingOrder: number;
+  }
+): NativeDiagramTextElement {
+  return {
+    id,
+    type: "text",
+    role: options.role ?? "caption",
+    text,
+    x: inches(rect.x),
+    y: inches(rect.y),
+    w: inches(rect.w),
+    h: inches(rect.h),
+    fontSize: Number(options.fontSize.toFixed(1)),
+    color: options.color,
+    contrastBackground: options.contrastBackground,
+    bold: options.bold ?? false,
+    align: options.align ?? "center",
+    valign: options.valign ?? "middle",
+    decorative: false,
+    readingOrder: options.readingOrder
+  };
+}
+
+function nativeLineSegment(
+  id: string,
+  start: Point,
+  end: Point,
+  options: {
+    color: string;
+    dashed: boolean;
+    arrowAtStart: boolean;
+    arrowAtEnd: boolean;
+    readingOrder: number;
+  }
+): NativeDiagramShapeElement | undefined {
+  if (Math.hypot(end.x - start.x, end.y - start.y) < 0.01) {
+    return undefined;
+  }
+
+  const x = Math.min(start.x, end.x);
+  const y = Math.min(start.y, end.y);
+  const w = Math.max(0.001, Math.abs(end.x - start.x));
+  const h = Math.max(0, Math.abs(end.y - start.y));
+  const normalizedStartMatchesOriginalStart = Math.abs(start.x - x) < 0.001 && Math.abs(start.y - y) < 0.001;
+  const line: NativeDiagramShapeElement["line"] = {
+    color: options.color,
+    width: 1.4,
+    dash: options.dashed ? "dash" : "solid"
+  };
+
+  if (options.arrowAtStart) {
+    if (normalizedStartMatchesOriginalStart) {
+      line.beginArrowType = "triangle";
+    } else {
+      line.endArrowType = "triangle";
+    }
+  }
+
+  if (options.arrowAtEnd) {
+    if (normalizedStartMatchesOriginalStart) {
+      line.endArrowType = "triangle";
+    } else {
+      line.beginArrowType = "triangle";
+    }
+  }
+
+  return nativeShape(id, "line", { x, y, w, h }, { fill: "none", line, decorative: true, readingOrder: options.readingOrder });
+}
+
+function constrainVerticalLabelWidth(anchor: Point, maxWidth: number, avoidRects: NativeRect[], frame: NativeRect): number {
+  const labelHalfHeight = 0.13;
+  const padding = 0.06;
+  let constrained = Math.min(maxWidth, 2 * Math.max(0, Math.min(anchor.x - frame.x, frame.x + frame.w - anchor.x) - padding));
+
+  for (const rect of avoidRects) {
+    const overlapsLabelBand = rect.y < anchor.y + labelHalfHeight + padding && rect.y + rect.h > anchor.y - labelHalfHeight - padding;
+    if (!overlapsLabelBand) {
+      continue;
+    }
+
+    if (anchor.x >= rect.x + rect.w) {
+      constrained = Math.min(constrained, 2 * Math.max(0, anchor.x - (rect.x + rect.w) - padding));
+    } else if (anchor.x <= rect.x) {
+      constrained = Math.min(constrained, 2 * Math.max(0, rect.x - anchor.x - padding));
+    } else {
+      constrained = Math.min(constrained, 0);
+    }
+  }
+
+  return Math.max(0.45, constrained);
+}
+
+function connectorLabelPlacement(points: Point[], avoidRects: NativeRect[], frame: NativeRect): { anchor: Point; maxWidth: number } {
+  const cleanPoints = points.filter((point, index) => {
+    const previous = points[index - 1];
+    return !previous || Math.hypot(point.x - previous.x, point.y - previous.y) >= 0.01;
+  });
+  type Run = { start: Point; end: Point; orientation: "horizontal" | "vertical"; length: number };
+  const runs: Run[] = [];
+  let current: Run | undefined;
+
+  const pushCurrent = () => {
+    if (current && current.length >= 0.01) {
+      runs.push(current);
+    }
+  };
+
+  for (let index = 0; index < cleanPoints.length - 1; index += 1) {
+    const start = cleanPoints[index];
+    const end = cleanPoints[index + 1];
+    const orientation = Math.abs(end.x - start.x) >= Math.abs(end.y - start.y) ? "horizontal" : "vertical";
+    const length = Math.hypot(end.x - start.x, end.y - start.y);
+    if (
+      current &&
+      current.orientation === orientation &&
+      ((orientation === "horizontal" && Math.abs(current.end.y - start.y) < 0.01) ||
+        (orientation === "vertical" && Math.abs(current.end.x - start.x) < 0.01))
+    ) {
+      current = { ...current, end, length: current.length + length };
+      continue;
+    }
+
+    pushCurrent();
+    current = { start, end, orientation, length };
+  }
+  pushCurrent();
+
+  const best = runs.sort((a, b) => b.length - a.length)[0] ?? {
+    start: cleanPoints[0],
+    end: cleanPoints[cleanPoints.length - 1],
+    orientation: "horizontal" as const,
+    length: Math.hypot(cleanPoints[cleanPoints.length - 1].x - cleanPoints[0].x, cleanPoints[cleanPoints.length - 1].y - cleanPoints[0].y)
+  };
+
+  const anchor = {
+    x: (best.start.x + best.end.x) / 2,
+    y: (best.start.y + best.end.y) / 2
+  };
+  const maxWidth = best.orientation === "horizontal" ? Math.max(0.45, best.length - 0.12) : constrainVerticalLabelWidth(anchor, 1.8, avoidRects, frame);
+
+  return { anchor, maxWidth };
+}
+
+function nativeIdPart(value: string, index: number): string {
+  const sanitized = value.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
+  return `${sanitized || "item"}-${index}`;
+}
+
+function nativeNodeElements(node: PlacedNode, nodeIndex: number, rect: NativeRect, idPrefix: string, readingOrder: () => number): NativeDiagramElement[] {
+  const palette = NODE_COLORS[node.kind];
+  const accent = node.accent ?? palette.accent;
+  const safeNodeId = nativeIdPart(node.id, nodeIndex);
+  const padding = Math.min(0.18, rect.w * 0.08);
+  const contentWidth = Math.max(0.2, rect.w - padding * 2);
+  const label = nativeTextFit(node.label, contentWidth, {
+    preferredSize: rect.w >= 1.9 ? 13 : 12,
+    minimumSize: 10,
+    maxLines: node.sublabel ? 2 : 3
+  });
+  const sublabel = node.sublabel
+    ? nativeTextFit(node.sublabel, contentWidth, {
+        preferredSize: 10.5,
+        minimumSize: 8.5,
+        maxLines: 2
+      })
+    : undefined;
+  const labelHeight = nativeTextHeight(label.lineCount, label.size);
+  const sublabelHeight = sublabel ? nativeTextHeight(sublabel.lineCount, sublabel.size) : 0;
+  const gap = sublabel ? 0.03 : 0;
+  const totalTextHeight = labelHeight + gap + sublabelHeight;
+  const textTop = rect.y + Math.max(0.08, (rect.h - totalTextHeight) / 2 + 0.03);
+  const kindDotSize = Math.min(0.14, Math.max(0.08, rect.h * 0.12));
+
+  const elements: NativeDiagramElement[] = [
+    nativeShape(
+      `${idPrefix}-node-${safeNodeId}-shadow`,
+      "roundRect",
+      { x: rect.x + 0.025, y: rect.y + 0.04, w: rect.w, h: rect.h },
+      { fill: "#0F172A", fillOpacity: 0.07, line: { color: "#0F172A", width: 0.1 }, radius: 0.08, decorative: true, readingOrder: readingOrder() }
+    ),
+    nativeShape(`${idPrefix}-node-${safeNodeId}`, "roundRect", rect, {
+      fill: palette.fill,
+      line: { color: node.emphasis ? accent : palette.stroke, width: node.emphasis ? 1.6 : 1 },
+      radius: 0.08,
+      decorative: true,
+      readingOrder: readingOrder()
+    }),
+    nativeShape(
+      `${idPrefix}-accent-${safeNodeId}`,
+      "rect",
+      { x: rect.x + 0.08, y: rect.y + 0.06, w: Math.max(0.1, rect.w - 0.16), h: Math.min(0.07, rect.h * 0.08) },
+      { fill: accent, line: { color: accent, width: 0.1 }, decorative: true, readingOrder: readingOrder() }
+    ),
+    nativeShape(
+      `${idPrefix}-kind-${safeNodeId}`,
+      "ellipse",
+      { x: rect.x + 0.12, y: rect.y + 0.12, w: kindDotSize, h: kindDotSize },
+      { fill: accent, line: { color: accent, width: 0.1 }, decorative: true, readingOrder: readingOrder() }
+    ),
+    nativeText(
+      `${idPrefix}-label-${safeNodeId}`,
+      label.text,
+      { x: rect.x + padding, y: textTop, w: contentWidth, h: labelHeight },
+      { fontSize: label.size, color: "#0F172A", contrastBackground: palette.fill, bold: true, readingOrder: readingOrder() }
+    )
+  ];
+
+  if (sublabel) {
+    elements.push(
+      nativeText(
+        `${idPrefix}-sublabel-${safeNodeId}`,
+        sublabel.text,
+        { x: rect.x + padding, y: textTop + labelHeight + gap, w: contentWidth, h: sublabelHeight },
+        { fontSize: sublabel.size, color: "#52606D", contrastBackground: palette.fill, bold: false, readingOrder: readingOrder() }
+      )
+    );
+  }
+
+  return elements;
+}
+
+export function renderNativePonchiDiagram(
+  input: unknown,
+  optionsInput: unknown = {}
+): { elements: NativeDiagramElement[]; summary: string; longDescription: string; warnings: string[] } {
+  const diagram = PonchiDiagramSchema.parse(input);
+  const options = NativePonchiRenderOptionsSchema.parse(optionsInput);
+  const layout = resolveLayout(diagram);
+  const placedNodes = layout.nodes;
+  const canvasWidth = layout.width;
+  const canvasHeight = layout.height;
+  const scale = Math.min(options.frame.w / canvasWidth, options.frame.h / canvasHeight);
+  const contentWidth = canvasWidth * scale;
+  const contentHeight = canvasHeight * scale;
+  const origin = {
+    x: options.frame.x + (options.frame.w - contentWidth) / 2,
+    y: options.frame.y + (options.frame.h - contentHeight) / 2
+  };
+  const nodeRects = new Map(placedNodes.map((node) => [node.id, transformRect(node, origin, scale)]));
+  const nodesById = new Map(placedNodes.map((node) => [node.id, node]));
+  const elements: NativeDiagramElement[] = [];
+  const connectorLabels: Array<{ arrowIndex: number; label: string; anchor: Point; maxWidth: number }> = [];
+  const warnings: string[] = [];
+  let order = options.readingOrderStart;
+  const nextOrder = () => order++;
+
+  elements.push(
+    nativeShape(`${options.idPrefix}-panel`, "roundRect", options.frame, {
+      fill: "#FFFFFF",
+      line: { color: "#D9DEE8", width: 1 },
+      radius: 0.08,
+      decorative: true,
+      readingOrder: nextOrder()
+    })
+  );
+
+  for (const group of diagram.groups) {
+    const groupedNodes = group.nodeIds.map((id) => nodeRects.get(id)).filter((node): node is NativeRect => Boolean(node));
+    if (groupedNodes.length === 0) {
+      continue;
+    }
+
+    const minX = Math.max(options.frame.x + 0.08, Math.min(...groupedNodes.map((node) => node.x)) - 0.2);
+    const minY = Math.max(options.frame.y + 0.08, Math.min(...groupedNodes.map((node) => node.y)) - 0.34);
+    const maxX = Math.min(options.frame.x + options.frame.w - 0.08, Math.max(...groupedNodes.map((node) => node.x + node.w)) + 0.2);
+    const maxY = Math.min(options.frame.y + options.frame.h - 0.08, Math.max(...groupedNodes.map((node) => node.y + node.h)) + 0.18);
+    const safeGroupId = nativeIdPart(group.id, diagram.groups.indexOf(group));
+    elements.push(
+      nativeShape(
+        `${options.idPrefix}-group-${safeGroupId}`,
+        "roundRect",
+        { x: minX, y: minY, w: maxX - minX, h: maxY - minY },
+        {
+          fill: "#F8FAFC",
+          fillOpacity: 0.75,
+          line: { color: "#CBD5E1", width: 1, dash: "dash" },
+          radius: 0.08,
+          decorative: true,
+          readingOrder: nextOrder()
+        }
+      ),
+      nativeText(
+        `${options.idPrefix}-group-label-${safeGroupId}`,
+        group.label,
+        { x: minX + 0.16, y: minY + 0.08, w: Math.max(0.6, maxX - minX - 0.32), h: 0.22 },
+        { fontSize: 10.5, color: "#64748B", contrastBackground: "#F8FAFC", bold: true, align: "left", valign: "top", readingOrder: nextOrder() }
+      )
+    );
+  }
+
+  for (const [arrowIndex, arrow] of diagram.arrows.entries()) {
+    const from = nodesById.get(arrow.from);
+    const to = nodesById.get(arrow.to);
+    if (!from || !to) {
+      continue;
+    }
+
+    const route = connectorRoute(from, to, {
+      color: "#475569",
+      dashed: arrow.dashed,
+      bidirectional: arrow.bidirectional,
+      orthogonal: true,
+      label: arrow.label,
+      bypass: bypassFor(from, to, placedNodes, diagram.direction, canvasWidth, canvasHeight)
+    });
+    const points = route.points.map((point) => transformPoint(point, origin, scale));
+    for (let segmentIndex = 0; segmentIndex < points.length - 1; segmentIndex += 1) {
+      const line = nativeLineSegment(`${options.idPrefix}-connector-${arrowIndex}-${segmentIndex}`, points[segmentIndex], points[segmentIndex + 1], {
+        color: "#475569",
+        dashed: arrow.dashed,
+        arrowAtStart: arrow.bidirectional && segmentIndex === 0,
+        arrowAtEnd: segmentIndex === points.length - 2,
+        readingOrder: nextOrder()
+      });
+      if (line) {
+        elements.push(line);
+      }
+    }
+
+    if (arrow.label) {
+      const placement = connectorLabelPlacement(points, Array.from(nodeRects.values()), options.frame);
+      connectorLabels.push({ arrowIndex, label: arrow.label, anchor: placement.anchor, maxWidth: placement.maxWidth });
+    }
+  }
+
+  for (const [nodeIndex, node] of placedNodes.entries()) {
+    const rect = nodeRects.get(node.id);
+    if (!rect) {
+      continue;
+    }
+    if (rect.w < 1.2 || rect.h < 0.62) {
+      warnings.push(`Node "${node.id}" is compact (${rect.w.toFixed(2)}x${rect.h.toFixed(2)} in). Split the diagram or use a larger frame if labels feel dense.`);
+    }
+    elements.push(...nativeNodeElements(node, nodeIndex, rect, options.idPrefix, nextOrder));
+  }
+
+  for (const connectorLabel of connectorLabels) {
+    const labelBoxWidth = Math.min(1.8, Math.max(0.45, connectorLabel.maxWidth), Math.max(0.52, (labelUnits(connectorLabel.label) * 9.5) / 72 + 0.22));
+    const labelTextWidth = labelBoxWidth - 0.12;
+    const label = nativeTextFit(connectorLabel.label, labelTextWidth, { preferredSize: 9.5, minimumSize: 8.5, maxLines: 1 });
+    const anchorX = clamp(connectorLabel.anchor.x, options.frame.x + labelBoxWidth / 2, options.frame.x + options.frame.w - labelBoxWidth / 2);
+    const anchorY = clamp(connectorLabel.anchor.y, options.frame.y + 0.13, options.frame.y + options.frame.h - 0.13);
+    elements.push(
+      nativeShape(
+        `${options.idPrefix}-connector-label-bg-${connectorLabel.arrowIndex}`,
+        "roundRect",
+        { x: anchorX - labelBoxWidth / 2, y: anchorY - 0.13, w: labelBoxWidth, h: 0.26 },
+        { fill: "#FFFFFF", line: { color: "#CBD5E1", width: 0.8 }, radius: 0.08, decorative: true, readingOrder: nextOrder() }
+      ),
+      nativeText(
+        `${options.idPrefix}-connector-label-${connectorLabel.arrowIndex}`,
+        label.text,
+        { x: anchorX - labelTextWidth / 2, y: anchorY - 0.09, w: labelTextWidth, h: 0.18 },
+        { fontSize: label.size, color: "#334155", contrastBackground: "#FFFFFF", bold: true, readingOrder: nextOrder() }
+      )
+    );
+  }
+
+  return {
+    elements,
+    summary: diagram.summary,
+    longDescription: diagram.longDescription,
+    warnings
   };
 }
