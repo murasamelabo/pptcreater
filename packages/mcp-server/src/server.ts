@@ -628,7 +628,7 @@ export function createPptcreaterMcpServer(): McpServer {
     {
       title: "Generate ponchi-e diagram",
       description:
-        "Render an architecture/flow ponchi-e as one clean, accessible SVG. Omit node x/y to get automatic layered layout: just give nodes (id, label, kind) and arrows (from, to); set diagram.direction 'LR' or 'TB' for flow direction and optional node.layer/lane hints. Connectors clip to node borders with real arrowheads and detour through clear gutters when they skip a rank (no detached, mis-angled, or node-piercing arrows), nodes get kind-based icons (actor/system/process/data/note/cloud) and accent bars, and groups render as lanes. Always prefer this over hand-placing native line/rightArrow shapes for any diagram with arrows or connected nodes. Embed the returned SVG as a single DeckSpec diagram element (with summary and longDescription).",
+        "Render an architecture/flow ponchi-e as one clean, accessible SVG with visible labels. Omit node x/y to get automatic layered layout: just give nodes (id, label, kind) and arrows (from, to); set diagram.direction 'LR' or 'TB' for flow direction and optional node.layer/lane hints. Connectors clip to node borders with real arrowheads and detour through clear gutters when they skip a rank (no detached, mis-angled, or node-piercing arrows), nodes get kind-based icons (actor/system/process/data/note/cloud) and accent bars, and groups render as lanes. Always prefer this over hand-placing native line/rightArrow shapes for any diagram with arrows or connected nodes. Never embed shape-only SVG diagrams: every meaningful node/lane/decision/flow needs readable SVG <text> labels or callouts; altText/summary/longDescription alone is not visible to slide viewers. Embed the returned SVG as a single DeckSpec diagram element (with summary and longDescription).",
       inputSchema: {
         diagram: z.unknown()
       }
@@ -752,6 +752,7 @@ export function createPptcreaterMcpServer(): McpServer {
             "- For report decks, use more structure and evidence blocks.",
             "- For presentation decks, use fewer words and more visual contrast.",
             "- For technical decks, use architecture, concept, boundary, and flow diagrams.",
+            "- Diagrams must be visually self-explanatory: do not deliver SVGs that contain only boxes/connectors with explanation only in alt text or notes. Add readable node/flow labels or use generate_diagram/generate_schematic.",
             "- Run `review_content`, `polish_deck_layout`, and `lint_deck` before rendering."
           ].join("\n")
         }

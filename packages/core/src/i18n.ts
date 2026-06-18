@@ -54,6 +54,8 @@ const LINT_MESSAGES: Record<Locale, Record<string, (issue: LintIssue) => string>
     "visual.richness-deck": (issue) =>
       `Deck is too text-heavy for pptcreater output (${issue.details?.richSlides ?? "?"}/${issue.details?.contentSlides ?? "?"} rich content slides). Add diagrams, schematics, icons, or images.`,
     "diagram.long-description-short": () => "Complex diagrams should include a useful longDescription for speaker notes and accessibility review.",
+    "diagram.visible-labels-missing": () =>
+      "The diagram SVG has shapes/connectors but no visible labels. Add SVG <text> labels/callouts or rebuild it with generate_diagram/generate_schematic; alt text alone is not visible.",
     "source.reference-slide-missing": (issue) =>
       `Add a final references slide that lists the actual external source URLs (${issue.details?.sourceCount ?? "?"} source(s)).`,
     "slide.title-duplicate": () => "Each slide needs a unique, descriptive title for navigation.",
@@ -88,6 +90,8 @@ const LINT_MESSAGES: Record<Locale, Record<string, (issue: LintIssue) => string>
     "visual.richness-deck": (issue) =>
       `pptcreaterの出力として文字中心すぎます（リッチな本文スライド ${issue.details?.richSlides ?? "?"}/${issue.details?.contentSlides ?? "?"}）。図解、構成図、アイコン、画像を追加してください。`,
     "diagram.long-description-short": () => "複雑な図には、speaker notesとアクセシビリティ確認に使えるlongDescriptionを追加してください。",
+    "diagram.visible-labels-missing": () =>
+      "図のSVGに図形・コネクタはありますが、見えるラベルがありません。SVG内に<text>ラベル/吹き出しを追加するか、generate_diagram/generate_schematicで作り直してください。alt textだけでは閲覧者に見えません。",
     "source.reference-slide-missing": (issue) =>
       `外部サイトを参照した場合は、最後のスライドに実際の参考URL・出典をまとめてください（${issue.details?.sourceCount ?? "?"}件）。`,
     "slide.title-duplicate": () => "各スライドには、ナビゲーション用の一意で説明的なタイトルが必要です。",

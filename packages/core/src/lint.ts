@@ -150,8 +150,130 @@ function svgFontSizes(svg: string): number[] {
   return [...sizes];
 }
 
+function stripSvgTextContent(content: string): string {
+  return content
+    .replace(/<[^>]*>/gu, "")
+    .replace(/&nbsp;/giu, " ")
+    .replace(/&amp;/giu, "&")
+    .replace(/&lt;/giu, "<")
+    .replace(/&gt;/giu, ">")
+    .replace(/&quot;/giu, '"')
+    .replace(/&#39;/gu, "'")
+    .trim();
+}
+
+function svgAttributeValue(attributes: string, name: string): string | undefined {
+  const match = new RegExp(`\\b${name}\\s*=\\s*["']([^"']*)["']`, "iu").exec(attributes);
+  return match?.[1]?.trim();
+}
+
+function svgStyleValue(attributes: string, name: string): string | undefined {
+  const style = svgAttributeValue(attributes, "style");
+  if (!style) {
+    return undefined;
+  }
+
+  for (const declaration of style.split(";")) {
+    const separatorIndex = declaration.indexOf(":");
+    if (separatorIndex < 0) {
+      continue;
+    }
+
+    const key = declaration.slice(0, separatorIndex).trim().toLowerCase();
+    if (key === name.toLowerCase()) {
+      return declaration
+        .slice(separatorIndex + 1)
+        .replace(/\s*!important\s*$/iu, "")
+        .trim();
+    }
+  }
+
+  return undefined;
+}
+
+function isZeroOpacity(value: string | undefined): boolean {
+  return value !== undefined && /^0(?:\.0+)?$/u.test(value.trim());
+}
+
+function isHiddenSvgAttributes(attributes: string): boolean {
+  const display = svgAttributeValue(attributes, "display") ?? svgStyleValue(attributes, "display");
+  const visibility = svgAttributeValue(attributes, "visibility") ?? svgStyleValue(attributes, "visibility");
+  const opacity = svgAttributeValue(attributes, "opacity") ?? svgStyleValue(attributes, "opacity");
+
+  return display?.toLowerCase() === "none" || ["hidden", "collapse"].includes(visibility?.toLowerCase() ?? "") || isZeroOpacity(opacity);
+}
+
 function svgTextElementCount(svg: string): number {
-  return (svg.match(/<text\b/giu) ?? []).length;
+  const invisibleContainers = new Set(["clippath", "defs", "filter", "lineargradient", "marker", "mask", "metadata", "pattern", "radialgradient", "script", "style", "symbol"]);
+  const stack: Array<{ tag: string; hidden: boolean }> = [];
+  const tagPattern = /<\s*(\/?)([a-zA-Z][\w:-]*)([^<>]*?)(\/?)\s*>/gu;
+  let count = 0;
+
+  for (const match of svg.matchAll(tagPattern)) {
+    const isClosing = match[1] === "/";
+    const tag = (match[2] ?? "").toLowerCase();
+
+    if (isClosing) {
+      for (let index = stack.length - 1; index >= 0; index -= 1) {
+        if (stack[index].tag === tag) {
+          stack.splice(index);
+          break;
+        }
+      }
+      continue;
+    }
+
+    const attributes = match[3] ?? "";
+    const inheritedHidden = stack.some((entry) => entry.hidden);
+    const hidden = inheritedHidden || invisibleContainers.has(tag) || isHiddenSvgAttributes(attributes);
+    if (tag === "text" && !hidden) {
+      const contentStart = match.index + match[0].length;
+      const closeMatch = /<\/\s*text\s*>/iu.exec(svg.slice(contentStart));
+      const content = closeMatch ? svg.slice(contentStart, contentStart + closeMatch.index) : "";
+      if (stripSvgTextContent(content).length > 0) {
+        count += 1;
+      }
+    }
+
+    if (match[4] !== "/") {
+      stack.push({ tag, hidden });
+    }
+  }
+
+  return count;
+}
+
+function svgPrimitiveCount(svg: string): number {
+  return (svg.match(/<(?:rect|circle|ellipse|path|line|polyline|polygon)\b/giu) ?? []).length;
+}
+
+function lintVisibleDiagramLabels(element: Extract<SlideElement, { type: "svg" | "diagram" }>, path: string): LintIssue[] {
+  if (element.decorative) {
+    return [];
+  }
+
+  const textCount = svgTextElementCount(element.svg);
+  if (textCount > 0) {
+    return [];
+  }
+
+  const primitiveCount = svgPrimitiveCount(element.svg);
+  const renderedArea = element.w * element.h;
+  const isDiagram = element.type === "diagram";
+  const isLargeComplexSvg = element.type === "svg" && renderedArea >= 8 && primitiveCount >= 6;
+  if ((!isDiagram && !isLargeComplexSvg) || (isDiagram && primitiveCount < 2 && renderedArea < 8)) {
+    return [];
+  }
+
+  return [
+    issue(
+      "error",
+      "diagram.visible-labels-missing",
+      "Meaningful diagrams must include visible labels or callouts inside the SVG; altText, summary, and longDescription are not visible to slide viewers.",
+      `${path}.svg`,
+      { primitiveCount, textCount }
+    )
+  ];
 }
 
 function lintEmbeddedSvgText(element: Extract<SlideElement, { type: "svg" | "diagram" }>, path: string): LintIssue[] {
@@ -367,6 +489,7 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
     }
 
     if (element.type === "svg" || element.type === "diagram") {
+      issues.push(...lintVisibleDiagramLabels(element, path));
       issues.push(...lintEmbeddedSvgText(element, path));
     }
   });

@@ -281,6 +281,102 @@ describe("DeckSpec linting", () => {
     expect(report.ok).toBe(false);
   });
 
+  it("blocks non-decorative diagram SVGs that only contain unlabeled shapes and connectors", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "unlabeled-threat-model",
+      type: "diagram",
+      x: 1,
+      y: 2,
+      w: 8,
+      h: 4,
+      svg: [
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 900 520\">",
+        "<rect width=\"900\" height=\"520\" fill=\"#111827\"/>",
+        "<rect x=\"60\" y=\"60\" rx=\"16\" ry=\"16\" width=\"200\" height=\"90\" fill=\"#1e293b\" stroke=\"#38bdf8\"/>",
+        "<rect x=\"350\" y=\"60\" rx=\"16\" ry=\"16\" width=\"200\" height=\"90\" fill=\"#1e293b\" stroke=\"#38bdf8\"/>",
+        "<rect x=\"640\" y=\"60\" rx=\"16\" ry=\"16\" width=\"200\" height=\"90\" fill=\"#1e293b\" stroke=\"#38bdf8\"/>",
+        "<line x1=\"260\" y1=\"105\" x2=\"350\" y2=\"105\" stroke=\"#cbd5e1\" stroke-width=\"4\"/>",
+        "<line x1=\"550\" y1=\"105\" x2=\"640\" y2=\"105\" stroke=\"#cbd5e1\" stroke-width=\"4\"/>",
+        "</svg>"
+      ].join(""),
+      summary: "Threat model diagram",
+      longDescription: "A diagram with a complete accessible description but no visible labels inside the SVG itself.",
+      decorative: false,
+      altText: "Unlabeled threat model diagram",
+      readingOrder: 350
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const labels = report.issues.find((issue) => issue.code === "diagram.visible-labels-missing");
+
+    expect(labels?.severity).toBe("error");
+    expect(report.ok).toBe(false);
+  });
+
+  it("allows visible SVG labels that use non-zero opacity styles", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "translucent-label-diagram",
+      type: "diagram",
+      x: 1,
+      y: 2,
+      w: 8,
+      h: 4,
+      svg: [
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 900 520\">",
+        "<rect width=\"900\" height=\"520\" fill=\"#111827\"/>",
+        "<rect x=\"60\" y=\"80\" rx=\"16\" width=\"260\" height=\"120\" fill=\"#1e293b\" stroke=\"#38bdf8\"/>",
+        "<rect x=\"520\" y=\"80\" rx=\"16\" width=\"260\" height=\"120\" fill=\"#1e293b\" stroke=\"#38bdf8\"/>",
+        "<line x1=\"320\" y1=\"140\" x2=\"520\" y2=\"140\" stroke=\"#cbd5e1\" stroke-width=\"4\"/>",
+        "<text x=\"190\" y=\"150\" font-size=\"28\" style=\"opacity:0.8\" fill=\"#f8fafc\" text-anchor=\"middle\">Policy</text>",
+        "<text x=\"650\" y=\"150\" font-size=\"28\" opacity=\"0.8\" fill=\"#f8fafc\" text-anchor=\"middle\">Client</text>",
+        "</svg>"
+      ].join(""),
+      summary: "Policy to client flow",
+      longDescription: "A labeled policy to client flow diagram with visible translucent labels.",
+      decorative: false,
+      altText: "Labeled policy flow",
+      readingOrder: 351
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "diagram.visible-labels-missing")).toBe(false);
+  });
+
+  it("does not count hidden SVG text in defs or hidden ancestor groups as visible labels", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "hidden-label-diagram",
+      type: "diagram",
+      x: 1,
+      y: 2,
+      w: 8,
+      h: 4,
+      svg: [
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 900 520\">",
+        "<defs><text x=\"20\" y=\"20\" font-size=\"20\">Template label</text></defs>",
+        "<g display=\"none\"><text x=\"100\" y=\"100\" font-size=\"20\">Hidden group label</text></g>",
+        "<rect width=\"900\" height=\"520\" fill=\"#111827\"/>",
+        "<rect x=\"60\" y=\"80\" rx=\"16\" width=\"260\" height=\"120\" fill=\"#1e293b\" stroke=\"#38bdf8\"/>",
+        "<rect x=\"520\" y=\"80\" rx=\"16\" width=\"260\" height=\"120\" fill=\"#1e293b\" stroke=\"#38bdf8\"/>",
+        "<line x1=\"320\" y1=\"140\" x2=\"520\" y2=\"140\" stroke=\"#cbd5e1\" stroke-width=\"4\"/>",
+        "</svg>"
+      ].join(""),
+      summary: "Hidden labels do not explain the visual",
+      longDescription: "A diagram whose only text is hidden in defs or a display none group, so slide viewers still see unlabeled boxes.",
+      decorative: false,
+      altText: "Hidden-label diagram",
+      readingOrder: 352
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const labels = report.issues.find((issue) => issue.code === "diagram.visible-labels-missing");
+
+    expect(labels?.severity).toBe("error");
+  });
+
   it("allows embedded SVG diagrams whose internal text remains readable after scaling", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     deck.slides[0].elements.push({
@@ -307,6 +403,7 @@ describe("DeckSpec linting", () => {
     const report = lintDeckSpec(parseDeckSpec(deck));
 
     expect(report.issues.some((issue) => issue.code === "visual.svg-text-too-small")).toBe(false);
+    expect(report.issues.some((issue) => issue.code === "diagram.visible-labels-missing")).toBe(false);
   });
 
   it("does not flag concise bullet lists as bad line breaks", () => {
