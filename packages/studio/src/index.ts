@@ -132,6 +132,22 @@ function sourceCitations(deck: DeckSpec, slide: DeckSpec["slides"][number]): str
   return citations ? `<details><summary>Sources</summary><ul>${citations}</ul></details>` : "";
 }
 
+function renderSlideArticle(deck: DeckSpec, labels: StudioLabels, slide: DeckSpec["slides"][number], index: number): string {
+  const body = [
+    nativeShapePreview(slide) || textElements(slide),
+    visualElements(slide),
+    sourceCitations(deck, slide),
+    slide.speakerNotes ? `<details><summary>${escapeHtml(labels.notes)}</summary><p>${escapeHtml(slide.speakerNotes)}</p></details>` : ""
+  ].filter((content) => content.length > 0);
+
+  return [
+    `<article class="slide">`,
+    `        <h3>${index + 1}. ${escapeHtml(slide.title)}</h3>`,
+    ...body.map((content) => `        ${content}`),
+    `      </article>`
+  ].join("\n");
+}
+
 export function renderStudioHtml(input: unknown, localeOverride?: Locale): string {
   const deck = ensureSourceReferenceSlide(parseDeckSpec(input));
   const locale = localeOverride ?? deck.locale;
@@ -186,16 +202,8 @@ export function renderStudioHtml(input: unknown, localeOverride?: Locale): strin
     <section aria-labelledby="slides-title">
       <h2 id="slides-title">${escapeHtml(labels.slides)}</h2>
       ${deck.slides
-        .map(
-          (slide, index) => `<article class="slide">
-        <h3>${index + 1}. ${escapeHtml(slide.title)}</h3>
-        ${nativeShapePreview(slide) || textElements(slide)}
-        ${visualElements(slide)}
-        ${sourceCitations(deck, slide)}
-        ${slide.speakerNotes ? `<details><summary>${escapeHtml(labels.notes)}</summary><p>${escapeHtml(slide.speakerNotes)}</p></details>` : ""}
-      </article>`
-        )
-        .join("")}
+        .map((slide, index) => renderSlideArticle(deck, labels, slide, index))
+        .join("\n")}
     </section>
     <aside>
       <h2>${escapeHtml(labels.lint)}</h2>

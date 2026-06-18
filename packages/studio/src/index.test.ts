@@ -33,4 +33,10 @@ describe("Studio preview", () => {
 
     expect(html).toContain(".native-text { overflow: hidden; white-space: pre-wrap; line-height: 1.15; overflow-wrap: normal; }");
   });
+
+  it("does not emit whitespace-only lines", () => {
+    const html = renderStudioHtml(createSampleDeck("ja-JP"));
+
+    expect(html.split(/\r?\n/).filter((line) => /^\s+$/.test(line))).toHaveLength(0);
+  });
 });

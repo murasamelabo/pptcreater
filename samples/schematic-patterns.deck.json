@@ -1,4 +1,4 @@
-﻿{
+{
   "version": "0.1",
   "title": "pptcreater schematic pattern samples",
   "locale": "ja-JP",
@@ -42,17 +42,17 @@
       "elements": [
         {
           "id": "flow-visual",
-          "type": "diagram",
           "x": 0.58,
           "y": 0.58,
           "w": 12.17,
           "h": 6.34,
-          "decorative": false,
           "readingOrder": 1,
+          "decorative": false,
+          "altText": "flow schematic sample",
+          "type": "diagram",
           "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>横型フロー: 作成から検証までを迷わず進める</title><desc>flow schematic sample generated from a safe preset to demonstrate Slideland-inspired layouts in pptcreater.</desc><rect width=\"960\" height=\"540\" fill=\"#0b1020\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#f8fafc\">横型フロー: 作成から検証までを迷わず進める</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#2dd4bf\" /><rect x=\"48\" y=\"210\" width=\"153.6\" height=\"96\" rx=\"18\" fill=\"#151c2f\" stroke=\"#2a3751\" /><circle cx=\"82\" cy=\"244\" r=\"14\" fill=\"#143a42\" stroke=\"#2dd4bf\" /><text x=\"82\" y=\"249\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#2dd4bf\">1</text><text x=\"108\" y=\"246\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#f8fafc\">brief</text><path d=\"M209.6 258h8m-8-8 8 8-8 8\" fill=\"none\" stroke=\"#2dd4bf\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><rect x=\"225.6\" y=\"210\" width=\"153.6\" height=\"96\" rx=\"18\" fill=\"#151c2f\" stroke=\"#2a3751\" /><circle cx=\"259.6\" cy=\"244\" r=\"14\" fill=\"#143a42\" stroke=\"#2dd4bf\" /><text x=\"259.6\" y=\"249\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#2dd4bf\">2</text><text x=\"285.6\" y=\"246\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#f8fafc\">template</text><path d=\"M387.2 258h8m-8-8 8 8-8 8\" fill=\"none\" stroke=\"#2dd4bf\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><rect x=\"403.2\" y=\"210\" width=\"153.6\" height=\"96\" rx=\"18\" fill=\"#151c2f\" stroke=\"#2a3751\" /><circle cx=\"437.2\" cy=\"244\" r=\"14\" fill=\"#143a42\" stroke=\"#2dd4bf\" /><text x=\"437.2\" y=\"249\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#2dd4bf\">3</text><text x=\"463.2\" y=\"246\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#f8fafc\">schematic</text><path d=\"M564.8 258h8m-8-8 8 8-8 8\" fill=\"none\" stroke=\"#2dd4bf\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><rect x=\"580.8\" y=\"210\" width=\"153.6\" height=\"96\" rx=\"18\" fill=\"#151c2f\" stroke=\"#2a3751\" /><circle cx=\"614.8\" cy=\"244\" r=\"14\" fill=\"#143a42\" stroke=\"#2dd4bf\" /><text x=\"614.8\" y=\"249\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#2dd4bf\">4</text><text x=\"640.8\" y=\"246\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#f8fafc\">lint</text><path d=\"M742.4 258h8m-8-8 8 8-8 8\" fill=\"none\" stroke=\"#2dd4bf\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><rect x=\"758.4\" y=\"210\" width=\"153.6\" height=\"96\" rx=\"18\" fill=\"#151c2f\" stroke=\"#2a3751\" /><circle cx=\"792.4\" cy=\"244\" r=\"14\" fill=\"#143a42\" stroke=\"#2dd4bf\" /><text x=\"792.4\" y=\"249\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#2dd4bf\">5</text><text x=\"818.4\" y=\"246\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#f8fafc\">render</text></svg>",
           "summary": "flow schematic sample",
-          "longDescription": "flow schematic sample generated from a safe preset to demonstrate Slideland-inspired layouts in pptcreater.",
-          "altText": "flow schematic sample"
+          "longDescription": "flow schematic sample generated from a safe preset to demonstrate Slideland-inspired layouts in pptcreater."
         }
       ]
     },
@@ -64,17 +64,17 @@
       "elements": [
         {
           "id": "table-visual",
-          "type": "diagram",
           "x": 0.58,
           "y": 0.58,
           "w": 12.17,
           "h": 6.34,
-          "decorative": false,
           "readingOrder": 1,
+          "decorative": false,
+          "altText": "table schematic sample",
+          "type": "diagram",
           "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>表: 論点と判断材料をそろえる</title><desc>table schematic sample generated from a safe preset to demonstrate Slideland-inspired layouts in pptcreater.</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#24211d\">表: 論点と判断材料をそろえる</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#8f3d35\" /><rect x=\"72\" y=\"126\" width=\"816\" height=\"58\" rx=\"18\" fill=\"#f2ded9\" stroke=\"#8f3d35\" /><text x=\"96\" y=\"162\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#24211d\">観点</text><text x=\"504\" y=\"162\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#24211d\">確認事項</text><path d=\"M480 126v348\" stroke=\"#d8d3c8\" /><rect x=\"72\" y=\"184\" width=\"816\" height=\"58\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"96\" y=\"218\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"500\" fill=\"#24211d\">品質</text><text x=\"504\" y=\"218\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"500\" fill=\"#5f5a52\">lintで検証</text><rect x=\"72\" y=\"242\" width=\"816\" height=\"58\" fill=\"#f1eee7\" stroke=\"#d8d3c8\" /><text x=\"96\" y=\"276\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"500\" fill=\"#24211d\">速度</text><text x=\"504\" y=\"276\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"500\" fill=\"#5f5a52\">create_pptxで短縮</text><rect x=\"72\" y=\"300\" width=\"816\" height=\"58\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"96\" y=\"334\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"500\" fill=\"#24211d\">再利用</text><text x=\"504\" y=\"334\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"500\" fill=\"#5f5a52\">assetsを検索</text><rect x=\"72\" y=\"358\" width=\"816\" height=\"58\" fill=\"#f1eee7\" stroke=\"#d8d3c8\" /><text x=\"96\" y=\"392\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"500\" fill=\"#24211d\">安全性</text><text x=\"504\" y=\"392\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"500\" fill=\"#5f5a52\">safe SVGのみ</text><rect x=\"72\" y=\"416\" width=\"816\" height=\"58\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"96\" y=\"450\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"500\" fill=\"#24211d\">安全性</text><text x=\"504\" y=\"450\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"500\" fill=\"#5f5a52\">safe SVGのみ</text></svg>",
           "summary": "table schematic sample",
-          "longDescription": "table schematic sample generated from a safe preset to demonstrate Slideland-inspired layouts in pptcreater.",
-          "altText": "table schematic sample"
+          "longDescription": "table schematic sample generated from a safe preset to demonstrate Slideland-inspired layouts in pptcreater."
         }
       ]
     },
@@ -86,17 +86,17 @@
       "elements": [
         {
           "id": "tree-visual",
-          "type": "diagram",
           "x": 0.58,
           "y": 0.58,
           "w": 12.17,
           "h": 6.34,
-          "decorative": false,
           "readingOrder": 1,
+          "decorative": false,
+          "altText": "tree schematic sample",
+          "type": "diagram",
           "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>ツリー: 複雑な情報を階層で整理する</title><desc>tree schematic sample generated from a safe preset to demonstrate Slideland-inspired layouts in pptcreater.</desc><rect width=\"960\" height=\"540\" fill=\"#14110d\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#f8f1e4\">ツリー: 複雑な情報を階層で整理する</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#c8a15a\" /><rect x=\"370\" y=\"120\" width=\"220\" height=\"72\" rx=\"20\" fill=\"#3b3020\" stroke=\"#c8a15a\" /><text x=\"480\" y=\"154\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"700\" fill=\"#f8f1e4\">PPT作成</text><path d=\"M480 192v70\" stroke=\"#4a3d2b\" stroke-width=\"2\" /><path d=\"M480 262H140V315\" fill=\"none\" stroke=\"#4a3d2b\" stroke-width=\"2\" /><rect x=\"65\" y=\"315\" width=\"150\" height=\"82\" rx=\"18\" fill=\"#211b14\" stroke=\"#4a3d2b\" /><text x=\"140\" y=\"349\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#f8f1e4\">構成</text><path d=\"M480 262H310V315\" fill=\"none\" stroke=\"#4a3d2b\" stroke-width=\"2\" /><rect x=\"235\" y=\"315\" width=\"150\" height=\"82\" rx=\"18\" fill=\"#211b14\" stroke=\"#4a3d2b\" /><text x=\"310\" y=\"349\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#f8f1e4\">図解</text><path d=\"M480 262H480V315\" fill=\"none\" stroke=\"#4a3d2b\" stroke-width=\"2\" /><rect x=\"405\" y=\"315\" width=\"150\" height=\"82\" rx=\"18\" fill=\"#211b14\" stroke=\"#4a3d2b\" /><text x=\"480\" y=\"349\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#f8f1e4\">資産</text><path d=\"M480 262H650V315\" fill=\"none\" stroke=\"#4a3d2b\" stroke-width=\"2\" /><rect x=\"575\" y=\"315\" width=\"150\" height=\"82\" rx=\"18\" fill=\"#211b14\" stroke=\"#4a3d2b\" /><text x=\"650\" y=\"349\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#f8f1e4\">検証</text><path d=\"M480 262H820V315\" fill=\"none\" stroke=\"#4a3d2b\" stroke-width=\"2\" /><rect x=\"745\" y=\"315\" width=\"150\" height=\"82\" rx=\"18\" fill=\"#211b14\" stroke=\"#4a3d2b\" /><text x=\"820\" y=\"349\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#f8f1e4\">出力</text></svg>",
           "summary": "tree schematic sample",
-          "longDescription": "tree schematic sample generated from a safe preset to demonstrate Slideland-inspired layouts in pptcreater.",
-          "altText": "tree schematic sample"
+          "longDescription": "tree schematic sample generated from a safe preset to demonstrate Slideland-inspired layouts in pptcreater."
         }
       ]
     },
@@ -108,17 +108,73 @@
       "elements": [
         {
           "id": "list-horizontal-visual",
-          "type": "diagram",
           "x": 0.58,
           "y": 0.58,
           "w": 12.17,
           "h": 6.34,
-          "decorative": false,
           "readingOrder": 1,
+          "decorative": false,
+          "altText": "list-horizontal schematic sample",
+          "type": "diagram",
           "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>横並びリスト: 重要ポイントを短く見せる</title><desc>list-horizontal schematic sample generated from a safe preset to demonstrate Slideland-inspired layouts in pptcreater.</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">横並びリスト: 重要ポイントを短く見せる</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><rect x=\"48\" y=\"205\" width=\"202.5\" height=\"138\" rx=\"22\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"149.25\" cy=\"184\" r=\"18\" fill=\"#315f9f\" /><text x=\"149.25\" y=\"190\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"700\" fill=\"#fbfaf7\">1</text><text x=\"149.25\" y=\"255\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#1f2933\">低彩度カラー</text><rect x=\"268.5\" y=\"205\" width=\"202.5\" height=\"138\" rx=\"22\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"369.75\" cy=\"184\" r=\"18\" fill=\"#315f9f\" /><text x=\"369.75\" y=\"190\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"700\" fill=\"#fbfaf7\">2</text><text x=\"369.75\" y=\"255\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#1f2933\">8ptグリッド</text><rect x=\"489\" y=\"205\" width=\"202.5\" height=\"138\" rx=\"22\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"590.25\" cy=\"184\" r=\"18\" fill=\"#315f9f\" /><text x=\"590.25\" y=\"190\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"700\" fill=\"#fbfaf7\">3</text><text x=\"590.25\" y=\"255\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#1f2933\">アイコン活用</text><rect x=\"709.5\" y=\"205\" width=\"202.5\" height=\"138\" rx=\"22\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"810.75\" cy=\"184\" r=\"18\" fill=\"#315f9f\" /><text x=\"810.75\" y=\"190\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"700\" fill=\"#fbfaf7\">4</text><text x=\"810.75\" y=\"255\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#1f2933\">可読性優先</text></svg>",
           "summary": "list-horizontal schematic sample",
-          "longDescription": "list-horizontal schematic sample generated from a safe preset to demonstrate Slideland-inspired layouts in pptcreater.",
-          "altText": "list-horizontal schematic sample"
+          "longDescription": "list-horizontal schematic sample generated from a safe preset to demonstrate Slideland-inspired layouts in pptcreater."
+        }
+      ]
+    },
+    {
+      "id": "source-references",
+      "title": "参考URL・出典",
+      "layout": "references",
+      "speakerNotes": "Source URLs and attribution:\n1. Slideland schematic and taste references | URL: https://www.slideland.tech/ | Notes: Layouts are inspired by common schematic categories, not copied from source visuals.",
+      "elements": [
+        {
+          "id": "references-title",
+          "type": "text",
+          "role": "title",
+          "text": "参考URL・出典",
+          "x": 0.75,
+          "y": 0.58,
+          "w": 11.8,
+          "h": 0.9,
+          "fontSize": 34,
+          "color": "#1f2933",
+          "contrastBackground": "#ffffff",
+          "bold": true,
+          "decorative": false,
+          "readingOrder": 1
+        },
+        {
+          "id": "references-message",
+          "type": "text",
+          "role": "body",
+          "text": "外部サイトを参照した内容は、以下のURLを出典として確認できます（1件）。",
+          "x": 0.78,
+          "y": 1.48,
+          "w": 11.6,
+          "h": 0.42,
+          "fontSize": 20,
+          "color": "#59636e",
+          "contrastBackground": "#ffffff",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 2
+        },
+        {
+          "id": "reference-1",
+          "type": "text",
+          "role": "caption",
+          "text": "1. Slideland schematic and taste references\nhttps://www.slideland.tech/",
+          "x": 0.85,
+          "y": 2.08,
+          "w": 11.45,
+          "h": 4.76,
+          "fontSize": 14,
+          "color": "#1f2933",
+          "contrastBackground": "#ffffff",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 3
         }
       ]
     }

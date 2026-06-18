@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.1.5 - 2026-06-19
+
+- Regenerated the bundled sample DeckSpecs, Studio previews, and PowerPoint files with the latest renderer and layout polish.
+- Added a references slide to the schematic sample deck so source URL guidance passes the latest lint rules.
+- Removed stale `--language` options from README sample/smoke commands and documented `--polish` for sample rendering.
+- Prevented Studio preview generation from emitting whitespace-only lines in regenerated HTML samples.
+
 ## v0.1.4 - 2026-06-18
 
 - Added expanded generated provider preset assets for Microsoft/Azure/Entra/Microsoft 365/Power Platform/Dynamics 365, AWS, and Google Cloud/Workspace architecture slides.

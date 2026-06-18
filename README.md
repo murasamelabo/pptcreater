@@ -26,7 +26,7 @@ npm run build
 npm run cli -- new --output examples\generated.deck.json --locale ja-JP
 npm run cli -- lint examples\generated.deck.json
 npm run cli -- render examples\generated.deck.json --output examples\generated.pptx
-npm run cli -- studio examples\generated.deck.json --output generated\studio.html --language ja-JP
+npm run cli -- studio examples\generated.deck.json --output generated\studio.html
 ```
 
 `new` creates a visual starter deck, not a text-only deck. You can pass briefing context so the generated DeckSpec includes an audience-specific message, diagrams, icons, and quality-gate slides:
@@ -140,9 +140,9 @@ Regenerate it with:
 
 ```powershell
 pptcreater new --output samples\pptcreater-overview.deck.json --locale ja-JP --purpose "このpptcreaterツールの価値と使い方を説明し、導入判断につなげる" --audience "GitHub CopilotやClaude Codeを使う開発者・デザイナー・企画担当" --slides 4 --content-mode decision
-pptcreater lint samples\pptcreater-overview.deck.json --language ja-JP
-pptcreater render samples\pptcreater-overview.deck.json --output samples\pptcreater-overview.pptx
-pptcreater studio samples\pptcreater-overview.deck.json --output samples\pptcreater-overview.html --language ja-JP
+pptcreater lint samples\pptcreater-overview.deck.json
+pptcreater render samples\pptcreater-overview.deck.json --output samples\pptcreater-overview.pptx --polish
+pptcreater studio samples\pptcreater-overview.deck.json --output samples\pptcreater-overview.html
 ```
 
 The style-pattern samples intentionally change the communication context, not just the color palette:
@@ -160,14 +160,14 @@ To use it from another terminal after cloning this repository:
 ```powershell
 git clone https://github.com/murasamelabo/pptcreater.git C:\tools\pptcreater
 cd C:\tools\pptcreater
-git checkout v0.1.4
+git checkout v0.1.5
 npm install
 npm run build
 npm link
 pptcreater --help
 ```
 
-For development or quick follow-up, use `main` instead of a release tag. For stable operational use, pin a tag such as `v0.1.4`, record that tag/commit in the consuming project, and update deliberately after smoke testing.
+For development or quick follow-up, use `main` instead of a release tag. For stable operational use, pin a tag such as `v0.1.5`, record that tag/commit in the consuming project, and update deliberately after smoke testing.
 
 ## Updating an existing installation
 
@@ -177,14 +177,14 @@ When `pptcreater` is installed as a normal Git clone, updates are easy to track 
 cd C:\tools\pptcreater
 git status
 git fetch --tags origin
-git checkout v0.1.4
+git checkout v0.1.5
 npm install
 npm run build
 npm link
 pptcreater --help
 ```
 
-If you intentionally track active development, replace `git checkout v0.1.4` with:
+If you intentionally track active development, replace `git checkout v0.1.5` with:
 
 ```powershell
 git checkout main
@@ -196,7 +196,7 @@ After updating, run a smoke test before using it from Copilot or Claude Code:
 ```powershell
 pptcreater new --output generated\smoke.deck.json --locale ja-JP --content-mode report
 pptcreater render generated\smoke.deck.json --output generated\smoke.pptx --polish
-pptcreater studio generated\smoke.deck.json --output generated\smoke.html --language ja-JP
+pptcreater studio generated\smoke.deck.json --output generated\smoke.html
 ```
 
 MCP configuration normally does not change as long as the clone path stays `C:\tools\pptcreater` and the server path remains `C:\tools\pptcreater\packages\mcp-server\dist\index.js`. Restart the MCP client after rebuilding.
