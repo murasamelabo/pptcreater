@@ -69,6 +69,26 @@ From MCP, use `create_pptx` when the user simply asks for a `.pptx`. It creates 
 
 It flags generic titles, verbose document-like titles, missing Japanese slide messages, long supporting messages, prose-like body text, and excessive bullets.
 
+For consulting-style, executive, customer-facing, important-meeting, or internal-friendly business decks, use the business director layer before writing the DeckSpec:
+
+```powershell
+pptcreater business-plan `
+  --locale ja-JP `
+  --topic "生成AI活用" `
+  --purpose "経営会議でPoC実施判断を得る" `
+  --audience "経営層" `
+  --desired-action "PoC実施を承認する" `
+  --slides 9 `
+  --important-meeting `
+  --json
+```
+
+MCP tools:
+
+- `plan_business_deck`: creates objective/audience/action framing, 3-5 section architecture, slide-level message/evidence/reading-path plans, and human-review flags.
+- `review_business_deck`: reviews section flow, Executive Summary/Agenda needs, lead sentences, equal emphasis, repeated card grids, final landing, and source traceability.
+- `generate_edit_with_copilot_prompt`: creates a PowerPoint for the web / Edit with Copilot prompt when the user explicitly wants that workflow. It is an upstream prompt path; final deterministic `.pptx` output should still use `render_pptx` / `render_powerpoint` when possible.
+
 Use `pptcreater polish <deck> --output <polished.deck.json>`, `pptcreater render --polish`, or MCP `polish_deck_layout` before rendering when source content is long or diagrams have many labels. The polish step clamps elements to slide bounds, rebalances Japanese/English line breaks (without splitting numbers like 150,000, Latin words/identifiers like onPremisesDistinguishedName, or leaving orphan punctuation/single characters), and adjusts text fitting to reduce overflows and misalignment. `render_pptx` also applies this safeguard automatically before drawing. If text still cannot fit after polish, `layout.text-overflow-risk` and `layout.bad-line-break` are render-blocking errors; widen the box, shorten the copy, split the slide, or choose a schematic/table/list layout instead of forcing a broken PPTX.
 
 `visual.richness-missing` and `visual.richness-deck` are also render-blocking: pptcreater should not deliver text-only content slides. Add `generate_schematic`, `generate_diagram`, registered icons, images, or card/shape composition so at least 75% of content slides have visual structure.

@@ -5,9 +5,12 @@ import { Command, InvalidArgumentError } from "commander";
 import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, searchAllSvgAssets, type BuiltinIconName } from "@pptcreater/assets-svg";
 import { renderPonchiDiagram, renderSchematicDiagram } from "@pptcreater/diagram";
 import {
+  BUSINESS_STYLE_MODES,
   cliMessage,
+  createEditWithCopilotPrompt,
   createSampleDeck,
   ensureSourceReferenceSlide,
+  getBusinessDeckGuidance,
   getContentGuidance,
   getDefaultTemplateRegistryPath,
   listAllTemplates,
@@ -15,10 +18,13 @@ import {
   lintDeckSpec,
   localizeLintReport,
   normalizeDeckLayout,
+  planBusinessDeck,
   parseDeckSpec,
   registerTemplateManifest,
+  reviewBusinessDeck,
   reviewDeckContent,
   STYLE_PROFILES,
+  type BusinessStyleMode,
   type ContentMode,
   type Locale,
   type StyleProfile
@@ -59,12 +65,30 @@ function parseSlideCount(value: string): number {
   return count;
 }
 
+function parseBusinessSlideCount(value: string): number {
+  const count = Number(value);
+  if (!Number.isInteger(count) || count < 3 || count > 40) {
+    throw new InvalidArgumentError("Business slide count must be an integer from 3 to 40.");
+  }
+
+  return count;
+}
+
 function parseContentMode(value: string): ContentMode {
   if (value === "presentation" || value === "report" || value === "technical" || value === "handout" || value === "decision") {
     return value;
   }
 
   throw new InvalidArgumentError("Content mode must be one of: presentation, report, technical, handout, decision.");
+}
+
+function parseBusinessStyleMode(value: string): BusinessStyleMode {
+  const normalized = value.trim().toLowerCase();
+  if ((BUSINESS_STYLE_MODES as readonly string[]).includes(normalized)) {
+    return normalized as BusinessStyleMode;
+  }
+
+  throw new InvalidArgumentError(`Business style mode must be one of: ${BUSINESS_STYLE_MODES.join(", ")}.`);
 }
 
 function parseStyleProfile(value: string): StyleProfile {
@@ -219,6 +243,123 @@ program
     console.log(report.guidance.bodyModel);
     report.guidance.rules.forEach((rule) => console.log(`- ${rule}`));
     report.issues.forEach((item) => console.log(`${item.severity.toUpperCase()} ${item.code} ${item.path}: ${item.message}`));
+  }));
+
+program
+  .command("business-plan")
+  .description("Create a business deck director plan and optionally an Edit with Copilot prompt.")
+  .option("--locale <locale>", "Plan locale", "ja-JP")
+  .option("--topic <topic>", "Deck topic")
+  .option("--purpose <purpose>", "Deck purpose")
+  .option("--audience <audience>", "Primary audience")
+  .option("--usage-context <context>", "Where/how the deck will be used")
+  .option("--desired-action <action>", "What the reader should decide or do")
+  .option("--slides <count>", "Target business deck slide count from 3 to 40", parseBusinessSlideCount)
+  .option("--style-mode <mode>", "consulting or internal-friendly", parseBusinessStyleMode)
+  .option("--brand-direction <direction>", "Brand, template, or tone constraints")
+  .option("--source-summary <summary>", "Known source materials, facts, assumptions, or open questions")
+  .option("--customer-facing", "Mark as customer-facing and requiring human review", false)
+  .option("--important-meeting", "Mark as executive/steering/decision meeting", false)
+  .option("--edit-with-copilot-prompt", "Include a PowerPoint for the web Edit with Copilot prompt", false)
+  .option("-o, --output <path>", "Write JSON result to a file")
+  .option("--json", "Emit JSON", false)
+  .action(commandAction(async (options: {
+    locale: string;
+    topic?: string;
+    purpose?: string;
+    audience?: string;
+    usageContext?: string;
+    desiredAction?: string;
+    slides?: number;
+    styleMode?: BusinessStyleMode;
+    brandDirection?: string;
+    sourceSummary?: string;
+    customerFacing: boolean;
+    importantMeeting: boolean;
+    editWithCopilotPrompt: boolean;
+    output?: string;
+    json: boolean;
+  }) => {
+    const brief = {
+      locale: asLocale(options.locale),
+      topic: options.topic,
+      purpose: options.purpose,
+      audience: options.audience,
+      usageContext: options.usageContext,
+      desiredAction: options.desiredAction,
+      slideCount: options.slides,
+      styleMode: options.styleMode,
+      brandDirection: options.brandDirection,
+      sourceSummary: options.sourceSummary,
+      customerFacing: options.customerFacing,
+      importantMeeting: options.importantMeeting
+    };
+    const result = {
+      plan: planBusinessDeck(brief),
+      ...(options.editWithCopilotPrompt ? { editWithCopilotPrompt: createEditWithCopilotPrompt(brief) } : {})
+    };
+
+    if (options.output) {
+      await writeJson(options.output, result);
+    }
+
+    if (options.json) {
+      console.log(JSON.stringify(result, null, 2));
+      return;
+    }
+
+    if (options.output) {
+      console.log(`Wrote business plan to ${options.output}`);
+      return;
+    }
+
+    console.log(result.plan.objective);
+    console.log(`${result.plan.audience} -> ${result.plan.desiredAction}`);
+    result.plan.sections.forEach((section, index) => console.log(`${index + 1}. ${section.title}: ${section.purpose}`));
+    if (result.plan.missingInformation.length > 0) {
+      console.log(`Missing: ${result.plan.missingInformation.join(", ")}`);
+    }
+    if (result.editWithCopilotPrompt) {
+      console.log("");
+      console.log("Edit with Copilot prompt:");
+      console.log(result.editWithCopilotPrompt);
+    }
+  }));
+
+program
+  .command("business-review")
+  .description("Review a DeckSpec for business storyline, section flow, emphasis, and final landing issues.")
+  .argument("<deck>", "DeckSpec JSON path")
+  .option("--locale <locale>", "Review locale; defaults to the deck locale")
+  .option("--style-mode <mode>", "consulting or internal-friendly", parseBusinessStyleMode)
+  .option("--customer-facing", "Review as customer-facing", false)
+  .option("--important-meeting", "Review as executive/steering/decision meeting", false)
+  .option("--json", "Emit JSON", false)
+  .action(commandAction(async (deckPath: string, options: { locale?: string; styleMode?: BusinessStyleMode; customerFacing: boolean; importantMeeting: boolean; json: boolean }) => {
+    const deck = parseDeckSpec(await readJson(deckPath));
+    const locale = options.locale ? asLocale(options.locale) : deck.locale;
+    const report = reviewBusinessDeck(deck, {
+      locale,
+      styleMode: options.styleMode,
+      customerFacing: options.customerFacing,
+      importantMeeting: options.importantMeeting
+    });
+
+    if (options.json) {
+      console.log(JSON.stringify(report, null, 2));
+      return;
+    }
+
+    console.log(getBusinessDeckGuidance(locale, options.styleMode ?? "consulting").positioning);
+    if (report.issues.length === 0) {
+      console.log("No business storyline issues.");
+      return;
+    }
+
+    report.issues.forEach((item) => console.log(`${item.severity.toUpperCase()} ${item.code} ${item.path}: ${item.message}`));
+    if (!report.ok) {
+      process.exitCode = 1;
+    }
   }));
 
 program

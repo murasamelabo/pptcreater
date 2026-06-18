@@ -25,6 +25,42 @@ export type SkillPack = z.infer<typeof SkillPackSchema>;
 
 export const BUILTIN_SKILL_PACKS: SkillPack[] = [
   {
+    id: "business-ppt-director-ja",
+    name: "Business PPT Director Japanese",
+    locale: "ja-JP",
+    description: "コンサルティング風・社内向けのビジネスPowerPointを、章立て、読み手行動、ページごとの強弱、レビュー観点から設計するディレクション方針。",
+    designDirection: "business-director",
+    density: "high",
+    rules: [
+      "DeckSpecを書く前に、目的、聴衆、利用場面、期待行動、避けるべき表現、根拠資料を確認する",
+      "6枚を超える資料や重要会議向け資料では、3-5章のSection Architectureを先に作り、Agendaと区切りスライドを検討する",
+      "経営・顧客・意思決定向けでは早い段階にExecutive Summaryを置き、結論、重要性、求める判断を示す",
+      "各スライドに主メッセージ、根拠、静かに扱う情報、視線の入口、読み順を定義する",
+      "すべてのカードやテキストを同じ強さにせず、first-look / second-look / final-readを設計する",
+      "Biz UDP Gothicを優先候補にし、タイトル30pt、リード18pt、本文14pt、ラベル/注釈12ptを下回らない方針にする",
+      "生成後はreview_business_deck、review_content、lint_deck、polish_deck_layoutを通してからrender_pptxする"
+    ],
+    forbidden: ["BCG等の固有テンプレート・ロゴ・ブランド模倣", "同じカードグリッドの機械的反復", "根拠のない数値・日付・顧客事実・契約条件の作成", "最終スライドを単なる再掲で終える"]
+  },
+  {
+    id: "business-ppt-director-en",
+    name: "Business PPT Director English",
+    locale: "en-US",
+    description: "Business deck direction for consulting-style or internal-friendly PowerPoint: story, sections, reader action, emphasis, and review gates before rendering.",
+    designDirection: "business-director",
+    density: "high",
+    rules: [
+      "Before DeckSpec creation, clarify purpose, audience, usage context, desired reader action, avoided topics, and source material",
+      "For decks longer than six slides or important meetings, design 3-5 sections first and consider Agenda plus section divider slides",
+      "For executive, customer-facing, or decision decks, include an early Executive Summary with conclusion, why it matters, and requested action",
+      "For each slide define primary message, evidence, quiet information, visual entry point, and reading path",
+      "Avoid equal emphasis across all cards and text; design first-look / second-look / final-read intentionally",
+      "Use readable business typography with title 30pt+, lead 18pt+, body 14pt+, and labels/notes 12pt+",
+      "After generation, run review_business_deck, review_content, lint_deck, polish_deck_layout, and then render_pptx"
+    ],
+    forbidden: ["imitating proprietary consulting templates or brands", "mechanically repeated card grids", "invented figures, dates, customer facts, or commitments", "ending with a generic recap instead of implication/action"]
+  },
+  {
     id: "modern-slide-design",
     name: "Modern Slide Design",
     locale: "en-US",

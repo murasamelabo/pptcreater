@@ -141,22 +141,27 @@ Before creating a DeckSpec, clarify these points when they are not already speci
 
 1. Use pptcreater MCP resources/tools where available.
 2. Use \`interview_slide_brief\` when the request is underspecified.
-3. For a direct PPTX request, prefer \`create_pptx\` or \`create_powerpoint\` first. It creates, lints, polishes, and renders with safe defaults.
-4. Use \`search_templates\` and \`search_assets\` before creating new assets.
-5. Use \`generate_schematic\` for tables, trees, horizontal/vertical flows, list layouts, and mockup-style visuals. Do not freehand complex SVG unless the preset cannot express the structure.
-6. Use \`plan_source_visual\` for source figures: choose quote, recreate, or inspiration.
-7. When external websites are used as references, record each one in \`metadata.sources\` with its actual \`url\`. The final slide must collect these URLs; \`polish_deck_layout\`, \`render_pptx\`, and \`render_studio\` append/update it automatically.
-8. Create a visual DeckSpec with editable PowerPoint shapes/text where possible.
-9. Run \`review_content\` (or CLI \`pptcreater content-review\`) before linting. It applies locale/content-mode writing rules: Japanese report/technical/handout decks use a short topic title + slide message, Japanese presentation/decision decks allow concise assertion titles, and English decks prefer action titles.
-10. Run \`lint_deck\`.
-11. Run \`polish_deck_layout\` when layout issues or overflow risks are present. \`render_pptx\` also applies this safeguard automatically.
-12. Render with \`render_pptx\` / \`render_powerpoint\` or preview with \`render_studio\`. If text still cannot fit after polish, shorten or split the slide; do not force-render a broken layout.
-13. If MCP render tools are not visible in the current tool selection, use the CLI fallback: \`pptcreater render <deck.json> --output <deck.pptx> --polish\`.
-14. Do not bypass pptcreater with PowerPoint COM automation or ad-hoc PPTX scripts for normal deck creation. If research produces local SVG/PNG/JPEG/GIF/WebP files, reference workspace-local files via DeckSpec \`image.path\` and still call pptcreater render; pptcreater embeds them safely.
+3. For consulting-style, executive, customer-facing, important-meeting, or internal-friendly business decks, run \`plan_business_deck\` (or CLI \`pptcreater business-plan\`) before writing DeckSpec. It defines objective, reader action, section architecture, slide-level emphasis, reading path, and human-review flags.
+4. Use \`generate_edit_with_copilot_prompt\` only when the user explicitly wants a PowerPoint for the web / Edit with Copilot prompt. This is an upstream prompt workflow; final deterministic output should still use pptcreater rendering when possible.
+5. For a direct PPTX request, prefer \`create_pptx\` or \`create_powerpoint\` first. It creates, lints, polishes, and renders with safe defaults.
+6. Use \`search_templates\` and \`search_assets\` before creating new assets.
+7. Use \`generate_schematic\` for tables, trees, horizontal/vertical flows, list layouts, and mockup-style visuals. Do not freehand complex SVG unless the preset cannot express the structure.
+8. Use \`plan_source_visual\` for source figures: choose quote, recreate, or inspiration.
+9. When external websites are used as references, record each one in \`metadata.sources\` with its actual \`url\`. The final slide must collect these URLs; \`polish_deck_layout\`, \`render_pptx\`, and \`render_studio\` append/update it automatically.
+10. Create a visual DeckSpec with editable PowerPoint shapes/text where possible.
+11. Run \`review_business_deck\` for business storyline, section flow, page emphasis, and final landing checks.
+12. Run \`review_content\` (or CLI \`pptcreater content-review\`) before linting. It applies locale/content-mode writing rules: Japanese report/technical/handout decks use a short topic title + slide message, Japanese presentation/decision decks allow concise assertion titles, and English decks prefer action titles.
+13. Run \`lint_deck\`.
+14. Run \`polish_deck_layout\` when layout issues or overflow risks are present. \`render_pptx\` also applies this safeguard automatically.
+15. Render with \`render_pptx\` / \`render_powerpoint\` or preview with \`render_studio\`. If text still cannot fit after polish, shorten or split the slide; do not force-render a broken layout.
+16. If MCP render tools are not visible in the current tool selection, use the CLI fallback: \`pptcreater render <deck.json> --output <deck.pptx> --polish\`.
+17. Do not bypass pptcreater with PowerPoint COM automation or ad-hoc PPTX scripts for normal deck creation. If research produces local SVG/PNG/JPEG/GIF/WebP files, reference workspace-local files via DeckSpec \`image.path\` and still call pptcreater render; pptcreater embeds them safely.
 
 ## Design rules
 
 - One slide, one message.
+- For business decks, define the section role, primary message, evidence, visual entry point, reading path, what to make prominent, and what to keep quiet before creating each slide.
+- For decks longer than six slides, important meetings, executive decks, or customer-facing decks, include section architecture and consider Executive Summary, Agenda, and visually distinct section divider slides.
 - Choose title/message style by content mode and locale: Japanese report/technical/handout = topic title + short slide message; Japanese presentation/decision = concise assertion title; English = action title.
 - Prefer editable PowerPoint shapes/text over flattened images.
 - Use modular cards, timelines, flows, architecture diagrams, and concept maps.
@@ -177,6 +182,7 @@ Before creating a DeckSpec, clarify these points when they are not already speci
 - Color system: avoid pure saturated red/green/blue on large areas. Use low-chroma backgrounds, neutral surfaces, and reserve accent colors for thin rules, icons, badges, and one focal object.
 - Alignment: use a consistent 12-column or card grid. Align card tops, icon centers, and text baselines. Avoid arbitrary x/y positions when a schematic preset can provide the layout.
 - Typography: keep title tracking slightly tight, body text neutral, and line lengths short. If text does not fit naturally, shorten the copy rather than shrinking below accessibility minimums.
+- Business typography profile: for consulting/executive/customer-facing decks, prefer Biz UDP Gothic for Japanese when available and keep titles >=30pt, lead sentences >=18pt, body >=14pt, labels/notes >=12pt. When this conflicts with dense technical diagrams, split the slide or use a schematic rather than shrinking below readable floors.
 - Line breaks: keep title lines visually balanced (usually 1-2 lines) and body text to short, even lines. Avoid manual ragged line breaks; let \`polish_deck_layout\` rebalance Japanese/English text where possible. The polisher never splits numbers (150,000), Latin words/identifiers (onPremisesDistinguishedName), or leaves orphan punctuation/single characters on their own line.
 - Box sizing: give text boxes enough width for their longest unbreakable token (a long word, identifier, or number) and enough height for the wrapped lines. If a token cannot fit, \`layout.text-overflow-risk\` and \`layout.bad-line-break\` block rendering; widen the box, shorten the label, or lower the font instead of forcing a broken break.
 - SVG diagram text: if an embedded SVG/diagram contains internal \`<text>\`, keep the element large enough that labels remain at least 8pt after viewBox scaling. \`visual.svg-text-too-small\` blocks diagrams whose internal labels become unreadable; enlarge the diagram, remove labels, or split it into multiple slides.

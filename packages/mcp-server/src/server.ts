@@ -6,10 +6,13 @@ import { z } from "zod";
 import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, searchAllSvgAssets } from "@pptcreater/assets-svg";
 import { renderPonchiDiagram, renderSchematicDiagram } from "@pptcreater/diagram";
 import {
+  BUSINESS_STYLE_MODES,
+  createEditWithCopilotPrompt,
   ContentModeSchema,
   createSampleDeck,
   DeckSpecSchema,
   ensureSourceReferenceSlide,
+  getBusinessDeckGuidance,
   getContentGuidance,
   getDefaultTemplateRegistryPath,
   listSkillPacks,
@@ -19,8 +22,10 @@ import {
   normalizeDeckLayout,
   parseDeckSpec,
   planSourceVisualStrategy,
+  planBusinessDeck,
   recommendTemplateForContentMode,
   registerTemplateManifest,
+  reviewBusinessDeck,
   reviewDeckContent,
   searchTemplates,
   STYLE_PROFILES,
@@ -271,6 +276,20 @@ export function createPptcreaterMcpServer(): McpServer {
     overwrite: z.boolean().default(false),
     polishLayout: z.boolean().default(false)
   };
+  const businessBriefInputSchema = {
+    locale: LocaleSchema.default("ja-JP"),
+    topic: z.string().optional(),
+    purpose: z.string().optional(),
+    audience: z.string().optional(),
+    usageContext: z.string().optional(),
+    desiredAction: z.string().optional(),
+    slideCount: z.number().int().min(3).max(40).optional(),
+    styleMode: z.enum(BUSINESS_STYLE_MODES).default("consulting"),
+    brandDirection: z.string().optional(),
+    sourceSummary: z.string().optional(),
+    customerFacing: z.boolean().default(false),
+    importantMeeting: z.boolean().default(false)
+  };
   const createPowerPoint = async ({
     locale,
     purpose,
@@ -406,6 +425,48 @@ export function createPptcreaterMcpServer(): McpServer {
 
       const parsedDeck = parseDeckSpec(deck);
       return jsonText(reviewDeckContent(parsedDeck, locale ?? parsedDeck.locale, contentMode ?? parsedDeck.metadata.contentMode ?? "presentation"));
+    }
+  );
+
+  server.registerTool(
+    "plan_business_deck",
+    {
+      title: "Plan a business PowerPoint deck",
+      description:
+        "Create a business deck director plan before DeckSpec production: objective, audience action, 3-5 section architecture, slide-level message/evidence/reading-path plan, and human-review flags. Use for consulting-style, executive, customer-facing, internal-friendly, or Edit with Copilot workflows.",
+      inputSchema: businessBriefInputSchema
+    },
+    async (brief) => jsonText(planBusinessDeck(brief))
+  );
+
+  server.registerTool(
+    "generate_edit_with_copilot_prompt",
+    {
+      title: "Generate Edit with Copilot prompt",
+      description:
+        "Generate a complete PowerPoint for the web / Edit with Copilot prompt from the business deck director plan. This is an upstream prompt workflow; final deterministic PPTX output should still use pptcreater DeckSpec rendering when possible.",
+      inputSchema: businessBriefInputSchema
+    },
+    async (brief) => jsonText({ prompt: createEditWithCopilotPrompt(brief), plan: planBusinessDeck(brief) })
+  );
+
+  server.registerTool(
+    "review_business_deck",
+    {
+      title: "Review business deck storyline",
+      description:
+        "Review a DeckSpec for business presentation direction: executive summary, agenda/section pacing, lead sentences, equal emphasis, repeated card grids, final landing, and source traceability. Run alongside review_content and lint_deck.",
+      inputSchema: {
+        deck: DeckSpecSchema,
+        locale: LocaleSchema.optional(),
+        styleMode: z.enum(BUSINESS_STYLE_MODES).default("consulting"),
+        customerFacing: z.boolean().default(false),
+        importantMeeting: z.boolean().default(false)
+      }
+    },
+    async ({ deck, locale, styleMode, customerFacing, importantMeeting }) => {
+      const parsedDeck = parseDeckSpec(deck);
+      return jsonText(reviewBusinessDeck(parsedDeck, { locale: locale ?? parsedDeck.locale, styleMode, customerFacing, importantMeeting }));
     }
   );
 
@@ -699,6 +760,38 @@ export function createPptcreaterMcpServer(): McpServer {
   );
 
   server.registerResource(
+    "business-ppt-director",
+    "design://business-ppt-director",
+    {
+      title: "Business PowerPoint director guidance",
+      description: "Business deck planning guidance for storyline, section architecture, page-level emphasis, and post-generation review.",
+      mimeType: "application/json"
+    },
+    async (uri) => ({
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: "application/json",
+          text: JSON.stringify(
+            {
+              consulting: getBusinessDeckGuidance("ja-JP", "consulting"),
+              internalFriendly: getBusinessDeckGuidance("ja-JP", "internal-friendly"),
+              workflow: [
+                "Use plan_business_deck before creating DeckSpec for executive, customer-facing, consulting-style, or internal-friendly decks.",
+                "Use generate_edit_with_copilot_prompt only when the user wants a PowerPoint for the web / Edit with Copilot production prompt.",
+                "Use review_business_deck after DeckSpec generation, alongside review_content and lint_deck.",
+                "Render deterministic final output with render_pptx/render_powerpoint or the CLI fallback; do not replace pptcreater rendering with raw PowerPoint automation."
+              ]
+            },
+            null,
+            2
+          )
+        }
+      ]
+    })
+  );
+
+  server.registerResource(
     "source-visual-guide",
     "source://visual-use-guide",
     {
@@ -749,13 +842,14 @@ export function createPptcreaterMcpServer(): McpServer {
               assetFlow: "Use search_assets to find registered SVG assets. Use generate_schematic for table/tree/flow/list/mockup visuals, generate_diagram for architecture/network/sequence ponchi-e with nodes, lanes, and connectors, and register_svg_asset for reusable SVGs before referencing their sanitized SVG in DeckSpec elements. If research produces local SVG/PNG/JPEG/GIF/WebP files, keep them inside the workspace, reference them with DeckSpec image.path, and still call render_pptx/render_powerpoint or CLI `pptcreater render`; do not switch to PowerPoint COM or ad-hoc PPTX generation.",
               shapeFlow: "Native shape elements (rect, roundRect, ellipse, line, rightArrow) are for simple editable cards, dividers, badges, and accent bars only. Do NOT hand-place line/rightArrow shapes to build connectors or architecture/flow diagrams: PowerPoint re-flows them so arrows end up detached, mis-angled, or hidden behind boxes. For ANY diagram with arrows or connected nodes, call generate_diagram (ponchi-e) or generate_schematic and embed the returned SVG as a single diagram element.",
               diagramFlow: "generate_diagram renders an architecture/flow ponchi-e as one clean SVG (immune to PowerPoint re-layout): connectors clip to node borders with real arrowheads and detour through gutters when an arrow skips a rank, nodes carry kind-based icons (actor/system/process/data/note/cloud) and accent bars, and groups render as lanes. OMIT node x/y to get automatic layered layout — supply only nodes (id, label, kind) and arrows (from, to), set direction 'LR'/'TB', and optionally node.layer/lane to steer placement. Use arrow.style 'orthogonal' for elbow routing, arrow.bidirectional for two-way links, and node.sublabel/emphasis for hierarchy. Prefer this over hand-built arrow shapes for every conceptual diagram; do not compute coordinates by hand unless you need a bespoke layout (then set both x and y on every node).",
+              businessFlow: "For consulting-style, executive, customer-facing, important meeting, or internal-friendly business decks, call plan_business_deck before writing DeckSpec. It creates purpose/audience/reader-action framing, 3-5 section architecture, slide-level message/evidence/reading-path plans, and human-review flags. After DeckSpec generation, call review_business_deck alongside review_content and lint_deck.",
               contentFlow: "Before rendering, call review_content with the deck locale and contentMode. It applies different writing rules for presentation, report, technical, handout, and decision decks. For Japanese report/technical/handout decks, prefer a short topic-label title plus a separate 50-character slide message. For Japanese presentation/decision decks, concise assertion titles are allowed. For English decks, prefer action titles: short complete-sentence takeaways supported by 3-5 proof points.",
               layoutGuardrails: "render_pptx always applies layout polish (token-aware Japanese/Latin wrapping, font auto-fit, manual-break reflow) and reading-order normalization before drawing, so most overflow, mid-word/kanji splits, orphaned punctuation, and decorative-over-text overlaps are fixed automatically. It still blocks only when content genuinely cannot fit (a box far too small even at the minimum font), low contrast, missing alt text, duplicate ids, out-of-bounds shapes, or SVG-internal diagram text that would render below 8pt; the error lists each offending code and path. Fix those by shortening copy, enlarging the box/diagram, reducing labels, or moving dense content into a generate_diagram/generate_schematic visual.",
               cognitiveLoad: "Use one visual grammar per slide. Prefer table for comparisons, tree for hierarchy, generate_diagram for architecture/flow with connectors, flow/vertical-flow for processes, and list/list-horizontal for 3-4 key points. Avoid many custom text boxes with uneven manual line breaks or body-only enumerations. Let layout polish wrap Japanese text instead of hand-coding line breaks. Content slides must not be text-only: fix visual.richness-missing and visual.richness-deck by adding generate_schematic, generate_diagram, registered icons, images, or card/shape composition so at least 75% of content slides have visual structure. When embedding an SVG diagram that contains <text>, keep the slide element large enough that its internal labels remain at least 8pt after viewBox scaling; otherwise split the diagram or remove labels.",
               sourceReferences: "Whenever a deck uses external websites, record each source in metadata.sources with the actual url. render_pptx, render_studio, and polish_deck_layout automatically append/update the final references slide (参考URL・出典 / References and sources) so the last slide contains all external URLs. Per-slide citations are optional for URL-backed sources when the final references slide is complete.",
               sourceVisuals: "Use metadata.sources plus element.sourceId/citation when quoting, recreating, or using source visuals as inspiration. Prefer editable shape/text objects for recreated visuals. For URL-backed sources, final-slide references can replace per-slide citation text.",
               requiredVisualAccessibility: "Non-decorative SVG, image, and diagram elements require altText. Diagram elements also require summary and longDescription.",
-              recommendedWorkflow: ["create_pptx/create_powerpoint for direct output", "search_templates", "search_assets", "generate_schematic for structured visuals", "create_deck or custom DeckSpec", "review_content", "lint_deck", "render_pptx/render_powerpoint or render_studio", "CLI fallback if render MCP tools are hidden: pptcreater render <deck.json> --output <deck.pptx> --polish"]
+              recommendedWorkflow: ["plan_business_deck for business/executive/customer-facing decks", "create_pptx/create_powerpoint for direct output", "search_templates", "search_assets", "generate_schematic for structured visuals", "create_deck or custom DeckSpec", "review_business_deck for storyline/section/emphasis checks", "review_content", "lint_deck", "render_pptx/render_powerpoint or render_studio", "CLI fallback if render MCP tools are hidden: pptcreater render <deck.json> --output <deck.pptx> --polish"]
             },
             null,
             2
@@ -789,7 +883,8 @@ export function createPptcreaterMcpServer(): McpServer {
                     "3. 発表用、配布用、非同期レビュー用、Web公開用のどれに近いですか？",
                     "4. 希望する枚数、時間、章立てはありますか？",
                     "5. 使いたいテンプレート、ブランド色、アイコン、ロゴ、図表、データソースはありますか？",
-                    "回答後、search_templates と search_assets を使い、図・アイコンを含むDeckSpecを作成し、review_content と lint_deck 後に render_pptx または render_studio を使ってください。"
+                    "経営向け・顧客向け・コンサルティング風・社内向けビジネス資料の場合は、回答後に plan_business_deck で章立てとページごとの強弱を設計してください。",
+                    "その後、search_templates と search_assets を使い、図・アイコンを含むDeckSpecを作成し、review_business_deck、review_content、lint_deck 後に render_pptx または render_studio を使ってください。"
                   ].join("\n")
                 : [
                     "Before creating slides, ask the user these questions one at a time, then create a visual DeckSpec:",
@@ -798,7 +893,8 @@ export function createPptcreaterMcpServer(): McpServer {
                     "3. Is this for live presentation, handout, async review, or public sharing?",
                     "4. What slide count, time limit, or section structure is desired?",
                     "5. Are there templates, brand colors, icons, logos, diagrams, or data sources to reuse?",
-                    "After the answers, use search_templates and search_assets, create a DeckSpec with diagrams/icons, run review_content and lint_deck, then render_pptx or render_studio."
+                    "For executive, customer-facing, consulting-style, or internal-friendly business decks, call plan_business_deck after the answers to design sections and page-level emphasis.",
+                    "Then use search_templates and search_assets, create a DeckSpec with diagrams/icons, run review_business_deck, review_content, and lint_deck, then render_pptx or render_studio."
                   ].join("\n")
           }
         }
