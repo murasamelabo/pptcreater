@@ -41,7 +41,7 @@ pptcreater new `
   --content-mode decision
 ```
 
-The starter visuals are generated as native PowerPoint shapes and text boxes where possible, not flattened screenshots. This means cards, labels, roadmap elements, and most architecture/flow ponchi-e diagrams can be edited later in PowerPoint. For any diagram with arrows or connected nodes (architecture, flow, sequence, security, ponchi-e), use `generate_native_diagram` instead of embedding a local SVG as `image.path` or hand-placing `line`/`rightArrow` shapes: omit node `x`/`y` to get an automatic layered layout, and insert the returned `shape`/`text` elements directly into `slide.elements`. The generator preserves the diagram aspect ratio inside the requested slide frame, routes connectors border-to-border, keeps labels as editable text, and returns density warnings when a diagram should be split. Use `generate_diagram` only when you intentionally need a single fixed SVG illustration. (`lint_deck` emits `diagram.native-connectors` for hand-placed arrow diagrams, `diagram.image-svg-not-editable` for large technical SVG images that should be recreated natively, and `diagram.visible-labels-missing` when a diagram SVG contains only boxes/connectors without visible labels.)
+The starter visuals are generated as native PowerPoint shapes and text boxes where possible, not flattened screenshots. This means cards, labels, roadmap elements, and most architecture/flow ponchi-e diagrams can be edited later in PowerPoint. For any diagram with arrows or connected nodes (architecture, flow, sequence, security, ponchi-e), use `generate_native_diagram` instead of embedding a local SVG as `image.path` or hand-placing `line`/`rightArrow` shapes: omit node `x`/`y` to get an automatic layered layout, and insert the returned `shape`/`text` elements directly into `slide.elements`. The generator preserves the diagram aspect ratio inside the requested slide frame, routes connectors border-to-border, keeps labels as editable text, and returns density warnings when a diagram should be split. Use `generate_diagram` only when you intentionally need a single fixed SVG illustration; its SVG fallback now preserves a slide-shaped canvas to avoid squeezed image embeddings. (`lint_deck` emits `diagram.native-connectors` for hand-placed arrow diagrams, blocks `diagram.image-svg-not-editable` for large technical SVG images that should be recreated natively, and blocks `diagram.visible-labels-missing` when a diagram SVG contains only boxes/connectors without visible labels.)
 
 Content modes let agents change the deck taste, and each mode selects a styled built-in template automatically:
 
@@ -93,7 +93,7 @@ Use `pptcreater polish <deck> --output <polished.deck.json>`, `pptcreater render
 
 `visual.richness-missing` and `visual.richness-deck` are also render-blocking: pptcreater should not deliver text-only content slides. Add `generate_native_diagram`, `generate_schematic`, registered icons, images, or card/shape composition so at least 75% of content slides have visual structure.
 
-Lint blocks `layout.text-overflow-risk`, `layout.out-of-bounds`, `layout.text-overlap`, `layout.bad-line-break`, `diagram.visible-labels-missing`, and `visual.svg-text-too-small` so agents must fix overflow, collision, orphan lines, unlabeled diagrams, and unreadably tiny SVG-internal diagram labels before delivering a deck. Content-quality rules from `review_content` are also included in `lint_deck` as warnings/suggestions. `layout.enumeration-hierarchy` warns when body-only enumerations should be converted to callout headings, icons, accent rules, or schematic list/table layouts.
+Lint blocks `layout.text-overflow-risk`, `layout.out-of-bounds`, `layout.text-overlap`, `layout.bad-line-break`, `diagram.visible-labels-missing`, `diagram.image-svg-not-editable`, and `visual.svg-text-too-small` so agents must fix overflow, collision, orphan lines, unlabeled diagrams, flattened technical SVG diagrams, and unreadably tiny SVG-internal diagram labels before delivering a deck. Content-quality rules from `review_content` are also included in `lint_deck` as warnings/suggestions. `layout.enumeration-hierarchy` warns when body-only enumerations should be converted to callout headings, icons, accent rules, or schematic list/table layouts.
 
 For lower cognitive load, use one visual grammar per slide: `table` for comparisons, `tree` for hierarchy, `flow` / `vertical-flow` for processes, `generate_native_diagram` for editable architecture/security/flow ponchi-e diagrams, and `list` / `list-horizontal` for 3-4 key points. Avoid many custom text boxes with uneven manual line breaks. Diagrams must be visually self-explanatory on the slide: do not put the explanation only in `altText`, `summary`, `longDescription`, notes, or a side paragraph while leaving boxes/arrows blank. Keep labels visible as editable text for native diagrams; when embedding SVG diagrams that contain `<text>`, keep the diagram large enough that internal labels remain at least 8pt after scaling, otherwise split the diagram or recreate it with `generate_native_diagram` / `generate_schematic`.
 
@@ -160,14 +160,14 @@ To use it from another terminal after cloning this repository:
 ```powershell
 git clone https://github.com/murasamelabo/pptcreater.git C:\tools\pptcreater
 cd C:\tools\pptcreater
-git checkout v0.1.2
+git checkout v0.1.3
 npm install
 npm run build
 npm link
 pptcreater --help
 ```
 
-For development or quick follow-up, use `main` instead of a release tag. For stable operational use, pin a tag such as `v0.1.2`, record that tag/commit in the consuming project, and update deliberately after smoke testing.
+For development or quick follow-up, use `main` instead of a release tag. For stable operational use, pin a tag such as `v0.1.3`, record that tag/commit in the consuming project, and update deliberately after smoke testing.
 
 ## Updating an existing installation
 
@@ -177,14 +177,14 @@ When `pptcreater` is installed as a normal Git clone, updates are easy to track 
 cd C:\tools\pptcreater
 git status
 git fetch --tags origin
-git checkout v0.1.2
+git checkout v0.1.3
 npm install
 npm run build
 npm link
 pptcreater --help
 ```
 
-If you intentionally track active development, replace `git checkout v0.1.2` with:
+If you intentionally track active development, replace `git checkout v0.1.3` with:
 
 ```powershell
 git checkout main

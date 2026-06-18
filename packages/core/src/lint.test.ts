@@ -288,7 +288,7 @@ describe("DeckSpec linting", () => {
     expect(report.issues.some((issue) => issue.code === "diagram.native-connectors")).toBe(false);
   });
 
-  it("warns when a large technical diagram is embedded as a flattened SVG image", () => {
+  it("blocks when a large technical diagram is embedded as a flattened SVG image", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     deck.metadata.contentMode = "technical";
     deck.slides[0].elements.push({
@@ -308,7 +308,7 @@ describe("DeckSpec linting", () => {
     const report = lintDeckSpec(parseDeckSpec(deck));
     const issue = report.issues.find((item) => item.code === "diagram.image-svg-not-editable");
 
-    expect(issue?.severity).toBe("warning");
+    expect(issue?.severity).toBe("error");
     expect(issue?.message).toMatch(/generate_native_diagram/);
   });
 
@@ -325,6 +325,30 @@ describe("DeckSpec linting", () => {
       description: "Small icon",
       decorative: true,
       readingOrder: 341
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "diagram.image-svg-not-editable")).toBe(false);
+  });
+
+  it("does not block unrelated large SVG illustrations in technical decks", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.title = "Security architecture decision";
+    deck.metadata.subject = "Security architecture decision";
+    deck.metadata.contentMode = "technical";
+    deck.slides[0].elements.push({
+      id: "security-illustration",
+      type: "image",
+      dataUri: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5NjAgNTQwIj48Y2lyY2xlIGN4PSI0ODAiIGN5PSIyNzAiIHI9IjE2MCIgZmlsbD0iI2VmZjZmZiIvPjwvc3ZnPg==",
+      x: 0.7,
+      y: 1.5,
+      w: 12,
+      h: 5.2,
+      description: "Security illustration",
+      decorative: false,
+      altText: "Security illustration",
+      readingOrder: 342
     });
 
     const report = lintDeckSpec(parseDeckSpec(deck));
@@ -361,6 +385,206 @@ describe("DeckSpec linting", () => {
 
     expect(tinySvg?.severity).toBe("error");
     expect(report.ok).toBe(false);
+  });
+
+  it("accounts for SVG group scaling when checking internal text size", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "scaled-svg-diagram",
+      type: "diagram",
+      x: 1,
+      y: 1.6,
+      w: 10,
+      h: 5.6,
+      svg: [
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\">",
+        "<rect width=\"960\" height=\"540\" fill=\"#fff\"/>",
+        "<g transform=\"translate(0 200) scale(0.45)\">",
+        "<text x=\"100\" y=\"120\" font-size=\"14\">Privileged session controls</text>",
+        "<text x=\"520\" y=\"120\" font-size=\"14\">Monitoring response</text>",
+        "</g>",
+        "</svg>"
+      ].join(""),
+      summary: "Scaled SVG diagram",
+      longDescription: "A slide-shaped SVG whose actual diagram content is scaled down inside a group.",
+      decorative: false,
+      altText: "Scaled SVG diagram",
+      readingOrder: 345
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "visual.svg-text-too-small")).toBe(true);
+  });
+
+  it("accounts for SVG matrix scaling when checking internal text size", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "matrix-scaled-svg-diagram",
+      type: "diagram",
+      x: 1,
+      y: 1.6,
+      w: 10,
+      h: 5.6,
+      svg: [
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\">",
+        "<rect width=\"960\" height=\"540\" fill=\"#fff\"/>",
+        "<g transform=\"matrix(0.45 0 0 0.45 0 200)\">",
+        "<text x=\"100\" y=\"120\" font-size=\"14\">Privileged session controls</text>",
+        "</g>",
+        "</svg>"
+      ].join(""),
+      summary: "Matrix scaled SVG diagram",
+      longDescription: "A slide-shaped SVG whose diagram text is scaled down with an SVG matrix transform.",
+      decorative: false,
+      altText: "Matrix scaled SVG diagram",
+      readingOrder: 346
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "visual.svg-text-too-small")).toBe(true);
+  });
+
+  it("prefers inline SVG style font-size over the presentation attribute", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "style-overrides-font-size",
+      type: "diagram",
+      x: 1,
+      y: 1.6,
+      w: 10,
+      h: 5.6,
+      svg: [
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\">",
+        "<rect width=\"960\" height=\"540\" fill=\"#fff\"/>",
+        "<text x=\"100\" y=\"120\" font-size=\"24\" style=\"font-size:6px\">Looks small</text>",
+        "</svg>"
+      ].join(""),
+      summary: "Style override SVG diagram",
+      longDescription: "A slide-shaped SVG where inline style overrides the presentation font-size attribute.",
+      decorative: false,
+      altText: "Style override SVG diagram",
+      readingOrder: 346
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "visual.svg-text-too-small")).toBe(true);
+  });
+
+  it("accounts for inherited SVG font sizes when checking scaled text", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "inherited-scaled-svg-diagram",
+      type: "diagram",
+      x: 1,
+      y: 1.6,
+      w: 10,
+      h: 5.6,
+      svg: [
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\">",
+        "<rect width=\"960\" height=\"540\" fill=\"#fff\"/>",
+        "<g transform=\"translate(0 200) scale(0.45)\" font-size=\"14\">",
+        "<text x=\"100\" y=\"120\">Privileged session controls</text>",
+        "<text x=\"520\" y=\"120\">Monitoring response</text>",
+        "</g>",
+        "</svg>"
+      ].join(""),
+      summary: "Inherited font SVG diagram",
+      longDescription: "A slide-shaped SVG whose actual diagram content inherits font size from a scaled group.",
+      decorative: false,
+      altText: "Inherited font SVG diagram",
+      readingOrder: 347
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "visual.svg-text-too-small")).toBe(true);
+  });
+
+  it("accounts for tspan SVG font sizes when checking scaled text", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "tspan-scaled-svg-diagram",
+      type: "diagram",
+      x: 1,
+      y: 1.6,
+      w: 10,
+      h: 5.6,
+      svg: [
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\">",
+        "<rect width=\"960\" height=\"540\" fill=\"#fff\"/>",
+        "<g transform=\"translate(0 200) scale(0.45)\">",
+        "<text x=\"100\" y=\"120\"><tspan font-size=\"14\">Privileged session controls</tspan></text>",
+        "</g>",
+        "</svg>"
+      ].join(""),
+      summary: "Tspan font SVG diagram",
+      longDescription: "A slide-shaped SVG whose actual diagram content stores font size on a scaled tspan.",
+      decorative: false,
+      altText: "Tspan font SVG diagram",
+      readingOrder: 348
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "visual.svg-text-too-small")).toBe(true);
+  });
+
+  it("does not apply parent text font size when a tspan overrides all visible text", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "tspan-readable-override",
+      type: "diagram",
+      x: 1,
+      y: 1.6,
+      w: 10,
+      h: 5.6,
+      svg: [
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\">",
+        "<rect width=\"960\" height=\"540\" fill=\"#fff\"/>",
+        "<text x=\"100\" y=\"120\" font-size=\"6\"><tspan font-size=\"24\">Readable override</tspan></text>",
+        "</svg>"
+      ].join(""),
+      summary: "Tspan override diagram",
+      longDescription: "A slide-shaped SVG where visible text overrides a smaller parent text font size.",
+      decorative: false,
+      altText: "Tspan override diagram",
+      readingOrder: 349
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "visual.svg-text-too-small")).toBe(false);
+  });
+
+  it("does not apply unrelated non-text SVG group scaling to readable labels", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "scaled-icon-readable-text",
+      type: "diagram",
+      x: 1,
+      y: 1.6,
+      w: 10,
+      h: 5.6,
+      svg: [
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\">",
+        "<rect width=\"960\" height=\"540\" fill=\"#fff\"/>",
+        "<g transform=\"translate(40 40) scale(0.08)\"><circle cx=\"80\" cy=\"80\" r=\"40\" fill=\"#1d4ed8\"/></g>",
+        "<text x=\"120\" y=\"160\" font-size=\"24\">Readable diagram label</text>",
+        "</svg>"
+      ].join(""),
+      summary: "Readable SVG diagram",
+      longDescription: "A slide-shaped SVG with readable text and an unrelated scaled decorative icon group.",
+      decorative: false,
+      altText: "Readable SVG diagram",
+      readingOrder: 346
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "visual.svg-text-too-small")).toBe(false);
   });
 
   it("blocks non-decorative diagram SVGs that only contain unlabeled shapes and connectors", () => {

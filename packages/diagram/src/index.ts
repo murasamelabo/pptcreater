@@ -1114,8 +1114,10 @@ export function renderPonchiDiagram(input: unknown): { svg: string; summary: str
   const diagram = PonchiDiagramSchema.parse(input);
   const layout = resolveLayout(diagram);
   const placedNodes = layout.nodes;
-  const canvasWidth = layout.width;
-  const canvasHeight = layout.height;
+  const layoutWidth = layout.width;
+  const layoutHeight = layout.height;
+  const canvasWidth = diagram.width;
+  const canvasHeight = diagram.height;
   const nodesById = new Map(placedNodes.map((node) => [node.id, node]));
 
   const groups = diagram.groups
@@ -1151,21 +1153,28 @@ export function renderPonchiDiagram(input: unknown): { svg: string; summary: str
         bidirectional: arrow.bidirectional,
         orthogonal: arrow.style === "orthogonal",
         label: arrow.label,
-        bypass: arrow.style === "orthogonal" ? bypassFor(from, to, placedNodes, diagram.direction, canvasWidth, canvasHeight) : undefined
+        bypass: arrow.style === "orthogonal" ? bypassFor(from, to, placedNodes, diagram.direction, layoutWidth, layoutHeight) : undefined
       });
     })
     .join("");
 
   const nodes = placedNodes.map((node) => ponchiNode(node)).join("");
+  const scale = Math.min(canvasWidth / layoutWidth, canvasHeight / layoutHeight);
+  const contentWidth = layoutWidth * scale;
+  const contentHeight = layoutHeight * scale;
+  const originX = (canvasWidth - contentWidth) / 2;
+  const originY = (canvasHeight - contentHeight) / 2;
+  const content =
+    Math.abs(scale - 1) < 0.001 && Math.abs(originX) < 0.001 && Math.abs(originY) < 0.001
+      ? [groups, arrows, nodes].join("")
+      : `<g transform="translate(${originX.toFixed(1)} ${originY.toFixed(1)}) scale(${scale.toFixed(4)})">${[groups, arrows, nodes].join("")}</g>`;
 
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${canvasWidth} ${canvasHeight}" role="img">`,
     `<title>${escapeXml(diagram.title)}</title>`,
     `<desc>${escapeXml(diagram.longDescription)}</desc>`,
     `<rect width="${canvasWidth}" height="${canvasHeight}" fill="#ffffff" />`,
-    groups,
-    arrows,
-    nodes,
+    content,
     "</svg>"
   ].join("");
 

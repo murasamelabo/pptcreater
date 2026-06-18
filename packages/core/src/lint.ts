@@ -77,12 +77,13 @@ function isSvgImageElement(element: SlideElement): boolean {
 }
 
 function isLikelyDiagramImage(element: Extract<SlideElement, { type: "image" }>, deck: DeckSpec): boolean {
-  const clueText = [element.id, element.path, element.description, element.altText, deck.metadata.subject, deck.metadata.contentMode, deck.title]
+  const clueText = [element.id, element.path, element.description, element.altText]
     .filter((value): value is string => Boolean(value))
     .join(" ");
-  const diagramPattern = /diagram|architecture|flow|schematic|ponchi|marketplace|governance|control|policy|decision|security|構成|構成図|図解|フロー|ポンチ|統制|管理|判定|セキュリティ/iu;
+  const diagramPattern =
+    /diagram|architecture|flow|schematic|ponchi|access[-_\s]?model|enterprise[-_\s]?access|privileged[-_\s]?(?:access|session)|session[-_\s]?control|control[-_\s]?(?:chain|plane|model|diagram)|policy[-_\s]?(?:flow|model|diagram)|decision[-_\s]?(?:tree|flow|model|diagram)|security[-_\s]?(?:architecture|model|diagram)|tier[-_\s]?(?:model|to)|marketplace[-_\s]?(?:architecture|flow|model|diagram)|(?:architecture|flow|model|diagram)[-_\s]?marketplace|構成図|図解|フロー|ポンチ|(?:統制|管理|判定|セキュリティ).*(?:構成|図|モデル|フロー)/iu;
 
-  return deck.metadata.contentMode === "technical" || diagramPattern.test(clueText);
+  return diagramPattern.test(clueText);
 }
 
 function isGeneratedNativeDiagramConnector(element: ShapeElement): boolean {
@@ -156,23 +157,80 @@ function parseSvgViewBox(svg: string): { width: number; height: number } | undef
   return parsedWidth > 0 && parsedHeight > 0 ? { width: parsedWidth, height: parsedHeight } : undefined;
 }
 
-function svgFontSizes(svg: string): number[] {
-  const sizes = new Set<number>();
-  const regexes = [
-    /\bfont-size\s*=\s*["']\s*([0-9.]+)(?:px|pt)?\s*["']/giu,
-    /\bfont-size\s*:\s*([0-9.]+)(?:px|pt)?/giu
-  ];
+function svgTransformScale(attributes: string): number {
+  let scale = 1;
+  for (const match of attributes.matchAll(/\btransform\s*=\s*["'][^"']*\bscale\(\s*([-+]?\d*\.?\d+)(?:[\s,]+([-+]?\d*\.?\d+))?\s*\)/giu)) {
+    const xScale = Math.abs(Number(match[1]));
+    const yScale = Math.abs(Number(match[2] ?? match[1]));
+    if (Number.isFinite(xScale) && Number.isFinite(yScale) && xScale > 0 && yScale > 0) {
+      scale *= Math.min(xScale, yScale);
+    }
+  }
+  for (const match of attributes.matchAll(/\btransform\s*=\s*["'][^"']*\bmatrix\(\s*([-+]?\d*\.?\d+)[\s,]+([-+]?\d*\.?\d+)[\s,]+([-+]?\d*\.?\d+)[\s,]+([-+]?\d*\.?\d+)[\s,]+[-+]?\d*\.?\d+[\s,]+[-+]?\d*\.?\d+\s*\)/giu)) {
+    const a = Number(match[1]);
+    const b = Number(match[2]);
+    const c = Number(match[3]);
+    const d = Number(match[4]);
+    const xScale = Math.hypot(a, b);
+    const yScale = Math.hypot(c, d);
+    if (Number.isFinite(xScale) && Number.isFinite(yScale) && xScale > 0 && yScale > 0) {
+      scale *= Math.min(xScale, yScale);
+    }
+  }
 
-  regexes.forEach((regex) => {
-    for (const match of svg.matchAll(regex)) {
-      const size = Number(match[1]);
-      if (Number.isFinite(size) && size > 0) {
-        sizes.add(size);
+  return scale;
+}
+
+function svgFontSizeFromAttributes(attributes: string): number | undefined {
+  const direct = /\bfont-size\s*=\s*["']\s*([0-9.]+)(?:px|pt)?\s*["']/iu.exec(attributes);
+  const styled = /\bfont-size\s*:\s*([0-9.]+)(?:px|pt)?/iu.exec(attributes);
+  const size = Number(styled?.[1] ?? direct?.[1]);
+  return Number.isFinite(size) && size > 0 ? size : undefined;
+}
+
+function svgVisibleTextFontSizes(svg: string): number[] {
+  const invisibleContainers = new Set(["clippath", "defs", "filter", "lineargradient", "marker", "mask", "metadata", "pattern", "radialgradient", "script", "style", "symbol"]);
+  const stack: Array<{ tag: string; hidden: boolean; scale: number; fontSize?: number }> = [];
+  const sizes: number[] = [];
+  const tagPattern = /<\s*(\/?)([a-zA-Z][\w:-]*)([^<>]*?)(\/?)\s*>/gu;
+
+  for (const match of svg.matchAll(tagPattern)) {
+    const isClosing = match[1] === "/";
+    const tag = (match[2] ?? "").toLowerCase();
+
+    if (isClosing) {
+      for (let index = stack.length - 1; index >= 0; index -= 1) {
+        if (stack[index].tag === tag) {
+          stack.splice(index);
+          break;
+        }
+      }
+      continue;
+    }
+
+    const attributes = match[3] ?? "";
+    const parent = stack[stack.length - 1];
+    const inheritedHidden = stack.some((entry) => entry.hidden);
+    const hidden = inheritedHidden || invisibleContainers.has(tag) || isHiddenSvgAttributes(attributes);
+    const scale = (parent?.scale ?? 1) * svgTransformScale(attributes);
+    const fontSize = svgFontSizeFromAttributes(attributes) ?? parent?.fontSize;
+
+    if ((tag === "text" || tag === "tspan") && !hidden && fontSize) {
+      const contentStart = match.index + match[0].length;
+      const closeMatch = new RegExp(`</\\s*${tag}\\s*>`, "iu").exec(svg.slice(contentStart));
+      const content = closeMatch ? svg.slice(contentStart, contentStart + closeMatch.index) : "";
+      const visibleText = tag === "text" ? stripDirectSvgTextContent(content) : stripSvgTextContent(content);
+      if (visibleText.length > 0) {
+        sizes.push(fontSize * scale);
       }
     }
-  });
 
-  return [...sizes];
+    if (match[4] !== "/") {
+      stack.push({ tag, hidden, scale, fontSize });
+    }
+  }
+
+  return sizes;
 }
 
 function stripSvgTextContent(content: string): string {
@@ -185,6 +243,34 @@ function stripSvgTextContent(content: string): string {
     .replace(/&quot;/giu, '"')
     .replace(/&#39;/gu, "'")
     .trim();
+}
+
+function stripDirectSvgTextContent(content: string): string {
+  let direct = "";
+  let depth = 0;
+  let cursor = 0;
+  const tagPattern = /<\s*(\/?)([a-zA-Z][\w:-]*)(?:\s[^<>]*?)?(\/?)\s*>/gu;
+
+  for (const match of content.matchAll(tagPattern)) {
+    if (depth === 0 && match.index > cursor) {
+      direct += content.slice(cursor, match.index);
+    }
+
+    const closing = match[1] === "/";
+    const selfClosing = match[3] === "/";
+    if (closing) {
+      depth = Math.max(0, depth - 1);
+    } else if (!selfClosing) {
+      depth += 1;
+    }
+    cursor = match.index + match[0].length;
+  }
+
+  if (depth === 0 && cursor < content.length) {
+    direct += content.slice(cursor);
+  }
+
+  return stripSvgTextContent(direct);
 }
 
 function svgAttributeValue(attributes: string, name: string): string | undefined {
@@ -303,7 +389,7 @@ function lintVisibleDiagramLabels(element: Extract<SlideElement, { type: "svg" |
 
 function lintEmbeddedSvgText(element: Extract<SlideElement, { type: "svg" | "diagram" }>, path: string): LintIssue[] {
   const viewBox = parseSvgViewBox(element.svg);
-  const fontSizes = svgFontSizes(element.svg);
+  const fontSizes = svgVisibleTextFontSizes(element.svg);
   if (!viewBox || fontSizes.length === 0) {
     return [];
   }
@@ -521,9 +607,9 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
     if (element.type === "image" && !element.decorative && isSvgImageElement(element) && element.w * element.h >= 8 && isLikelyDiagramImage(element, deck)) {
       issues.push(
         issue(
-          "warning",
+          "error",
           "diagram.image-svg-not-editable",
-          "This looks like a diagram embedded as an SVG image, so labels and boxes will be flattened and may become hard to edit or read after scaling. Recreate architecture/flow/ponchi-e visuals with generate_native_diagram so PowerPoint shapes, connectors, and labels stay editable; use image SVG only when exact fidelity is required.",
+          "This looks like a diagram embedded as an SVG image, so labels and boxes would be flattened and may become hard to edit or read after scaling. Recreate architecture/flow/ponchi-e visuals with generate_native_diagram so PowerPoint shapes, connectors, and labels stay editable; use image SVG only for small icons or when exact fidelity is required.",
           path,
           { renderedArea: Number((element.w * element.h).toFixed(2)) }
         )

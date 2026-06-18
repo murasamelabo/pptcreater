@@ -143,7 +143,7 @@ describe("ponchi diagram rendering", () => {
     expect(rendered.svg).toContain("…");
   });
 
-  it("auto-lays-out nodes when coordinates are omitted and sizes the canvas to fit", () => {
+  it("auto-lays-out nodes when coordinates are omitted and preserves the requested slide canvas", () => {
     const rendered = renderPonchiDiagram({
       title: "Auto layout",
       summary: "no coordinates",
@@ -159,10 +159,12 @@ describe("ponchi diagram rendering", () => {
       ]
     });
 
-    // A three-node chain lays out across three columns, so the canvas is wider than one node.
+    // A three-node chain is scaled into the default 16:9 canvas so SVG image fallback never distorts.
     const viewBox = rendered.svg.match(/viewBox="0 0 (\d+(?:\.\d+)?) (\d+(?:\.\d+)?)"/);
     expect(viewBox).not.toBeNull();
-    expect(Number(viewBox![1])).toBeGreaterThan(Number(viewBox![2]));
+    expect(Number(viewBox![1])).toBe(960);
+    expect(Number(viewBox![2])).toBe(540);
+    expect(rendered.svg).toContain("<g transform=");
     expect(rendered.svg).toContain("<polygon");
   });
 

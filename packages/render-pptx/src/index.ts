@@ -137,7 +137,6 @@ async function inlineLocalImagePaths(deck: DeckSpec): Promise<DeckSpec> {
 
           return {
             ...element,
-            path: undefined,
             dataUri: await localImagePathToDataUri(element.path)
           };
         })
