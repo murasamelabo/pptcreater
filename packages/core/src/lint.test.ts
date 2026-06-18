@@ -341,6 +341,36 @@ describe("DeckSpec linting", () => {
     expect(report.ok).toBe(false);
   });
 
+  it("flags common Japanese continuation fragments inside bullet lists", () => {
+    const brokenTexts = [
+      "• 条件を確認す\nることが必要",
+      "• Zero Trustを適用し\nている状態",
+      "• ID侵害を保護でき\nない場合",
+      "• 自動遮断を実行でき\nるようにする",
+      "• ID侵害\nを保護",
+      "• 事前\nに確認",
+      "• MFA\nを保護",
+      "• Zero Trust\nを適用"
+    ];
+
+    for (const text of brokenTexts) {
+      const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+      const body = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "body");
+      if (body?.type === "text") {
+        body.text = text;
+        body.w = 5;
+        body.h = 1.2;
+        body.fontSize = 16;
+      }
+
+      const report = lintDeckSpec(parseDeckSpec(deck));
+      const badBreak = report.issues.find((issue) => issue.code === "layout.bad-line-break");
+
+      expect(badBreak?.severity).toBe("error");
+      expect(report.ok).toBe(false);
+    }
+  });
+
   it("flags empty bullet markers before wrapped content", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     const body = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "body");
@@ -374,18 +404,43 @@ describe("DeckSpec linting", () => {
   });
 
   it("allows compact Japanese label-value structures", () => {
-    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
-    const body = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "body");
-    if (body?.type === "text") {
-      body.text = "指標\n値";
-      body.w = 2;
-      body.h = 0.8;
-      body.fontSize = 20;
+    const compactTexts = ["指標\n値", "リスク\n状態", "サービス\n入口"];
+
+    for (const text of compactTexts) {
+      const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+      const body = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "body");
+      if (body?.type === "text") {
+        body.text = text;
+        body.w = 2;
+        body.h = 0.8;
+        body.fontSize = 20;
+      }
+
+      const report = lintDeckSpec(parseDeckSpec(deck));
+
+      expect(report.issues.some((issue) => issue.code === "layout.bad-line-break")).toBe(false);
     }
+  });
 
-    const report = lintDeckSpec(parseDeckSpec(deck));
+  it("flags compact Japanese continuation fragments outside bullet lists", () => {
+    const brokenTexts = ["確認す\nること", "適用し\nている状態", "保護でき\nない場合"];
 
-    expect(report.issues.some((issue) => issue.code === "layout.bad-line-break")).toBe(false);
+    for (const text of brokenTexts) {
+      const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+      const body = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "body");
+      if (body?.type === "text") {
+        body.text = text;
+        body.w = 2.8;
+        body.h = 0.9;
+        body.fontSize = 20;
+      }
+
+      const report = lintDeckSpec(parseDeckSpec(deck));
+      const badBreak = report.issues.find((issue) => issue.code === "layout.bad-line-break");
+
+      expect(badBreak?.severity).toBe("error");
+      expect(report.ok).toBe(false);
+    }
   });
 
   it("still flags punctuation-only compact line breaks", () => {

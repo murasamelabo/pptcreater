@@ -32,6 +32,7 @@ const NO_BREAK_BEFORE_PATTERN = /[、。，．・,.!?！？:：;；)\]\}）」�
 const NO_BREAK_AFTER_PATTERN = /[（「『【〔｛(\[\{〈《]/;
 // Letters, digits, kana, and kanji count as line "content"; punctuation does not.
 const CONTENT_CHAR_PATTERN = /[A-Za-z0-9\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
+const JAPANESE_SCRIPT_PATTERN = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
 // Full-width glyphs (kana, kanji, prolonged-sound mark, middle dot, full-width forms) take ~1 em.
 const FULL_WIDTH_PATTERN = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}\u30FC\u30FB\uFF01-\uFF60\uFFE0-\uFFE6]/u;
 // A kanji (Han) ideograph; adjacent Han glyphs stay together so compounds like 削除 are not split.
@@ -388,8 +389,28 @@ function isListMarkerOnly(value: string): boolean {
   return /^(?:[-*•・✓✔]|\d+[.)．、]|[（(]?\d+[）)]|[A-Za-z][.)])\s*$/.test(value.trim());
 }
 
-function startsWithBadJapaneseContinuation(value: string): boolean {
-  return /^[ぁ-んー]\p{Script=Han}/u.test(value.trim());
+function startsWithBadJapaneseContinuation(previous: string, value: string): boolean {
+  const prior = previous.trim();
+  const current = value.trim();
+  if (!JAPANESE_SCRIPT_PATTERN.test(current)) {
+    return false;
+  }
+
+  if (/^[ぁ-んー]\p{Script=Han}/u.test(current)) {
+    return true;
+  }
+
+  if (!JAPANESE_SCRIPT_PATTERN.test(prior)) {
+    return false;
+  }
+
+  if (!/[\p{Script=Hiragana}]$/u.test(prior)) {
+    return false;
+  }
+
+  return /^(?:る(?:こと|ため|場合|状態|入口|よう|$)|れ(?:る|ば|た|て)|られ(?:る|た|て)|て(?:いる|いない|おり|ある|ない|ください|しま|も|は|、|$)|で(?:いる|いない|おり|ある|ない|も|は|、|$)|ない(?:場合|こと|ため|状態|$)|ます|ました|ません|して|した|する|され|いる|いない|おり|ある|あり|なる|なり|きる|できる|できない|こと|ため|もの|場合|状態|入口)/u.test(
+    current
+  );
 }
 
 function isBadContinuationLine(previous: string, current: string): boolean {
@@ -403,7 +424,7 @@ function isBadContinuationLine(previous: string, current: string): boolean {
     return true;
   }
 
-  return previous.trim().length > 0 && startsWithBadJapaneseContinuation(trimmed);
+  return previous.trim().length > 0 && startsWithBadJapaneseContinuation(previous, trimmed);
 }
 
 function shouldReflowManualLines(lines: string[], unitsPerLine: number): boolean {
@@ -535,12 +556,12 @@ export function findTextLineBreakIssue(element: TextElement): string | undefined
   for (let index = 1; index < lines.length; index += 1) {
     const line = lines[index];
     const contentChars = Array.from(line).filter((char) => CONTENT_CHAR_PATTERN.test(char)).length;
-    if (contentChars <= 1 && !isAcceptableShortLine(line) && !isCompactLabelValue) {
-      return `Line "${line}" is an orphan; rebalance the line break, widen the box, or shorten the copy.`;
+    if (startsWithBadJapaneseContinuation(lines[index - 1], line)) {
+      return `Line "${line}" looks like a broken continuation; rebalance the line break, widen the box, or shorten the copy.`;
     }
 
-    if (!isCompactLabelValue && isBadContinuationLine(lines[index - 1], line)) {
-      return `Line "${line}" looks like a broken continuation; rebalance the line break, widen the box, or shorten the copy.`;
+    if (contentChars <= 1 && !isAcceptableShortLine(line) && !isCompactLabelValue) {
+      return `Line "${line}" is an orphan; rebalance the line break, widen the box, or shorten the copy.`;
     }
   }
 
