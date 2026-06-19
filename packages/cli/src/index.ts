@@ -134,7 +134,7 @@ const program = new Command();
 program
   .name("pptcreater")
   .description("Create concise accessible PowerPoint decks from DeckSpec.")
-  .version("0.2.0")
+  .version("0.2.1")
   .option("--language <locale>", "CLI output language: ja-JP or en-US");
 
 program
