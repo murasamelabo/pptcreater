@@ -70,9 +70,9 @@ export const BUILTIN_SKILL_PACKS: SkillPack[] = [
     rules: [
       "Use one bold assertion title per slide",
       "Before writing slide copy, choose the content mode and run review_content: Japanese report/technical decks split topic title + slide message, while English executive decks use action titles",
-      "Prefer modular cards, timelines, flows, and dashboard-like blocks over paragraphs",
+      "Prefer modular cards, timelines, flows, schematic presets, and dashboard-like blocks over paragraphs",
       "Use generous whitespace and one restrained accent color",
-      "Use editable native PowerPoint shapes/text for simple cards and dividers; for any diagram with arrows or connected nodes, use generate_diagram (ponchi-e, omit node x/y for automatic layout) or generate_schematic so connectors stay attached and clean — never hand-place line/rightArrow shapes as connectors",
+      "Use editable native PowerPoint shapes/text for simple cards and dividers; choose a built-in schematic preset for structured comparison/hierarchy/process/analysis slides, and for any freeform diagram with arrows or connected nodes use generate_diagram (ponchi-e, omit node x/y for automatic layout) — never hand-place line/rightArrow shapes as connectors",
       "Use source visuals as inspiration or recreate them as editable objects unless exact quotation is required and rights are clear",
       "Run polish_deck_layout and lint_deck before render_pptx"
     ],
@@ -88,8 +88,8 @@ export const BUILTIN_SKILL_PACKS: SkillPack[] = [
     rules: [
       "最初に目的、聴衆、利用場面、期待する行動を確認する",
       "contentMode に応じて見出しを変える: report/technical/handout は「短い話題タイトル + 50字以内のスライドメッセージ」、presentation/decision は3秒で要点が伝わる短い主張タイトル",
-      "各スライドに図、アイコン、データ表現、比較カードのいずれかを入れる",
-      "矢印やノードのつながりがある図は generate_diagram（ポンチ絵、ノードの x/y を省略すれば自動レイアウト）か generate_schematic を使い、line/rightArrow を手で並べて接続線を作らない",
+      "各スライドに図、アイコン、データ表現、比較カード、または schematic プリセットのいずれかを入れる",
+      "比較・階層・工程・分析・集合などの構造化図解は schematic プリセットを使い、矢印やノードのつながりがある自由図解は generate_diagram（ポンチ絵、ノードの x/y を省略すれば自動レイアウト）を使う。line/rightArrow を手で並べて接続線を作らない",
       "発表用と配布用で情報密度を変える",
       "生成後はlint_deckで読み順、alt text、コントラスト、文字量を確認する"
     ],
@@ -138,8 +138,8 @@ export const BUILTIN_SKILL_PACKS: SkillPack[] = [
       "Clarify purpose, audience, delivery context, and desired action first",
       "Use assertion titles that pass the three-second glance test",
       "Run review_content and adjust title/message/body rules for presentation, report, technical, handout, or decision mode",
-      "Include a diagram, icon, data visual, comparison card, or process visual on each slide",
-      "For any diagram with arrows or connected nodes use generate_diagram (ponchi-e; omit node x/y for automatic layout) or generate_schematic — never hand-place line/rightArrow shapes as connectors",
+      "Include a diagram, icon, data visual, comparison card, process visual, or schematic preset on each slide",
+      "Use schematic presets for structured comparison/hierarchy/process/analysis/grouping visuals, and use generate_diagram (ponchi-e; omit node x/y for automatic layout) for freeform connected diagrams — never hand-place line/rightArrow shapes as connectors",
       "Adjust information density for live presentation versus handout use",
       "Run lint_deck after generation to verify reading order, alt text, contrast, and text density"
     ],

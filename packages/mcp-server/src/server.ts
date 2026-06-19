@@ -4,7 +4,7 @@ import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, resolveIconForKeyword, searchAllSvgAssets, suggestIconForKeyword } from "@pptcreater/assets-svg";
-import { DiagramIntentSchema, renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram } from "@pptcreater/diagram";
+import { DiagramIntentSchema, SCHEMATIC_KIND_CATALOG, SCHEMATIC_STYLE_PRESETS, SchematicKindSchema, SchematicToneSchema, renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram, schematicPresetForStyleProfile } from "@pptcreater/diagram";
 import {
   BUSINESS_STYLE_MODES,
   createEditWithCopilotPrompt,
@@ -867,22 +867,41 @@ export function createPptcreaterMcpServer(): McpServer {
     {
       title: "Generate Slideland-style schematic",
       description:
-        "Generate a safe, presentation-ready schematic SVG from a preset kind. Prefer this over freehand SVG when creating tables, trees, horizontal/vertical flows, lists, or mockup-style visuals.",
+        "Generate a safe, presentation-ready schematic SVG from a preset kind. Prefer this over freehand SVG when creating `table`, `tree`, `flow`, `vertical-flow`, `cycle`, `before-after`, `map`, `puzzle`, `correlation`, `matrix`, `venn`, `cross`, `set`, `contrast`, `scale-contrast`, `grow`, `layer`, `triangle`, `step`, `gantt`, `ranking`, `list`, `list-horizontal`, `list-enumeration`, or `mockup` visuals.",
       inputSchema: {
         schematic: z.object({
-          kind: z.enum(["table", "tree", "flow", "vertical-flow", "list", "list-horizontal", "list-enumeration", "mockup"]),
+          kind: SchematicKindSchema,
           title: z.string().min(1),
           summary: z.string().min(1),
           longDescription: z.string().min(20),
           items: z.array(z.string().min(1)).min(1).max(8),
           secondaryItems: z.array(z.string().min(1)).max(8).default([]),
-          tone: z.enum(["minimal", "cool", "luxury", "report"]).default("minimal"),
+          tone: SchematicToneSchema,
+          axisX: z.string().min(1).optional(),
+          axisY: z.string().min(1).optional(),
           width: z.number().min(960).default(960),
           height: z.number().min(540).default(540)
         })
       }
     },
     async ({ schematic }) => jsonText(renderSchematicDiagram(schematic))
+  );
+
+  server.registerTool(
+    "list_schematic_presets",
+    {
+      title: "List schematic presets",
+      description: "List Slideland-style schematic kinds and mode-aware presets. Use this before selecting a schematic kind for a slide.",
+      inputSchema: {
+        styleProfile: z.enum(["minimal", "stylish", "report", "presentation", "technical"]).optional()
+      }
+    },
+    async ({ styleProfile }) =>
+      jsonText({
+        selected: schematicPresetForStyleProfile(styleProfile),
+        presets: SCHEMATIC_STYLE_PRESETS,
+        kinds: SCHEMATIC_KIND_CATALOG
+      })
   );
 
   server.registerTool(
@@ -1085,7 +1104,7 @@ export function createPptcreaterMcpServer(): McpServer {
               version: "0.1",
               description: "Use get_slide_creation_rules before manually writing DeckSpec so the first draft stays inside layout/content/visual constraints. Use create_pptx/create_powerpoint for direct PPTX requests. Use create_deck for examples and lint_deck before render_pptx/render_powerpoint when manually editing a DeckSpec. If MCP render tools are not visible, use CLI `pptcreater render <deck.json> --output <deck.pptx> --polish`; never use PowerPoint COM for normal output.",
               templateField: "DeckSpec.template must be the id of a template returned by search_templates. Register reusable custom templates with register_template.",
-              assetFlow: "Use search_assets to find registered SVG assets. Use generate_intent_diagram when the user gives an intended conceptual diagram or exact ponchi-e granularity to preserve, generate_native_diagram for general architecture/network/sequence/security ponchi-e diagrams that should remain editable in PowerPoint, generate_schematic for table/tree/flow/list/mockup visuals, generate_diagram only when a single fixed SVG illustration is required, and register_svg_asset for reusable SVGs. If research produces local SVG/PNG/JPEG/GIF/WebP files, keep them inside the workspace, reference them with DeckSpec image.path only for logos/photos/source quotes/exact-fidelity figures, and still call render_pptx/render_powerpoint or CLI `pptcreater render`; do not switch to PowerPoint COM or ad-hoc PPTX generation.",
+              assetFlow: "Use search_assets to find registered SVG assets. Use generate_intent_diagram when the user gives an intended conceptual diagram or exact ponchi-e granularity to preserve, generate_native_diagram for general architecture/network/sequence/security ponchi-e diagrams that should remain editable in PowerPoint, generate_schematic for structured Slideland-style visuals (table/tree/flow/vertical-flow/cycle/before-after/map/puzzle/correlation/matrix/venn/cross/set/contrast/scale-contrast/grow/layer/triangle/step/gantt/ranking/list/list-horizontal/list-enumeration/mockup), generate_diagram only when a single fixed SVG illustration is required, and register_svg_asset for reusable SVGs. If research produces local SVG/PNG/JPEG/GIF/WebP files, keep them inside the workspace, reference them with DeckSpec image.path only for logos/photos/source quotes/exact-fidelity figures, and still call render_pptx/render_powerpoint or CLI `pptcreater render`; do not switch to PowerPoint COM or ad-hoc PPTX generation.",
               shapeFlow: "Use native shape/text elements for editable cards, dividers, badges, accent bars, and generator-created ponchi-e diagrams. Do NOT hand-place line/rightArrow shapes for connected architecture/flow diagrams: use generate_native_diagram so spacing, border-to-border connector routing, labels, and reading order are generated consistently.",
               diagramFlow: "When a diagram has an intended composition, first encode it as a Diagram Intent and call generate_intent_diagram. This is stricter than generate_native_diagram: it preserves conceptual granularity for patterns such as access-plane-map and closed-privileged-path. For general ponchi-e graphs, generate_native_diagram returns DeckSpec shape/text elements, not SVG/image. Insert its elements directly into slide.elements to keep nodes, labels, group lanes, and connectors editable in PowerPoint. Omit node x/y to get automatic layered layout — supply only nodes (id, label, kind) and arrows (from, to), set direction 'LR'/'TB', and optionally node.layer/lane to steer placement. Use arrow.style 'orthogonal', arrow.bidirectional, arrow.label, node.sublabel, and node.emphasis for hierarchy. Use generate_diagram SVG only when you intentionally need a fixed single illustration.",
               businessFlow: "For consulting-style, executive, customer-facing, important meeting, or internal-friendly business decks, call plan_business_deck before writing DeckSpec. It creates purpose/audience/reader-action framing, 3-5 section architecture, slide-level message/evidence/reading-path plans, and human-review flags. After DeckSpec generation, call review_business_deck alongside review_content and lint_deck.",
@@ -1093,11 +1112,11 @@ export function createPptcreaterMcpServer(): McpServer {
               layoutGuardrails: "render_pptx and finalize_deck always apply layout polish (token-aware Japanese/Latin wrapping, font auto-fit, manual-break reflow) and reading-order normalization before drawing, so most overflow, mid-word/kanji splits, orphaned punctuation, and decorative-over-text overlaps are fixed automatically. Lint reports these polish-fixable codes (layout.text-overflow-risk, layout.bad-line-break, layout.text-too-small-to-read, layout.card-accent-bar-unshaped, element.reading-order-duplicate) as errors with polishFixable:true — do NOT hand-edit copy for them; one polish/finalize pass resolves them. Rendering still blocks only when content genuinely cannot fit (a box far too small even at the minimum font), low contrast, missing alt text, duplicate ids, out-of-bounds shapes, or SVG-internal diagram text that would render below 8pt; the error lists each offending code and path. Fix those by shortening copy, enlarging the box/diagram, reducing labels, moving dense content into generate_intent_diagram/generate_native_diagram/generate_schematic, or splitting dense diagrams across slides.",
               finishFlow: "To finish a deck in ONE pass, call finalize_deck (deck + outputPath) instead of separate polish_deck_layout + lint_deck + render_pptx. It polishes, lints, and renders together and returns blockingErrors (the only items you must hand-fix), polishFixable (auto-resolved), and warnings. This avoids the slow edit→lint→polish→render loop. CLI equivalent: pptcreater finalize <deck.json> --output <deck.pptx>.",
               researchPerformance: "Do not run blocking shell web-search commands (PowerShell Invoke-WebRequest/Invoke-RestMethod scraping, curl loops) to gather sources — they can hang for many minutes and dominate runtime. Use the host's documentation/fetch/search tools instead, fetch sources in parallel, and keep research scoped to what the deck needs.",
-              cognitiveLoad: "Use one visual grammar per slide. Prefer table for comparisons, tree for hierarchy, generate_intent_diagram for known concept compositions/granularity, generate_native_diagram for general architecture/security/flow with editable connectors, flow/vertical-flow for processes, and list/list-horizontal for 3-4 key points. Avoid many custom text boxes with uneven manual line breaks or body-only enumerations. Let layout polish wrap Japanese text instead of hand-coding line breaks. Content slides must not be text-only: fix visual.richness-missing and visual.richness-deck by adding generate_schematic, generate_intent_diagram, generate_native_diagram, registered icons, images, or card/shape composition so at least 75% of content slides have visual structure. When embedding SVG diagrams, keep internal labels at least 8pt after scaling or recreate/split them.",
+              cognitiveLoad: "Use one visual grammar per slide. Call list_schematic_presets before choosing a structured diagram kind. Prefer table/contrast for comparisons, tree/layer for hierarchy, flow/vertical-flow/cycle/step for processes, matrix/scale-contrast/grow/ranking for analysis, gantt for schedules, venn/set/puzzle/correlation/map for conceptual grouping, generate_intent_diagram for known concept compositions/granularity, and generate_native_diagram for general architecture/security flows with editable connectors. Avoid many custom text boxes with uneven manual line breaks or body-only enumerations. Let layout polish wrap Japanese text instead of hand-coding line breaks. Content slides must not be text-only: fix visual.richness-missing and visual.richness-deck by adding generate_schematic, generate_intent_diagram, generate_native_diagram, registered icons, images, or card/shape composition so at least 75% of content slides have visual structure. When embedding SVG diagrams, keep internal labels at least 8pt after scaling or recreate/split them.",
               sourceReferences: "Whenever a deck uses external websites, record each source in metadata.sources with the actual url. render_pptx, render_studio, and polish_deck_layout automatically append/update the final references slide (参考URL・出典 / References and sources) so the last slide contains all external URLs. Per-slide citations are optional for URL-backed sources when the final references slide is complete.",
               sourceVisuals: "Use metadata.sources plus element.sourceId/citation when quoting, recreating, or using source visuals as inspiration. Prefer editable shape/text objects for recreated visuals. For URL-backed sources, final-slide references can replace per-slide citation text.",
               requiredVisualAccessibility: "Non-decorative SVG, image, and diagram elements require altText. Diagram elements also require summary and longDescription.",
-              recommendedWorkflow: ["get_slide_creation_rules before custom DeckSpec authoring", "plan_business_deck for business/executive/customer-facing decks", "create_pptx/create_powerpoint for direct output", "search_templates", "search_assets", "generate_section_divider to insert chapter/section title slides between major sections of longer decks", "generate_intent_diagram when the intended ponchi-e composition/granularity is known", "generate_native_diagram for general editable ponchi-e/architecture/security diagrams", "generate_schematic for structured visuals", "create_deck or custom DeckSpec", "review_business_deck for storyline/section/emphasis checks", "review_content", "finalize_deck (deck + outputPath) for a single polish+lint+render pass — fix only its blockingErrors, then call again", "or step-by-step: lint_deck, render_pptx/render_powerpoint or render_studio", "CLI fallback if MCP tools are hidden: pptcreater finalize <deck.json> --output <deck.pptx> (one pass) or pptcreater render <deck.json> --output <deck.pptx> --polish"]
+              recommendedWorkflow: ["get_slide_creation_rules before custom DeckSpec authoring", "plan_business_deck for business/executive/customer-facing decks", "create_pptx/create_powerpoint for direct output", "search_templates", "search_assets", "generate_section_divider to insert chapter/section title slides between major sections of longer decks", "generate_intent_diagram when the intended ponchi-e composition/granularity is known", "generate_native_diagram for general editable ponchi-e/architecture/security diagrams", "list_schematic_presets then generate_schematic for structured visuals", "create_deck or custom DeckSpec", "review_business_deck for storyline/section/emphasis checks", "review_content", "finalize_deck (deck + outputPath) for a single polish+lint+render pass — fix only its blockingErrors, then call again", "or step-by-step: lint_deck, render_pptx/render_powerpoint or render_studio", "CLI fallback if MCP tools are hidden: pptcreater finalize <deck.json> --output <deck.pptx> (one pass) or pptcreater render <deck.json> --output <deck.pptx> --polish"]
             },
             null,
             2

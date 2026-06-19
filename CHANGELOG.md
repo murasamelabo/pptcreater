@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.2.4 - 2026-06-20
+
+- Added a complete Slideland-style schematic pattern library for overflow-safe slide visuals: `table`, `tree`, `flow`, `vertical-flow`, `cycle`, `before-after`, `map`, `puzzle`/honeycomb, `correlation`, `matrix`, `venn`, `cross`/equation, `set`, `contrast`, `scale-contrast`, `grow`/TAM-SAM-SOM, `layer`, `triangle`, `step`, `gantt`, `ranking`, `list`, `list-horizontal`, `list-enumeration`, and `mockup`.
+- Added mode-aware schematic presets for `minimal`, `stylish`, `report`, `presentation`, and `technical` style profiles, each with a matching tone and recommended primary pattern set. Future style modes should ship a complete schematic recommendation set alongside template tokens.
+- Expanded MCP `generate_schematic` and CLI `pptcreater schematic` to accept every new pattern, plus `axisX`/`axisY` for matrix-style diagrams. Added `list_schematic_presets` (MCP) and `pptcreater schematic-presets` (CLI) so agents can choose the right reusable layout before drawing.
+- Updated slide creation rules, installed guidance, and skill packs so agents prefer schematic presets for comparisons, hierarchies, processes, analyses, schedules, groupings, rankings, and mockups instead of hand-placing fragile custom SVG/text boxes.
+
 ## v0.2.3 - 2026-06-19
 
 - **Fixed a PowerPoint "needs repair"/corruption regression.** The renderer wrote an invalid raw `decorative="1"` attribute onto every decorative shape's `<p:cNvPr>`. `decorative` is not a declared OOXML attribute, so PowerPoint flagged the file as corrupt (the Open XML SDK reported one schema error per decorative shape — 60+ in a typical deck). Decorative intent is now carried solely by the schema-valid `<a:extLst>` extension, upgraded to PowerPoint's canonical `adec:decorative val="1"` form so shapes are genuinely marked decorative for screen readers. Regression introduced 2026-06-14.

@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import { dirname } from "node:path";
 import { Command, InvalidArgumentError, Option } from "commander";
 import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, resolveIconForKeyword, searchAllSvgAssets, suggestIconForKeyword, type BuiltinIconName } from "@pptcreater/assets-svg";
-import { renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram } from "@pptcreater/diagram";
+import { SCHEMATIC_KIND_CATALOG, SCHEMATIC_STYLE_PRESETS, renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram, schematicPresetForStyleProfile } from "@pptcreater/diagram";
 import {
   BUSINESS_STYLE_MODES,
   cliMessage,
@@ -839,13 +839,37 @@ program
 
 program
   .command("schematic")
-  .description("Render a preset schematic JSON file (table/tree/flow/list/mockup) to SVG.")
+  .description("Render a preset schematic JSON file (table/tree/flow/cycle/matrix/gantt/ranking/list/mockup etc.) to SVG.")
   .argument("<schematic>", "Schematic JSON path")
   .requiredOption("-o, --output <path>", "Output SVG path")
   .action(commandAction(async (schematicPath: string, options: { output: string }) => {
     const result = renderSchematicDiagram(await readJson(schematicPath));
     await writeFile(options.output, `\uFEFF${result.svg}\n`, "utf8");
     console.log(`Created ${options.output}`);
+  }));
+
+program
+  .command("schematic-presets")
+  .description("List Slideland-style schematic kinds and mode-aware preset recommendations.")
+  .option("--style-profile <profile>", "minimal, stylish, report, presentation, or technical")
+  .option("--json", "Emit JSON", false)
+  .action(commandAction((options: { styleProfile?: string; json: boolean }) => {
+    const selected = schematicPresetForStyleProfile(options.styleProfile);
+    const payload = {
+      selected,
+      presets: SCHEMATIC_STYLE_PRESETS,
+      kinds: SCHEMATIC_KIND_CATALOG
+    };
+    if (options.json) {
+      console.log(JSON.stringify(payload, null, 2));
+      return;
+    }
+
+    console.log(`Selected style: ${selected.styleProfile} (${selected.tone})`);
+    console.log(selected.note);
+    console.log(`Primary kinds: ${selected.primaryKinds.join(", ")}`);
+    console.log("");
+    console.log(Object.entries(SCHEMATIC_KIND_CATALOG).map(([kind, entry]) => `${kind}\t${entry.labelEn}\t${entry.description}`).join("\n"));
   }));
 
 program

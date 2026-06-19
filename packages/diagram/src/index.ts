@@ -323,7 +323,33 @@ export type NativeDiagramTextElement = {
 
 export type NativeDiagramElement = NativeDiagramShapeElement | NativeDiagramTextElement;
 
-export const SchematicKindSchema = z.enum(["table", "tree", "flow", "vertical-flow", "list", "list-horizontal", "list-enumeration", "mockup"]);
+export const SchematicKindSchema = z.enum([
+  "table",
+  "tree",
+  "flow",
+  "vertical-flow",
+  "cycle",
+  "before-after",
+  "map",
+  "puzzle",
+  "correlation",
+  "matrix",
+  "venn",
+  "cross",
+  "set",
+  "contrast",
+  "scale-contrast",
+  "grow",
+  "layer",
+  "triangle",
+  "step",
+  "gantt",
+  "ranking",
+  "list",
+  "list-horizontal",
+  "list-enumeration",
+  "mockup"
+]);
 export const SchematicToneSchema = z.enum(["minimal", "cool", "luxury", "report"]).default("minimal");
 
 export const SchematicDiagramSchema = z.object({
@@ -334,11 +360,139 @@ export const SchematicDiagramSchema = z.object({
   items: z.array(z.string().min(1)).min(1).max(8),
   secondaryItems: z.array(z.string().min(1)).max(8).default([]),
   tone: SchematicToneSchema,
+  axisX: z.string().min(1).optional(),
+  axisY: z.string().min(1).optional(),
   width: z.number().min(960).default(960),
   height: z.number().min(540).default(540)
 });
 
 export type SchematicDiagram = z.infer<typeof SchematicDiagramSchema>;
+export type SchematicKind = z.infer<typeof SchematicKindSchema>;
+export type SchematicTone = z.infer<typeof SchematicToneSchema>;
+export const SCHEMATIC_KINDS = SchematicKindSchema.options;
+
+export type SchematicKindCatalogEntry = {
+  labelJa: string;
+  labelEn: string;
+  description: string;
+  suggestedItemCount: string;
+  secondaryItems?: string;
+  axis?: string;
+};
+
+export const SCHEMATIC_KIND_CATALOG = {
+  table: { labelJa: "表", labelEn: "Table", description: "Two-column comparison or structured attribute table.", suggestedItemCount: "2-6 rows", secondaryItems: "Right-side column values." },
+  tree: { labelJa: "ツリー", labelEn: "Tree", description: "Hierarchy with a root concept and child branches.", suggestedItemCount: "1 root + 2-5 children" },
+  flow: { labelJa: "横フロー", labelEn: "Horizontal flow", description: "Left-to-right process, handoff, or customer journey.", suggestedItemCount: "3-5 steps" },
+  "vertical-flow": { labelJa: "縦フロー", labelEn: "Vertical flow", description: "Top-to-bottom sequence for procedures or escalation paths.", suggestedItemCount: "3-5 steps" },
+  cycle: { labelJa: "サイクル", labelEn: "Cycle", description: "Repeating loop with directional relationships.", suggestedItemCount: "3-6 steps" },
+  "before-after": { labelJa: "前後比較", labelEn: "Before/after", description: "Current state versus target state with a central transition.", suggestedItemCount: "1 header + 2-4 points per side", secondaryItems: "After-side header and points." },
+  map: { labelJa: "マップ", labelEn: "Map", description: "Spatial control map or conceptual territory with numbered locations.", suggestedItemCount: "3-5 locations", secondaryItems: "Optional legend heading." },
+  puzzle: { labelJa: "パズル/ハニカム", labelEn: "Puzzle/honeycomb", description: "Interlocking modules that form one capability set.", suggestedItemCount: "3-7 modules" },
+  correlation: { labelJa: "相関図/概念図", labelEn: "Correlation map", description: "Central concept with related surrounding ideas and optional relationship labels.", suggestedItemCount: "1 center + 2-6 related nodes", secondaryItems: "Optional edge labels." },
+  matrix: { labelJa: "マトリクス", labelEn: "Matrix", description: "2x2 positioning map for prioritization or segmentation.", suggestedItemCount: "4 quadrants", axis: "axisX and axisY label the matrix axes." },
+  venn: { labelJa: "ベン図", labelEn: "Venn", description: "Overlap among two or three sets with an intersection message.", suggestedItemCount: "2-3 sets", secondaryItems: "Intersection label." },
+  cross: { labelJa: "数式", labelEn: "Equation", description: "Inputs combined into a result using a simple plus/equal grammar.", suggestedItemCount: "2-3 inputs", secondaryItems: "Result label." },
+  set: { labelJa: "グループ/集合", labelEn: "Set groups", description: "Grouped containers with optional member pills.", suggestedItemCount: "2-3 groups", secondaryItems: "Members distributed across groups." },
+  contrast: { labelJa: "項目比較", labelEn: "Contrast", description: "Side-by-side option comparison with aligned rows and a center VS badge.", suggestedItemCount: "1 header + 2-4 points per side", secondaryItems: "Right-side header and points." },
+  "scale-contrast": { labelJa: "規模比較", labelEn: "Scale comparison", description: "Relative-size bubbles based on parsed numeric values.", suggestedItemCount: "2-4 items", secondaryItems: "Optional numeric values per item.", axis: "Numeric values can be embedded in labels or secondaryItems." },
+  grow: { labelJa: "規模分析", labelEn: "TAM/SAM/SOM growth", description: "Concentric market-size or scope analysis.", suggestedItemCount: "3 rings", secondaryItems: "Optional notes for each ring." },
+  layer: { labelJa: "レイヤー構造", labelEn: "Layer stack", description: "Stacked architecture, governance, or responsibility layers.", suggestedItemCount: "3-5 layers", secondaryItems: "Optional right-side layer notes." },
+  triangle: { labelJa: "トライアングル", labelEn: "Triangle pyramid", description: "Pyramid levels showing foundation to apex.", suggestedItemCount: "3-4 levels" },
+  step: { labelJa: "階段/ステップ", labelEn: "Stair step", description: "Ascending maturity, roadmap, or progression steps.", suggestedItemCount: "3-5 steps" },
+  gantt: { labelJa: "ガントチャート", labelEn: "Gantt chart", description: "Simple task-by-period schedule with safe staggered bars.", suggestedItemCount: "3-6 tasks", secondaryItems: "Period labels." },
+  ranking: { labelJa: "ランキング", labelEn: "Ranking", description: "Ordered list with rank badges and value bars.", suggestedItemCount: "3-6 ranked items", secondaryItems: "Optional numeric values per item." },
+  list: { labelJa: "箇条書き縦", labelEn: "Vertical list", description: "Readable vertical list with badges.", suggestedItemCount: "3-6 points" },
+  "list-horizontal": { labelJa: "箇条書き横", labelEn: "Horizontal list", description: "Horizontal card list for three or four key points.", suggestedItemCount: "3-4 points" },
+  "list-enumeration": { labelJa: "箇条書き羅列", labelEn: "Enumeration", description: "Numbered vertical list for ordered checkpoints.", suggestedItemCount: "3-6 points" },
+  mockup: { labelJa: "モックアップ", labelEn: "Mockup", description: "Window/card mockup for product, portal, or dashboard concepts.", suggestedItemCount: "2-4 feature bullets" }
+} satisfies Record<SchematicKind, SchematicKindCatalogEntry>;
+
+export type SchematicStyleProfile = "minimal" | "stylish" | "report" | "presentation" | "technical";
+export type SchematicStylePreset = {
+  tone: SchematicTone;
+  primaryKinds: readonly SchematicKind[];
+  kinds: readonly SchematicKind[];
+  note: string;
+};
+
+const COMPLETE_SCHEMATIC_SET = [
+  "table",
+  "tree",
+  "flow",
+  "vertical-flow",
+  "cycle",
+  "before-after",
+  "map",
+  "puzzle",
+  "correlation",
+  "matrix",
+  "venn",
+  "cross",
+  "set",
+  "contrast",
+  "scale-contrast",
+  "grow",
+  "layer",
+  "triangle",
+  "step",
+  "gantt",
+  "ranking",
+  "list",
+  "list-horizontal",
+  "list-enumeration",
+  "mockup"
+] as const satisfies readonly SchematicKind[];
+
+export const SCHEMATIC_STYLE_PRESETS = {
+  minimal: {
+    tone: "minimal",
+    primaryKinds: ["table", "flow", "list", "list-horizontal", "before-after", "matrix", "step"],
+    kinds: COMPLETE_SCHEMATIC_SET,
+    note: "Whitespace-first layouts with restrained accents for crisp internal and general-purpose decks."
+  },
+  stylish: {
+    tone: "luxury",
+    primaryKinds: ["cycle", "puzzle", "correlation", "venn", "triangle", "grow", "mockup"],
+    kinds: COMPLETE_SCHEMATIC_SET,
+    note: "More atmospheric, editorial compositions with bolder focal objects and layered surfaces."
+  },
+  report: {
+    tone: "report",
+    primaryKinds: ["table", "matrix", "contrast", "scale-contrast", "gantt", "ranking", "layer"],
+    kinds: COMPLETE_SCHEMATIC_SET,
+    note: "Evidence-forward patterns for structured comparisons, schedules, rankings, and explanatory reports."
+  },
+  presentation: {
+    tone: "minimal",
+    primaryKinds: ["flow", "cycle", "before-after", "step", "list-horizontal", "map", "venn"],
+    kinds: COMPLETE_SCHEMATIC_SET,
+    note: "Glanceable patterns for live explanation with few labels and clear motion or contrast."
+  },
+  technical: {
+    tone: "cool",
+    primaryKinds: ["tree", "vertical-flow", "correlation", "map", "layer", "matrix", "gantt", "mockup"],
+    kinds: COMPLETE_SCHEMATIC_SET,
+    note: "Dark, high-contrast technical patterns for architecture, control-plane, and process explanation."
+  }
+} satisfies Record<SchematicStyleProfile, SchematicStylePreset>;
+
+function isSchematicStyleProfile(value: string | undefined): value is SchematicStyleProfile {
+  return value === "minimal" || value === "stylish" || value === "report" || value === "presentation" || value === "technical";
+}
+
+export function schematicPresetForStyleProfile(styleProfile: string | undefined = "minimal"): SchematicStylePreset & { styleProfile: SchematicStyleProfile } {
+  const resolved = isSchematicStyleProfile(styleProfile) ? styleProfile : "minimal";
+  return { styleProfile: resolved, ...SCHEMATIC_STYLE_PRESETS[resolved] };
+}
+
+export function schematicToneForStyleProfile(styleProfile: string | undefined = "minimal"): SchematicTone {
+  return schematicPresetForStyleProfile(styleProfile).tone;
+}
+
+export function schematicKindsForStyleProfile(styleProfile: string | undefined = "minimal"): readonly SchematicKind[] {
+  return schematicPresetForStyleProfile(styleProfile).kinds;
+}
 
 type SchematicPalette = {
   background: string;
@@ -769,25 +923,559 @@ function mockupSchematic(diagram: SchematicDiagram, palette: SchematicPalette): 
   ].join("");
 }
 
+function fittedTextBlock(
+  value: string,
+  x: number,
+  cy: number,
+  maxWidth: number,
+  options: { color: string; weight?: number; preferredSize?: number; minimumSize?: number; maxLines?: number; anchor?: "start" | "middle" }
+): string {
+  const preferredSize = options.preferredSize ?? 15;
+  const minimumSize = options.minimumSize ?? 10;
+  const maxLines = options.maxLines ?? 2;
+  const fitted = fitLabel(value, maxWidth, { preferredSize, minimumSize, maxLines });
+  const lineHeight = fitted.size * 1.32;
+  const firstBaseline = cy - ((fitted.lines.length - 1) * lineHeight) / 2 + fitted.size * 0.34;
+  return textBlock(fitted.lines, x, firstBaseline, { color: options.color, size: fitted.size, weight: options.weight, anchor: options.anchor });
+}
+
+function parseSchematicValue(value: string | undefined, fallback: number): number {
+  const match = value?.match(/-?\d+(?:[,.]\d+)*/);
+  if (!match) {
+    return fallback;
+  }
+
+  const parsed = Number(match[0].replace(/,/g, ""));
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function hexPolygonPoints(cx: number, cy: number, radius: number): string {
+  return Array.from({ length: 6 })
+    .map((_, index) => {
+      const angle = (Math.PI / 180) * (60 * index + 30);
+      return `${(cx + Math.cos(angle) * radius).toFixed(1)},${(cy + Math.sin(angle) * radius).toFixed(1)}`;
+    })
+    .join(" ");
+}
+
+function mixHex(a: string, b: string, t: number): string {
+  const toRgb = (value: string): [number, number, number] | undefined => {
+    const normalized = value.replace("#", "");
+    const hex = normalized.length === 3 ? normalized.split("").map((char) => char + char).join("") : normalized;
+    if (!/^[0-9a-fA-F]{6}$/.test(hex)) {
+      return undefined;
+    }
+
+    return [0, 2, 4].map((offset) => parseInt(hex.slice(offset, offset + 2), 16)) as [number, number, number];
+  };
+  const left = toRgb(a);
+  const right = toRgb(b);
+  if (!left || !right) {
+    return a;
+  }
+
+  const clamped = Math.max(0, Math.min(1, t));
+  const mixed = left.map((channel, index) => Math.round(channel + (right[index] - channel) * clamped));
+  return `#${mixed.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
+}
+
+function cycleSchematic(diagram: SchematicDiagram, palette: SchematicPalette): string {
+  const items = diagram.items.slice(0, 6);
+  const count = items.length;
+  const cx = diagram.width / 2;
+  const cy = 302;
+  const orbit = count <= 4 ? 142 : 162;
+  const nodeR = count <= 4 ? 58 : 50;
+  const centers = items.map((_, index) => {
+    const angle = -Math.PI / 2 + (Math.PI * 2 * index) / count;
+    return { x: cx + Math.cos(angle) * orbit, y: cy + Math.sin(angle) * orbit };
+  });
+  const links =
+    count > 1
+      ? centers
+          .map((from, index) => {
+            const to = centers[(index + 1) % count];
+            const dx = to.x - from.x;
+            const dy = to.y - from.y;
+            const length = Math.hypot(dx, dy) || 1;
+            const dir = { x: dx / length, y: dy / length };
+            const start = { x: from.x + dir.x * nodeR, y: from.y + dir.y * nodeR };
+            const end = { x: to.x - dir.x * (nodeR + 8), y: to.y - dir.y * (nodeR + 8) };
+            return `<path d="M${start.x.toFixed(1)} ${start.y.toFixed(1)}L${end.x.toFixed(1)} ${end.y.toFixed(1)}" fill="none" stroke="${palette.accent}" stroke-width="2.5" stroke-linecap="round" />${arrowHead(end, dir, palette.accent, 9)}`;
+          })
+          .join("")
+      : "";
+  const nodes = centers
+    .map((center, index) =>
+      [
+        `<circle cx="${center.x.toFixed(1)}" cy="${center.y.toFixed(1)}" r="${nodeR}" fill="${index === 0 ? palette.accentSoft : palette.surface}" stroke="${palette.line}" stroke-width="1.5" />`,
+        `<circle cx="${(center.x - nodeR + 18).toFixed(1)}" cy="${(center.y - nodeR + 18).toFixed(1)}" r="13" fill="${palette.accent}" />`,
+        `<text x="${(center.x - nodeR + 18).toFixed(1)}" y="${(center.y - nodeR + 23).toFixed(1)}" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="${palette.background}">${index + 1}</text>`,
+        fittedTextBlock(items[index], center.x, center.y + 6, nodeR * 1.55, { color: palette.text, weight: 700, preferredSize: 14, minimumSize: 9, maxLines: 3, anchor: "middle" })
+      ].join("")
+    )
+    .join("");
+  return [links, nodes].join("");
+}
+
+function beforeAfterSchematic(diagram: SchematicDiagram, palette: SchematicPalette): string {
+  const x = 64;
+  const y = 134;
+  const gap = 54;
+  const panelW = (diagram.width - x * 2 - gap) / 2;
+  const panelH = 284;
+  const leftRows = diagram.items.slice(1, 5);
+  const rightRows = diagram.secondaryItems.slice(1, 5);
+  const renderPanel = (panelX: number, title: string, rows: string[], accent: boolean): string => [
+    roundedRect(panelX, y, panelW, panelH, 26, accent ? palette.accentSoft : palette.surface, palette.line),
+    `<rect x="${panelX}" y="${y}" width="${panelW}" height="58" rx="26" fill="${accent ? palette.accent : palette.surfaceAlt}" />`,
+    fittedTextBlock(title, panelX + panelW / 2, y + 33, panelW - 52, { color: accent ? palette.background : palette.text, weight: 700, preferredSize: 17, minimumSize: 11, maxLines: 1, anchor: "middle" }),
+    ...rows.map((row, index) => {
+      const rowY = y + 86 + index * 44;
+      return [
+        `<circle cx="${panelX + 30}" cy="${rowY}" r="9" fill="${accent ? palette.accent : palette.accentSoft}" stroke="${palette.accent}" />`,
+        fittedTextBlock(row, panelX + 50, rowY + 1, panelW - 74, { color: accent ? palette.text : palette.muted, weight: 600, preferredSize: 13, minimumSize: 9, maxLines: 2, anchor: "start" })
+      ].join("");
+    })
+  ].join("");
+  const midX = diagram.width / 2;
+  return [
+    renderPanel(x, diagram.items[0] ?? "Before", leftRows, false),
+    renderPanel(x + panelW + gap, diagram.secondaryItems[0] ?? "After", rightRows.length ? rightRows : diagram.items.slice(1, 5), true),
+    `<circle cx="${midX}" cy="${y + panelH / 2}" r="28" fill="${palette.accent}" stroke="${palette.background}" stroke-width="4" />`,
+    `<path d="M${midX - 10} ${y + panelH / 2 - 10}l12 10-12 10M${midX + 4} ${y + panelH / 2 - 10}l12 10-12 10" fill="none" stroke="${palette.background}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />`
+  ].join("");
+}
+
+function mapSchematic(diagram: SchematicDiagram, palette: SchematicPalette): string {
+  const items = diagram.items.slice(0, 5);
+  const board = { x: 54, y: 124, w: 548, h: 308 };
+  const legend = { x: 638, y: 126, w: 270, h: 302 };
+  const positions = [
+    { x: 0.22, y: 0.34 },
+    { x: 0.52, y: 0.22 },
+    { x: 0.75, y: 0.46 },
+    { x: 0.40, y: 0.68 },
+    { x: 0.68, y: 0.78 }
+  ];
+  const grid = Array.from({ length: 4 })
+    .map((_, index) => {
+      const gx = board.x + ((index + 1) * board.w) / 5;
+      const gy = board.y + ((index + 1) * board.h) / 5;
+      return `<path d="M${gx.toFixed(1)} ${board.y}v${board.h}M${board.x} ${gy.toFixed(1)}h${board.w}" stroke="${palette.line}" stroke-width="1" opacity="0.55" />`;
+    })
+    .join("");
+  return [
+    roundedRect(board.x, board.y, board.w, board.h, 28, palette.surface, palette.line),
+    `<path d="M${board.x + 32} ${board.y + 232}c90-66 142-36 210-92 74-61 145-42 248 20" fill="none" stroke="${palette.accentSoft}" stroke-width="54" stroke-linecap="round" opacity="0.85" />`,
+    grid,
+    ...items.map((item, index) => {
+      const pos = positions[index];
+      const px = board.x + pos.x * board.w;
+      const py = board.y + pos.y * board.h;
+      return [
+        `<path d="M${px.toFixed(1)} ${py.toFixed(1)}c0-18 14-32 32-32s32 14 32 32c0 24-32 56-32 56s-32-32-32-56z" fill="${palette.accent}" stroke="${palette.background}" stroke-width="3" transform="translate(-32 -32)" />`,
+        `<text x="${px.toFixed(1)}" y="${(py - 35).toFixed(1)}" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="${palette.background}">${index + 1}</text>`,
+        `<circle cx="${px.toFixed(1)}" cy="${(py + 24).toFixed(1)}" r="5" fill="${palette.accent}" opacity="0.28" />`,
+        fittedTextBlock(item, px, py + 46, 120, { color: palette.text, weight: 700, preferredSize: 11, minimumSize: 8, maxLines: 2, anchor: "middle" })
+      ].join("");
+    }),
+    roundedRect(legend.x, legend.y, legend.w, legend.h, 22, palette.surface, palette.line),
+    fittedTextBlock(diagram.secondaryItems[0] ?? "Key points", legend.x + 24, legend.y + 32, legend.w - 48, { color: palette.text, weight: 700, preferredSize: 16, minimumSize: 10, maxLines: 1, anchor: "start" }),
+    ...items.map((item, index) => {
+      const rowY = legend.y + 72 + index * 42;
+      return [
+        `<circle cx="${legend.x + 26}" cy="${rowY}" r="12" fill="${palette.accentSoft}" stroke="${palette.accent}" />`,
+        `<text x="${legend.x + 26}" y="${rowY + 4}" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="700" fill="${palette.accent}">${index + 1}</text>`,
+        fittedTextBlock(item, legend.x + 48, rowY + 1, legend.w - 68, { color: palette.muted, weight: 600, preferredSize: 12, minimumSize: 8, maxLines: 2, anchor: "start" })
+      ].join("");
+    })
+  ].join("");
+}
+
+function puzzleSchematic(diagram: SchematicDiagram, palette: SchematicPalette): string {
+  const items = diagram.items.slice(0, 7);
+  const count = items.length;
+  const cx = diagram.width / 2;
+  const cy = 292;
+  const radius = count <= 3 ? 76 : 62;
+  const positions =
+    count <= 3
+      ? items.map((_, index) => ({ x: cx + (index - (count - 1) / 2) * radius * 1.82, y: cy }))
+      : [{ x: cx, y: cy }, ...items.slice(1).map((_, index) => {
+          const angle = (Math.PI / 180) * (30 + index * 60);
+          return { x: cx + Math.cos(angle) * radius * 1.72, y: cy + Math.sin(angle) * radius * 1.72 };
+        })];
+  return positions
+    .map((position, index) => [
+      `<polygon points="${hexPolygonPoints(position.x, position.y, radius)}" fill="${index === 0 ? palette.accentSoft : palette.surface}" stroke="${index === 0 ? palette.accent : palette.line}" stroke-width="2" />`,
+      `<circle cx="${(position.x - radius * 0.42).toFixed(1)}" cy="${(position.y - radius * 0.32).toFixed(1)}" r="12" fill="${palette.accent}" />`,
+      `<text x="${(position.x - radius * 0.42).toFixed(1)}" y="${(position.y - radius * 0.32 + 4).toFixed(1)}" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="700" fill="${palette.background}">${index + 1}</text>`,
+      fittedTextBlock(items[index], position.x, position.y + 8, radius * 1.25, { color: palette.text, weight: 700, preferredSize: 13, minimumSize: 8, maxLines: 3, anchor: "middle" })
+    ].join(""))
+    .join("");
+}
+
+function correlationSchematic(diagram: SchematicDiagram, palette: SchematicPalette): string {
+  const center = diagram.items[0] ?? diagram.title;
+  const leaves = diagram.items.slice(1, 7);
+  const cx = diagram.width / 2;
+  const cy = 292;
+  const card = { w: 154, h: 70 };
+  const radius = 210;
+  const points = leaves.map((_, index) => {
+    const angle = -Math.PI / 2 + (Math.PI * 2 * index) / leaves.length;
+    return { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * 136 };
+  });
+  return [
+    ...points.map((point, index) => {
+      const mx = (cx + point.x) / 2;
+      const my = (cy + point.y) / 2;
+      const label = diagram.secondaryItems[index];
+      return [
+        `<path d="M${cx.toFixed(1)} ${cy.toFixed(1)}L${point.x.toFixed(1)} ${point.y.toFixed(1)}" stroke="${palette.line}" stroke-width="2" />`,
+        label ? `<rect x="${(mx - 38).toFixed(1)}" y="${(my - 14).toFixed(1)}" width="76" height="24" rx="12" fill="${palette.background}" stroke="${palette.line}" />${fittedTextBlock(label, mx, my + 1, 64, { color: palette.muted, weight: 600, preferredSize: 9, minimumSize: 7, maxLines: 1, anchor: "middle" })}` : ""
+      ].join("");
+    }),
+    ...points.map((point, index) => [
+      roundedRect(point.x - card.w / 2, point.y - card.h / 2, card.w, card.h, 18, palette.surface, palette.line),
+      fittedTextBlock(leaves[index], point.x, point.y + 2, card.w - 28, { color: palette.text, weight: 700, preferredSize: 13, minimumSize: 8, maxLines: 2, anchor: "middle" })
+    ].join("")),
+    roundedRect(cx - 116, cy - 46, 232, 92, 24, palette.accentSoft, palette.accent),
+    fittedTextBlock(center, cx, cy + 3, 184, { color: palette.text, weight: 800, preferredSize: 16, minimumSize: 10, maxLines: 2, anchor: "middle" })
+  ].join("");
+}
+
+function matrixSchematic(diagram: SchematicDiagram, palette: SchematicPalette): string {
+  const x = 172;
+  const y = 132;
+  const w = 620;
+  const h = 286;
+  const cellW = w / 2;
+  const cellH = h / 2;
+  const cells = [
+    { label: diagram.items[0] ?? "A", x, y, fill: palette.surface },
+    { label: diagram.items[1] ?? "B", x: x + cellW, y, fill: palette.accentSoft },
+    { label: diagram.items[2] ?? "C", x, y: y + cellH, fill: palette.surfaceAlt },
+    { label: diagram.items[3] ?? "D", x: x + cellW, y: y + cellH, fill: palette.surface }
+  ];
+  return [
+    `<path d="M${x - 28} ${y + h}v-${h - 10}m-8 8 8-8 8 8M${x} ${y + h + 28}h${w - 10}m-8-8 8 8-8 8" fill="none" stroke="${palette.accent}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />`,
+    `<text x="${x - 58}" y="${y + h / 2}" transform="rotate(-90 ${x - 58} ${y + h / 2})" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="${palette.muted}">${escapeXml(diagram.axisY ?? "Impact")}</text>`,
+    fittedTextBlock(diagram.axisX ?? "Maturity", x + w / 2, y + h + 54, w - 80, { color: palette.muted, weight: 700, preferredSize: 13, minimumSize: 9, maxLines: 1, anchor: "middle" }),
+    roundedRect(x, y, w, h, 22, palette.surface, palette.line),
+    ...cells.map((cell) => [
+      `<rect x="${cell.x}" y="${cell.y}" width="${cellW}" height="${cellH}" fill="${cell.fill}" stroke="${palette.line}" />`,
+      fittedTextBlock(cell.label, cell.x + cellW / 2, cell.y + cellH / 2, cellW - 56, { color: palette.text, weight: 700, preferredSize: 17, minimumSize: 10, maxLines: 2, anchor: "middle" })
+    ].join(""))
+  ].join("");
+}
+
+function vennSchematic(diagram: SchematicDiagram, palette: SchematicPalette): string {
+  const items = diagram.items.slice(0, Math.min(3, Math.max(2, diagram.items.length)));
+  const cx = diagram.width / 2;
+  const cy = 286;
+  const r = items.length === 3 ? 118 : 136;
+  const circles =
+    items.length === 3
+      ? [
+          { x: cx - 90, y: cy - 18 },
+          { x: cx + 90, y: cy - 18 },
+          { x: cx, y: cy + 96 }
+        ]
+      : [
+          { x: cx - 86, y: cy },
+          { x: cx + 86, y: cy }
+        ];
+  return [
+    ...circles.map((circle, index) => `<circle cx="${circle.x}" cy="${circle.y}" r="${r}" fill="${index === 0 ? palette.accent : index === 1 ? palette.accentSoft : palette.surfaceAlt}" fill-opacity="0.42" stroke="${palette.accent}" stroke-width="2" />`),
+    ...circles.map((circle, index) => fittedTextBlock(items[index] ?? `Set ${index + 1}`, circle.x, circle.y - (items.length === 3 && index === 2 ? -36 : 28), r * 1.1, { color: palette.text, weight: 700, preferredSize: 15, minimumSize: 9, maxLines: 2, anchor: "middle" })),
+    roundedRect(cx - 90, cy - 18, 180, 46, 18, palette.surface, palette.line),
+    fittedTextBlock(diagram.secondaryItems[0] ?? "Common value", cx, cy + 7, 150, { color: palette.text, weight: 800, preferredSize: 14, minimumSize: 9, maxLines: 1, anchor: "middle" })
+  ].join("");
+}
+
+function crossSchematic(diagram: SchematicDiagram, palette: SchematicPalette): string {
+  const operands = diagram.items.slice(0, 3);
+  const result = diagram.secondaryItems[0] ?? diagram.items[3] ?? "Result";
+  const gap = 30;
+  const signW = 26;
+  const resultW = 190;
+  const operandW = Math.min(160, (diagram.width - 132 - resultW - signW - gap * (operands.length + 1)) / operands.length);
+  const y = 238;
+  const startX = (diagram.width - (operandW * operands.length + gap * (operands.length + 1) + signW * operands.length + resultW)) / 2;
+  const parts = operands.flatMap((item, index) => {
+    const boxX = startX + index * (operandW + gap + signW);
+    return [
+      roundedRect(boxX, y, operandW, 92, 22, palette.surface, palette.line),
+      fittedTextBlock(item, boxX + operandW / 2, y + 47, operandW - 28, { color: palette.text, weight: 700, preferredSize: 15, minimumSize: 9, maxLines: 2, anchor: "middle" }),
+      `<text x="${boxX + operandW + gap / 2}" y="${y + 56}" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" font-weight="700" fill="${palette.accent}">${index === operands.length - 1 ? "=" : "+"}</text>`
+    ];
+  });
+  const resultX = startX + operands.length * (operandW + gap + signW);
+  return [
+    ...parts,
+    roundedRect(resultX, y, resultW, 92, 22, palette.accentSoft, palette.accent),
+    fittedTextBlock(result, resultX + resultW / 2, y + 47, resultW - 32, { color: palette.text, weight: 800, preferredSize: 16, minimumSize: 9, maxLines: 2, anchor: "middle" })
+  ].join("");
+}
+
+function setSchematic(diagram: SchematicDiagram, palette: SchematicPalette): string {
+  const groups = diagram.items.slice(0, Math.min(3, diagram.items.length));
+  const members = diagram.secondaryItems.length ? diagram.secondaryItems : diagram.items.slice(groups.length);
+  const gap = 22;
+  const x = 64;
+  const y = 134;
+  const w = (diagram.width - x * 2 - gap * (groups.length - 1)) / groups.length;
+  const h = 282;
+  return groups
+    .map((group, groupIndex) => {
+      const panelX = x + groupIndex * (w + gap);
+      const groupMembers = members.filter((_, index) => index % groups.length === groupIndex).slice(0, 3);
+      return [
+        roundedRect(panelX, y, w, h, 26, groupIndex === 0 ? palette.accentSoft : palette.surface, palette.line),
+        `<circle cx="${panelX + w / 2}" cy="${y + 58}" r="34" fill="${palette.accent}" opacity="${groupIndex === 0 ? "1" : "0.85"}" />`,
+        fittedTextBlock(group, panelX + w / 2, y + 118, w - 42, { color: palette.text, weight: 800, preferredSize: 16, minimumSize: 10, maxLines: 2, anchor: "middle" }),
+        ...groupMembers.map((member, index) => {
+          const rowY = y + 164 + index * 42;
+          return [
+            `<rect x="${panelX + 26}" y="${rowY}" width="${w - 52}" height="28" rx="14" fill="${palette.surfaceAlt}" stroke="${palette.line}" />`,
+            fittedTextBlock(member, panelX + w / 2, rowY + 15, w - 74, { color: palette.muted, weight: 600, preferredSize: 11, minimumSize: 8, maxLines: 1, anchor: "middle" })
+          ].join("");
+        })
+      ].join("");
+    })
+    .join("");
+}
+
+function contrastSchematic(diagram: SchematicDiagram, palette: SchematicPalette): string {
+  const leftTitle = diagram.items[0] ?? "Option A";
+  const rightTitle = diagram.secondaryItems[0] ?? "Option B";
+  const leftRows = diagram.items.slice(1, 5);
+  const rightRows = (diagram.secondaryItems.length > 1 ? diagram.secondaryItems.slice(1, 5) : diagram.items.slice(1, 5)).slice(0, 4);
+  const x = 70;
+  const y = 136;
+  const w = 355;
+  const h = 278;
+  const rightX = diagram.width - x - w;
+  const panel = (panelX: number, title: string, rows: string[], accent: boolean): string => [
+    roundedRect(panelX, y, w, h, 24, accent ? palette.accentSoft : palette.surface, palette.line),
+    `<rect x="${panelX}" y="${y}" width="${w}" height="52" rx="24" fill="${accent ? palette.accent : palette.surfaceAlt}" />`,
+    fittedTextBlock(title, panelX + w / 2, y + 31, w - 42, { color: accent ? palette.background : palette.text, weight: 800, preferredSize: 16, minimumSize: 10, maxLines: 1, anchor: "middle" }),
+    ...rows.map((row, index) => {
+      const rowY = y + 82 + index * 45;
+      return [
+        `<path d="M${panelX + 26} ${rowY + 14}h${w - 52}" stroke="${palette.line}" opacity="0.65" />`,
+        fittedTextBlock(row, panelX + 32, rowY + 3, w - 64, { color: palette.text, weight: 600, preferredSize: 12, minimumSize: 8, maxLines: 2, anchor: "start" })
+      ].join("");
+    })
+  ].join("");
+  const midX = diagram.width / 2;
+  return [
+    panel(x, leftTitle, leftRows, false),
+    panel(rightX, rightTitle, rightRows, true),
+    `<circle cx="${midX}" cy="${y + h / 2}" r="34" fill="${palette.background}" stroke="${palette.accent}" stroke-width="3" />`,
+    `<text x="${midX}" y="${y + h / 2 + 9}" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="800" fill="${palette.accent}">VS</text>`
+  ].join("");
+}
+
+function scaleContrastSchematic(diagram: SchematicDiagram, palette: SchematicPalette): string {
+  const items = diagram.items.slice(0, 4);
+  const values = items.map((item, index) => Math.max(0, parseSchematicValue(diagram.secondaryItems[index] ?? item, (items.length - index) * 25)));
+  const max = Math.max(...values, 1);
+  const y = 296;
+  const gap = 30;
+  const slotW = (diagram.width - 112 - gap * (items.length - 1)) / items.length;
+  return items
+    .map((item, index) => {
+      const cx = 56 + slotW / 2 + index * (slotW + gap);
+      const r = 34 + Math.sqrt(values[index] / max) * 78;
+      return [
+        `<circle cx="${cx}" cy="${y}" r="${r.toFixed(1)}" fill="${index === 0 ? palette.accent : palette.accentSoft}" fill-opacity="${index === 0 ? "0.88" : "0.72"}" stroke="${palette.accent}" stroke-width="2" />`,
+        `<text x="${cx}" y="${y + 7}" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="800" fill="${index === 0 ? palette.background : palette.text}">${escapeXml(String(values[index]))}</text>`,
+        fittedTextBlock(item.replace(/-?\d+(?:[,.]\d+)*/, "").trim() || item, cx, y + r + 34, slotW - 20, { color: palette.text, weight: 700, preferredSize: 13, minimumSize: 8, maxLines: 2, anchor: "middle" })
+      ].join("");
+    })
+    .join("");
+}
+
+function growSchematic(diagram: SchematicDiagram, palette: SchematicPalette): string {
+  const labels = [diagram.items[0] ?? "TAM", diagram.items[1] ?? "SAM", diagram.items[2] ?? "SOM"];
+  const cx = 368;
+  const cy = 292;
+  const radii = [148, 104, 62];
+  return [
+    ...radii.map((radius, index) => `<circle cx="${cx}" cy="${cy}" r="${radius}" fill="${mixHex(palette.accentSoft, palette.surface, index * 0.28)}" stroke="${palette.accent}" stroke-width="${index === 2 ? 2.5 : 1.5}" />`),
+    ...labels.map((label, index) => fittedTextBlock(label, cx, cy - radii[index] + 34 + index * 58, radii[index] * 1.45, { color: palette.text, weight: 800, preferredSize: 15, minimumSize: 9, maxLines: 1, anchor: "middle" })),
+    roundedRect(604, 142, 286, 276, 24, palette.surface, palette.line),
+    ...labels.map((label, index) => {
+      const rowY = 186 + index * 72;
+      return [
+        `<circle cx="638" cy="${rowY}" r="${14 - index * 2}" fill="${index === 2 ? palette.accent : palette.accentSoft}" stroke="${palette.accent}" />`,
+        fittedTextBlock(label, 664, rowY + 1, 194, { color: palette.text, weight: 700, preferredSize: 14, minimumSize: 9, maxLines: 2, anchor: "start" }),
+        diagram.secondaryItems[index] ? fittedTextBlock(diagram.secondaryItems[index], 664, rowY + 30, 194, { color: palette.muted, weight: 500, preferredSize: 10, minimumSize: 8, maxLines: 1, anchor: "start" }) : ""
+      ].join("");
+    })
+  ].join("");
+}
+
+function layerSchematic(diagram: SchematicDiagram, palette: SchematicPalette): string {
+  const items = diagram.items.slice(0, 5);
+  const x = 112;
+  const y = 128;
+  const w = diagram.width - 224;
+  const totalH = 296;
+  const bandH = totalH / items.length;
+  return items
+    .map((item, index) => {
+      const bandY = y + index * bandH;
+      return [
+        roundedRect(x + index * 16, bandY, w - index * 32, bandH - 8, 18, index === 0 ? palette.accentSoft : index % 2 ? palette.surfaceAlt : palette.surface, palette.line),
+        `<circle cx="${x + index * 16 + 30}" cy="${bandY + bandH / 2 - 4}" r="14" fill="${palette.accent}" />`,
+        `<text x="${x + index * 16 + 30}" y="${bandY + bandH / 2 + 1}" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="800" fill="${palette.background}">${index + 1}</text>`,
+        fittedTextBlock(item, x + index * 16 + 58, bandY + bandH / 2 - 4, w - index * 32 - 210, { color: palette.text, weight: 800, preferredSize: 15, minimumSize: 9, maxLines: 1, anchor: "start" }),
+        diagram.secondaryItems[index] ? fittedTextBlock(diagram.secondaryItems[index], x + w - index * 16 - 132, bandY + bandH / 2 - 4, 120, { color: palette.muted, weight: 600, preferredSize: 10, minimumSize: 8, maxLines: 2, anchor: "middle" }) : ""
+      ].join("");
+    })
+    .join("");
+}
+
+function triangleSchematic(diagram: SchematicDiagram, palette: SchematicPalette): string {
+  const items = diagram.items.slice(0, 4);
+  const levels = items.length;
+  const cx = diagram.width / 2;
+  const y = 128;
+  const totalH = 300;
+  const levelH = totalH / levels;
+  const minW = 170;
+  const maxW = 620;
+  return items
+    .map((item, index) => {
+      const topW = minW + ((maxW - minW) * index) / levels;
+      const bottomW = minW + ((maxW - minW) * (index + 1)) / levels;
+      const topY = y + index * levelH;
+      const bottomY = topY + levelH - 8;
+      const fill = index === 0 ? palette.accent : mixHex(palette.accentSoft, palette.surface, index / Math.max(1, levels - 1));
+      return [
+        `<path d="M${(cx - topW / 2).toFixed(1)} ${topY.toFixed(1)}H${(cx + topW / 2).toFixed(1)}L${(cx + bottomW / 2).toFixed(1)} ${bottomY.toFixed(1)}H${(cx - bottomW / 2).toFixed(1)}Z" fill="${fill}" stroke="${palette.line}" />`,
+        fittedTextBlock(item, cx, topY + levelH / 2 - 1, bottomW - 84, { color: index === 0 ? palette.background : palette.text, weight: 800, preferredSize: 15, minimumSize: 9, maxLines: 1, anchor: "middle" })
+      ].join("");
+    })
+    .join("");
+}
+
+function stepSchematic(diagram: SchematicDiagram, palette: SchematicPalette): string {
+  const items = diagram.items.slice(0, 5);
+  const gap = 16;
+  const x = 86;
+  const baseY = 424;
+  const maxH = 278;
+  const w = (diagram.width - x * 2 - gap * (items.length - 1)) / items.length;
+  return items
+    .map((item, index) => {
+      const h = 86 + (maxH - 86) * ((index + 1) / items.length);
+      const barX = x + index * (w + gap);
+      const barY = baseY - h;
+      const connector = index < items.length - 1 ? `<path d="M${barX + w} ${barY}h${gap}v${-(maxH - h) / items.length}" fill="none" stroke="${palette.accent}" stroke-width="2" stroke-linecap="round" />` : "";
+      return [
+        roundedRect(barX, barY, w, h, 20, index === items.length - 1 ? palette.accentSoft : palette.surface, palette.line),
+        `<circle cx="${barX + 28}" cy="${barY + 28}" r="14" fill="${palette.accent}" />`,
+        `<text x="${barX + 28}" y="${barY + 33}" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="800" fill="${palette.background}">${index + 1}</text>`,
+        fittedTextBlock(item, barX + w / 2, barY + h / 2 + 12, w - 28, { color: palette.text, weight: 800, preferredSize: 14, minimumSize: 8, maxLines: 3, anchor: "middle" }),
+        connector
+      ].join("");
+    })
+    .join("");
+}
+
+function ganttSchematic(diagram: SchematicDiagram, palette: SchematicPalette): string {
+  const tasks = diagram.items.slice(0, 6);
+  const periods = (diagram.secondaryItems.length ? diagram.secondaryItems : ["1", "2", "3", "4"]).slice(0, 5);
+  const x = 216;
+  const y = 130;
+  const chartW = 680;
+  const rowH = 42;
+  const headerH = 36;
+  const periodW = chartW / periods.length;
+  return [
+    roundedRect(64, y, 138, headerH + rowH * tasks.length, 18, palette.surface, palette.line),
+    roundedRect(x, y, chartW, headerH + rowH * tasks.length, 18, palette.surface, palette.line),
+    ...periods.map((period, index) => [
+      `<rect x="${x + index * periodW}" y="${y}" width="${periodW}" height="${headerH}" fill="${index % 2 ? palette.surfaceAlt : palette.accentSoft}" stroke="${palette.line}" />`,
+      fittedTextBlock(period, x + index * periodW + periodW / 2, y + 21, periodW - 18, { color: palette.text, weight: 800, preferredSize: 11, minimumSize: 8, maxLines: 1, anchor: "middle" })
+    ].join("")),
+    ...tasks.map((task, index) => {
+      const rowY = y + headerH + index * rowH;
+      const start = Math.min(index, Math.max(0, periods.length - 1));
+      const duration = Math.min(index % 2 === 0 ? 2 : 1, periods.length - start);
+      return [
+        `<rect x="64" y="${rowY}" width="138" height="${rowH}" fill="${index % 2 ? palette.surfaceAlt : palette.surface}" stroke="${palette.line}" />`,
+        fittedTextBlock(task, 78, rowY + rowH / 2 + 1, 112, { color: palette.text, weight: 600, preferredSize: 11, minimumSize: 8, maxLines: 2, anchor: "start" }),
+        `<rect x="${x}" y="${rowY}" width="${chartW}" height="${rowH}" fill="${index % 2 ? palette.surfaceAlt : palette.surface}" stroke="${palette.line}" opacity="0.74" />`,
+        `<rect x="${x + start * periodW + 10}" y="${rowY + 10}" width="${periodW * duration - 20}" height="22" rx="11" fill="${index === tasks.length - 1 ? palette.accent : palette.accentSoft}" stroke="${palette.accent}" />`
+      ].join("");
+    })
+  ].join("");
+}
+
+function rankingSchematic(diagram: SchematicDiagram, palette: SchematicPalette): string {
+  const items = diagram.items.slice(0, 6);
+  const values = items.map((item, index) => parseSchematicValue(diagram.secondaryItems[index] ?? item, (items.length - index) * 10));
+  const max = Math.max(...values, 1);
+  const x = 78;
+  const y = 124;
+  const rowH = 48;
+  const barX = 370;
+  const barMaxW = 438;
+  return items
+    .map((item, index) => {
+      const rowY = y + index * rowH;
+      const barW = Math.max(52, (values[index] / max) * barMaxW);
+      return [
+        roundedRect(x, rowY, diagram.width - 156, 38, 18, index < 3 ? palette.accentSoft : palette.surface, palette.line),
+        `<circle cx="${x + 24}" cy="${rowY + 19}" r="16" fill="${index < 3 ? palette.accent : palette.surfaceAlt}" stroke="${palette.accent}" />`,
+        `<text x="${x + 24}" y="${rowY + 25}" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="800" fill="${index < 3 ? palette.background : palette.accent}">${index + 1}</text>`,
+        fittedTextBlock(item.replace(/-?\d+(?:[,.]\d+)*/, "").trim() || item, x + 54, rowY + 20, 270, { color: palette.text, weight: 700, preferredSize: 13, minimumSize: 8, maxLines: 1, anchor: "start" }),
+        `<rect x="${barX}" y="${rowY + 10}" width="${barW.toFixed(1)}" height="18" rx="9" fill="${index === 0 ? palette.accent : palette.accentSoft}" stroke="${palette.accent}" />`,
+        `<text x="${barX + barW + 16}" y="${rowY + 25}" font-family="Arial, sans-serif" font-size="11" font-weight="700" fill="${palette.muted}">${escapeXml(String(values[index]))}</text>`
+      ].join("");
+    })
+    .join("");
+}
+
+const SCHEMATIC_RENDERERS: Record<SchematicKind, (diagram: SchematicDiagram, palette: SchematicPalette) => string> = {
+  table: tableSchematic,
+  tree: treeSchematic,
+  flow: flowSchematic,
+  "vertical-flow": verticalFlowSchematic,
+  cycle: cycleSchematic,
+  "before-after": beforeAfterSchematic,
+  map: mapSchematic,
+  puzzle: puzzleSchematic,
+  correlation: correlationSchematic,
+  matrix: matrixSchematic,
+  venn: vennSchematic,
+  cross: crossSchematic,
+  set: setSchematic,
+  contrast: contrastSchematic,
+  "scale-contrast": scaleContrastSchematic,
+  grow: growSchematic,
+  layer: layerSchematic,
+  triangle: triangleSchematic,
+  step: stepSchematic,
+  gantt: ganttSchematic,
+  ranking: rankingSchematic,
+  list: (diagram, palette) => listSchematic(diagram, palette),
+  "list-horizontal": (diagram, palette) => listSchematic(diagram, palette, true),
+  "list-enumeration": (diagram, palette) => listSchematic(diagram, palette, false, true),
+  mockup: mockupSchematic
+};
+
 export function renderSchematicDiagram(input: unknown): { svg: string; summary: string; longDescription: string } {
   const diagram = SchematicDiagramSchema.parse(input);
   const palette = SCHEMATIC_PALETTES[diagram.tone];
-  const body =
-    diagram.kind === "table"
-      ? tableSchematic(diagram, palette)
-      : diagram.kind === "tree"
-        ? treeSchematic(diagram, palette)
-        : diagram.kind === "flow"
-          ? flowSchematic(diagram, palette)
-          : diagram.kind === "vertical-flow"
-            ? verticalFlowSchematic(diagram, palette)
-            : diagram.kind === "list-horizontal"
-              ? listSchematic(diagram, palette, true)
-              : diagram.kind === "list-enumeration"
-                ? listSchematic(diagram, palette, false, true)
-                : diagram.kind === "mockup"
-                  ? mockupSchematic(diagram, palette)
-                  : listSchematic(diagram, palette);
+  const render = SCHEMATIC_RENDERERS[diagram.kind] ?? ((d: SchematicDiagram, p: SchematicPalette) => listSchematic(d, p));
+  const body = render(diagram, palette);
 
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${diagram.width} ${diagram.height}" role="img">`,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram } from "./index.js";
+import { SCHEMATIC_KIND_CATALOG, SCHEMATIC_KINDS, SCHEMATIC_STYLE_PRESETS, renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram, schematicKindsForStyleProfile, schematicToneForStyleProfile } from "./index.js";
 
 const TEST_FULL_WIDTH_PATTERN = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}\u30FC\u30FB\uFF01-\uFF60\uFFE0-\uFFE6]/u;
 
@@ -491,21 +491,50 @@ describe("native ponchi diagram rendering", () => {
 
 describe("schematic diagram rendering", () => {
   it("renders safe Slideland-style schematic presets", () => {
-    for (const kind of ["table", "tree", "flow", "vertical-flow", "list", "list-horizontal", "list-enumeration", "mockup"] as const) {
+    for (const kind of SCHEMATIC_KINDS) {
       const rendered = renderSchematicDiagram({
         kind,
         title: `${kind} schematic`,
         summary: `${kind} visual`,
         longDescription: `This ${kind} schematic is generated from a safe preset for PowerPoint slide use.`,
-        items: ["現状", "課題", "施策", "効果"],
-        secondaryItems: ["Before", "After", "Evidence", "Next"],
+        items: ["現状 40", "課題 30", "施策 20", "効果 10", "運用", "改善"],
+        secondaryItems: ["目標 100", "Before 60", "After 80", "Q1", "Q2", "Q3"],
+        axisX: "Maturity",
+        axisY: "Impact",
         tone: "minimal"
       });
 
       expect(rendered.svg).toContain("<svg");
       expect(rendered.svg).toContain("<title>");
+      expect(rendered.svg.match(/<text\b/gu)?.length ?? 0).toBeGreaterThan(0);
+      expect(rendered.svg).not.toContain("NaN");
+      expect(rendered.svg).not.toContain("undefined");
       expect(rendered.svg).not.toContain("<script");
     }
+  });
+
+  it("provides complete mode-aware schematic preset sets", () => {
+    for (const [styleProfile, preset] of Object.entries(SCHEMATIC_STYLE_PRESETS)) {
+      expect(schematicToneForStyleProfile(styleProfile)).toBe(preset.tone);
+      expect(new Set(schematicKindsForStyleProfile(styleProfile))).toEqual(new Set(SCHEMATIC_KINDS));
+      expect(preset.primaryKinds.every((kind) => preset.kinds.includes(kind))).toBe(true);
+    }
+    expect(schematicToneForStyleProfile("unknown")).toBe("minimal");
+    expect(Object.keys(SCHEMATIC_KIND_CATALOG).sort()).toEqual([...SCHEMATIC_KINDS].sort());
+  });
+
+  it("keeps scale comparison radii finite for negative numeric labels", () => {
+    const rendered = renderSchematicDiagram({
+      kind: "scale-contrast",
+      title: "Scale comparison",
+      summary: "Scale comparison",
+      longDescription: "This schematic verifies numeric scale values are clamped before radius calculation.",
+      items: ["A", "B"],
+      secondaryItems: ["-10", "20"],
+      tone: "minimal"
+    });
+
+    expect(rendered.svg).not.toContain("NaN");
   });
 
   it("rejects canvases too small for preset geometry", () => {

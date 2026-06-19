@@ -32,7 +32,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "目的・聴衆・contentMode・枚数・出典・使うテンプレート/ブランドが曖昧なら、DeckSpec を書く前に確認または合理的に仮定する。",
         "経営向け・顧客向け・重要会議・コンサル風資料では plan_business_deck を先に実行し、章構成と各スライドの役割を決める。",
         "search_templates / recommend_template で template を決め、search_assets で既存アイコン・クラウドプリセットを先に探す。",
-        "意図した構図・粒度がある図解は generate_intent_diagram を先に使い、それ以外は generate_native_diagram または generate_schematic でテキスト・カード・矢印・ラベルを編集可能な形で作る。",
+        "意図した構図・粒度がある図解は generate_intent_diagram を先に使い、それ以外は list_schematic_presets で型を選んで generate_schematic、または generate_native_diagram でテキスト・カード・矢印・ラベルを編集可能な形で作る。",
         "DeckSpec 作成後は finalize_deck（または CLI `pptcreater finalize <deck.json> --output <deck.pptx>`）で polish→lint→render を1回でまとめて実行する。改行・はみ出し・小さすぎる文字・読み上げ順などの polishFixable 項目は polish が自動修正するので手作業で直さない。blockingErrors（本当に直すべき項目）だけを修正して再実行する。lint/polish/render を別々に何度も呼ぶ非効率なループは避ける。"
       ]
     : [
@@ -40,7 +40,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "If purpose, audience, contentMode, slide count, sources, template, or brand constraints are unclear, clarify or make explicit assumptions before writing DeckSpec.",
         "For executive, customer-facing, important-meeting, or consulting-style decks, run plan_business_deck first to define sections and slide roles.",
         "Choose the template through search_templates / recommend_template, and search_assets before creating new icons or cloud pictograms.",
-        "Use generate_intent_diagram first when a diagram has a known intended composition/granularity; otherwise prefer generate_native_diagram or generate_schematic so diagrams, cards, arrows, and labels remain editable.",
+        "Use generate_intent_diagram first when a diagram has a known intended composition/granularity; otherwise call list_schematic_presets and use generate_schematic, or use generate_native_diagram so diagrams, cards, arrows, and labels remain editable.",
         "After DeckSpec creation, run finalize_deck (or CLI `pptcreater finalize <deck.json> --output <deck.pptx>`) to polish, lint, and render in a single pass. polishFixable items (line breaks, overflow, too-small text, reading order) are auto-resolved by polish — do not hand-edit them; fix only the blockingErrors and re-run. Avoid the slow loop of calling lint, polish, and render separately and repeatedly."
       ];
 
@@ -71,7 +71,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "タイトルは原則30pt以上、リード/メッセージは18pt以上、本文は14pt以上、ラベル/注釈は12pt以上を目安にする。",
         "テキストボックスは最初から十分な幅・高さを取る。短い高さの横長カードに長文を入れない。",
         "装飾背景やカードは text より低い readingOrder にする。opaque な shape をテキスト上に置かない。",
-        "比較は table、階層は tree、工程は flow/vertical-flow、3-4点要約は list/list-horizontal を優先する。"
+        "比較は table/contrast、階層は tree/layer、工程は flow/vertical-flow/cycle/step、分析は matrix/scale-contrast/grow/ranking、予定は gantt、集合・関係は venn/set/puzzle/correlation/map、3-4点要約は list/list-horizontal を優先する。"
       ]
     : [
         "Decide the layout frame before placing elements: title band, message band, body/visual area, and notes must not overlap.",
@@ -79,12 +79,12 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "Use roughly >=30pt titles, >=18pt leads/messages, >=14pt body text, and >=12pt labels/notes.",
         "Allocate enough width and height up front. Do not put long copy into shallow horizontal cards.",
         "Decorative backgrounds/cards must have lower readingOrder than text. Never place opaque shapes over text.",
-        "Use table for comparisons, tree for hierarchy, flow/vertical-flow for processes, and list/list-horizontal for 3-4 point summaries."
+        "Use table/contrast for comparisons, tree/layer for hierarchy, flow/vertical-flow/cycle/step for processes, matrix/scale-contrast/grow/ranking for analysis, gantt for schedules, venn/set/puzzle/correlation/map for grouping or relationships, and list/list-horizontal for 3-4 point summaries."
       ];
 
   const visualRules = locale === "ja-JP"
     ? [
-        "本文スライドはテキストだけにしない。少なくともカード、アイコン、表、図解、フロー、ツリー、タイムラインのいずれかを入れる。",
+        "本文スライドはテキストだけにしない。少なくともカード、アイコン、表、図解、フロー、ツリー、タイムライン、または Slideland 風 schematic パターンのいずれかを入れる。",
         "図解を別途作らない本文スライドには generate_visual_scaffold で右側に編集可能なコンセプトビジュアル(パネル＋アイコン/モノグラム＋見出し＋観点チップ)を付け、テキストのみ・低リッチネスを避ける。観点チップは短いフレーズ(目安24字以内)に絞る。",
         "Enterprise Access Model、閉じた特権経路、左右比較など構図を外したくない概念図は generate_intent_diagram を使う。一般的なアーキテクチャ/セキュリティ/制御フロー/ポンチ絵は generate_native_diagram を使い、ローカルSVGを image.path として貼らない。",
         "プロセスや変化の表現は generate_intent_diagram のプリセットを使い分ける: 反復工程は lifecycle、段階的高度化は maturity-ladder、現状と目標の対比は before-after、中核機能と関連領域の関係は relationship-map。",
@@ -93,7 +93,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "色だけで意味を表さない。状態・差分・リスクにはラベル、形、アイコン、凡例を併用する。"
       ]
     : [
-        "Content slides must not be text-only. Include cards, icons, tables, diagrams, flows, trees, or timelines.",
+        "Content slides must not be text-only. Include cards, icons, tables, diagrams, flows, trees, timelines, or Slideland-style schematic patterns.",
         "For content slides without a dedicated diagram, attach an editable right-rail concept visual (panel + icon/monogram + heading + aspect chips) via generate_visual_scaffold to avoid text-only/low-richness slides. Keep aspect chips to short phrases (~24 chars max).",
         "Use generate_intent_diagram for concept diagrams where composition must not drift, such as Enterprise Access Model, closed privileged paths, or side-by-side comparisons. Use generate_native_diagram for general architecture/security/control-flow/ponchi-e diagrams; do not paste local SVG diagrams as image.path.",
         "Pick the right generate_intent_diagram preset for process/change stories: lifecycle for repeating cycles, maturity-ladder for staged improvement, before-after for current-vs-target contrast, and relationship-map for a hub function and its related domains.",
@@ -133,14 +133,14 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "タイトル/メッセージ/本文が contentMode の文字量内に収まっている。",
         "本文スライドがテキストだけではなく、1つの視覚文法に沿っている。",
         "長いラベル・長文・脚注をスライド面に詰め込まず、分割または notes に移している。",
-        "構図意図がある概念図は intent diagram、一般的なアーキテクチャ/フロー図は native diagram または schematic で作っている。",
+        "構図意図がある概念図は intent diagram、一般的なアーキテクチャ/フロー図は native diagram、構造化図解はモード別 schematic プリセットで作っている。",
         "altText、readingOrder、sources、コントラストを最初から入れている。"
       ]
     : [
         "Titles/messages/body copy fit the selected contentMode limits.",
         "Content slides are not text-only and use one visual grammar.",
         "Long labels, prose, and footnotes are split or moved to notes.",
-        "Concept diagrams with intended composition use intent diagrams; general architecture/flow diagrams are native diagrams or schematics.",
+        "Concept diagrams with intended composition use intent diagrams; general architecture/flow diagrams use native diagrams, and structured visuals use mode-aware schematic presets.",
         "altText, readingOrder, sources, and contrast are present from the start."
       ];
 
