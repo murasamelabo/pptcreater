@@ -133,7 +133,7 @@ const program = new Command();
 program
   .name("pptcreater")
   .description("Create concise accessible PowerPoint decks from DeckSpec.")
-  .version("0.1.8")
+  .version("0.1.9")
   .option("--language <locale>", "CLI output language: ja-JP or en-US");
 
 program
@@ -589,7 +589,7 @@ program
 
 program
   .command("diagram-intent")
-  .description("Render a Diagram Intent JSON file to editable DeckSpec shape/text elements.")
+  .description("Render a Diagram Intent JSON file (access-plane-map, closed-privileged-path, lifecycle, maturity-ladder, before-after, relationship-map) to editable DeckSpec shape/text elements.")
   .argument("<intent>", "Diagram Intent JSON path")
   .requiredOption("-o, --output <path>", "Output JSON path")
   .option("--frame-x <number>", "Slide frame x in inches", Number)

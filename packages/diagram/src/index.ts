@@ -196,9 +196,86 @@ export const ClosedPrivilegedPathIntentSchema = z.object({
   includeTitle: z.boolean().default(true)
 });
 
-export const DiagramIntentSchema = z.discriminatedUnion("kind", [AccessPlaneMapIntentSchema, ClosedPrivilegedPathIntentSchema]);
+const IntentLevelSchema = z.object({
+  label: z.string().min(1),
+  description: z.string().optional()
+});
+
+const IntentRelationshipNodeSchema = z.object({
+  label: z.string().min(1),
+  sublabel: z.string().optional(),
+  relationship: z.string().optional()
+});
+
+export const LifecycleIntentSchema = z.object({
+  kind: z.literal("lifecycle"),
+  title: z.string().min(1),
+  subtitle: z.string().min(1),
+  summary: z.string().min(1),
+  longDescription: z.string().min(20),
+  stages: z.array(IntentTextBlockSchema).min(3).max(6),
+  loopLabel: z.string().min(1).default("continuous improvement loop"),
+  designMessage: z.string().min(1),
+  includeTitle: z.boolean().default(true)
+});
+
+export const MaturityLadderIntentSchema = z.object({
+  kind: z.literal("maturity-ladder"),
+  title: z.string().min(1),
+  subtitle: z.string().min(1),
+  summary: z.string().min(1),
+  longDescription: z.string().min(20),
+  levels: z.array(IntentLevelSchema).min(3).max(5),
+  axisLabel: z.string().min(1).default("maturity"),
+  designMessage: z.string().min(1),
+  includeTitle: z.boolean().default(true)
+});
+
+export const BeforeAfterIntentSchema = z.object({
+  kind: z.literal("before-after"),
+  title: z.string().min(1),
+  subtitle: z.string().min(1),
+  summary: z.string().min(1),
+  longDescription: z.string().min(20),
+  before: z.object({
+    title: z.string().min(1),
+    points: z.array(z.string().min(1)).min(1).max(6)
+  }),
+  after: z.object({
+    title: z.string().min(1),
+    points: z.array(z.string().min(1)).min(1).max(6)
+  }),
+  transitionLabel: z.string().min(1).default("transform"),
+  designMessage: z.string().min(1),
+  includeTitle: z.boolean().default(true)
+});
+
+export const RelationshipMapIntentSchema = z.object({
+  kind: z.literal("relationship-map"),
+  title: z.string().min(1),
+  subtitle: z.string().min(1),
+  summary: z.string().min(1),
+  longDescription: z.string().min(20),
+  center: IntentTextBlockSchema,
+  nodes: z.array(IntentRelationshipNodeSchema).min(3).max(6),
+  designMessage: z.string().min(1),
+  includeTitle: z.boolean().default(true)
+});
+
+export const DiagramIntentSchema = z.discriminatedUnion("kind", [
+  AccessPlaneMapIntentSchema,
+  ClosedPrivilegedPathIntentSchema,
+  LifecycleIntentSchema,
+  MaturityLadderIntentSchema,
+  BeforeAfterIntentSchema,
+  RelationshipMapIntentSchema
+]);
 export type AccessPlaneMapIntent = z.infer<typeof AccessPlaneMapIntentSchema>;
 export type ClosedPrivilegedPathIntent = z.infer<typeof ClosedPrivilegedPathIntentSchema>;
+export type LifecycleIntent = z.infer<typeof LifecycleIntentSchema>;
+export type MaturityLadderIntent = z.infer<typeof MaturityLadderIntentSchema>;
+export type BeforeAfterIntent = z.infer<typeof BeforeAfterIntentSchema>;
+export type RelationshipMapIntent = z.infer<typeof RelationshipMapIntentSchema>;
 export type DiagramIntent = z.infer<typeof DiagramIntentSchema>;
 
 export type NativeDiagramShapeElement = {
@@ -2051,6 +2128,199 @@ function addClosedPrivilegedPath(context: IntentRenderContext, intent: ClosedPri
   intentText(context, "message", intent.designMessage, { x: 270, y: 816, w: 1060, h: 28 }, { fontSize: 18, color: "#17202A", background: "#EAF7FA", bold: true });
 }
 
+const INTENT_STAGE_PALETTE = [
+  { fill: "#E8F1FF", line: "#5B8DEF", badge: "#2F5FBF" },
+  { fill: "#DDF4EF", line: "#70C5B8", badge: "#2E8B7A" },
+  { fill: "#FFF4E0", line: "#D1A848", badge: "#B07D1E" },
+  { fill: "#F3E9FB", line: "#A87FD1", badge: "#7A4FB0" },
+  { fill: "#FBEAEA", line: "#E0857C", badge: "#B33A2E" },
+  { fill: "#E6F6FA", line: "#73C0D0", badge: "#2E7E8E" }
+];
+
+function addIntentBackdrop(context: IntentRenderContext, includeTitle: boolean, title: string, subtitle: string): void {
+  intentShape(context, "background", "rect", { x: 0, y: 0, w: 1600, h: 900 }, { fill: "#F4F7F8", line: { color: "#F4F7F8", width: 0.1 } });
+  if (includeTitle) {
+    intentText(context, "title", title, { x: 70, y: 36, w: 1120, h: 54 }, { fontSize: 48, color: "#17202A", background: "#F4F7F8", bold: true, align: "left", role: "body" });
+    intentText(context, "subtitle", subtitle, { x: 72, y: 92, w: 1320, h: 36 }, { fontSize: 24, color: "#4F5D66", background: "#F4F7F8", bold: true, align: "left" });
+  }
+}
+
+function addIntentMessage(context: IntentRenderContext, message: string, x = 215, w = 1170): void {
+  intentShape(context, "message-bg", "roundRect", { x, y: 805, w, h: 50 }, { fill: "#EAF7FA", line: { color: "#88CAD4", width: 1 }, radius: 0.08 });
+  intentText(context, "message", message, { x: x + 30, y: 816, w: w - 60, h: 28 }, { fontSize: 18, color: "#17202A", background: "#EAF7FA", bold: true });
+}
+
+function addLifecycle(context: IntentRenderContext, intent: LifecycleIntent): void {
+  addIntentBackdrop(context, intent.includeTitle, intent.title, intent.subtitle);
+
+  const count = intent.stages.length;
+  const left = 90;
+  const right = 1510;
+  const gap = 40;
+  const cardW = (right - left - gap * (count - 1)) / count;
+  const cardY = 300;
+  const cardH = 184;
+  const centers: number[] = [];
+
+  intent.stages.forEach((stage, index) => {
+    const x = left + index * (cardW + gap);
+    const cx = x + cardW / 2;
+    centers.push(cx);
+    const tone = INTENT_STAGE_PALETTE[index % INTENT_STAGE_PALETTE.length];
+    intentShape(context, `stage-${index}-card`, "roundRect", { x, y: cardY, w: cardW, h: cardH }, { fill: tone.fill, line: { color: tone.line, width: 1.4 }, radius: 0.09 });
+    intentShape(context, `stage-${index}-badge`, "ellipse", { x: cx - 26, y: cardY + 18, w: 52, h: 52 }, { fill: tone.badge, line: { color: tone.badge, width: 1 } });
+    intentText(context, `stage-${index}-num`, String(index + 1), { x: cx - 26, y: cardY + 25, w: 52, h: 38 }, { fontSize: 24, color: "#FFFFFF", background: tone.badge, bold: true, align: "center" });
+    intentText(context, `stage-${index}-label`, stage.label, { x: x + 12, y: cardY + 84, w: cardW - 24, h: 44 }, { fontSize: 21, color: "#17202A", background: tone.fill, bold: true, align: "center" });
+    if (stage.sublabel) {
+      intentText(context, `stage-${index}-sub`, stage.sublabel, { x: x + 12, y: cardY + 130, w: cardW - 24, h: 46 }, { fontSize: 15, color: "#4F5D66", background: tone.fill, bold: true, align: "center" });
+    }
+  });
+
+  for (let index = 0; index < count - 1; index += 1) {
+    const startX = left + index * (cardW + gap) + cardW;
+    const endX = left + (index + 1) * (cardW + gap);
+    intentLine(context, `flow-${index}`, { x: startX + 4, y: cardY + cardH / 2 }, { x: endX - 4, y: cardY + cardH / 2 }, { color: "#0B6B78", width: 2.6, arrowAtEnd: true });
+  }
+
+  const loopY = 612;
+  const firstCx = centers[0];
+  const lastCx = centers[count - 1];
+  intentLine(context, "loop-down", { x: lastCx, y: cardY + cardH }, { x: lastCx, y: loopY }, { color: "#2E8B7A", width: 2.4 });
+  intentLine(context, "loop-across", { x: lastCx, y: loopY }, { x: firstCx, y: loopY }, { color: "#2E8B7A", width: 2.4 });
+  intentLine(context, "loop-up", { x: firstCx, y: loopY }, { x: firstCx, y: cardY + cardH + 4 }, { color: "#2E8B7A", width: 2.4, arrowAtEnd: true });
+
+  const loopBoxW = 360;
+  intentShape(context, "loop-label-bg", "roundRect", { x: 800 - loopBoxW / 2, y: loopY - 28, w: loopBoxW, h: 50 }, { fill: "#DDF4EF", line: { color: "#70C5B8", width: 1 }, radius: 0.09 });
+  intentText(context, "loop-label", intent.loopLabel, { x: 800 - loopBoxW / 2 + 20, y: loopY - 17, w: loopBoxW - 40, h: 28 }, { fontSize: 18, color: "#2E7D58", background: "#DDF4EF", bold: true, align: "center" });
+
+  addIntentMessage(context, intent.designMessage);
+}
+
+function addMaturityLadder(context: IntentRenderContext, intent: MaturityLadderIntent): void {
+  addIntentBackdrop(context, intent.includeTitle, intent.title, intent.subtitle);
+
+  const count = intent.levels.length;
+  const left = 150;
+  const rightEdge = 1470;
+  const gap = 34;
+  const blockW = (rightEdge - left - gap * (count - 1)) / count;
+  const blockH = 120;
+  const lowestTop = 650;
+  const highestTop = 250;
+  const stepY = count > 1 ? (lowestTop - highestTop) / (count - 1) : 0;
+  const tops: number[] = [];
+  const lefts: number[] = [];
+
+  intentLine(context, "axis", { x: 96, y: 786 }, { x: 96, y: 224 }, { color: "#60707A", width: 2.4, arrowAtEnd: true });
+  intentText(context, "axis-label", intent.axisLabel, { x: 44, y: 188, w: 260, h: 30 }, { fontSize: 18, color: "#4F5D66", background: "#F4F7F8", bold: true, align: "left" });
+  intentLine(context, "ground", { x: 110, y: 788 }, { x: 1500, y: 788 }, { color: "#C7D2D6", width: 1.6 });
+
+  intent.levels.forEach((level, index) => {
+    const x = left + index * (blockW + gap);
+    const topY = lowestTop - index * stepY;
+    tops.push(topY);
+    lefts.push(x);
+    const tone = INTENT_STAGE_PALETTE[index % INTENT_STAGE_PALETTE.length];
+    intentShape(context, `level-${index}-card`, "roundRect", { x, y: topY, w: blockW, h: blockH }, { fill: tone.fill, line: { color: tone.line, width: 1.4 }, radius: 0.09 });
+    intentShape(context, `level-${index}-badge`, "roundRect", { x: x + 14, y: topY + 14, w: 92, h: 34 }, { fill: tone.badge, line: { color: tone.badge, width: 1 }, radius: 0.12 });
+    intentText(context, `level-${index}-badge-text`, `Lv.${index + 1}`, { x: x + 14, y: topY + 18, w: 92, h: 26 }, { fontSize: 15, color: "#FFFFFF", background: tone.badge, bold: true, align: "center" });
+    intentText(context, `level-${index}-label`, level.label, { x: x + 12, y: topY + 52, w: blockW - 24, h: 32 }, { fontSize: 19, color: "#17202A", background: tone.fill, bold: true, align: "left" });
+    if (level.description) {
+      intentText(context, `level-${index}-desc`, level.description, { x: x + 12, y: topY + 84, w: blockW - 24, h: 30 }, { fontSize: 13, color: "#4F5D66", background: tone.fill, bold: true, align: "left" });
+    }
+  });
+
+  for (let index = 1; index < count; index += 1) {
+    const prevRight = { x: lefts[index - 1] + blockW, y: tops[index - 1] + blockH / 2 };
+    const curLeft = { x: lefts[index], y: tops[index] + blockH / 2 };
+    intentOrthogonalArrow(context, `rise-${index}`, prevRight, curLeft, { color: "#0B6B78", width: 2.2 });
+  }
+
+  addIntentMessage(context, intent.designMessage);
+}
+
+function addBeforeAfterPanel(
+  context: IntentRenderContext,
+  idPrefix: string,
+  rect: NativeRect,
+  barFill: string,
+  barLine: string,
+  titleColor: string,
+  title: string,
+  points: string[]
+): void {
+  intentShape(context, `${idPrefix}-panel`, "roundRect", rect, { fill: "#FFFFFF", line: { color: barLine, width: 1.4 }, radius: 0.08 });
+  intentShape(context, `${idPrefix}-bar`, "roundRect", { x: rect.x + 24, y: rect.y + 24, w: rect.w - 48, h: 58 }, { fill: barFill, line: { color: barLine, width: 1 }, radius: 0.1 });
+  intentText(context, `${idPrefix}-title`, title, { x: rect.x + 40, y: rect.y + 38, w: rect.w - 80, h: 32 }, { fontSize: 23, color: titleColor, background: barFill, bold: true, align: "center" });
+
+  const startY = rect.y + 108;
+  const availableH = rect.y + rect.h - 24 - startY;
+  const rowH = Math.min(88, availableH / points.length);
+  points.forEach((point, index) => {
+    const rowY = startY + index * rowH;
+    intentShape(context, `${idPrefix}-dot-${index}`, "ellipse", { x: rect.x + 30, y: rowY + 10, w: 14, h: 14 }, { fill: barLine, line: { color: barLine, width: 1 } });
+    intentText(context, `${idPrefix}-point-${index}`, point, { x: rect.x + 58, y: rowY, w: rect.w - 86, h: rowH - 12 }, { fontSize: 17, color: "#2B3A42", background: "#FFFFFF", bold: true, align: "left", valign: "middle" });
+  });
+}
+
+function addBeforeAfter(context: IntentRenderContext, intent: BeforeAfterIntent): void {
+  addIntentBackdrop(context, intent.includeTitle, intent.title, intent.subtitle);
+
+  addBeforeAfterPanel(context, "before", { x: 90, y: 180, w: 618, h: 556 }, "#FBEAEA", "#D98B82", "#A93A2E", intent.before.title, intent.before.points);
+  addBeforeAfterPanel(context, "after", { x: 892, y: 180, w: 618, h: 556 }, "#DDF4EF", "#70C5B8", "#2E7D58", intent.after.title, intent.after.points);
+
+  intentShape(context, "transition-bg", "roundRect", { x: 716, y: 392, w: 168, h: 56 }, { fill: "#E8F1FF", line: { color: "#5B8DEF", width: 1.2 }, radius: 0.12 });
+  intentText(context, "transition-label", intent.transitionLabel, { x: 726, y: 404, w: 148, h: 32 }, { fontSize: 17, color: "#2F5FBF", background: "#E8F1FF", bold: true, align: "center" });
+  intentLine(context, "transition-arrow", { x: 724, y: 486 }, { x: 876, y: 486 }, { color: "#2F5FBF", width: 9, arrowAtEnd: true });
+
+  addIntentMessage(context, intent.designMessage);
+}
+
+function addRelationshipMap(context: IntentRenderContext, intent: RelationshipMapIntent): void {
+  addIntentBackdrop(context, intent.includeTitle, intent.title, intent.subtitle);
+
+  const hubRect = { x: 620, y: 398, w: 360, h: 154 };
+  const hubCenter = { x: hubRect.x + hubRect.w / 2, y: hubRect.y + hubRect.h / 2 };
+  intentShape(context, "hub-card", "roundRect", hubRect, { fill: "#17202A", line: { color: "#17202A", width: 1.4 }, radius: 0.1 });
+  intentText(context, "hub-label", intent.center.label, { x: hubRect.x + 24, y: intent.center.sublabel ? hubRect.y + 38 : hubRect.y + hubRect.h / 2 - 20, w: hubRect.w - 48, h: 40 }, { fontSize: 24, color: "#FFFFFF", background: "#17202A", bold: true, align: "center" });
+  if (intent.center.sublabel) {
+    intentText(context, "hub-sub", intent.center.sublabel, { x: hubRect.x + 24, y: hubRect.y + 86, w: hubRect.w - 48, h: 44 }, { fontSize: 16, color: "#DCE8EA", background: "#17202A", bold: true, align: "center" });
+  }
+
+  const leftCount = Math.ceil(intent.nodes.length / 2);
+  const columnTop = 210;
+  const columnBottom = 740;
+  const nodeW = 300;
+
+  intent.nodes.forEach((node, index) => {
+    const isLeft = index < leftCount;
+    const sideIndex = isLeft ? index : index - leftCount;
+    const sideTotal = isLeft ? leftCount : intent.nodes.length - leftCount;
+    const slotH = (columnBottom - columnTop) / sideTotal;
+    const nodeH = Math.min(118, slotH - 22);
+    const nodeY = columnTop + sideIndex * slotH + (slotH - nodeH) / 2;
+    const nodeX = isLeft ? 110 : 1190;
+    const tone = INTENT_STAGE_PALETTE[index % INTENT_STAGE_PALETTE.length];
+    intentShape(context, `node-${index}-card`, "roundRect", { x: nodeX, y: nodeY, w: nodeW, h: nodeH }, { fill: tone.fill, line: { color: tone.line, width: 1.4 }, radius: 0.09 });
+    const hasSub = Boolean(node.sublabel);
+    const hasRel = Boolean(node.relationship);
+    intentText(context, `node-${index}-label`, node.label, { x: nodeX + 16, y: nodeY + 12, w: nodeW - 32, h: 32 }, { fontSize: 18, color: "#17202A", background: tone.fill, bold: true, align: "center" });
+    if (hasSub) {
+      intentText(context, `node-${index}-sub`, node.sublabel as string, { x: nodeX + 16, y: nodeY + 44, w: nodeW - 32, h: 28 }, { fontSize: 14, color: "#4F5D66", background: tone.fill, bold: true, align: "center" });
+    }
+    if (hasRel) {
+      intentText(context, `node-${index}-rel`, `↔ ${node.relationship}`, { x: nodeX + 16, y: nodeY + nodeH - 30, w: nodeW - 32, h: 24 }, { fontSize: 13, color: "#2F5FBF", background: tone.fill, bold: true, align: "center" });
+    }
+
+    const nodeAnchor = { x: isLeft ? nodeX + nodeW : nodeX, y: nodeY + nodeH / 2 };
+    const hubAnchor = { x: isLeft ? hubRect.x : hubRect.x + hubRect.w, y: hubCenter.y };
+    intentOrthogonalArrow(context, `link-${index}`, nodeAnchor, hubAnchor, { color: "#60707A", width: 1.6 });
+  });
+
+  addIntentMessage(context, intent.designMessage);
+}
+
+
 export function renderDiagramIntent(
   input: unknown,
   optionsInput: unknown = {}
@@ -2061,8 +2331,16 @@ export function renderDiagramIntent(
 
   if (intent.kind === "access-plane-map") {
     addAccessPlaneMap(context, intent);
-  } else {
+  } else if (intent.kind === "closed-privileged-path") {
     addClosedPrivilegedPath(context, intent);
+  } else if (intent.kind === "lifecycle") {
+    addLifecycle(context, intent);
+  } else if (intent.kind === "maturity-ladder") {
+    addMaturityLadder(context, intent);
+  } else if (intent.kind === "before-after") {
+    addBeforeAfter(context, intent);
+  } else {
+    addRelationshipMap(context, intent);
   }
 
   return {

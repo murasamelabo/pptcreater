@@ -1,4 +1,4 @@
-import type { Stats } from "node:fs";
+﻿import type { Stats } from "node:fs";
 import { lstat, mkdir, realpath, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -262,7 +262,7 @@ async function assertSafeLocalImagePaths(deck: DeckSpec): Promise<void> {
 export function createPptcreaterMcpServer(): McpServer {
   const server = new McpServer({
     name: "pptcreater",
-    version: "0.1.8"
+    version: "0.1.9"
   });
   const createPowerPointInputSchema = {
     locale: z.enum(["ja-JP", "en-US"]).default("ja-JP"),
@@ -692,7 +692,7 @@ export function createPptcreaterMcpServer(): McpServer {
     {
       title: "Generate editable diagram from explicit visual intent",
       description:
-        "Generate native editable DeckSpec shape/text elements from a Diagram Intent contract. Use this before freeform native diagrams when the user cares about exact conceptual granularity or a specific ponchi-e layout. Supported intent kinds: `access-plane-map` for Enterprise Access Model / control-plane diagrams, and `closed-privileged-path` for zero-trust privileged access path comparisons. The input captures required panels, labels, denied paths, approved steps, and design message so the LLM does not drift to a different level of detail.",
+        "Generate native editable DeckSpec shape/text elements from a Diagram Intent contract. Use this before freeform native diagrams when the user cares about exact conceptual granularity or a specific ponchi-e layout. Supported intent kinds: `access-plane-map` for Enterprise Access Model / control-plane diagrams, `closed-privileged-path` for zero-trust privileged access path comparisons, `lifecycle` for a 3-6 stage cyclic process with a continuous-improvement loop, `maturity-ladder` for a 3-5 level ascending maturity model, `before-after` for current-vs-target comparison panels, and `relationship-map` for a hub-and-spoke governance/stakeholder relationship diagram. The input captures required panels, labels, denied paths, approved steps, stages/levels/nodes, and design message so the LLM does not drift to a different level of detail.",
       inputSchema: {
         intent: DiagramIntentSchema,
         frame: z

@@ -744,4 +744,165 @@ describe("diagram intent rendering", () => {
       expect(element.y + element.h).toBeLessThanOrEqual(frame.y + frame.h + 0.001);
     }
   });
+
+  it("renders a lifecycle as numbered stage cards with a continuous-improvement loop", () => {
+    const rendered = renderDiagramIntent({
+      kind: "lifecycle",
+      title: "ID ライフサイクル",
+      subtitle: "入社から退職まで一貫管理",
+      summary: "Identity lifecycle",
+      longDescription: "Identity lifecycle stages from join to leave handled as one continuous governance loop.",
+      stages: [
+        { label: "参加", sublabel: "Joiner" },
+        { label: "異動", sublabel: "Mover" },
+        { label: "退職", sublabel: "Leaver" },
+        { label: "棚卸し", sublabel: "Review" }
+      ],
+      loopLabel: "継続的なアクセスレビュー",
+      designMessage: "ライフサイクル全体を自動化と証跡で閉じる"
+    });
+
+    const texts = rendered.elements.filter((element) => element.type === "text");
+    expect(texts.some((element) => element.type === "text" && element.text === "1")).toBe(true);
+    expect(texts.some((element) => element.type === "text" && element.text === "4")).toBe(true);
+    expect(texts.some((element) => element.type === "text" && element.text === "継続的なアクセスレビュー")).toBe(true);
+    const lines = rendered.elements.filter((element) => element.type === "shape" && element.shape === "line");
+    expect(lines.length).toBeGreaterThanOrEqual(3 + 3);
+  });
+
+  it("renders a maturity ladder with ascending levels and Lv badges", () => {
+    const rendered = renderDiagramIntent({
+      kind: "maturity-ladder",
+      title: "ガバナンス成熟度",
+      subtitle: "段階的に高度化する",
+      summary: "Governance maturity",
+      longDescription: "Governance maturity climbs from manual handling to fully automated assured operations.",
+      levels: [
+        { label: "手動", description: "属人的な運用" },
+        { label: "標準化", description: "ポリシー整備" },
+        { label: "自動化", description: "アクセスレビュー自動化" }
+      ],
+      axisLabel: "成熟度",
+      designMessage: "上位レベルほど自動化と保証が進む"
+    });
+
+    const findCard = (token: string) =>
+      rendered.elements.find((element) => element.type === "shape" && element.id.endsWith(token)) as
+        | { y: number }
+        | undefined;
+    const first = findCard("level-0-card");
+    const last = findCard("level-2-card");
+    expect(first).toBeDefined();
+    expect(last).toBeDefined();
+    expect((last as { y: number }).y).toBeLessThan((first as { y: number }).y);
+    const texts = rendered.elements.filter((element) => element.type === "text");
+    expect(texts.some((element) => element.type === "text" && element.text === "Lv.1")).toBe(true);
+    expect(texts.some((element) => element.type === "text" && element.text === "Lv.3")).toBe(true);
+  });
+
+  it("renders before/after panels with a transition arrow", () => {
+    const rendered = renderDiagramIntent({
+      kind: "before-after",
+      title: "移行の効果",
+      subtitle: "現状から目標へ",
+      summary: "Before and after",
+      longDescription: "Before and after comparison of manual access management versus automated governance.",
+      before: { title: "現状", points: ["手動申請", "棚卸しが属人的", "証跡が分散"] },
+      after: { title: "目標", points: ["自動承認", "定期レビュー", "一元的な監査証跡"] },
+      transitionLabel: "自動化",
+      designMessage: "手動運用から保証された自動運用へ"
+    });
+
+    const texts = rendered.elements.filter((element) => element.type === "text");
+    expect(texts.some((element) => element.type === "text" && element.text === "現状")).toBe(true);
+    expect(texts.some((element) => element.type === "text" && element.text === "目標")).toBe(true);
+    expect(texts.some((element) => element.type === "text" && element.text === "自動化")).toBe(true);
+    const lines = rendered.elements.filter((element) => element.type === "shape" && element.shape === "line");
+    expect(lines.length).toBeGreaterThan(0);
+  });
+
+  it("renders a relationship map as a hub with connected nodes", () => {
+    const rendered = renderDiagramIntent({
+      kind: "relationship-map",
+      title: "ガバナンス関係図",
+      subtitle: "中核と関係者",
+      summary: "Governance relationship map",
+      longDescription: "Hub and spoke relationship map between the governance core and surrounding stakeholders.",
+      center: { label: "ID ガバナンス", sublabel: "中核機能" },
+      nodes: [
+        { label: "アクセスレビュー", relationship: "定期確認" },
+        { label: "資格管理", relationship: "付与/失効" },
+        { label: "ライフサイクル", relationship: "自動化" },
+        { label: "監査", relationship: "証跡提供" }
+      ],
+      designMessage: "中核機能が各関係者をつなぐ"
+    });
+
+    const texts = rendered.elements.filter((element) => element.type === "text");
+    expect(texts.some((element) => element.type === "text" && element.text === "ID ガバナンス")).toBe(true);
+    expect(texts.some((element) => element.type === "text" && element.text === "アクセスレビュー")).toBe(true);
+    const lines = rendered.elements.filter((element) => element.type === "shape" && element.shape === "line");
+    expect(lines.length).toBeGreaterThan(0);
+  });
+
+  it("keeps all expanded diagram intent presets inside a custom frame", () => {
+    const frame = { x: 0.7, y: 0.8, w: 11.9, h: 5.9 };
+    const intents = [
+      {
+        kind: "lifecycle" as const,
+        title: "L",
+        subtitle: "S",
+        summary: "lifecycle",
+        longDescription: "Lifecycle bounds test with enough stages to fill the row inside the frame.",
+        stages: [{ label: "A" }, { label: "B" }, { label: "C" }, { label: "D" }, { label: "E" }, { label: "F" }],
+        designMessage: "loop"
+      },
+      {
+        kind: "maturity-ladder" as const,
+        title: "M",
+        subtitle: "S",
+        summary: "maturity",
+        longDescription: "Maturity bounds test with the maximum number of ascending levels inside the frame.",
+        levels: [{ label: "1" }, { label: "2" }, { label: "3" }, { label: "4" }, { label: "5" }],
+        designMessage: "rise"
+      },
+      {
+        kind: "before-after" as const,
+        title: "B",
+        subtitle: "S",
+        summary: "before-after",
+        longDescription: "Before after bounds test with the maximum number of points in each panel inside the frame.",
+        before: { title: "Before", points: ["1", "2", "3", "4", "5", "6"] },
+        after: { title: "After", points: ["1", "2", "3", "4", "5", "6"] },
+        designMessage: "shift"
+      },
+      {
+        kind: "relationship-map" as const,
+        title: "R",
+        subtitle: "S",
+        summary: "relationship",
+        longDescription: "Relationship bounds test with the maximum number of nodes around the hub inside the frame.",
+        center: { label: "Hub" },
+        nodes: [
+          { label: "1" },
+          { label: "2" },
+          { label: "3" },
+          { label: "4" },
+          { label: "5" },
+          { label: "6" }
+        ],
+        designMessage: "connect"
+      }
+    ];
+
+    for (const intent of intents) {
+      const rendered = renderDiagramIntent(intent, { frame });
+      for (const element of rendered.elements) {
+        expect(element.x).toBeGreaterThanOrEqual(frame.x - 0.001);
+        expect(element.y).toBeGreaterThanOrEqual(frame.y - 0.001);
+        expect(element.x + element.w).toBeLessThanOrEqual(frame.x + frame.w + 0.001);
+        expect(element.y + element.h).toBeLessThanOrEqual(frame.y + frame.h + 0.001);
+      }
+    }
+  });
 });

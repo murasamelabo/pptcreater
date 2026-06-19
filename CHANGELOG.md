@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.1.9 - 2026-06-20
+
+- Expanded `generate_intent_diagram` / `pptcreater diagram-intent` with four new editable native-object presets so process and change stories keep a fixed, intended composition: `lifecycle` (continuous improvement loop of numbered stages), `maturity-ladder` (ascending capability levels with an axis and risers), `before-after` (current-vs-target two-panel comparison with a transition arrow), and `relationship-map` (a central hub function connected to surrounding related domains).
+- All new presets render as native PowerPoint `shape`/`text` elements with orthogonal connectors, frame-preserving scaling, AA-contrast labels, and visible callouts (never flattened/crushed SVG raster), so they satisfy the diagram visible-label and editable-object gates.
+- Updated slide creation rules (JA/EN) so agents pick the right intent preset for repeating cycles, staged improvement, current-vs-target contrast, and hub-and-spoke relationships.
+- Updated MCP `generate_intent_diagram` and CLI `diagram-intent` descriptions to document all six intent kinds, and added `examples/lifecycle.intent.json`, `examples/maturity-ladder.intent.json`, `examples/before-after.intent.json`, and `examples/relationship-map.intent.json` samples.
+
 ## v0.1.8 - 2026-06-20
 
 - Added `generate_visual_scaffold` (MCP) and `pptcreater visual-scaffold` (CLI) to attach an editable right-rail concept visual to a content slide: a rounded panel, an icon or monogram emblem, a bold concept label, an optional caption, and up to four short aspect chips.

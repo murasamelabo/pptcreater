@@ -1,0 +1,18 @@
+﻿{
+  "kind": "relationship-map",
+  "title": "テナントガバナンス関係図",
+  "subtitle": "中核機能が各ガバナンス領域をつなぐ",
+  "summary": "Tenant governance relationship map",
+  "longDescription": "Hub and spoke relationship map placing identity governance at the center and connecting it to access reviews, entitlement management, lifecycle workflows, and audit as surrounding stakeholders.",
+  "center": {
+    "label": "ID ガバナンス",
+    "sublabel": "中核機能"
+  },
+  "nodes": [
+    { "label": "アクセスレビュー", "sublabel": "Access Reviews", "relationship": "定期確認" },
+    { "label": "資格管理", "sublabel": "Entitlement Mgmt", "relationship": "付与/失効" },
+    { "label": "ライフサイクル", "sublabel": "Lifecycle Workflows", "relationship": "自動化" },
+    { "label": "監査", "sublabel": "Audit", "relationship": "証跡提供" }
+  ],
+  "designMessage": "設計メッセージ: 中核機能が各領域と双方向に連携し、統制を一貫させる"
+}

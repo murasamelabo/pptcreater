@@ -87,6 +87,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "本文スライドはテキストだけにしない。少なくともカード、アイコン、表、図解、フロー、ツリー、タイムラインのいずれかを入れる。",
         "図解を別途作らない本文スライドには generate_visual_scaffold で右側に編集可能なコンセプトビジュアル(パネル＋アイコン/モノグラム＋見出し＋観点チップ)を付け、テキストのみ・低リッチネスを避ける。観点チップは短いフレーズ(目安24字以内)に絞る。",
         "Enterprise Access Model、閉じた特権経路、左右比較など構図を外したくない概念図は generate_intent_diagram を使う。一般的なアーキテクチャ/セキュリティ/制御フロー/ポンチ絵は generate_native_diagram を使い、ローカルSVGを image.path として貼らない。",
+        "プロセスや変化の表現は generate_intent_diagram のプリセットを使い分ける: 反復工程は lifecycle、段階的高度化は maturity-ladder、現状と目標の対比は before-after、中核機能と関連領域の関係は relationship-map。",
         "SVG図を使う場合も、可視ラベルを入れ、内部テキストが8pt未満にならないサイズで配置する。",
         "クラウド/ベンダー図では search_assets で preset-azure / preset-entra / preset-aws / preset-google を先に探す。公式SVGが必要な場合は list_icon_sources でライセンスを確認してから登録する。",
         "色だけで意味を表さない。状態・差分・リスクにはラベル、形、アイコン、凡例を併用する。"
@@ -95,6 +96,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "Content slides must not be text-only. Include cards, icons, tables, diagrams, flows, trees, or timelines.",
         "For content slides without a dedicated diagram, attach an editable right-rail concept visual (panel + icon/monogram + heading + aspect chips) via generate_visual_scaffold to avoid text-only/low-richness slides. Keep aspect chips to short phrases (~24 chars max).",
         "Use generate_intent_diagram for concept diagrams where composition must not drift, such as Enterprise Access Model, closed privileged paths, or side-by-side comparisons. Use generate_native_diagram for general architecture/security/control-flow/ponchi-e diagrams; do not paste local SVG diagrams as image.path.",
+        "Pick the right generate_intent_diagram preset for process/change stories: lifecycle for repeating cycles, maturity-ladder for staged improvement, before-after for current-vs-target contrast, and relationship-map for a hub function and its related domains.",
         "If SVG diagrams are used, include visible labels and place them large enough that internal text stays at least 8pt.",
         "For cloud/vendor diagrams, search_assets for preset-azure / preset-entra / preset-aws / preset-google first. If exact official SVGs are required, check list_icon_sources before registering them.",
         "Do not encode meaning by color alone; combine labels, shapes, icons, or legends for state, difference, and risk."

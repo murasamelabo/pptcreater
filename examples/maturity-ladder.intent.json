@@ -1,0 +1,15 @@
+﻿{
+  "kind": "maturity-ladder",
+  "title": "アイデンティティガバナンス成熟度",
+  "subtitle": "属人的な運用から保証された自動運用へ段階的に高度化する",
+  "summary": "Identity governance maturity ladder",
+  "longDescription": "Identity governance maturity climbing from manual handling, through standardized policy, to automated and finally assured operations with continuous evidence.",
+  "levels": [
+    { "label": "手動", "description": "属人的・申請ベースの運用" },
+    { "label": "標準化", "description": "ポリシーと役割を整備" },
+    { "label": "自動化", "description": "付与・失効・レビューを自動化" },
+    { "label": "保証", "description": "継続的な証跡と監査で保証" }
+  ],
+  "axisLabel": "成熟度",
+  "designMessage": "設計メッセージ: 上位レベルほど自動化と保証が進み、運用負荷とリスクが下がる"
+}

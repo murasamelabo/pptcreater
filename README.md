@@ -108,6 +108,10 @@ Supported intent kinds:
 
 - `access-plane-map`: Enterprise Access Model / control-plane maps with Control, Management, Data/Workload, User, App, Privileged Access, blocked escalation paths, and a design message.
 - `closed-privileged-path`: side-by-side "avoid this / target state" diagrams with uncontrolled source paths, a protected target, approved path steps, denied paths, and a design message.
+- `lifecycle`: a continuous improvement loop of 3-6 numbered stages (`label`, optional `sublabel`) with flow arrows, a return loop, and a loop label — for repeating cycles such as joiner/mover/leaver/review.
+- `maturity-ladder`: 3-5 ascending capability levels (`label`, optional `description`) on an axis with `Lv.N` badges and orthogonal risers — for staged improvement from manual to assured operations.
+- `before-after`: two panels (current vs target) each with a title and 1-6 bullet points plus a center transition arrow and label — for current-vs-target contrast.
+- `relationship-map`: a central hub function (`center`) connected to 3-6 surrounding nodes (`label`, optional `sublabel`, optional `relationship`) — for hub-and-spoke relationships between a core capability and related domains.
 
 CLI usage:
 

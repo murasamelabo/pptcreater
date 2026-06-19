@@ -1,0 +1,15 @@
+﻿{
+  "kind": "lifecycle",
+  "title": "ID ライフサイクル管理",
+  "subtitle": "参加・異動・退職を一貫した統制ループで扱う",
+  "summary": "Identity lifecycle as a continuous governance loop",
+  "longDescription": "Identity lifecycle stages from joiner to mover to leaver to periodic review, connected as a single continuous improvement loop so access stays current and auditable.",
+  "stages": [
+    { "label": "参加 (Joiner)", "sublabel": "入社時に最小権限を付与" },
+    { "label": "異動 (Mover)", "sublabel": "役割変更で権限を再評価" },
+    { "label": "退職 (Leaver)", "sublabel": "失効と証跡を自動化" },
+    { "label": "棚卸し (Review)", "sublabel": "定期的なアクセスレビュー" }
+  ],
+  "loopLabel": "継続的なアクセスレビュー",
+  "designMessage": "設計メッセージ: 付与から失効までを自動化と証跡で閉じ、棚卸しで継続的に是正する"
+}

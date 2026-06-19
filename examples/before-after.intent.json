@@ -1,0 +1,17 @@
+﻿{
+  "kind": "before-after",
+  "title": "アクセス管理の移行効果",
+  "subtitle": "手動運用から自動化されたガバナンスへ",
+  "summary": "Before and after of access management automation",
+  "longDescription": "Before and after comparison contrasting manual, person-dependent access management with automated governance that provides approvals, periodic review, and a unified audit trail.",
+  "before": {
+    "title": "現状 (Before)",
+    "points": ["手動の申請と承認", "棚卸しが属人的", "証跡が各所に分散", "退職時の失効漏れ"]
+  },
+  "after": {
+    "title": "目標 (After)",
+    "points": ["条件付き自動承認", "定期的なアクセスレビュー", "一元的な監査証跡", "退職と同時に自動失効"]
+  },
+  "transitionLabel": "自動化",
+  "designMessage": "設計メッセージ: 手動運用の漏れを、自動化と一元的な証跡で保証された運用に置き換える"
+}
