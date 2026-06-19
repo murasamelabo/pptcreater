@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.2.1 - 2026-06-20
+
+- Added a one-shot `pptcreater finalize` CLI command and `finalize_deck` MCP tool that polish the layout, render the `.pptx`, and classify lint in a single pass — so agents stop running separate `lint` → `polish` → `render` cycles and stop hand-editing issues that polish resolves automatically.
+- Centralized the set of polish-fixable lint codes (`layout.text-overflow-risk`, `layout.bad-line-break`, `layout.text-too-small-to-read`, `layout.card-accent-bar-unshaped`, `element.reading-order-duplicate`) in core as `POLISH_FIXABLE_LINT_CODES`, exposed `isPolishFixableLintCode` / `classifyLintReport`, and annotated each such lint issue with `polishFixable: true` (also surfaced through localized output). The PPTX renderer now reuses this shared set instead of a duplicated local list.
+- Updated MCP guidance and the slide-creation rules (ja-JP / en-US) to recommend the `finalize` one-shot and to NOT hand-edit polish-fixable items, plus added performance guidance discouraging long blocking shell web-search calls during deck creation.
+
 ## v0.2.0 - 2026-06-20
 
 - Added keyword-to-icon auto-mapping so cards, lists, and visual scaffolds carry a meaningful builtin icon instead of a bare monogram. A curated Japanese/English synonym table (`suggestIconForKeyword`) plus an icon-tag fallback maps concepts such as `セキュリティ`/`security`→shield, `コスト削減`/`cost`→cash, `自動化`/`automation`→workflow, and `ガバナンス`/`governance`→settings.

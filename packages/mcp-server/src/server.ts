@@ -12,6 +12,7 @@ import {
   createSampleDeck,
   createSectionDividerSlides,
   createVisualScaffold,
+  classifyLintReport,
   DeckSpecSchema,
   ensureSourceReferenceSlide,
   formatSlideCreationRules,
@@ -503,6 +504,57 @@ export function createPptcreaterMcpServer(): McpServer {
       return jsonText({
         deck: polished,
         lint: localizeLintReport(lintDeckSpec(polished), locale ?? polished.locale)
+      });
+    }
+  );
+
+  server.registerTool(
+    "finalize_deck",
+    {
+      title: "Finalize DeckSpec (polish + lint + render in one pass)",
+      description:
+        "One-shot finishing tool: polish layout, lint, and (when outputPath is given) render a DeckSpec in a single call. Returns the polished deck plus lint classified into blockingErrors (must fix by hand), polishFixable (already resolved by polish: line breaks, overflow, small text, reading order), and warnings. Prefer this over calling polish_deck_layout + lint_deck + render_pptx separately, and only manually edit copy for blockingErrors.",
+      inputSchema: {
+        deck: DeckSpecSchema,
+        outputPath: z.string().optional(),
+        overwrite: z.boolean().default(false),
+        force: z.boolean().default(false),
+        locale: LocaleSchema.optional()
+      }
+    },
+    async ({ deck, outputPath, overwrite, force, locale }) => {
+      const base = ensureSourceReferenceSlide(parseDeckSpec(deck));
+      const polished = normalizeDeckLayout(base);
+      const outputLocale = locale ?? polished.locale;
+      // Classify the authored (pre-polish) deck so polishFixable lists what polish auto-resolves.
+      const report = localizeLintReport(lintDeckSpec(base), outputLocale);
+      const { blockingErrors, polishFixable, warnings } = classifyLintReport(report);
+
+      let render: Awaited<ReturnType<typeof renderDeckToPptx>> | undefined;
+      const blocked = blockingErrors.length > 0 && !force;
+      if (outputPath && !blocked) {
+        await assertSafeLocalImagePaths(polished);
+        const resolvedOutputPath = await prepareMcpOutputPath(outputPath, overwrite);
+        if (extname(resolvedOutputPath).toLowerCase() !== ".pptx") {
+          throw new Error("finalize_deck outputPath must end with .pptx.");
+        }
+        render = await renderDeckToPptx(polished, resolvedOutputPath, { allowLintErrors: true, polishLayout: true });
+      }
+
+      return jsonText({
+        ok: blockingErrors.length === 0,
+        rendered: Boolean(render),
+        deck: polished,
+        blockingErrors,
+        polishFixable,
+        warnings,
+        render,
+        nextStep:
+          blockingErrors.length === 0
+            ? render
+              ? "Done. Deck rendered; polishFixable issues were auto-resolved."
+              : "No blocking issues. Call again with outputPath to render the .pptx."
+            : "Fix the blockingErrors (genuine layout/accessibility problems), then call finalize_deck again. Do not hand-edit polishFixable items."
       });
     }
   );
@@ -1038,12 +1090,14 @@ export function createPptcreaterMcpServer(): McpServer {
               diagramFlow: "When a diagram has an intended composition, first encode it as a Diagram Intent and call generate_intent_diagram. This is stricter than generate_native_diagram: it preserves conceptual granularity for patterns such as access-plane-map and closed-privileged-path. For general ponchi-e graphs, generate_native_diagram returns DeckSpec shape/text elements, not SVG/image. Insert its elements directly into slide.elements to keep nodes, labels, group lanes, and connectors editable in PowerPoint. Omit node x/y to get automatic layered layout — supply only nodes (id, label, kind) and arrows (from, to), set direction 'LR'/'TB', and optionally node.layer/lane to steer placement. Use arrow.style 'orthogonal', arrow.bidirectional, arrow.label, node.sublabel, and node.emphasis for hierarchy. Use generate_diagram SVG only when you intentionally need a fixed single illustration.",
               businessFlow: "For consulting-style, executive, customer-facing, important meeting, or internal-friendly business decks, call plan_business_deck before writing DeckSpec. It creates purpose/audience/reader-action framing, 3-5 section architecture, slide-level message/evidence/reading-path plans, and human-review flags. After DeckSpec generation, call review_business_deck alongside review_content and lint_deck.",
               contentFlow: "Before rendering, call review_content with the deck locale and contentMode. It applies different writing rules for presentation, report, technical, handout, and decision decks. For Japanese report/technical/handout decks, prefer a short topic-label title plus a separate 50-character slide message. For Japanese presentation/decision decks, concise assertion titles are allowed. For English decks, prefer action titles: short complete-sentence takeaways supported by 3-5 proof points.",
-              layoutGuardrails: "render_pptx always applies layout polish (token-aware Japanese/Latin wrapping, font auto-fit, manual-break reflow) and reading-order normalization before drawing, so most overflow, mid-word/kanji splits, orphaned punctuation, and decorative-over-text overlaps are fixed automatically. It still blocks only when content genuinely cannot fit (a box far too small even at the minimum font), low contrast, missing alt text, duplicate ids, out-of-bounds shapes, or SVG-internal diagram text that would render below 8pt; the error lists each offending code and path. Fix those by shortening copy, enlarging the box/diagram, reducing labels, moving dense content into generate_intent_diagram/generate_native_diagram/generate_schematic, or splitting dense diagrams across slides.",
+              layoutGuardrails: "render_pptx and finalize_deck always apply layout polish (token-aware Japanese/Latin wrapping, font auto-fit, manual-break reflow) and reading-order normalization before drawing, so most overflow, mid-word/kanji splits, orphaned punctuation, and decorative-over-text overlaps are fixed automatically. Lint reports these polish-fixable codes (layout.text-overflow-risk, layout.bad-line-break, layout.text-too-small-to-read, layout.card-accent-bar-unshaped, element.reading-order-duplicate) as errors with polishFixable:true — do NOT hand-edit copy for them; one polish/finalize pass resolves them. Rendering still blocks only when content genuinely cannot fit (a box far too small even at the minimum font), low contrast, missing alt text, duplicate ids, out-of-bounds shapes, or SVG-internal diagram text that would render below 8pt; the error lists each offending code and path. Fix those by shortening copy, enlarging the box/diagram, reducing labels, moving dense content into generate_intent_diagram/generate_native_diagram/generate_schematic, or splitting dense diagrams across slides.",
+              finishFlow: "To finish a deck in ONE pass, call finalize_deck (deck + outputPath) instead of separate polish_deck_layout + lint_deck + render_pptx. It polishes, lints, and renders together and returns blockingErrors (the only items you must hand-fix), polishFixable (auto-resolved), and warnings. This avoids the slow edit→lint→polish→render loop. CLI equivalent: pptcreater finalize <deck.json> --output <deck.pptx>.",
+              researchPerformance: "Do not run blocking shell web-search commands (PowerShell Invoke-WebRequest/Invoke-RestMethod scraping, curl loops) to gather sources — they can hang for many minutes and dominate runtime. Use the host's documentation/fetch/search tools instead, fetch sources in parallel, and keep research scoped to what the deck needs.",
               cognitiveLoad: "Use one visual grammar per slide. Prefer table for comparisons, tree for hierarchy, generate_intent_diagram for known concept compositions/granularity, generate_native_diagram for general architecture/security/flow with editable connectors, flow/vertical-flow for processes, and list/list-horizontal for 3-4 key points. Avoid many custom text boxes with uneven manual line breaks or body-only enumerations. Let layout polish wrap Japanese text instead of hand-coding line breaks. Content slides must not be text-only: fix visual.richness-missing and visual.richness-deck by adding generate_schematic, generate_intent_diagram, generate_native_diagram, registered icons, images, or card/shape composition so at least 75% of content slides have visual structure. When embedding SVG diagrams, keep internal labels at least 8pt after scaling or recreate/split them.",
               sourceReferences: "Whenever a deck uses external websites, record each source in metadata.sources with the actual url. render_pptx, render_studio, and polish_deck_layout automatically append/update the final references slide (参考URL・出典 / References and sources) so the last slide contains all external URLs. Per-slide citations are optional for URL-backed sources when the final references slide is complete.",
               sourceVisuals: "Use metadata.sources plus element.sourceId/citation when quoting, recreating, or using source visuals as inspiration. Prefer editable shape/text objects for recreated visuals. For URL-backed sources, final-slide references can replace per-slide citation text.",
               requiredVisualAccessibility: "Non-decorative SVG, image, and diagram elements require altText. Diagram elements also require summary and longDescription.",
-              recommendedWorkflow: ["get_slide_creation_rules before custom DeckSpec authoring", "plan_business_deck for business/executive/customer-facing decks", "create_pptx/create_powerpoint for direct output", "search_templates", "search_assets", "generate_section_divider to insert chapter/section title slides between major sections of longer decks", "generate_intent_diagram when the intended ponchi-e composition/granularity is known", "generate_native_diagram for general editable ponchi-e/architecture/security diagrams", "generate_schematic for structured visuals", "create_deck or custom DeckSpec", "review_business_deck for storyline/section/emphasis checks", "review_content", "lint_deck", "render_pptx/render_powerpoint or render_studio", "CLI fallback if render MCP tools are hidden: pptcreater render <deck.json> --output <deck.pptx> --polish"]
+              recommendedWorkflow: ["get_slide_creation_rules before custom DeckSpec authoring", "plan_business_deck for business/executive/customer-facing decks", "create_pptx/create_powerpoint for direct output", "search_templates", "search_assets", "generate_section_divider to insert chapter/section title slides between major sections of longer decks", "generate_intent_diagram when the intended ponchi-e composition/granularity is known", "generate_native_diagram for general editable ponchi-e/architecture/security diagrams", "generate_schematic for structured visuals", "create_deck or custom DeckSpec", "review_business_deck for storyline/section/emphasis checks", "review_content", "finalize_deck (deck + outputPath) for a single polish+lint+render pass — fix only its blockingErrors, then call again", "or step-by-step: lint_deck, render_pptx/render_powerpoint or render_studio", "CLI fallback if MCP tools are hidden: pptcreater finalize <deck.json> --output <deck.pptx> (one pass) or pptcreater render <deck.json> --output <deck.pptx> --polish"]
             },
             null,
             2

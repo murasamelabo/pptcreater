@@ -33,7 +33,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "経営向け・顧客向け・重要会議・コンサル風資料では plan_business_deck を先に実行し、章構成と各スライドの役割を決める。",
         "search_templates / recommend_template で template を決め、search_assets で既存アイコン・クラウドプリセットを先に探す。",
         "意図した構図・粒度がある図解は generate_intent_diagram を先に使い、それ以外は generate_native_diagram または generate_schematic でテキスト・カード・矢印・ラベルを編集可能な形で作る。",
-        "DeckSpec 作成後に review_content -> lint_deck -> render_pptx の順で確認する。lint エラーが出た場合は、力技で force せず、該当ルールに戻って短縮・分割・図解化する。"
+        "DeckSpec 作成後は finalize_deck（または CLI `pptcreater finalize <deck.json> --output <deck.pptx>`）で polish→lint→render を1回でまとめて実行する。改行・はみ出し・小さすぎる文字・読み上げ順などの polishFixable 項目は polish が自動修正するので手作業で直さない。blockingErrors（本当に直すべき項目）だけを修正して再実行する。lint/polish/render を別々に何度も呼ぶ非効率なループは避ける。"
       ]
     : [
         "Read these get_slide_creation_rules / pptcreater rules first and treat them as constraints for the DeckSpec you are about to write.",
@@ -41,7 +41,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "For executive, customer-facing, important-meeting, or consulting-style decks, run plan_business_deck first to define sections and slide roles.",
         "Choose the template through search_templates / recommend_template, and search_assets before creating new icons or cloud pictograms.",
         "Use generate_intent_diagram first when a diagram has a known intended composition/granularity; otherwise prefer generate_native_diagram or generate_schematic so diagrams, cards, arrows, and labels remain editable.",
-        "After DeckSpec creation, run review_content -> lint_deck -> render_pptx. If lint errors remain, return to these rules and shorten, split, or convert content into visuals instead of force-rendering."
+        "After DeckSpec creation, run finalize_deck (or CLI `pptcreater finalize <deck.json> --output <deck.pptx>`) to polish, lint, and render in a single pass. polishFixable items (line breaks, overflow, too-small text, reading order) are auto-resolved by polish — do not hand-edit them; fix only the blockingErrors and re-run. Avoid the slow loop of calling lint, polish, and render separately and repeatedly."
       ];
 
   const hardRules = locale === "ja-JP"

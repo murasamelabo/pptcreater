@@ -10,6 +10,7 @@ import {
   normalizeDeckLayout,
   normalizeReadingOrder,
   parseDeckSpec,
+  POLISH_FIXABLE_LINT_CODES,
   type DeckSpec,
   type SlideElement
 } from "@pptcreater/core";
@@ -376,13 +377,7 @@ export async function renderDeckToPptx(input: unknown, outputPath: string, optio
   // Errors that layout polish deterministically resolves (text wrapping/fitting and reading-order
   // reassignment) must not block rendering. Everything else — out-of-bounds shapes, duplicate ids,
   // low contrast, missing alt text — is a genuine authoring mistake and is surfaced before we render.
-  const polishFixableCodes = new Set([
-    "layout.text-overflow-risk",
-    "layout.bad-line-break",
-    "layout.text-too-small-to-read",
-    "layout.card-accent-bar-unshaped",
-    "element.reading-order-duplicate"
-  ]);
+  const polishFixableCodes = new Set<string>(POLISH_FIXABLE_LINT_CODES);
   const prePolishErrors = lintDeckSpec(parsedDeck).issues.filter(
     (item) => item.severity === "error" && !polishFixableCodes.has(item.code)
   );

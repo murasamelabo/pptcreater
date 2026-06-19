@@ -7,12 +7,36 @@ import { defaultFontSizeForRole } from "./typography.js";
 
 export type LintSeverity = "error" | "warning" | "suggestion";
 
+/**
+ * Lint codes that {@link normalizeDeckLayout} (a.k.a. `pptcreater polish`, the renderer's built-in
+ * `--polish`, and the `polish_deck_layout` MCP tool) resolves deterministically. These are reported
+ * as errors so that authors who skip polishing still see them, but they do NOT require manual copy
+ * edits: running polish/finalize fixes them automatically. Surfacing this distinction stops agents
+ * from hand-shortening text one element at a time when a single polish pass would do it.
+ */
+export const POLISH_FIXABLE_LINT_CODES = [
+  "layout.text-overflow-risk",
+  "layout.bad-line-break",
+  "layout.text-too-small-to-read",
+  "layout.card-accent-bar-unshaped",
+  "element.reading-order-duplicate"
+] as const;
+
+const POLISH_FIXABLE_LINT_CODE_SET: ReadonlySet<string> = new Set(POLISH_FIXABLE_LINT_CODES);
+
+/** True when the lint code is one that layout polish resolves without manual copy edits. */
+export function isPolishFixableLintCode(code: string): boolean {
+  return POLISH_FIXABLE_LINT_CODE_SET.has(code);
+}
+
 export type LintIssue = {
   severity: LintSeverity;
   code: string;
   message: string;
   path: string;
   details?: Record<string, number | string>;
+  /** Set when the issue is resolved automatically by layout polish / finalize, not manual editing. */
+  polishFixable?: boolean;
 };
 
 export type LintReport = {
@@ -27,7 +51,39 @@ function issue(
   path: string,
   details?: Record<string, number | string>
 ): LintIssue {
-  return { severity, code, message, path, details };
+  const base: LintIssue = { severity, code, message, path, details };
+  if (POLISH_FIXABLE_LINT_CODE_SET.has(code)) {
+    base.polishFixable = true;
+  }
+
+  return base;
+}
+
+/**
+ * Split a lint report into the issues an author must fix by hand versus the ones layout polish /
+ * finalize resolves automatically. Used by the `finalize` CLI command and the `finalize_deck` MCP
+ * tool so a single pass surfaces only the genuine blockers instead of auto-fixable noise.
+ */
+export function classifyLintReport(report: LintReport): {
+  blockingErrors: LintIssue[];
+  polishFixable: LintIssue[];
+  warnings: LintIssue[];
+} {
+  const blockingErrors: LintIssue[] = [];
+  const polishFixable: LintIssue[] = [];
+  const warnings: LintIssue[] = [];
+
+  for (const item of report.issues) {
+    if (item.polishFixable ?? POLISH_FIXABLE_LINT_CODE_SET.has(item.code)) {
+      polishFixable.push(item);
+    } else if (item.severity === "error") {
+      blockingErrors.push(item);
+    } else {
+      warnings.push(item);
+    }
+  }
+
+  return { blockingErrors, polishFixable, warnings };
 }
 
 function textLength(slide: Slide): number {

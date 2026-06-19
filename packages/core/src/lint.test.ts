@@ -1,5 +1,13 @@
 ﻿import { describe, expect, it } from "vitest";
-import { createSampleDeck, ensureSourceReferenceSlide, lintDeckSpec, parseDeckSpec } from "./index.js";
+import {
+  classifyLintReport,
+  createSampleDeck,
+  ensureSourceReferenceSlide,
+  isPolishFixableLintCode,
+  lintDeckSpec,
+  parseDeckSpec,
+  POLISH_FIXABLE_LINT_CODES
+} from "./index.js";
 
 describe("DeckSpec linting", () => {
   it("accepts the generated sample deck", () => {
@@ -1762,5 +1770,76 @@ describe("DeckSpec linting", () => {
 
     expect(report.ok).toBe(false);
     expect(report.issues.some((issue) => issue.code === "source.recreate-shape-accessibility-missing")).toBe(true);
+  });
+});
+
+describe("polish-fixable lint classification", () => {
+  it("exposes a stable set of polish-fixable codes", () => {
+    expect(POLISH_FIXABLE_LINT_CODES).toContain("layout.text-overflow-risk");
+    expect(POLISH_FIXABLE_LINT_CODES).toContain("layout.bad-line-break");
+    expect(POLISH_FIXABLE_LINT_CODES).toContain("layout.text-too-small-to-read");
+    expect(POLISH_FIXABLE_LINT_CODES).toContain("layout.card-accent-bar-unshaped");
+    expect(POLISH_FIXABLE_LINT_CODES).toContain("element.reading-order-duplicate");
+    expect(isPolishFixableLintCode("layout.text-overflow-risk")).toBe(true);
+    expect(isPolishFixableLintCode("slide.title-missing")).toBe(false);
+  });
+
+  it("annotates polish-fixable issues so authors do not hand-edit them", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 2 });
+    deck.slides[1].elements.push({
+      id: "overflow-body",
+      type: "text",
+      role: "body",
+      text: "これは非常に長い日本語の本文テキストで、狭い箱に詰め込まれてはみ出しや不適切な改行を引き起こすはずのサンプルです。さらに文章を続けて確実にあふれさせます。",
+      x: 0.6,
+      y: 1.6,
+      w: 2,
+      h: 0.5,
+      fontSize: 24,
+      color: "#0f172a",
+      contrastBackground: "#ffffff",
+      bold: false,
+      decorative: false,
+      readingOrder: 50
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const overflow = report.issues.find((issue) => issue.code === "layout.text-overflow-risk");
+
+    expect(overflow).toBeDefined();
+    expect(overflow?.polishFixable).toBe(true);
+  });
+
+  it("splits a report into blocking errors, polish-fixable items, and warnings", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 2 });
+    deck.slides[1].elements.push({
+      id: "overflow-body",
+      type: "text",
+      role: "body",
+      text: "これは非常に長い日本語の本文テキストで、狭い箱に詰め込まれてはみ出しや不適切な改行を引き起こすはずのサンプルです。さらに文章を続けて確実にあふれさせます。",
+      x: 0.6,
+      y: 1.6,
+      w: 2,
+      h: 0.5,
+      fontSize: 24,
+      color: "#0f172a",
+      contrastBackground: "#ffffff",
+      bold: false,
+      decorative: false,
+      readingOrder: 50
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const classified = classifyLintReport(report);
+
+    expect(classified.polishFixable.some((issue) => issue.code === "layout.text-overflow-risk")).toBe(true);
+    expect(classified.blockingErrors.every((issue) => !isPolishFixableLintCode(issue.code))).toBe(true);
+    expect(classified.blockingErrors.every((issue) => issue.severity === "error")).toBe(true);
+    expect(classified.warnings.every((issue) => issue.severity !== "error")).toBe(true);
+    expect(classified.warnings.every((issue) => !isPolishFixableLintCode(issue.code))).toBe(true);
+
+    const totalClassified =
+      classified.blockingErrors.length + classified.polishFixable.length + classified.warnings.length;
+    expect(totalClassified).toBe(report.issues.length);
   });
 });

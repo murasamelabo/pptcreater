@@ -7,6 +7,7 @@ import { renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, re
 import {
   BUSINESS_STYLE_MODES,
   cliMessage,
+  classifyLintReport,
   createEditWithCopilotPrompt,
   createSampleDeck,
   createSectionDividerSlides,
@@ -403,6 +404,78 @@ program
     if (result.warnings.length > 0) {
       console.log(cliMessage(outputLocale(parsedDeck.locale), "cli.lintWarnings", { count: result.warnings.length }));
     }
+  }));
+
+program
+  .command("finalize")
+  .description(
+    "One-shot: polish layout, lint, then render a DeckSpec in a single pass. Surfaces only genuine blocking issues; polish-fixable items (line breaks, overflow, small text, reading order) are resolved automatically. Use this instead of separate lint + polish + render calls."
+  )
+  .argument("<deck>", "DeckSpec JSON path")
+  .option("-o, --output <path>", "Output .pptx path (omit together with --no-render to only polish and lint)")
+  .option("--no-render", "Polish and lint only; do not render a .pptx")
+  .option("--polished-out <path>", "Also write the polished DeckSpec JSON to this path")
+  .option("--force", "Render even when genuine (non-polish-fixable) lint errors remain", false)
+  .option("--json", "Emit JSON", false)
+  .action(commandAction(async (deckPath: string, options: { output?: string; render: boolean; polishedOut?: string; force: boolean; json: boolean }) => {
+    const base = ensureSourceReferenceSlide(parseDeckSpec(await readJson(deckPath)));
+    const polished = normalizeDeckLayout(base);
+    const locale = outputLocale(polished.locale);
+    // Classify the authored (pre-polish) deck so polishFixable reflects what polish will auto-resolve;
+    // render uses the polished deck. Non-polish-fixable errors are identical pre/post polish.
+    const report = localizeLintReport(lintDeckSpec(base), locale);
+    const { blockingErrors, polishFixable, warnings } = classifyLintReport(report);
+
+    if (options.polishedOut) {
+      await writeJson(options.polishedOut, polished);
+    }
+
+    const wantRender = options.render && Boolean(options.output);
+    const blocked = blockingErrors.length > 0 && !options.force;
+    let outputPath: string | undefined;
+    let renderWarnings: string[] = [];
+    if (wantRender && !blocked) {
+      const result = await renderDeckToPptx(polished, options.output as string, { allowLintErrors: true, polishLayout: true });
+      outputPath = result.outputPath;
+      renderWarnings = result.warnings;
+    }
+
+    if (blockingErrors.length > 0) {
+      process.exitCode = 1;
+    }
+
+    if (options.json) {
+      console.log(JSON.stringify({
+        ok: blockingErrors.length === 0,
+        rendered: Boolean(outputPath),
+        outputPath,
+        polishedDeckPath: options.polishedOut,
+        blockingErrors,
+        polishFixable,
+        warnings,
+        renderWarnings
+      }, null, 2));
+      return;
+    }
+
+    if (outputPath) {
+      console.log(cliMessage(locale, "cli.rendered", { path: outputPath }));
+    } else if (options.render && !options.output) {
+      console.log("No --output given; polished and linted only (no .pptx written).");
+    } else if (blocked) {
+      console.log("Render skipped: fix the blocking errors below or pass --force.");
+    }
+
+    if (options.polishedOut) {
+      console.log(cliMessage(locale, "cli.created", { path: options.polishedOut }));
+    }
+
+    console.log(
+      `Blocking errors: ${blockingErrors.length} | Auto-resolved by polish: ${polishFixable.length} | Warnings: ${warnings.length}`
+    );
+    blockingErrors.forEach((item) => {
+      console.log(`ERROR ${item.code} ${item.path}: ${item.message}`);
+    });
   }));
 
 program
