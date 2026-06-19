@@ -10,6 +10,7 @@ import {
   createEditWithCopilotPrompt,
   createSampleDeck,
   createSectionDividerSlides,
+  createVisualScaffold,
   ensureSourceReferenceSlide,
   getBusinessDeckGuidance,
   getContentGuidance,
@@ -132,7 +133,7 @@ const program = new Command();
 program
   .name("pptcreater")
   .description("Create concise accessible PowerPoint decks from DeckSpec.")
-  .version("0.1.7")
+  .version("0.1.8")
   .option("--language <locale>", "CLI output language: ja-JP or en-US");
 
 program
@@ -668,6 +669,64 @@ program
           idPrefix: options.idPrefix ?? raw.idPrefix
         });
         await writeFile(options.output, `\uFEFF${JSON.stringify({ slides }, null, 2)}\n`, "utf8");
+        console.log(`Created ${options.output}`);
+      }
+    )
+  );
+
+program
+  .command("visual-scaffold")
+  .description("Render an editable per-slide concept visual scaffold (panel + icon/monogram + concept + aspect chips) to DeckSpec elements you push into a slide.")
+  .argument("<input>", "Scaffold JSON path ({ concept, caption?, points?, icon?, locale?, accent?, frame?, idPrefix? })")
+  .requiredOption("-o, --output <path>", "Output JSON path")
+  .option("--locale <locale>", "Deck locale (ja-JP or en-US)")
+  .option("--accent <hex>", "Accent color override, e.g. #1d4ed8")
+  .option("--icon <name>", "Builtin icon name for the emblem (omit for a monogram)")
+  .option("--id-prefix <prefix>", "Generated element id prefix")
+  .action(
+    commandAction(
+      async (
+        inputPath: string,
+        options: { output: string; locale?: string; accent?: string; icon?: string; idPrefix?: string }
+      ) => {
+        const raw = (await readJson(inputPath)) as {
+          concept?: string;
+          caption?: string;
+          points?: string[];
+          icon?: string;
+          locale?: Locale;
+          accent?: string;
+          frame?: { x?: number; y?: number; w?: number; h?: number };
+          idPrefix?: string;
+          readingOrderStart?: number;
+        };
+        if (!raw.concept || raw.concept.trim().length === 0) {
+          throw new InvalidArgumentError("Provide a non-empty `concept`.");
+        }
+        const locale = (options.locale as Locale | undefined) ?? raw.locale;
+        const accent = options.accent ?? raw.accent;
+        if (accent !== undefined && !/^#(?:[0-9a-fA-F]{3}){1,2}$/.test(accent)) {
+          throw new InvalidArgumentError(`Accent must be a hex color like #1d4ed8 (received "${accent}").`);
+        }
+        const iconName = options.icon ?? raw.icon;
+        let iconSvg: string | undefined;
+        if (iconName) {
+          if (!BUILTIN_ICON_NAMES.includes(iconName as BuiltinIconName)) {
+            throw new InvalidArgumentError(`Icon name must be one of: ${BUILTIN_ICON_NAMES.join(", ")}.`);
+          }
+          iconSvg = createSimpleIconSvg(iconName, "#ffffff").svg;
+        }
+        const result = createVisualScaffold(
+          { concept: raw.concept, caption: raw.caption, points: raw.points, iconSvg },
+          {
+            locale,
+            accent,
+            frame: raw.frame,
+            idPrefix: options.idPrefix ?? raw.idPrefix,
+            readingOrderStart: raw.readingOrderStart
+          }
+        );
+        await writeFile(options.output, `\uFEFF${JSON.stringify(result, null, 2)}\n`, "utf8");
         console.log(`Created ${options.output}`);
       }
     )

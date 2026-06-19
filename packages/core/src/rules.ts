@@ -85,6 +85,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
   const visualRules = locale === "ja-JP"
     ? [
         "本文スライドはテキストだけにしない。少なくともカード、アイコン、表、図解、フロー、ツリー、タイムラインのいずれかを入れる。",
+        "図解を別途作らない本文スライドには generate_visual_scaffold で右側に編集可能なコンセプトビジュアル(パネル＋アイコン/モノグラム＋見出し＋観点チップ)を付け、テキストのみ・低リッチネスを避ける。観点チップは短いフレーズ(目安24字以内)に絞る。",
         "Enterprise Access Model、閉じた特権経路、左右比較など構図を外したくない概念図は generate_intent_diagram を使う。一般的なアーキテクチャ/セキュリティ/制御フロー/ポンチ絵は generate_native_diagram を使い、ローカルSVGを image.path として貼らない。",
         "SVG図を使う場合も、可視ラベルを入れ、内部テキストが8pt未満にならないサイズで配置する。",
         "クラウド/ベンダー図では search_assets で preset-azure / preset-entra / preset-aws / preset-google を先に探す。公式SVGが必要な場合は list_icon_sources でライセンスを確認してから登録する。",
@@ -92,6 +93,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
       ]
     : [
         "Content slides must not be text-only. Include cards, icons, tables, diagrams, flows, trees, or timelines.",
+        "For content slides without a dedicated diagram, attach an editable right-rail concept visual (panel + icon/monogram + heading + aspect chips) via generate_visual_scaffold to avoid text-only/low-richness slides. Keep aspect chips to short phrases (~24 chars max).",
         "Use generate_intent_diagram for concept diagrams where composition must not drift, such as Enterprise Access Model, closed privileged paths, or side-by-side comparisons. Use generate_native_diagram for general architecture/security/control-flow/ponchi-e diagrams; do not paste local SVG diagrams as image.path.",
         "If SVG diagrams are used, include visible labels and place them large enough that internal text stays at least 8pt.",
         "For cloud/vendor diagrams, search_assets for preset-azure / preset-entra / preset-aws / preset-google first. If exact official SVGs are required, check list_icon_sources before registering them.",

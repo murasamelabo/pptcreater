@@ -11,6 +11,7 @@ import {
   ContentModeSchema,
   createSampleDeck,
   createSectionDividerSlides,
+  createVisualScaffold,
   DeckSpecSchema,
   ensureSourceReferenceSlide,
   formatSlideCreationRules,
@@ -261,7 +262,7 @@ async function assertSafeLocalImagePaths(deck: DeckSpec): Promise<void> {
 export function createPptcreaterMcpServer(): McpServer {
   const server = new McpServer({
     name: "pptcreater",
-    version: "0.1.7"
+    version: "0.1.8"
   });
   const createPowerPointInputSchema = {
     locale: z.enum(["ja-JP", "en-US"]).default("ja-JP"),
@@ -744,6 +745,50 @@ export function createPptcreaterMcpServer(): McpServer {
     },
     async ({ sections, locale, numbered, accent, idPrefix }) =>
       jsonText({ slides: createSectionDividerSlides(sections, { locale, numbered, accent, idPrefix }) })
+  );
+
+  server.registerTool(
+    "generate_visual_scaffold",
+    {
+      title: "Generate per-slide concept visual scaffold",
+      description:
+        "Generate a tasteful, EDITABLE right-rail concept visual (rounded panel + icon/monogram emblem + bold concept label + optional caption + up to 4 short aspect chips) to attach to a content slide. Use this so every content slide carries lightweight visual structure (like strong reference decks that put a concept image/icon on each slide) WITHOUT flattened/crushed raster images — the scaffold is composed of native DeckSpec shape/text elements plus an optional inline SVG icon, so it stays accessible, overflow-safe, and passes the visual-richness gate (it adds shapes + an SVG/monogram). Pass an optional builtin `icon` name (resolved to an inline SVG) for the emblem; otherwise the first grapheme of `concept` becomes a monogram. Push the returned `elements` into the target slide's elements array. Keep aspect `points` to short phrases (<= ~24 chars); extra points beyond what fits the frame are dropped with a warning. Returns { elements, summary, longDescription, warnings } — use summary/longDescription for alt text / speaker notes.",
+      inputSchema: {
+        concept: z.string().min(1),
+        caption: z.string().optional(),
+        points: z.array(z.string().min(1)).max(8).optional(),
+        icon: z.enum([...BUILTIN_ICON_NAMES] as [string, ...string[]]).optional(),
+        locale: LocaleSchema.default("ja-JP"),
+        accent: z
+          .string()
+          .regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/)
+          .optional(),
+        frame: z
+          .object({
+            x: z.number().min(0),
+            y: z.number().min(0),
+            w: z.number().positive(),
+            h: z.number().positive()
+          })
+          .partial()
+          .optional(),
+        idPrefix: z
+          .string()
+          .min(1)
+          .regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,59}$/)
+          .default("scaffold"),
+        readingOrderStart: z.number().int().min(0).default(200)
+      }
+    },
+    async ({ concept, caption, points, icon, locale, accent, frame, idPrefix, readingOrderStart }) => {
+      const iconSvg = icon ? createSimpleIconSvg(icon, "#ffffff").svg : undefined;
+      return jsonText(
+        createVisualScaffold(
+          { concept, caption, points, iconSvg },
+          { locale, accent, frame, idPrefix, readingOrderStart }
+        )
+      );
+    }
   );
 
   server.registerTool(

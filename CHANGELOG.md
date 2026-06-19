@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.1.8 - 2026-06-20
+
+- Added `generate_visual_scaffold` (MCP) and `pptcreater visual-scaffold` (CLI) to attach an editable right-rail concept visual to a content slide: a rounded panel, an icon or monogram emblem, a bold concept label, an optional caption, and up to four short aspect chips.
+- The scaffold is composed entirely of native DeckSpec `shape`/`text` elements plus an optional inline SVG icon (resolved from a builtin icon name), so it adds per-slide imagery in the style of strong reference decks without flattened/crushed raster images and satisfies the visual-richness gate.
+- The scaffold guarantees AA text contrast against its panel and chips, keeps the rail inside the slide/frame bounds, and drops overflowing aspect points with a warning instead of cramming the frame.
+- Updated slide creation rules (JA/EN) and the recommended workflow so agents attach a visual scaffold to content slides that do not already carry a dedicated diagram, and added an `examples/visual-scaffold.json` sample.
+
 ## v0.1.7 - 2026-06-20
 
 - Added `generate_section_divider` (MCP) and `pptcreater section-divider` (CLI) to insert accessible, overflow-safe section/chapter title slides (`layout: section`) between major sections of longer decks, adopting the section-title-slide pattern from strong reference decks while keeping pptcreater's layout strictness.

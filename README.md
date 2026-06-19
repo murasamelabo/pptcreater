@@ -129,6 +129,18 @@ pptcreater section-divider .\examples\section-dividers.json --output generated\s
 
 The input is a JSON array of `{ title, subtitle? }` sections; the output is a JSON payload with `slides`. Insert those slides directly into `deck.slides` ahead of each section's first content slide. Pass `--no-numbered` to drop the `01 / 05` counter and `--accent <#hex>` to override the divider color.
 
+## Per-slide concept visual scaffold
+
+To give a content slide lightweight visual structure without a full diagram — and to avoid text-only/low-richness slides — attach an editable right-rail concept visual with `generate_visual_scaffold` (MCP) or `pptcreater visual-scaffold` (CLI). The scaffold is a rounded panel containing an icon or monogram emblem, a bold concept label, an optional caption, and up to four short aspect chips. It is composed entirely of native DeckSpec `shape`/`text` elements plus an optional inline SVG icon (resolved from a builtin icon name), so it adds per-slide imagery like strong reference decks without flattened/crushed raster images, and it satisfies the visual-richness gate. AA text contrast is guaranteed against the panel and chips, the rail is kept inside the slide/frame bounds, and aspect points that do not fit are dropped with a warning instead of cramming the frame.
+
+CLI usage:
+
+```powershell
+pptcreater visual-scaffold .\examples\visual-scaffold.json --output generated\scaffold.json
+```
+
+The input is a JSON object `{ concept, caption?, points?, icon?, locale?, accent?, frame?, idPrefix? }`; the output is a JSON payload with `elements`, `summary`, `longDescription`, and `warnings`. Push the `elements` into the target slide's `elements` array, and use `summary`/`longDescription` for alt text or speaker notes. Pass `--icon <name>` (a builtin icon name) for the emblem, `--accent <#hex>` to override the color, and omit `icon` to fall back to a monogram of the concept's first character.
+
 ## Slideland-style schematic presets
 
 For structured visuals, prefer MCP `generate_schematic` instead of freehand SVG. It returns safe SVG for common slide patterns inspired by Slideland categories:
@@ -372,6 +384,7 @@ From an MCP-capable AI agent, use:
 - `generate_native_diagram` before embedding architecture/security/control-plane/ponchi-e diagrams as SVG images; it returns editable DeckSpec `shape`/`text` elements.
 - `generate_schematic` before freehand SVG when the visual is a table, tree, flow, list, or mockup.
 - `generate_section_divider` to insert accessible section/chapter title slides between major sections of decks longer than six slides.
+- `generate_visual_scaffold` to attach an editable right-rail concept visual (panel + icon/monogram + heading + aspect chips) to a content slide that lacks a dedicated diagram.
 - `register_svg_asset` to sanitize and register the asset with `id`, `title`, `description`, `tags`, `license`, `decorative`, `altText`, and `svg`.
 - `search_assets` again after registration to reuse the asset in future DeckSpecs.
 
@@ -398,6 +411,7 @@ From MCP, use:
 - `generate_native_diagram` for editable architecture/security/control-plane/ponchi-e diagrams before attempting SVG image generation.
 - `generate_schematic` for table/tree/flow/list/mockup visuals before attempting custom SVG.
 - `generate_section_divider` for section/chapter title slides when a deck has more than six slides and spans multiple major sections.
+- `generate_visual_scaffold` to attach an editable right-rail concept visual (panel + icon/monogram + heading + aspect chips) to a content slide that has no dedicated diagram, avoiding text-only/low-richness slides.
 - `design://modern-slide-principles` when the agent needs modern slide composition guidance.
 - `plan_source_visual` when summarizing a source document or URL that contains figures. It helps the agent choose whether to quote the original figure, recreate it as editable PowerPoint objects, or use it only as inspiration.
 
