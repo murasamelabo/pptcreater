@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.2.2 - 2026-06-19
+
+- Fixed `pptcreater new` and `pptcreater business-plan` rejecting `--slide-count` with `error: unknown option`. The CLI now accepts `--slide-count` as an alias for `--slides`, matching the MCP `slideCount` field name that agents already know — so a natural option guess no longer dead-ends the CLI and forces a slow manual fallback. `--slides` remains the canonical documented flag and wins if both are passed.
+- `pptcreater --version` now reports the real package version (read from `package.json`) instead of a hardcoded string that could drift out of sync with releases.
+
 ## v0.2.1 - 2026-06-20
 
 - Added a one-shot `pptcreater finalize` CLI command and `finalize_deck` MCP tool that polish the layout, render the `.pptx`, and classify lint in a single pass — so agents stop running separate `lint` → `polish` → `render` cycles and stop hand-editing issues that polish resolves automatically.

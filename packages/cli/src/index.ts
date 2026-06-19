@@ -1,7 +1,8 @@
 ﻿#!/usr/bin/env node
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { dirname } from "node:path";
-import { Command, InvalidArgumentError } from "commander";
+import { Command, InvalidArgumentError, Option } from "commander";
 import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, resolveIconForKeyword, searchAllSvgAssets, suggestIconForKeyword, type BuiltinIconName } from "@pptcreater/assets-svg";
 import { renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram } from "@pptcreater/diagram";
 import {
@@ -131,10 +132,20 @@ function commandAction<T extends unknown[]>(action: (...args: T) => Promise<void
 
 const program = new Command();
 
+const cliPackageVersion = (() => {
+  try {
+    const require = createRequire(import.meta.url);
+    const pkg = require("../package.json") as { version?: string };
+    return pkg.version ?? "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+})();
+
 program
   .name("pptcreater")
   .description("Create concise accessible PowerPoint decks from DeckSpec.")
-  .version("0.2.1")
+  .version(cliPackageVersion)
   .option("--language <locale>", "CLI output language: ja-JP or en-US");
 
 program
@@ -181,14 +192,15 @@ program
   .option("--purpose <purpose>", "Purpose or desired audience outcome")
   .option("--audience <audience>", "Primary audience")
   .option("--slides <count>", "Target slide count from 1 to 4", parseSlideCount)
+  .addOption(new Option("--slide-count <count>", "Alias for --slides (matches the MCP slideCount field)").argParser(parseSlideCount).hideHelp())
   .option("--content-mode <mode>", "presentation, report, technical, handout, or decision", parseContentMode)
   .option("--style <profile>", "Force a style: minimal, stylish, report, presentation, technical", parseStyleProfile)
-  .action(commandAction(async (options: { output: string; locale: string; purpose?: string; audience?: string; slides?: number; contentMode?: ContentMode; style?: StyleProfile }) => {
+  .action(commandAction(async (options: { output: string; locale: string; purpose?: string; audience?: string; slides?: number; slideCount?: number; contentMode?: ContentMode; style?: StyleProfile }) => {
     const locale = asLocale(options.locale);
     await writeJson(options.output, createSampleDeck(locale, {
       purpose: options.purpose,
       audience: options.audience,
-      slideCount: options.slides,
+      slideCount: options.slides ?? options.slideCount,
       contentMode: options.contentMode,
       styleProfile: options.style
     }));
@@ -271,6 +283,7 @@ program
   .option("--usage-context <context>", "Where/how the deck will be used")
   .option("--desired-action <action>", "What the reader should decide or do")
   .option("--slides <count>", "Target business deck slide count from 3 to 40", parseBusinessSlideCount)
+  .addOption(new Option("--slide-count <count>", "Alias for --slides (matches the MCP slideCount field)").argParser(parseBusinessSlideCount).hideHelp())
   .option("--style-mode <mode>", "consulting or internal-friendly", parseBusinessStyleMode)
   .option("--brand-direction <direction>", "Brand, template, or tone constraints")
   .option("--source-summary <summary>", "Known source materials, facts, assumptions, or open questions")
@@ -287,6 +300,7 @@ program
     usageContext?: string;
     desiredAction?: string;
     slides?: number;
+    slideCount?: number;
     styleMode?: BusinessStyleMode;
     brandDirection?: string;
     sourceSummary?: string;
@@ -303,7 +317,7 @@ program
       audience: options.audience,
       usageContext: options.usageContext,
       desiredAction: options.desiredAction,
-      slideCount: options.slides,
+      slideCount: options.slides ?? options.slideCount,
       styleMode: options.styleMode,
       brandDirection: options.brandDirection,
       sourceSummary: options.sourceSummary,
