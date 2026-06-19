@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.1.7 - 2026-06-20
+
+- Added `generate_section_divider` (MCP) and `pptcreater section-divider` (CLI) to insert accessible, overflow-safe section/chapter title slides (`layout: section`) between major sections of longer decks, adopting the section-title-slide pattern from strong reference decks while keeping pptcreater's layout strictness.
+- Section dividers ship a saturated full-bleed background, numbered eyebrow (`SECTION 01 / 05`), large assertion title, and optional one-line summary, with AA text contrast guaranteed regardless of the brand accent.
+- Updated slide creation rules and the MCP recommended workflow so agents insert section dividers for decks longer than six slides; divider slides remain exempt from the visual-richness gate as navigation slides.
+
 ## v0.1.6 - 2026-06-19
 
 - Added Diagram Intent rendering through `generate_intent_diagram` / `pptcreater diagram-intent` for concept diagrams where the intended composition and granularity must not drift.

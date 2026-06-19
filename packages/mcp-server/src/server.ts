@@ -1,4 +1,4 @@
-﻿import type { Stats } from "node:fs";
+import type { Stats } from "node:fs";
 import { lstat, mkdir, realpath, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -10,6 +10,7 @@ import {
   createEditWithCopilotPrompt,
   ContentModeSchema,
   createSampleDeck,
+  createSectionDividerSlides,
   DeckSpecSchema,
   ensureSourceReferenceSlide,
   formatSlideCreationRules,
@@ -260,7 +261,7 @@ async function assertSafeLocalImagePaths(deck: DeckSpec): Promise<void> {
 export function createPptcreaterMcpServer(): McpServer {
   const server = new McpServer({
     name: "pptcreater",
-    version: "0.1.6"
+    version: "0.1.7"
   });
   const createPowerPointInputSchema = {
     locale: z.enum(["ja-JP", "en-US"]).default("ja-JP"),
@@ -713,6 +714,39 @@ export function createPptcreaterMcpServer(): McpServer {
   );
 
   server.registerTool(
+    "generate_section_divider",
+    {
+      title: "Generate section divider slides",
+      description:
+        "Generate accessible, overflow-safe section divider (chapter) slides as full DeckSpec slides with layout 'section'. Use this to insert chapter breaks between major sections of longer decks (e.g., 概要 / 機能詳細 / メリット / まとめ), matching the section-title-slide pattern that strong reference decks use. Each divider has a saturated full-bleed background, a numbered eyebrow (SECTION 01 / 05), a large assertion title, and an optional one-line summary, with AA contrast guaranteed. Insert the returned slides directly into deck.slides at the start of each section; they are exempt from the visual-richness gate because they are navigation slides, not content slides.",
+      inputSchema: {
+        sections: z
+          .array(
+            z.object({
+              title: z.string().min(1),
+              subtitle: z.string().optional(),
+              eyebrow: z.string().optional()
+            })
+          )
+          .min(1),
+        locale: LocaleSchema.default("ja-JP"),
+        numbered: z.boolean().default(true),
+        accent: z
+          .string()
+          .regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/)
+          .optional(),
+        idPrefix: z
+          .string()
+          .min(1)
+          .regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,59}$/)
+          .default("section")
+      }
+    },
+    async ({ sections, locale, numbered, accent, idPrefix }) =>
+      jsonText({ slides: createSectionDividerSlides(sections, { locale, numbered, accent, idPrefix }) })
+  );
+
+  server.registerTool(
     "generate_schematic",
     {
       title: "Generate Slideland-style schematic",
@@ -945,7 +979,7 @@ export function createPptcreaterMcpServer(): McpServer {
               sourceReferences: "Whenever a deck uses external websites, record each source in metadata.sources with the actual url. render_pptx, render_studio, and polish_deck_layout automatically append/update the final references slide (参考URL・出典 / References and sources) so the last slide contains all external URLs. Per-slide citations are optional for URL-backed sources when the final references slide is complete.",
               sourceVisuals: "Use metadata.sources plus element.sourceId/citation when quoting, recreating, or using source visuals as inspiration. Prefer editable shape/text objects for recreated visuals. For URL-backed sources, final-slide references can replace per-slide citation text.",
               requiredVisualAccessibility: "Non-decorative SVG, image, and diagram elements require altText. Diagram elements also require summary and longDescription.",
-              recommendedWorkflow: ["get_slide_creation_rules before custom DeckSpec authoring", "plan_business_deck for business/executive/customer-facing decks", "create_pptx/create_powerpoint for direct output", "search_templates", "search_assets", "generate_intent_diagram when the intended ponchi-e composition/granularity is known", "generate_native_diagram for general editable ponchi-e/architecture/security diagrams", "generate_schematic for structured visuals", "create_deck or custom DeckSpec", "review_business_deck for storyline/section/emphasis checks", "review_content", "lint_deck", "render_pptx/render_powerpoint or render_studio", "CLI fallback if render MCP tools are hidden: pptcreater render <deck.json> --output <deck.pptx> --polish"]
+              recommendedWorkflow: ["get_slide_creation_rules before custom DeckSpec authoring", "plan_business_deck for business/executive/customer-facing decks", "create_pptx/create_powerpoint for direct output", "search_templates", "search_assets", "generate_section_divider to insert chapter/section title slides between major sections of longer decks", "generate_intent_diagram when the intended ponchi-e composition/granularity is known", "generate_native_diagram for general editable ponchi-e/architecture/security diagrams", "generate_schematic for structured visuals", "create_deck or custom DeckSpec", "review_business_deck for storyline/section/emphasis checks", "review_content", "lint_deck", "render_pptx/render_powerpoint or render_studio", "CLI fallback if render MCP tools are hidden: pptcreater render <deck.json> --output <deck.pptx> --polish"]
             },
             null,
             2

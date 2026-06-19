@@ -9,6 +9,7 @@ import {
   cliMessage,
   createEditWithCopilotPrompt,
   createSampleDeck,
+  createSectionDividerSlides,
   ensureSourceReferenceSlide,
   getBusinessDeckGuidance,
   getContentGuidance,
@@ -131,7 +132,7 @@ const program = new Command();
 program
   .name("pptcreater")
   .description("Create concise accessible PowerPoint decks from DeckSpec.")
-  .version("0.1.6")
+  .version("0.1.7")
   .option("--language <locale>", "CLI output language: ja-JP or en-US");
 
 program
@@ -625,6 +626,48 @@ program
           readingOrderStart: options.readingOrderStart
         });
         await writeFile(options.output, `\uFEFF${JSON.stringify(result, null, 2)}\n`, "utf8");
+        console.log(`Created ${options.output}`);
+      }
+    )
+  );
+
+program
+  .command("section-divider")
+  .description("Render section divider (chapter) slides from a JSON file to DeckSpec slides you insert into deck.slides.")
+  .argument("<sections>", "Sections JSON path ({ sections: [{ title, subtitle?, eyebrow? }], locale?, numbered?, accent?, idPrefix? })")
+  .requiredOption("-o, --output <path>", "Output JSON path")
+  .option("--locale <locale>", "Deck locale (ja-JP or en-US)")
+  .option("--accent <hex>", "Accent color override, e.g. #1d4ed8")
+  .option("--id-prefix <prefix>", "Generated slide/element id prefix")
+  .option("--no-numbered", "Disable SECTION NN / NN eyebrow numbering")
+  .action(
+    commandAction(
+      async (
+        sectionsPath: string,
+        options: { output: string; locale?: string; accent?: string; idPrefix?: string; numbered?: boolean },
+        command: Command
+      ) => {
+        const raw = (await readJson(sectionsPath)) as {
+          sections?: Array<{ title: string; subtitle?: string; eyebrow?: string }>;
+          locale?: Locale;
+          numbered?: boolean;
+          accent?: string;
+          idPrefix?: string;
+        };
+        const sections = Array.isArray(raw) ? (raw as Array<{ title: string; subtitle?: string; eyebrow?: string }>) : raw.sections;
+        if (!sections || sections.length === 0) {
+          throw new InvalidArgumentError("Provide a non-empty `sections` array.");
+        }
+        const locale = (options.locale as Locale | undefined) ?? raw.locale;
+        const numberedFromFlag = command.getOptionValueSource("numbered") === "cli";
+        const numbered = numberedFromFlag ? options.numbered : raw.numbered;
+        const slides = createSectionDividerSlides(sections, {
+          locale,
+          numbered,
+          accent: options.accent ?? raw.accent,
+          idPrefix: options.idPrefix ?? raw.idPrefix
+        });
+        await writeFile(options.output, `\uFEFF${JSON.stringify({ slides }, null, 2)}\n`, "utf8");
         console.log(`Created ${options.output}`);
       }
     )

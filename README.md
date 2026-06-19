@@ -1,4 +1,4 @@
-﻿# pptcreater
+# pptcreater
 
 Agent-friendly PowerPoint creation toolkit focused on concise, well-designed, accessible slides.
 
@@ -117,6 +117,18 @@ pptcreater diagram-intent .\examples\enterprise-access-model.intent.json --outpu
 
 The output is a JSON payload with `elements`; insert those `shape`/`text` elements directly into a DeckSpec slide. From MCP, use `generate_intent_diagram`.
 
+## Section divider slides
+
+For longer decks (more than about six slides), insert section/chapter title slides between major sections so the audience can track structure, mirroring the section-title-slide pattern from strong reference decks. Use `generate_section_divider` (MCP) or `pptcreater section-divider` (CLI) instead of hand-building dividers: the result is a full DeckSpec `Slide` with `layout: section`, a saturated full-bleed background, a numbered eyebrow (`SECTION 01 / 05`), a large assertion title, and an optional one-line summary. AA text contrast is guaranteed regardless of the brand accent, and divider slides are exempt from the visual-richness gate because they are navigation slides.
+
+CLI usage:
+
+```powershell
+pptcreater section-divider .\examples\section-dividers.json --output generated\section-dividers.json
+```
+
+The input is a JSON array of `{ title, subtitle? }` sections; the output is a JSON payload with `slides`. Insert those slides directly into `deck.slides` ahead of each section's first content slide. Pass `--no-numbered` to drop the `01 / 05` counter and `--accent <#hex>` to override the divider color.
+
 ## Slideland-style schematic presets
 
 For structured visuals, prefer MCP `generate_schematic` instead of freehand SVG. It returns safe SVG for common slide patterns inspired by Slideland categories:
@@ -178,14 +190,14 @@ To use it from another terminal after cloning this repository:
 ```powershell
 git clone https://github.com/murasamelabo/pptcreater.git C:\tools\pptcreater
 cd C:\tools\pptcreater
-git checkout v0.1.6
+git checkout v0.1.7
 npm install
 npm run build
 npm link
 pptcreater --help
 ```
 
-For development or quick follow-up, use `main` instead of a release tag. For stable operational use, pin a tag such as `v0.1.6`, record that tag/commit in the consuming project, and update deliberately after smoke testing.
+For development or quick follow-up, use `main` instead of a release tag. For stable operational use, pin a tag such as `v0.1.7`, record that tag/commit in the consuming project, and update deliberately after smoke testing.
 
 ## Updating an existing installation
 
@@ -195,14 +207,14 @@ When `pptcreater` is installed as a normal Git clone, updates are easy to track 
 cd C:\tools\pptcreater
 git status
 git fetch --tags origin
-git checkout v0.1.6
+git checkout v0.1.7
 npm install
 npm run build
 npm link
 pptcreater --help
 ```
 
-If you intentionally track active development, replace `git checkout v0.1.6` with:
+If you intentionally track active development, replace `git checkout v0.1.7` with:
 
 ```powershell
 git checkout main
@@ -359,6 +371,7 @@ From an MCP-capable AI agent, use:
 - `generate_intent_diagram` before general diagram generation when the intended concept composition/granularity is known.
 - `generate_native_diagram` before embedding architecture/security/control-plane/ponchi-e diagrams as SVG images; it returns editable DeckSpec `shape`/`text` elements.
 - `generate_schematic` before freehand SVG when the visual is a table, tree, flow, list, or mockup.
+- `generate_section_divider` to insert accessible section/chapter title slides between major sections of decks longer than six slides.
 - `register_svg_asset` to sanitize and register the asset with `id`, `title`, `description`, `tags`, `license`, `decorative`, `altText`, and `svg`.
 - `search_assets` again after registration to reuse the asset in future DeckSpecs.
 
@@ -384,6 +397,7 @@ From MCP, use:
 - `generate_intent_diagram` for access-plane maps, closed privileged paths, and other known concept compositions before attempting general diagram generation.
 - `generate_native_diagram` for editable architecture/security/control-plane/ponchi-e diagrams before attempting SVG image generation.
 - `generate_schematic` for table/tree/flow/list/mockup visuals before attempting custom SVG.
+- `generate_section_divider` for section/chapter title slides when a deck has more than six slides and spans multiple major sections.
 - `design://modern-slide-principles` when the agent needs modern slide composition guidance.
 - `plan_source_visual` when summarizing a source document or URL that contains figures. It helps the agent choose whether to quote the original figure, recreate it as editable PowerPoint objects, or use it only as inspiration.
 

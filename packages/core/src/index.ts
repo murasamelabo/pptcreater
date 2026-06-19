@@ -7,6 +7,7 @@ export * from "./lint.js";
 export * from "./rules.js";
 export * from "./samples.js";
 export * from "./schema.js";
+export * from "./sectionDivider.js";
 export * from "./skillPacks.js";
 export * from "./sourceReferences.js";
 export * from "./sourceVisuals.js";

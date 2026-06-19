@@ -67,6 +67,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
   const layoutRules = locale === "ja-JP"
     ? [
         "まずレイアウト枠を決めてから要素を置く。タイトル帯、メッセージ帯、本文/図解エリア、注釈エリアを重ねない。",
+        "6枚を超えるデッキでは、主要な章の冒頭に generate_section_divider で扉スライド(layout: section)を挿入し、章の切り替えを明示する。扉スライドは視覚リッチネス判定の対象外。",
         "タイトルは原則30pt以上、リード/メッセージは18pt以上、本文は14pt以上、ラベル/注釈は12pt以上を目安にする。",
         "テキストボックスは最初から十分な幅・高さを取る。短い高さの横長カードに長文を入れない。",
         "装飾背景やカードは text より低い readingOrder にする。opaque な shape をテキスト上に置かない。",
@@ -74,6 +75,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
       ]
     : [
         "Decide the layout frame before placing elements: title band, message band, body/visual area, and notes must not overlap.",
+        "For decks longer than six slides, insert section divider slides (layout 'section') via generate_section_divider at the start of each major section to signal chapter changes; divider slides are exempt from the visual-richness gate.",
         "Use roughly >=30pt titles, >=18pt leads/messages, >=14pt body text, and >=12pt labels/notes.",
         "Allocate enough width and height up front. Do not put long copy into shallow horizontal cards.",
         "Decorative backgrounds/cards must have lower readingOrder than text. Never place opaque shapes over text.",
