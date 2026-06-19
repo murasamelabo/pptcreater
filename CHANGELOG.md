@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.1.6 - 2026-06-19
+
+- Added Diagram Intent rendering through `generate_intent_diagram` / `pptcreater diagram-intent` for concept diagrams where the intended composition and granularity must not drift.
+- Added editable native-object intent presets for Enterprise Access Model / access-plane maps and closed zero-trust privileged path comparisons.
+- Added example Diagram Intent JSON files for the Enterprise Access Model and Zero Trust privileged path diagrams.
+- Updated slide creation rules, MCP schema guidance, README, and installed Copilot/Claude guidance so agents use Diagram Intent before general diagram generation when a target composition is known.
+
 ## v0.1.5 - 2026-06-19
 
 - Regenerated the bundled sample DeckSpecs, Studio previews, and PowerPoint files with the latest renderer and layout polish.

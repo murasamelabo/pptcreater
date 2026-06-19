@@ -1210,6 +1210,31 @@ describe("DeckSpec linting", () => {
     expect(report.issues.some((issue) => issue.code === "layout.text-too-small-to-read")).toBe(false);
   });
 
+  it("allows compact Diagram Intent captions without small-font warnings", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1, contentMode: "technical" });
+    deck.slides[0].elements.push({
+      id: "custom-intent-approved-step-3-text",
+      type: "text",
+      role: "caption",
+      text: "PIM\nJIT / approval",
+      x: 6,
+      y: 4,
+      w: 1.2,
+      h: 0.5,
+      fontSize: 8.5,
+      color: "#4F5D66",
+      contrastBackground: "#FFF4E0",
+      bold: true,
+      decorative: false,
+      altText: "generated diagram intent text",
+      readingOrder: 900
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "text.small-font" && issue.path.endsWith(".fontSize"))).toBe(false);
+  });
+
   it("blocks text-only content slides so pptcreater output stays visually rich", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1, contentMode: "report" });
     deck.slides[0].elements = [

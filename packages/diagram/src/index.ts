@@ -133,8 +133,73 @@ export const NativePonchiRenderOptionsSchema = z.object({
   readingOrderStart: z.number().int().min(0).default(100)
 });
 
+export const DiagramIntentRenderOptionsSchema = z.object({
+  frame: NativeDiagramFrameSchema.default({ x: 0.45, y: 0.5, w: 12.45, h: 6.55 }),
+  idPrefix: z
+    .string()
+    .min(1)
+    .regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,59}$/)
+    .default("diagram-intent"),
+  readingOrderStart: z.number().int().min(0).default(100)
+});
+
 export type NativeDiagramFrame = z.infer<typeof NativeDiagramFrameSchema>;
 export type NativePonchiRenderOptions = z.infer<typeof NativePonchiRenderOptionsSchema>;
+export type DiagramIntentRenderOptions = z.infer<typeof DiagramIntentRenderOptionsSchema>;
+
+const IntentTextBlockSchema = z.object({
+  label: z.string().min(1),
+  sublabel: z.string().optional()
+});
+
+const IntentPlaneSchema = z.object({
+  label: z.string().min(1),
+  items: z.array(z.string().min(1)).min(1).max(8)
+});
+
+export const AccessPlaneMapIntentSchema = z.object({
+  kind: z.literal("access-plane-map"),
+  title: z.string().min(1),
+  subtitle: z.string().min(1),
+  summary: z.string().min(1),
+  longDescription: z.string().min(20),
+  controlPlane: IntentPlaneSchema,
+  managementPlane: IntentPlaneSchema,
+  dataPlane: IntentPlaneSchema,
+  userAccess: IntentTextBlockSchema,
+  appAccess: IntentTextBlockSchema,
+  privilegedAccess: IntentTextBlockSchema,
+  blockedEscalationLabel: z.string().min(1).default("blocked upward escalation paths"),
+  designMessage: z.string().min(1),
+  includeTitle: z.boolean().default(true)
+});
+
+export const ClosedPrivilegedPathIntentSchema = z.object({
+  kind: z.literal("closed-privileged-path"),
+  title: z.string().min(1),
+  subtitle: z.string().min(1),
+  summary: z.string().min(1),
+  longDescription: z.string().min(20),
+  avoid: z.object({
+    title: z.string().min(1),
+    description: z.string().min(1),
+    sources: z.array(IntentTextBlockSchema).min(2).max(6),
+    target: IntentTextBlockSchema
+  }),
+  approved: z.object({
+    title: z.string().min(1),
+    description: z.string().min(1),
+    steps: z.array(IntentTextBlockSchema).min(3).max(6),
+    denyLabel: z.string().min(1)
+  }),
+  designMessage: z.string().min(1),
+  includeTitle: z.boolean().default(true)
+});
+
+export const DiagramIntentSchema = z.discriminatedUnion("kind", [AccessPlaneMapIntentSchema, ClosedPrivilegedPathIntentSchema]);
+export type AccessPlaneMapIntent = z.infer<typeof AccessPlaneMapIntentSchema>;
+export type ClosedPrivilegedPathIntent = z.infer<typeof ClosedPrivilegedPathIntentSchema>;
+export type DiagramIntent = z.infer<typeof DiagramIntentSchema>;
 
 export type NativeDiagramShapeElement = {
   id: string;
@@ -175,6 +240,7 @@ export type NativeDiagramTextElement = {
   align: "left" | "center";
   valign: "top" | "middle";
   decorative: boolean;
+  altText?: string;
   readingOrder: number;
 };
 
@@ -1267,6 +1333,7 @@ function nativeText(
     align?: "left" | "center";
     valign?: "top" | "middle";
     role?: "body" | "caption";
+    altText?: string;
     readingOrder: number;
   }
 ): NativeDiagramTextElement {
@@ -1286,6 +1353,7 @@ function nativeText(
     align: options.align ?? "center",
     valign: options.valign ?? "middle",
     decorative: false,
+    altText: options.altText,
     readingOrder: options.readingOrder
   };
 }
@@ -1630,5 +1698,377 @@ export function renderNativePonchiDiagram(
     summary: diagram.summary,
     longDescription: diagram.longDescription,
     warnings
+  };
+}
+
+type IntentRenderContext = {
+  frame: NativeRect;
+  idPrefix: string;
+  elements: NativeDiagramElement[];
+  nextOrder: () => number;
+  x: (value: number) => number;
+  y: (value: number) => number;
+  w: (value: number) => number;
+  h: (value: number) => number;
+  rect: (rect: NativeRect) => NativeRect;
+  point: (point: Point) => Point;
+  font: (pixelSize: number) => number;
+};
+
+function createIntentContext(options: DiagramIntentRenderOptions): IntentRenderContext {
+  let order = options.readingOrderStart;
+  const xScale = options.frame.w / 1600;
+  const yScale = options.frame.h / 900;
+  const fontScale = Math.min(options.frame.w / 13.333, options.frame.h / 7.5);
+  return {
+    frame: options.frame,
+    idPrefix: options.idPrefix,
+    elements: [],
+    nextOrder: () => order++,
+    x: (value) => inches(options.frame.x + value * xScale),
+    y: (value) => inches(options.frame.y + value * yScale),
+    w: (value) => inches(value * xScale),
+    h: (value) => inches(value * yScale),
+    rect: (rect) => ({
+      x: inches(options.frame.x + rect.x * xScale),
+      y: inches(options.frame.y + rect.y * yScale),
+      w: inches(rect.w * xScale),
+      h: inches(rect.h * yScale)
+    }),
+    point: (point) => ({
+      x: inches(options.frame.x + point.x * xScale),
+      y: inches(options.frame.y + point.y * yScale)
+    }),
+    font: (pixelSize) => Number(Math.max(8.5, pixelSize * 0.52 * fontScale).toFixed(1))
+  };
+}
+
+function intentShape(
+  context: IntentRenderContext,
+  id: string,
+  shape: NativeDiagramShapeElement["shape"],
+  rect: NativeRect,
+  options: {
+    fill?: string;
+    fillOpacity?: number;
+    line?: NativeDiagramShapeElement["line"];
+    radius?: number;
+  } = {}
+): void {
+  context.elements.push(
+    nativeShape(`${context.idPrefix}-${id}`, shape, context.rect(rect), {
+      fill: options.fill ?? "none",
+      fillOpacity: options.fillOpacity,
+      line: options.line,
+      radius: options.radius ?? 0.08,
+      decorative: true,
+      altText: "generated diagram intent shape",
+      readingOrder: context.nextOrder()
+    })
+  );
+}
+
+function intentText(
+  context: IntentRenderContext,
+  id: string,
+  text: string,
+  rect: NativeRect,
+  options: {
+    fontSize: number;
+    color: string;
+    background: string;
+    bold?: boolean;
+    align?: "left" | "center";
+    valign?: "top" | "middle";
+    role?: "body" | "caption";
+  }
+): void {
+  context.elements.push(
+    nativeText(`${context.idPrefix}-${id}`, text, context.rect(rect), {
+      fontSize: context.font(options.fontSize),
+      color: options.color,
+      contrastBackground: options.background,
+      bold: options.bold,
+      align: options.align,
+      valign: options.valign,
+      role: options.role,
+      altText: "generated diagram intent text",
+      readingOrder: context.nextOrder()
+    })
+  );
+}
+
+function intentLine(
+  context: IntentRenderContext,
+  id: string,
+  start: Point,
+  end: Point,
+  options: {
+    color: string;
+    width?: number;
+    dashed?: boolean;
+    arrowAtEnd?: boolean;
+    arrowAtStart?: boolean;
+  }
+): void {
+  const a = context.point(start);
+  const b = context.point(end);
+  if (Math.hypot(a.x - b.x, a.y - b.y) < 0.01) {
+    return;
+  }
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  const normalizedStartMatchesOriginalStart = Math.abs(a.x - x) < 0.001 && Math.abs(a.y - y) < 0.001;
+  const line: NativeDiagramShapeElement["line"] = {
+    color: options.color,
+    width: options.width ?? 1.4,
+    dash: options.dashed ? "dash" : "solid"
+  };
+
+  if (options.arrowAtEnd) {
+    if (normalizedStartMatchesOriginalStart) {
+      line.endArrowType = "triangle";
+    } else {
+      line.beginArrowType = "triangle";
+    }
+  }
+  if (options.arrowAtStart) {
+    if (normalizedStartMatchesOriginalStart) {
+      line.beginArrowType = "triangle";
+    } else {
+      line.endArrowType = "triangle";
+    }
+  }
+
+  context.elements.push(
+    nativeShape(
+      `${context.idPrefix}-${id}`,
+      "line",
+      { x, y, w: Math.max(0.001, Math.abs(a.x - b.x)), h: Math.max(0, Math.abs(a.y - b.y)) },
+      { fill: "none", line, decorative: true, altText: "generated diagram intent connector", readingOrder: context.nextOrder() }
+    )
+  );
+}
+
+function intentOrthogonalArrow(
+  context: IntentRenderContext,
+  id: string,
+  start: Point,
+  end: Point,
+  options: {
+    color: string;
+    width?: number;
+    dashed?: boolean;
+  }
+): void {
+  const midX = (start.x + end.x) / 2;
+  const points = [start, { x: midX, y: start.y }, { x: midX, y: end.y }, end];
+  const segments = points
+    .slice(0, -1)
+    .map((point, index) => ({ start: point, end: points[index + 1] }))
+    .filter((segment) => Math.hypot(segment.end.x - segment.start.x, segment.end.y - segment.start.y) >= 0.01);
+  segments.forEach((segment, index) => {
+    intentLine(context, `${id}-${index}`, segment.start, segment.end, { ...options, arrowAtEnd: index === segments.length - 1 });
+  });
+}
+
+function intentCross(context: IntentRenderContext, id: string, center: Point, size: number, color = "#B33A2E"): void {
+  const half = size / 2;
+  intentLine(context, `${id}-horizontal`, { x: center.x - half, y: center.y }, { x: center.x + half, y: center.y }, { color, width: 2.4 });
+  intentLine(context, `${id}-vertical`, { x: center.x, y: center.y - half }, { x: center.x, y: center.y + half }, { color, width: 2.4 });
+}
+
+function intentBlockLabel(block: z.infer<typeof IntentTextBlockSchema>): string {
+  return block.sublabel ? `${block.label}\n${block.sublabel}` : block.label;
+}
+
+function planeText(plane: z.infer<typeof IntentPlaneSchema>): string {
+  return `${plane.label}\n${plane.items.join(" / ")}`;
+}
+
+function addPlaneCard(
+  context: IntentRenderContext,
+  id: string,
+  rect: NativeRect,
+  fill: string,
+  line: string,
+  title: string,
+  subtitle: string,
+  titleColor = "#17202A",
+  subtitleColor = "#4F5D66"
+): void {
+  intentShape(context, `${id}-card`, "roundRect", rect, { fill, line: { color: line, width: 1.2 }, radius: 0.08 });
+  const hasSubtitle = subtitle.trim().length > 0;
+  intentText(context, `${id}-title`, title, { x: rect.x + 24, y: hasSubtitle ? rect.y + 26 : rect.y + rect.h / 2 - 17, w: rect.w - 48, h: 34 }, {
+    fontSize: 24,
+    color: titleColor,
+    background: fill,
+    bold: true,
+    align: "center"
+  });
+  if (hasSubtitle) {
+    intentText(context, `${id}-subtitle`, subtitle, { x: rect.x + 24, y: rect.y + 62, w: rect.w - 48, h: rect.h - 72 }, {
+      fontSize: 17,
+      color: subtitleColor,
+      background: fill,
+      bold: true,
+      align: "center"
+    });
+  }
+}
+
+function addAccessPlaneMap(context: IntentRenderContext, intent: AccessPlaneMapIntent): void {
+  intentShape(context, "background", "rect", { x: 0, y: 0, w: 1600, h: 900 }, { fill: "#F4F7F8", line: { color: "#F4F7F8", width: 0.1 } });
+  if (intent.includeTitle) {
+    intentText(context, "title", intent.title, { x: 70, y: 36, w: 1120, h: 54 }, { fontSize: 48, color: "#17202A", background: "#F4F7F8", bold: true, align: "left", role: "body" });
+    intentText(context, "subtitle", intent.subtitle, { x: 72, y: 92, w: 1320, h: 36 }, { fontSize: 24, color: "#4F5D66", background: "#F4F7F8", bold: true, align: "left" });
+  }
+
+  addPlaneCard(context, "control", { x: 250, y: 165, w: 1100, h: 104 }, "#17202A", "#17202A", intent.controlPlane.label, intent.controlPlane.items.join(" / "), "#FFFFFF", "#DCE8EA");
+  addPlaneCard(context, "management", { x: 120, y: 340, w: 570, h: 120 }, "#DDF4EF", "#70C5B8", intent.managementPlane.label, intent.managementPlane.items.join(" / "));
+  addPlaneCard(context, "data", { x: 910, y: 340, w: 570, h: 120 }, "#FFF4E0", "#D1A848", intent.dataPlane.label, intent.dataPlane.items.join(" / "));
+
+  addPlaneCard(context, "user", { x: 120, y: 585, w: 300, h: 86 }, "#FFFFFF", "#AAB7C2", intent.userAccess.label, intent.userAccess.sublabel ?? "");
+  addPlaneCard(context, "app", { x: 510, y: 585, w: 300, h: 86 }, "#FFFFFF", "#AAB7C2", intent.appAccess.label, intent.appAccess.sublabel ?? "");
+  addPlaneCard(context, "privileged", { x: 1115, y: 575, w: 330, h: 106 }, "#FBEAEA", "#B33A2E", intent.privilegedAccess.label, intent.privilegedAccess.sublabel ?? "", "#9D2F25");
+
+  intentLine(context, "control-to-management", { x: 800, y: 270 }, { x: 800, y: 330 }, { color: "#0B6B78", width: 2.2, arrowAtEnd: true });
+  intentOrthogonalArrow(context, "management-to-user", { x: 405, y: 465 }, { x: 290, y: 578 }, { color: "#60707A", width: 1.3 });
+  intentOrthogonalArrow(context, "data-to-privileged", { x: 1195, y: 465 }, { x: 1268, y: 566 }, { color: "#60707A", width: 1.3 });
+  intentLine(context, "app-to-privileged", { x: 815, y: 628 }, { x: 1100, y: 628 }, { color: "#B33A2E", width: 4.8, arrowAtEnd: true });
+  intentLine(context, "app-up-1", { x: 660, y: 575 }, { x: 660, y: 500 }, { color: "#B33A2E", width: 1.7, dashed: true });
+  intentLine(context, "app-up-2", { x: 660, y: 500 }, { x: 770, y: 500 }, { color: "#B33A2E", width: 1.7, dashed: true });
+  intentLine(context, "app-up-3", { x: 770, y: 500 }, { x: 770, y: 278 }, { color: "#B33A2E", width: 1.7, dashed: true, arrowAtEnd: true });
+  intentLine(context, "priv-up-1", { x: 1280, y: 565 }, { x: 1280, y: 500 }, { color: "#B33A2E", width: 1.7, dashed: true });
+  intentLine(context, "priv-up-2", { x: 1280, y: 500 }, { x: 970, y: 500 }, { color: "#B33A2E", width: 1.7, dashed: true });
+  intentLine(context, "priv-up-3", { x: 970, y: 500 }, { x: 970, y: 274 }, { color: "#B33A2E", width: 1.7, dashed: true, arrowAtEnd: true });
+
+  intentShape(context, "blocked-label-bg", "roundRect", { x: 580, y: 718, w: 440, h: 56 }, { fill: "#FBEAEA", line: { color: "#E6AAA5", width: 1 }, radius: 0.08 });
+  intentText(context, "blocked-label", intent.blockedEscalationLabel, { x: 610, y: 732, w: 380, h: 28 }, { fontSize: 18, color: "#8D2F28", background: "#FBEAEA", bold: true });
+  intentCross(context, "blocked-x-app", { x: 740, y: 685 }, 52);
+  intentCross(context, "blocked-x-privileged", { x: 860, y: 685 }, 52);
+
+  intentShape(context, "message-bg", "roundRect", { x: 215, y: 805, w: 1170, h: 50 }, { fill: "#EAF7FA", line: { color: "#88CAD4", width: 1 }, radius: 0.08 });
+  intentText(context, "message", intent.designMessage, { x: 245, y: 816, w: 1110, h: 28 }, { fontSize: 18, color: "#17202A", background: "#EAF7FA", bold: true });
+}
+
+function addClosedPathSource(context: IntentRenderContext, id: string, block: z.infer<typeof IntentTextBlockSchema>, rect: NativeRect): void {
+  intentShape(context, `${id}-card`, "roundRect", rect, { fill: "#FBEAEA", line: { color: "#E6AAA5", width: 1 }, radius: 0.08 });
+  intentText(context, `${id}-text`, intentBlockLabel(block), { x: rect.x + 14, y: rect.y + 13, w: rect.w - 28, h: rect.h - 22 }, {
+    fontSize: 16,
+    color: "#4F5D66",
+    background: "#FBEAEA",
+    bold: true
+  });
+}
+
+function addClosedPathStep(context: IntentRenderContext, id: string, block: z.infer<typeof IntentTextBlockSchema>, rect: NativeRect, fill = "#DDF4EF", line = "#70C5B8", textColor = "#4F5D66"): void {
+  intentShape(context, `${id}-card`, "roundRect", rect, { fill, line: { color: line, width: 1 }, radius: 0.08 });
+  intentText(context, `${id}-text`, intentBlockLabel(block), { x: rect.x + 4, y: rect.y + 14, w: rect.w - 8, h: rect.h - 22 }, {
+    fontSize: 15,
+    color: textColor,
+    background: fill,
+    bold: true
+  });
+}
+
+function addClosedPrivilegedPath(context: IntentRenderContext, intent: ClosedPrivilegedPathIntent): void {
+  intentShape(context, "background", "rect", { x: 0, y: 0, w: 1600, h: 900 }, { fill: "#F4F7F8", line: { color: "#F4F7F8", width: 0.1 } });
+  if (intent.includeTitle) {
+    intentText(context, "title", intent.title, { x: 70, y: 36, w: 1120, h: 54 }, { fontSize: 48, color: "#17202A", background: "#F4F7F8", bold: true, align: "left", role: "body" });
+    intentText(context, "subtitle", intent.subtitle, { x: 72, y: 92, w: 1320, h: 36 }, { fontSize: 24, color: "#4F5D66", background: "#F4F7F8", bold: true, align: "left" });
+  }
+
+  intentShape(context, "avoid-panel", "roundRect", { x: 80, y: 175, w: 635, h: 560 }, { fill: "#FFFFFF", line: { color: "#E6AAA5", width: 1.3 }, radius: 0.08 });
+  intentText(context, "avoid-title", intent.avoid.title, { x: 120, y: 210, w: 540, h: 36 }, { fontSize: 24, color: "#A93A2E", background: "#FFFFFF", bold: true, align: "left" });
+  intentText(context, "avoid-description", intent.avoid.description, { x: 125, y: 258, w: 530, h: 52 }, { fontSize: 17, color: "#4F5D66", background: "#FFFFFF", bold: true, align: "left" });
+  intentShape(context, "avoid-target", "roundRect", { x: 270, y: 430, w: 220, h: 86 }, { fill: "#17202A", line: { color: "#17202A", width: 1 }, radius: 0.08 });
+  intentText(context, "avoid-target-text", intentBlockLabel(intent.avoid.target), { x: 292, y: 452, w: 176, h: 42 }, { fontSize: 18, color: "#FFFFFF", background: "#17202A", bold: true });
+
+  const sourceRects = [
+    { x: 130, y: 330, w: 180, h: 72 },
+    { x: 130, y: 510, w: 180, h: 72 },
+    { x: 445, y: 330, w: 200, h: 72 },
+    { x: 445, y: 510, w: 200, h: 72 },
+    { x: 130, y: 620, w: 180, h: 66 },
+    { x: 465, y: 620, w: 180, h: 66 }
+  ];
+  intent.avoid.sources.forEach((source, index) => addClosedPathSource(context, `avoid-source-${index}`, source, sourceRects[index]));
+  const sourceAnchors = [
+    { x: 310, y: 366 },
+    { x: 310, y: 546 },
+    { x: 445, y: 366 },
+    { x: 445, y: 546 },
+    { x: 310, y: 653 },
+    { x: 465, y: 653 }
+  ];
+  intent.avoid.sources.forEach((_, index) => {
+    const anchor = sourceAnchors[index];
+    if (!anchor) {
+      return;
+    }
+    intentOrthogonalArrow(context, `avoid-path-${index}`, anchor, { x: 380, y: index % 2 === 0 ? 430 : 516 }, { color: "#B33A2E", width: 1.8, dashed: true });
+  });
+  intentCross(context, "avoid-x", { x: 380, y: 662 }, 78);
+
+  intentShape(context, "approved-panel", "roundRect", { x: 885, y: 175, w: 635, h: 560 }, { fill: "#FFFFFF", line: { color: "#70C5B8", width: 1.3 }, radius: 0.08 });
+  intentText(context, "approved-title", intent.approved.title, { x: 930, y: 210, w: 540, h: 36 }, { fontSize: 24, color: "#2E7D58", background: "#FFFFFF", bold: true, align: "left" });
+  intentText(context, "approved-description", intent.approved.description, { x: 930, y: 258, w: 520, h: 52 }, { fontSize: 17, color: "#4F5D66", background: "#FFFFFF", bold: true, align: "left" });
+
+  const stepRects = [
+    { x: 930, y: 350, w: 150, h: 78 },
+    { x: 1090, y: 350, w: 150, h: 78 },
+    { x: 1250, y: 350, w: 150, h: 78 },
+    { x: 930, y: 495, w: 150, h: 78 },
+    { x: 1090, y: 495, w: 150, h: 78 },
+    { x: 1250, y: 495, w: 150, h: 78 },
+  ];
+  intent.approved.steps.forEach((step, index) => {
+    const isAdmin = /admin|管理|interface|ポータル|管理面/i.test(`${step.label} ${step.sublabel ?? ""}`);
+    addClosedPathStep(context, `approved-step-${index}`, step, stepRects[index], isAdmin ? "#17202A" : index === 3 ? "#FFF4E0" : "#DDF4EF", isAdmin ? "#17202A" : index === 3 ? "#D1A848" : "#70C5B8", isAdmin ? "#FFFFFF" : "#4F5D66");
+  });
+  if (intent.approved.steps.length > 1) {
+    intentLine(context, "approved-0-1", { x: 1082, y: 389 }, { x: 1088, y: 389 }, { color: "#0B6B78", width: 2.2, arrowAtEnd: true });
+  }
+  if (intent.approved.steps.length > 2) {
+    intentLine(context, "approved-1-2", { x: 1242, y: 389 }, { x: 1248, y: 389 }, { color: "#0B6B78", width: 2.2, arrowAtEnd: true });
+  }
+  if (intent.approved.steps.length > 3) {
+    intentLine(context, "approved-2-3a", { x: 1325, y: 432 }, { x: 1325, y: 460 }, { color: "#0B6B78", width: 2.2 });
+    intentLine(context, "approved-2-3b", { x: 1325, y: 460 }, { x: 1005, y: 460 }, { color: "#0B6B78", width: 2.2 });
+    intentLine(context, "approved-2-3c", { x: 1005, y: 460 }, { x: 1005, y: 490 }, { color: "#0B6B78", width: 2.2, arrowAtEnd: true });
+  }
+  if (intent.approved.steps.length > 4) {
+    intentLine(context, "approved-3-4", { x: 1082, y: 534 }, { x: 1088, y: 534 }, { color: "#0B6B78", width: 2.2, arrowAtEnd: true });
+  }
+  if (intent.approved.steps.length > 5) {
+    intentLine(context, "approved-4-5", { x: 1242, y: 534 }, { x: 1248, y: 534 }, { color: "#0B6B78", width: 2.2, arrowAtEnd: true });
+  }
+  intentShape(context, "deny-bg", "roundRect", { x: 930, y: 625, w: 450, h: 56 }, { fill: "#FBEAEA", line: { color: "#E6AAA5", width: 1 }, radius: 0.08 });
+  intentText(context, "deny-label", intent.approved.denyLabel, { x: 960, y: 640, w: 390, h: 26 }, { fontSize: 18, color: "#8D2F28", background: "#FBEAEA", bold: true });
+
+  intentShape(context, "message-bg", "roundRect", { x: 240, y: 805, w: 1120, h: 50 }, { fill: "#EAF7FA", line: { color: "#88CAD4", width: 1 }, radius: 0.08 });
+  intentText(context, "message", intent.designMessage, { x: 270, y: 816, w: 1060, h: 28 }, { fontSize: 18, color: "#17202A", background: "#EAF7FA", bold: true });
+}
+
+export function renderDiagramIntent(
+  input: unknown,
+  optionsInput: unknown = {}
+): { elements: NativeDiagramElement[]; summary: string; longDescription: string; warnings: string[] } {
+  const intent = DiagramIntentSchema.parse(input);
+  const options = DiagramIntentRenderOptionsSchema.parse(optionsInput);
+  const context = createIntentContext(options);
+
+  if (intent.kind === "access-plane-map") {
+    addAccessPlaneMap(context, intent);
+  } else {
+    addClosedPrivilegedPath(context, intent);
+  }
+
+  return {
+    elements: context.elements,
+    summary: intent.summary,
+    longDescription: intent.longDescription,
+    warnings: []
   };
 }

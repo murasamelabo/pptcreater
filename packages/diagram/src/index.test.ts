@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram } from "./index.js";
+import { renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram } from "./index.js";
 
 const TEST_FULL_WIDTH_PATTERN = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}\u30FC\u30FB\uFF01-\uFF60\uFFE0-\uFFE6]/u;
 
@@ -534,5 +534,214 @@ describe("schematic diagram rendering", () => {
     });
 
     expect(rendered.svg).toContain('viewBox="0 0 960 540"');
+  });
+});
+
+describe("diagram intent rendering", () => {
+  it("renders the Enterprise Access Model as editable native elements with required granularity", () => {
+    const rendered = renderDiagramIntent({
+      kind: "access-plane-map",
+      title: "Enterprise Access Model の意図した全体像",
+      subtitle: "平面を分けるだけでなく、上位の制御面へ昇格できる経路を閉じる",
+      summary: "Enterprise Access Model intended concept diagram",
+      longDescription:
+        "Enterprise Access Model showing control, management, data workload, user access, app access, and privileged access as protected paths with blocked upward escalation.",
+      controlPlane: {
+        label: "Control Plane",
+        items: ["AD DS", "Microsoft Entra ID", "PKI", "Sync", "Federation", "Policy", "Conditional Access"]
+      },
+      managementPlane: { label: "Management Plane", items: ["Intune", "Defender", "admin tools", "monitoring", "IT operations"] },
+      dataPlane: { label: "Data / Workload Plane", items: ["apps", "data", "Azure", "SaaS", "IaaS", "business systems"] },
+      userAccess: { label: "User Access", sublabel: "社員 / 外部 / 顧客" },
+      appAccess: { label: "App Access", sublabel: "API / 自動化 / 同意" },
+      privilegedAccess: { label: "Privileged Access", sublabel: "管理 / 開発 / 運用 / break glass" },
+      blockedEscalationLabel: "blocked upward escalation paths",
+      designMessage: "下位の経路が上位の Control Plane を奪えないよう、特権経路を分離・承認・監視する"
+    });
+
+    expect(rendered.elements.every((element) => element.type === "shape" || element.type === "text")).toBe(true);
+    expect(JSON.stringify(rendered)).not.toContain("\"svg\"");
+    expect(JSON.stringify(rendered)).not.toContain("\"image\"");
+    for (const required of ["Control Plane", "Management Plane", "Data / Workload Plane", "User Access", "App Access", "Privileged Access", "blocked upward escalation paths"]) {
+      expect(JSON.stringify(rendered.elements)).toContain(required);
+    }
+  });
+
+  it("renders a closed privileged path as two panels with concrete sources and approved steps", () => {
+    const rendered = renderDiagramIntent({
+      kind: "closed-privileged-path",
+      title: "ゼロトラストで閉じた特権経路",
+      subtitle: "管理面へ行く道を一本化し、他の道は閉じる",
+      summary: "Zero Trust closed privileged path intended concept diagram",
+      longDescription:
+        "Comparison between uncontrolled privileged access and a closed zero trust privileged access path with identity, PAW, conditional access, PIM, admin interface, logging, and emergency access.",
+      avoid: {
+        title: "避けたい状態: 到達経路が多すぎる",
+        description: "通常端末、共有管理者、汎用 VPN、直接 RDP、未管理端末が管理面へ届く。",
+        sources: [
+          { label: "通常端末", sublabel: "メール / Web" },
+          { label: "共有管理者", sublabel: "例外運用" },
+          { label: "汎用 VPN", sublabel: "管理面へ直行" },
+          { label: "直接 RDP", sublabel: "未監視経路" }
+        ],
+        target: { label: "管理対象", sublabel: "AD / Entra / Azure" }
+      },
+      approved: {
+        title: "目標状態: 承認済み経路だけ通す",
+        description: "ID、端末、昇格、管理操作、監査が一つの制御列として連動する。",
+        steps: [
+          { label: "専用管理 ID", sublabel: "no mail" },
+          { label: "PAW / SAW", sublabel: "compliant" },
+          { label: "CA", sublabel: "verified" },
+          { label: "PIM", sublabel: "JIT / approval" },
+          { label: "Admin", sublabel: "interface" },
+          { label: "Logs", sublabel: "SIEM" }
+        ],
+        denyLabel: "deny all other privileged paths"
+      },
+      designMessage: "検証、承認、昇格、監査、失効を一つの経路にして、例外は小さく監視する"
+    });
+
+    const texts = rendered.elements.filter((element) => element.type === "text").map((element) => element.text);
+    expect(texts).toEqual(expect.arrayContaining(["通常端末\nメール / Web", "共有管理者\n例外運用", "PIM\nJIT / approval", "Admin\ninterface", "Logs\nSIEM"]));
+    expect(texts.some((text) => text.includes("deny all other privileged paths"))).toBe(true);
+    expect(rendered.elements.filter((element) => element.type === "shape" && element.shape === "line").length).toBeGreaterThanOrEqual(8);
+  });
+
+  it("does not draw closed-path connectors to missing approved steps", () => {
+    const rendered = renderDiagramIntent({
+      kind: "closed-privileged-path",
+      title: "Short path",
+      subtitle: "Only three approved steps",
+      summary: "Short path",
+      longDescription: "A short closed privileged path used to verify optional connector rendering.",
+      avoid: {
+        title: "Avoid",
+        description: "Too many paths.",
+        sources: [{ label: "端末" }, { label: "VPN" }],
+        target: { label: "管理対象" }
+      },
+      approved: {
+        title: "Approved",
+        description: "Only three controls.",
+        steps: [{ label: "ID" }, { label: "PAW" }, { label: "CA" }],
+        denyLabel: "deny all others"
+      },
+      designMessage: "Keep only approved paths."
+    });
+
+    const ids = rendered.elements.map((element) => element.id).join(" ");
+    expect(ids).toContain("diagram-intent-approved-0-1");
+    expect(ids).toContain("diagram-intent-approved-1-2");
+    expect(ids).not.toContain("diagram-intent-approved-2-3");
+    expect(ids).not.toContain("diagram-intent-approved-3-4");
+  });
+
+  it("handles maximum avoid sources without zero-length connector artifacts", () => {
+    const rendered = renderDiagramIntent({
+      kind: "closed-privileged-path",
+      title: "Max avoid paths",
+      subtitle: "Six denied sources",
+      summary: "Max avoid sources",
+      longDescription: "A closed privileged path with the maximum avoid source count to verify connector routing.",
+      avoid: {
+        title: "Avoid",
+        description: "Too many paths.",
+        sources: [{ label: "端末" }, { label: "共有管理者" }, { label: "VPN" }, { label: "RDP" }, { label: "未管理端末" }, { label: "例外" }],
+        target: { label: "管理対象" }
+      },
+      approved: {
+        title: "Approved",
+        description: "Approved controls.",
+        steps: [{ label: "ID" }, { label: "PAW" }, { label: "CA" }, { label: "PIM" }, { label: "Admin" }, { label: "Logs" }],
+        denyLabel: "deny all others"
+      },
+      designMessage: "Keep only approved paths."
+    });
+
+    const lines = rendered.elements.filter((element) => element.type === "shape" && element.shape === "line");
+    const sourceCards = rendered.elements.filter(
+      (element) => element.type === "shape" && element.shape === "roundRect" && /avoid-source-\d-card$/u.test(element.id)
+    );
+    expect(lines.every((line) => line.w >= 0.001 || line.h >= 0.001)).toBe(true);
+    for (let i = 0; i < sourceCards.length; i += 1) {
+      for (let j = i + 1; j < sourceCards.length; j += 1) {
+        expect(overlaps(sourceCards[i], sourceCards[j])).toBe(false);
+      }
+    }
+  });
+
+  it("rejects unsupported seven-step closed privileged paths", () => {
+    expect(() =>
+      renderDiagramIntent({
+        kind: "closed-privileged-path",
+        title: "Too many steps",
+        subtitle: "Seven steps",
+        summary: "Too many approved steps",
+        longDescription: "This intent intentionally exceeds the approved path layout capacity.",
+        avoid: {
+          title: "Avoid",
+          description: "Too many paths.",
+          sources: [{ label: "端末" }, { label: "VPN" }],
+          target: { label: "管理対象" }
+        },
+        approved: {
+          title: "Approved",
+          description: "Too many controls.",
+          steps: [{ label: "1" }, { label: "2" }, { label: "3" }, { label: "4" }, { label: "5" }, { label: "6" }, { label: "7" }],
+          denyLabel: "deny all others"
+        },
+        designMessage: "Keep only approved paths."
+      })
+    ).toThrow();
+  });
+
+  it("emits only horizontal or vertical native lines for Diagram Intent", () => {
+    const rendered = renderDiagramIntent({
+      kind: "access-plane-map",
+      title: "Access",
+      subtitle: "Intent",
+      summary: "Access map",
+      longDescription: "Access map line safety test with all required planes and paths included.",
+      controlPlane: { label: "Control Plane", items: ["AD", "Entra"] },
+      managementPlane: { label: "Management Plane", items: ["Intune"] },
+      dataPlane: { label: "Data Plane", items: ["Apps"] },
+      userAccess: { label: "User Access" },
+      appAccess: { label: "App Access" },
+      privilegedAccess: { label: "Privileged Access" },
+      designMessage: "Protected privileged paths"
+    });
+
+    const lines = rendered.elements.filter((element) => element.type === "shape" && element.shape === "line");
+    expect(lines.length).toBeGreaterThan(0);
+    expect(lines.every((line) => line.w <= 0.01 || line.h <= 0.01)).toBe(true);
+  });
+
+  it("keeps diagram intent elements inside the requested frame", () => {
+    const frame = { x: 0.7, y: 0.8, w: 11.9, h: 5.9 };
+    const rendered = renderDiagramIntent(
+      {
+        kind: "access-plane-map",
+        title: "Access",
+        subtitle: "Intent",
+        summary: "Access map",
+        longDescription: "Access map frame test with all required planes and paths included.",
+        controlPlane: { label: "Control Plane", items: ["AD", "Entra"] },
+        managementPlane: { label: "Management Plane", items: ["Intune"] },
+        dataPlane: { label: "Data Plane", items: ["Apps"] },
+        userAccess: { label: "User Access" },
+        appAccess: { label: "App Access" },
+        privilegedAccess: { label: "Privileged Access" },
+        designMessage: "Protected privileged paths"
+      },
+      { frame }
+    );
+
+    for (const element of rendered.elements) {
+      expect(element.x).toBeGreaterThanOrEqual(frame.x - 0.001);
+      expect(element.y).toBeGreaterThanOrEqual(frame.y - 0.001);
+      expect(element.x + element.w).toBeLessThanOrEqual(frame.x + frame.w + 0.001);
+      expect(element.y + element.h).toBeLessThanOrEqual(frame.y + frame.h + 0.001);
+    }
   });
 });

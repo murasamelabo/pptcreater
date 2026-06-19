@@ -1,0 +1,54 @@
+﻿{
+  "kind": "access-plane-map",
+  "title": "Enterprise Access Model の意図した全体像",
+  "subtitle": "平面を分けるだけでなく、「上位の制御面へ昇格できる経路」を明示的に閉じる",
+  "summary": "Enterprise Access Model intended concept diagram",
+  "longDescription": "Enterprise Access Model showing control, management, data workload, user access, app access, and privileged access as protected paths with blocked upward escalation.",
+  "controlPlane": {
+    "label": "Control Plane",
+    "items": [
+      "AD DS",
+      "Microsoft Entra ID",
+      "PKI",
+      "Sync",
+      "Federation",
+      "Policy",
+      "Conditional Access"
+    ]
+  },
+  "managementPlane": {
+    "label": "Management Plane",
+    "items": [
+      "Intune",
+      "Defender",
+      "admin tools",
+      "monitoring",
+      "IT operations"
+    ]
+  },
+  "dataPlane": {
+    "label": "Data / Workload Plane",
+    "items": [
+      "apps",
+      "data",
+      "Azure",
+      "SaaS",
+      "IaaS",
+      "business systems"
+    ]
+  },
+  "userAccess": {
+    "label": "User Access",
+    "sublabel": "社員 / 外部 / 顧客"
+  },
+  "appAccess": {
+    "label": "App Access",
+    "sublabel": "API / 自動化 / 同意"
+  },
+  "privilegedAccess": {
+    "label": "Privileged Access",
+    "sublabel": "管理 / 開発 / 運用 / break glass"
+  },
+  "blockedEscalationLabel": "blocked upward escalation paths",
+  "designMessage": "設計メッセージ: 下位の経路が上位の Control Plane を奪えないよう、特権経路を分離・承認・監視する"
+}

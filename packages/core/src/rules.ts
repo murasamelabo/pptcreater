@@ -32,7 +32,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "目的・聴衆・contentMode・枚数・出典・使うテンプレート/ブランドが曖昧なら、DeckSpec を書く前に確認または合理的に仮定する。",
         "経営向け・顧客向け・重要会議・コンサル風資料では plan_business_deck を先に実行し、章構成と各スライドの役割を決める。",
         "search_templates / recommend_template で template を決め、search_assets で既存アイコン・クラウドプリセットを先に探す。",
-        "図解は generate_native_diagram または generate_schematic を優先し、テキスト・カード・矢印・ラベルを編集可能な形で作る。",
+        "意図した構図・粒度がある図解は generate_intent_diagram を先に使い、それ以外は generate_native_diagram または generate_schematic でテキスト・カード・矢印・ラベルを編集可能な形で作る。",
         "DeckSpec 作成後に review_content -> lint_deck -> render_pptx の順で確認する。lint エラーが出た場合は、力技で force せず、該当ルールに戻って短縮・分割・図解化する。"
       ]
     : [
@@ -40,7 +40,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "If purpose, audience, contentMode, slide count, sources, template, or brand constraints are unclear, clarify or make explicit assumptions before writing DeckSpec.",
         "For executive, customer-facing, important-meeting, or consulting-style decks, run plan_business_deck first to define sections and slide roles.",
         "Choose the template through search_templates / recommend_template, and search_assets before creating new icons or cloud pictograms.",
-        "Prefer generate_native_diagram or generate_schematic so diagrams, cards, arrows, and labels remain editable.",
+        "Use generate_intent_diagram first when a diagram has a known intended composition/granularity; otherwise prefer generate_native_diagram or generate_schematic so diagrams, cards, arrows, and labels remain editable.",
         "After DeckSpec creation, run review_content -> lint_deck -> render_pptx. If lint errors remain, return to these rules and shorten, split, or convert content into visuals instead of force-rendering."
       ];
 
@@ -83,14 +83,14 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
   const visualRules = locale === "ja-JP"
     ? [
         "本文スライドはテキストだけにしない。少なくともカード、アイコン、表、図解、フロー、ツリー、タイムラインのいずれかを入れる。",
-        "アーキテクチャ/セキュリティ/制御フロー/ポンチ絵は generate_native_diagram を使い、ローカルSVGを image.path として貼らない。",
+        "Enterprise Access Model、閉じた特権経路、左右比較など構図を外したくない概念図は generate_intent_diagram を使う。一般的なアーキテクチャ/セキュリティ/制御フロー/ポンチ絵は generate_native_diagram を使い、ローカルSVGを image.path として貼らない。",
         "SVG図を使う場合も、可視ラベルを入れ、内部テキストが8pt未満にならないサイズで配置する。",
         "クラウド/ベンダー図では search_assets で preset-azure / preset-entra / preset-aws / preset-google を先に探す。公式SVGが必要な場合は list_icon_sources でライセンスを確認してから登録する。",
         "色だけで意味を表さない。状態・差分・リスクにはラベル、形、アイコン、凡例を併用する。"
       ]
     : [
         "Content slides must not be text-only. Include cards, icons, tables, diagrams, flows, trees, or timelines.",
-        "Use generate_native_diagram for architecture/security/control-flow/ponchi-e diagrams; do not paste local SVG diagrams as image.path.",
+        "Use generate_intent_diagram for concept diagrams where composition must not drift, such as Enterprise Access Model, closed privileged paths, or side-by-side comparisons. Use generate_native_diagram for general architecture/security/control-flow/ponchi-e diagrams; do not paste local SVG diagrams as image.path.",
         "If SVG diagrams are used, include visible labels and place them large enough that internal text stays at least 8pt.",
         "For cloud/vendor diagrams, search_assets for preset-azure / preset-entra / preset-aws / preset-google first. If exact official SVGs are required, check list_icon_sources before registering them.",
         "Do not encode meaning by color alone; combine labels, shapes, icons, or legends for state, difference, and risk."
@@ -127,14 +127,14 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "タイトル/メッセージ/本文が contentMode の文字量内に収まっている。",
         "本文スライドがテキストだけではなく、1つの視覚文法に沿っている。",
         "長いラベル・長文・脚注をスライド面に詰め込まず、分割または notes に移している。",
-        "アーキテクチャ/フロー図は native diagram または schematic で作っている。",
+        "構図意図がある概念図は intent diagram、一般的なアーキテクチャ/フロー図は native diagram または schematic で作っている。",
         "altText、readingOrder、sources、コントラストを最初から入れている。"
       ]
     : [
         "Titles/messages/body copy fit the selected contentMode limits.",
         "Content slides are not text-only and use one visual grammar.",
         "Long labels, prose, and footnotes are split or moved to notes.",
-        "Architecture/flow diagrams are native diagrams or schematics.",
+        "Concept diagrams with intended composition use intent diagrams; general architecture/flow diagrams are native diagrams or schematics.",
         "altText, readingOrder, sources, and contrast are present from the start."
       ];
 

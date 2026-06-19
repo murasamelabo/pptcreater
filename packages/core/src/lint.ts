@@ -37,6 +37,10 @@ function textLength(slide: Slide): number {
 }
 
 function textElementMinimumSize(element: TextElement, deck: DeckSpec): number {
+  if (element.role === "caption" && isGeneratedDiagramIntentText(element)) {
+    return 8.5;
+  }
+
   if (deck.template === "report-formal" || deck.metadata.contentMode === "report" || deck.metadata.contentMode === "handout") {
     if (element.role === "title") {
       return 24;
@@ -87,11 +91,18 @@ function isLikelyDiagramImage(element: Extract<SlideElement, { type: "image" }>,
 }
 
 function isGeneratedNativeDiagramConnector(element: ShapeElement): boolean {
-  return /(?:^|-)connector-\d+-\d+$/u.test(element.id);
+  return /(?:^|-)connector-\d+-\d+$/u.test(element.id) || element.altText === "generated diagram intent connector";
 }
 
 function isGeneratedNativeDiagramNode(element: SlideElement): boolean {
-  return element.type === "shape" && /(?:^|-)node-[a-zA-Z0-9._-]+-\d+$/u.test(element.id);
+  return (
+    element.type === "shape" &&
+    (/(?:^|-)node-[a-zA-Z0-9._-]+-\d+$/u.test(element.id) || element.altText === "generated diagram intent shape")
+  );
+}
+
+function isGeneratedDiagramIntentText(element: TextElement): boolean {
+  return /^diagram-intent-/u.test(element.id) || element.altText === "generated diagram intent text";
 }
 
 function hasReferenceSlideMarkers(slide: Slide): boolean {

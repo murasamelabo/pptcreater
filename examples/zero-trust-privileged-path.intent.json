@@ -1,0 +1,65 @@
+﻿{
+  "kind": "closed-privileged-path",
+  "title": "ゼロトラストで閉じた特権経路",
+  "subtitle": "描きたかったのは「管理面へ行く道を一本化し、他の道は閉じる」構図",
+  "summary": "Zero Trust closed privileged path intended concept diagram",
+  "longDescription": "Comparison between uncontrolled privileged access and a closed zero trust privileged access path with identity, PAW, conditional access, PIM, admin interface, logging, and emergency access.",
+  "avoid": {
+    "title": "避けたい状態: 到達経路が多すぎる",
+    "description": "通常端末、共有管理者、汎用 VPN、直接 RDP、未管理端末が管理面へ届く。",
+    "sources": [
+      {
+        "label": "通常端末",
+        "sublabel": "メール / Web"
+      },
+      {
+        "label": "共有管理者",
+        "sublabel": "例外運用"
+      },
+      {
+        "label": "汎用 VPN",
+        "sublabel": "管理面へ直行"
+      },
+      {
+        "label": "直接 RDP",
+        "sublabel": "未監視経路"
+      }
+    ],
+    "target": {
+      "label": "管理対象",
+      "sublabel": "AD / Entra / Azure"
+    }
+  },
+  "approved": {
+    "title": "目標状態: 承認済み経路だけ通す",
+    "description": "ID、端末、昇格、管理操作、監査が一つの制御列として連動する。",
+    "steps": [
+      {
+        "label": "専用管理 ID",
+        "sublabel": "no mail"
+      },
+      {
+        "label": "PAW / SAW",
+        "sublabel": "compliant"
+      },
+      {
+        "label": "CA",
+        "sublabel": "verified"
+      },
+      {
+        "label": "PIM",
+        "sublabel": "JIT / approval"
+      },
+      {
+        "label": "Admin",
+        "sublabel": "interface"
+      },
+      {
+        "label": "Logs",
+        "sublabel": "SIEM"
+      }
+    ],
+    "denyLabel": "deny all other privileged paths"
+  },
+  "designMessage": "設計メッセージ: 検証、承認、昇格、監査、失効を一つの経路にして、例外は小さく監視する"
+}

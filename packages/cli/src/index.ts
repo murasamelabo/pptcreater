@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { Command, InvalidArgumentError } from "commander";
 import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, searchAllSvgAssets, type BuiltinIconName } from "@pptcreater/assets-svg";
-import { renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram } from "@pptcreater/diagram";
+import { renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram } from "@pptcreater/diagram";
 import {
   BUSINESS_STYLE_MODES,
   cliMessage,
@@ -131,7 +131,7 @@ const program = new Command();
 program
   .name("pptcreater")
   .description("Create concise accessible PowerPoint decks from DeckSpec.")
-  .version("0.1.5")
+  .version("0.1.6")
   .option("--language <locale>", "CLI output language: ja-JP or en-US");
 
 program
@@ -575,6 +575,51 @@ program
               }
             : undefined;
         const result = renderNativePonchiDiagram(await readJson(diagramPath), {
+          frame,
+          idPrefix: options.idPrefix,
+          readingOrderStart: options.readingOrderStart
+        });
+        await writeFile(options.output, `\uFEFF${JSON.stringify(result, null, 2)}\n`, "utf8");
+        console.log(`Created ${options.output}`);
+      }
+    )
+  );
+
+program
+  .command("diagram-intent")
+  .description("Render a Diagram Intent JSON file to editable DeckSpec shape/text elements.")
+  .argument("<intent>", "Diagram Intent JSON path")
+  .requiredOption("-o, --output <path>", "Output JSON path")
+  .option("--frame-x <number>", "Slide frame x in inches", Number)
+  .option("--frame-y <number>", "Slide frame y in inches", Number)
+  .option("--frame-w <number>", "Slide frame width in inches", Number)
+  .option("--frame-h <number>", "Slide frame height in inches", Number)
+  .option("--id-prefix <prefix>", "Generated element id prefix", "diagram-intent")
+  .option("--reading-order-start <number>", "First readingOrder value", Number)
+  .action(
+    commandAction(
+      async (
+        intentPath: string,
+        options: {
+          output: string;
+          frameX?: number;
+          frameY?: number;
+          frameW?: number;
+          frameH?: number;
+          idPrefix: string;
+          readingOrderStart?: number;
+        }
+      ) => {
+        const frame =
+          options.frameX !== undefined || options.frameY !== undefined || options.frameW !== undefined || options.frameH !== undefined
+            ? {
+                x: options.frameX,
+                y: options.frameY,
+                w: options.frameW,
+                h: options.frameH
+              }
+            : undefined;
+        const result = renderDiagramIntent(await readJson(intentPath), {
           frame,
           idPrefix: options.idPrefix,
           readingOrderStart: options.readingOrderStart
