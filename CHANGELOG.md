@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.2.3 - 2026-06-19
+
+- **Fixed a PowerPoint "needs repair"/corruption regression.** The renderer wrote an invalid raw `decorative="1"` attribute onto every decorative shape's `<p:cNvPr>`. `decorative` is not a declared OOXML attribute, so PowerPoint flagged the file as corrupt (the Open XML SDK reported one schema error per decorative shape — 60+ in a typical deck). Decorative intent is now carried solely by the schema-valid `<a:extLst>` extension, upgraded to PowerPoint's canonical `adec:decorative val="1"` form so shapes are genuinely marked decorative for screen readers. Regression introduced 2026-06-14.
+- Reordered `notesMasterIdLst` to sit before `sldIdLst` in `presentation.xml` (per the `CT_Presentation` schema sequence) so every rendered deck is now strictly Open XML valid, not just tolerated.
+- Regenerated all shipped `samples/*.pptx` with the fixed renderer; each now validates with zero Open XML errors.
+- Removed a leaked `should-not-render-out-of-bounds.pptx` test artifact that had been accidentally committed.
+
 ## v0.2.2 - 2026-06-19
 
 - Fixed `pptcreater new` and `pptcreater business-plan` rejecting `--slide-count` with `error: unknown option`. The CLI now accepts `--slide-count` as an alias for `--slides`, matching the MCP `slideCount` field name that agents already know — so a natural option guess no longer dead-ends the CLI and forces a slow manual fallback. `--slides` remains the canonical documented flag and wins if both are passed.

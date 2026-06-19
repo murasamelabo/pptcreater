@@ -293,9 +293,9 @@ function decorateCnvPr(attrs: string, description: string, selfClosing: boolean)
   const descriptionAttr = `descr="${escapeXmlAttribute(description)}"`;
 
   if (description === "") {
-    const decorativeAttrs = `${cleanedAttrs} ${descriptionAttr} decorative="1"`;
+    const decorativeAttrs = `${cleanedAttrs} ${descriptionAttr}`;
     const decorativeExtension =
-      '<a:extLst><a:ext uri="{C183D7F6-B498-43B3-948B-1728B52AA6E4}"><a16:decorative xmlns:a16="http://schemas.microsoft.com/office/drawing/2014/main">1</a16:decorative></a:ext></a:extLst>';
+      '<a:extLst><a:ext uri="{C183D7F6-B498-43B3-948B-1728B52AA6E4}"><adec:decorative xmlns:adec="http://schemas.microsoft.com/office/drawing/2017/decorative" val="1"/></a:ext></a:extLst>';
     if (!selfClosing) {
       return `<p:cNvPr${decorativeAttrs}>${decorativeExtension}`;
     }
@@ -304,6 +304,24 @@ function decorateCnvPr(attrs: string, description: string, selfClosing: boolean)
   }
 
   return `<p:cNvPr${cleanedAttrs} ${descriptionAttr}${selfClosing ? "/>" : ">"}`;
+}
+
+// pptxgenjs emits `notesMasterIdLst` after `sldIdLst`, but the CT_Presentation schema
+// requires it immediately after `sldMasterIdLst`. The out-of-order element makes the file
+// schema-invalid (PowerPoint may flag it during repair), so we move it into place.
+function reorderPresentationParts(xml: string): string {
+  const notesMatch = xml.match(/<p:notesMasterIdLst\b[\s\S]*?<\/p:notesMasterIdLst>/);
+  if (!notesMatch) {
+    return xml;
+  }
+
+  const notesBlock = notesMatch[0];
+  const withoutNotes = xml.replace(notesBlock, "");
+  if (!/<\/p:sldMasterIdLst>/.test(withoutNotes)) {
+    return xml;
+  }
+
+  return withoutNotes.replace("</p:sldMasterIdLst>", () => `</p:sldMasterIdLst>${notesBlock}`);
 }
 
 async function markShapeAccessibility(pptxPath: string, deck: DeckSpec): Promise<void> {
@@ -337,6 +355,15 @@ async function markShapeAccessibility(pptxPath: string, deck: DeckSpec): Promise
       zip.file(name, patched);
     })
   );
+
+  const presentationFile = zip.file("ppt/presentation.xml");
+  if (presentationFile) {
+    const presentationXml = await presentationFile.async("string");
+    const reordered = reorderPresentationParts(presentationXml);
+    if (reordered !== presentationXml) {
+      zip.file("ppt/presentation.xml", reordered);
+    }
+  }
 
   await writeFile(pptxPath, await zip.generateAsync({ type: "nodebuffer" }));
 }

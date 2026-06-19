@@ -161,4 +161,37 @@ describe("PPTX renderer", () => {
     const mediaNames = Object.keys((zip as unknown as { files: Record<string, unknown> }).files).filter((name) => name.startsWith("ppt/media/"));
     expect(mediaNames.some((name) => name.endsWith(".svg"))).toBe(true);
   });
+
+  it("encodes decorative shapes as a valid extension and keeps presentation parts in schema order", async () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "decorative-panel",
+      type: "shape",
+      shape: "roundRect",
+      x: 1,
+      y: 3,
+      w: 4,
+      h: 1.6,
+      fill: "#ffffff",
+      decorative: true,
+      readingOrder: 200
+    });
+
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-render-"));
+    const outputPath = join(outputDir, "decorative.pptx");
+    await renderDeckToPptx(deck, outputPath);
+
+    const zip = await JSZip.loadAsync(await readFile(outputPath));
+    const slide1 = (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
+    // `decorative` is not a declared attribute on p:cNvPr; emitting it makes PowerPoint treat the
+    // file as corrupt. Decorative intent must live in the extLst extension instead.
+    expect(slide1).not.toMatch(/<p:cNvPr[^>]*\sdecorative=/);
+    expect(slide1).toContain("adec:decorative");
+
+    const presentation = (await zip.file("ppt/presentation.xml")?.async("string")) ?? "";
+    if (presentation.includes("notesMasterIdLst")) {
+      // CT_Presentation requires notesMasterIdLst before sldIdLst.
+      expect(presentation.indexOf("notesMasterIdLst")).toBeLessThan(presentation.indexOf("sldIdLst"));
+    }
+  });
 });
