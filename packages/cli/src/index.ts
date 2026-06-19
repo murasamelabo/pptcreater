@@ -2,7 +2,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { Command, InvalidArgumentError } from "commander";
-import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, searchAllSvgAssets, type BuiltinIconName } from "@pptcreater/assets-svg";
+import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, resolveIconForKeyword, searchAllSvgAssets, suggestIconForKeyword, type BuiltinIconName } from "@pptcreater/assets-svg";
 import { renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram } from "@pptcreater/diagram";
 import {
   BUSINESS_STYLE_MODES,
@@ -133,7 +133,7 @@ const program = new Command();
 program
   .name("pptcreater")
   .description("Create concise accessible PowerPoint decks from DeckSpec.")
-  .version("0.1.9")
+  .version("0.2.0")
   .option("--language <locale>", "CLI output language: ja-JP or en-US");
 
 program
@@ -529,6 +529,24 @@ program
   .action(commandAction((name: string, options: { color: string; json: boolean }) => {
     const icon = createSimpleIconSvg(name, options.color);
     console.log(options.json ? JSON.stringify(icon, null, 2) : icon.svg);
+  }));
+
+program
+  .command("icon-suggest")
+  .description("Map a free-text keyword (JA/EN) to the best-matching builtin icon name.")
+  .argument("<keyword>", "Concept/keyword, e.g. 'security' or 'コスト削減'")
+  .option("--color <hex>", "Stroke color for the resolved SVG", "#1d4ed8")
+  .option("--json", "Emit JSON", false)
+  .action(commandAction((keyword: string, options: { color: string; json: boolean }) => {
+    const icon = suggestIconForKeyword(keyword);
+    const asset = icon ? resolveIconForKeyword(keyword, options.color) : null;
+    if (options.json) {
+      console.log(JSON.stringify({ keyword, icon, matched: Boolean(icon), svg: asset?.svg ?? null }, null, 2));
+    } else if (icon) {
+      console.log(icon);
+    } else {
+      console.log("(no matching builtin icon)");
+    }
   }));
 
 program

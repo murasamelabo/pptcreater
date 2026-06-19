@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { BUILTIN_ICON_NAMES, BUILTIN_SVG_ASSETS, createSimpleIconSvg, listIconSourceCatalogs, registerSvgAsset, sanitizeSvg, searchAllSvgAssets } from "./index.js";
+import { BUILTIN_ICON_NAMES, BUILTIN_SVG_ASSETS, createSimpleIconSvg, listIconSourceCatalogs, registerSvgAsset, resolveIconForKeyword, sanitizeSvg, searchAllSvgAssets, suggestIconForKeyword } from "./index.js";
 
 describe("SVG assets", () => {
   it("removes active and external SVG content", () => {
@@ -248,5 +248,37 @@ describe("SVG assets", () => {
     const assets = await searchAllSvgAssets("malformed", { registryPath });
 
     expect(assets.some((asset) => asset.id === "malformed-lock-asset")).toBe(true);
+  });
+});
+
+describe("keyword icon auto-mapping", () => {
+  it("maps English business keywords to relevant builtin icons", () => {
+    expect(suggestIconForKeyword("Security posture")).toBe("shield");
+    expect(suggestIconForKeyword("Cost reduction")).toBe("cash");
+    expect(suggestIconForKeyword("Automation workflow")).toBe("workflow");
+    expect(suggestIconForKeyword("Team collaboration")).toBe("user-group");
+  });
+
+  it("maps Japanese keywords to relevant builtin icons", () => {
+    expect(suggestIconForKeyword("セキュリティ強化")).toBe("shield");
+    expect(suggestIconForKeyword("コスト削減")).toBe("cash");
+    expect(suggestIconForKeyword("運用の自動化")).toBe("workflow");
+    expect(suggestIconForKeyword("ガバナンス")).toBe("settings");
+  });
+
+  it("prefers longer, more specific synonyms over short generic tokens", () => {
+    expect(suggestIconForKeyword("Zero Trust access")).toBe("shield");
+  });
+
+  it("returns null when nothing matches and resolves matched icons to a valid asset", () => {
+    expect(suggestIconForKeyword("xyzzy qwerty")).toBeNull();
+    expect(suggestIconForKeyword("   ")).toBeNull();
+
+    const asset = resolveIconForKeyword("データベース", "#0f766e");
+    expect(asset).not.toBeNull();
+    expect(asset?.id).toBe("icon-database");
+    expect(asset?.svg).toContain("#0f766e");
+    expect(BUILTIN_ICON_NAMES).toContain(suggestIconForKeyword("database") as string);
+    expect(resolveIconForKeyword("xyzzy qwerty")).toBeNull();
   });
 });

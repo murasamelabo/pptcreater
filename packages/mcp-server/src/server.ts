@@ -3,7 +3,7 @@ import { lstat, mkdir, realpath, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, searchAllSvgAssets } from "@pptcreater/assets-svg";
+import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, resolveIconForKeyword, searchAllSvgAssets, suggestIconForKeyword } from "@pptcreater/assets-svg";
 import { DiagramIntentSchema, renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram } from "@pptcreater/diagram";
 import {
   BUSINESS_STYLE_MODES,
@@ -262,7 +262,7 @@ async function assertSafeLocalImagePaths(deck: DeckSpec): Promise<void> {
 export function createPptcreaterMcpServer(): McpServer {
   const server = new McpServer({
     name: "pptcreater",
-    version: "0.1.9"
+    version: "0.2.0"
   });
   const createPowerPointInputSchema = {
     locale: z.enum(["ja-JP", "en-US"]).default("ja-JP"),
@@ -652,6 +652,24 @@ export function createPptcreaterMcpServer(): McpServer {
   );
 
   server.registerTool(
+    "suggest_icon",
+    {
+      title: "Suggest a builtin icon for a keyword",
+      description:
+        "Map a free-text concept/keyword (Japanese or English, e.g. a card heading or aspect label such as 'security', 'コスト削減', 'ライフサイクル') to the best-matching builtin icon name so cards, lists, and visual scaffolds can carry a meaningful icon instead of a bare monogram. Returns { keyword, icon, matched, svg } where `icon` is the builtin name (or null when nothing matches) and `svg` is the recolored inline SVG when matched. generate_visual_scaffold already auto-applies this mapping when no explicit icon is passed; use this tool to pick icons for your own card/grid compositions.",
+      inputSchema: {
+        keyword: z.string().min(1),
+        color: z.string().regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/).default("#1d4ed8")
+      }
+    },
+    async ({ keyword, color }) => {
+      const icon = suggestIconForKeyword(keyword);
+      const asset = icon ? resolveIconForKeyword(keyword, color) : null;
+      return jsonText({ keyword, icon, matched: Boolean(icon), svg: asset?.svg ?? null });
+    }
+  );
+
+  server.registerTool(
     "generate_diagram",
     {
       title: "Generate ponchi-e diagram",
@@ -752,7 +770,7 @@ export function createPptcreaterMcpServer(): McpServer {
     {
       title: "Generate per-slide concept visual scaffold",
       description:
-        "Generate a tasteful, EDITABLE right-rail concept visual (rounded panel + icon/monogram emblem + bold concept label + optional caption + up to 4 short aspect chips) to attach to a content slide. Use this so every content slide carries lightweight visual structure (like strong reference decks that put a concept image/icon on each slide) WITHOUT flattened/crushed raster images — the scaffold is composed of native DeckSpec shape/text elements plus an optional inline SVG icon, so it stays accessible, overflow-safe, and passes the visual-richness gate (it adds shapes + an SVG/monogram). Pass an optional builtin `icon` name (resolved to an inline SVG) for the emblem; otherwise the first grapheme of `concept` becomes a monogram. Push the returned `elements` into the target slide's elements array. Keep aspect `points` to short phrases (<= ~24 chars); extra points beyond what fits the frame are dropped with a warning. Returns { elements, summary, longDescription, warnings } — use summary/longDescription for alt text / speaker notes.",
+        "Generate a tasteful, EDITABLE right-rail concept visual (rounded panel + icon/monogram emblem + bold concept label + optional caption + up to 4 short aspect chips) to attach to a content slide. Use this so every content slide carries lightweight visual structure (like strong reference decks that put a concept image/icon on each slide) WITHOUT flattened/crushed raster images — the scaffold is composed of native DeckSpec shape/text elements plus an optional inline SVG icon, so it stays accessible, overflow-safe, and passes the visual-richness gate (it adds shapes + an SVG/monogram). Pass an optional builtin `icon` name (resolved to an inline SVG) for the emblem; when omitted, an icon is auto-mapped from the `concept` keyword (Japanese or English) and only falls back to the first grapheme of `concept` as a monogram when no icon matches. Push the returned `elements` into the target slide's elements array. Keep aspect `points` to short phrases (<= ~24 chars); extra points beyond what fits the frame are dropped with a warning. Returns { elements, summary, longDescription, warnings } — use summary/longDescription for alt text / speaker notes.",
       inputSchema: {
         concept: z.string().min(1),
         caption: z.string().optional(),
@@ -781,7 +799,8 @@ export function createPptcreaterMcpServer(): McpServer {
       }
     },
     async ({ concept, caption, points, icon, locale, accent, frame, idPrefix, readingOrderStart }) => {
-      const iconSvg = icon ? createSimpleIconSvg(icon, "#ffffff").svg : undefined;
+      const resolvedIcon = icon ?? suggestIconForKeyword(concept) ?? undefined;
+      const iconSvg = resolvedIcon ? createSimpleIconSvg(resolvedIcon, "#ffffff").svg : undefined;
       return jsonText(
         createVisualScaffold(
           { concept, caption, points, iconSvg },

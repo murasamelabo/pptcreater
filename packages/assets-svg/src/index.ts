@@ -1162,6 +1162,135 @@ export const BUILTIN_SVG_ASSETS: SvgAsset[] = [
   ...VENDOR_PRESET_SVG_ASSETS
 ];
 
+// Curated keyword -> builtin icon synonyms (Japanese + English) so agents and the
+// visual scaffold can auto-attach a meaningful emblem from a concept label instead
+// of always falling back to a monogram. Order is priority: earlier entries win ties.
+const ICON_KEYWORD_SYNONYMS: ReadonlyArray<readonly [BuiltinIconName, readonly string[]]> = [
+  ["shield", ["security", "secure", "protect", "protection", "defense", "defence", "zero trust", "セキュリティ", "保護", "防御", "ゼロトラスト", "安全"]],
+  ["lock", ["lock", "encryption", "encrypt", "private", "confidential", "ロック", "暗号", "暗号化", "機密", "施錠"]],
+  ["key", ["key", "credential", "secret", "access key", "token", "鍵", "キー", "資格情報", "シークレット", "トークン"]],
+  ["user", ["user", "person", "individual", "identity", "account", "ユーザー", "個人", "本人", "アカウント", "アイデンティティ"]],
+  ["user-group", ["team", "group", "users", "members", "stakeholder", "organization", "people", "チーム", "グループ", "メンバー", "組織", "関係者", "利用者"]],
+  ["cloud", ["cloud", "saas", "azure", "aws", "gcp", "online", "クラウド", "オンライン"]],
+  ["server", ["server", "host", "backend", "compute", "vm", "machine", "サーバー", "ホスト", "バックエンド", "計算"]],
+  ["database", ["database", "data store", "storage", "sql", "record", "repository", "データベース", "データ", "ストレージ", "記録", "蓄積"]],
+  ["settings", ["settings", "config", "configuration", "policy", "control", "governance", "manage", "operation", "設定", "構成", "ポリシー", "制御", "ガバナンス", "統制", "運用", "管理"]],
+  ["workflow", ["workflow", "process", "pipeline", "automation", "automate", "orchestration", "ワークフロー", "プロセス", "工程", "自動化", "パイプライン", "フロー"]],
+  ["chart-up", ["growth", "increase", "improve", "improvement", "trend", "roi", "performance", "成長", "向上", "改善", "増加", "効果", "成果", "推移"]],
+  ["chart-bar", ["metrics", "measure", "kpi", "analytics", "report", "statistics", "指標", "計測", "分析", "統計", "レポート", "実績"]],
+  ["pie-chart", ["share", "ratio", "breakdown", "portion", "composition", "割合", "構成比", "内訳", "シェア"]],
+  ["target", ["goal", "target", "objective", "aim", "focus", "purpose", "目標", "ターゲット", "目的", "狙い", "焦点"]],
+  ["flag", ["milestone", "phase", "stage", "checkpoint", "release", "マイルストーン", "フェーズ", "段階", "節目", "リリース"]],
+  ["rocket", ["launch", "start", "kickoff", "accelerate", "deploy", "go live", "ローンチ", "立ち上げ", "開始", "加速", "展開", "リリース"]],
+  ["lightbulb", ["idea", "insight", "innovation", "concept", "suggestion", "アイデア", "発想", "気づき", "洞察", "提案", "工夫"]],
+  ["check", ["done", "complete", "approval", "approved", "success", "ok", "pass", "compliant", "完了", "承認", "成功", "達成", "合格", "適合"]],
+  ["warning", ["risk", "warning", "caution", "issue", "alert", "threat", "リスク", "警告", "注意", "課題", "脅威", "懸念"]],
+  ["x", ["block", "blocked", "deny", "denied", "prohibit", "stop", "remove", "ブロック", "拒否", "禁止", "遮断", "停止", "除外"]],
+  ["info", ["info", "information", "note", "overview", "context", "summary", "情報", "概要", "補足", "説明", "まとめ"]],
+  ["link", ["link", "connect", "connection", "integration", "integrate", "reference", "リンク", "接続", "連携", "統合", "参照", "つながり"]],
+  ["globe", ["global", "world", "internet", "region", "international", "web", "network", "グローバル", "世界", "地域", "国際", "ウェブ", "ネットワーク", "通信"]],
+  ["building", ["company", "enterprise", "organization", "office", "corporate", "tenant", "企業", "会社", "組織", "拠点", "テナント", "法人"]],
+  ["document", ["document", "report", "file", "spec", "policy doc", "contract", "文書", "ドキュメント", "資料", "ファイル", "仕様", "契約"]],
+  ["folder", ["folder", "category", "group of files", "directory", "archive", "フォルダ", "分類", "カテゴリ", "アーカイブ"]],
+  ["calendar", ["schedule", "date", "calendar", "timeline", "plan", "deadline", "スケジュール", "日程", "予定", "計画", "期限", "カレンダー"]],
+  ["clock", ["time", "duration", "speed", "latency", "realtime", "fast", "時間", "時間短縮", "速度", "リアルタイム", "迅速", "所要時間"]],
+  ["bell", ["notification", "alert", "notify", "reminder", "通知", "アラート", "お知らせ", "リマインド"]],
+  ["mail", ["email", "mail", "message", "communication", "contact", "メール", "連絡", "メッセージ", "問い合わせ"]],
+  ["search", ["search", "discover", "find", "audit", "review", "investigate", "検索", "発見", "調査", "監査", "レビュー", "点検"]],
+  ["eye", ["monitor", "monitoring", "visibility", "observe", "watch", "oversight", "監視", "可視化", "観測", "見える化", "モニタリング"]],
+  ["edit", ["edit", "author", "write", "create", "draft", "編集", "作成", "執筆", "下書き", "記述"]],
+  ["filter", ["filter", "refine", "narrow", "segment", "フィルタ", "絞り込み", "選別", "セグメント"]],
+  ["code", ["code", "develop", "developer", "api", "programming", "engineering", "コード", "開発", "実装", "プログラム", "エンジニア"]],
+  ["branch", ["branch", "version", "git", "fork", "variant", "ブランチ", "バージョン", "分岐", "派生"]],
+  ["cash", ["cost", "price", "budget", "revenue", "money", "billing", "finance", "コスト", "費用", "価格", "予算", "売上", "収益", "課金", "金額"]],
+  ["scale", ["compliance", "legal", "regulation", "balance", "fairness", "law", "コンプライアンス", "法務", "規制", "法令", "公平", "均衡"]],
+  ["layers", ["layer", "stack", "tier", "architecture", "plane", "structure", "レイヤー", "層", "階層", "スタック", "アーキテクチャ", "構造"]],
+  ["table", ["table", "matrix", "comparison", "grid", "テーブル", "表", "比較表", "一覧"]],
+  ["tree", ["hierarchy", "tree", "structure", "taxonomy", "org chart", "階層", "ツリー", "体系", "構成図", "組織図"]],
+  ["list", ["list", "checklist", "items", "steps", "tasks", "リスト", "一覧", "項目", "手順", "タスク", "チェックリスト"]],
+  ["map", ["map", "journey", "landscape", "blueprint", "roadmap area", "マップ", "地図", "全体像", "ジャーニー", "見取り図"]],
+  ["home", ["home", "base", "platform", "foundation", "ホーム", "基盤", "土台", "プラットフォーム"]],
+  ["star", ["quality", "best", "favorite", "premium", "highlight", "品質", "最良", "おすすめ", "重要", "ハイライト"]],
+  ["heart", ["satisfaction", "wellbeing", "care", "loyalty", "health", "満足", "ウェルビーイング", "ケア", "健康", "愛着"]],
+  ["phone", ["phone", "mobile", "call", "support", "電話", "モバイル", "通話", "サポート"]],
+  ["laptop", ["device", "laptop", "endpoint", "workstation", "pc", "デバイス", "端末", "ノートpc", "エンドポイント"]],
+  ["upload", ["upload", "publish", "export", "send", "アップロード", "公開", "送信", "エクスポート"]],
+  ["download", ["download", "import", "retrieve", "ingest", "ダウンロード", "取り込み", "取得", "インポート"]],
+  ["presentation", ["presentation", "training", "briefing", "deck", "プレゼン", "研修", "説明", "資料"]],
+  ["spark", ["ai", "intelligence", "smart", "magic", "spark", "copilot", "知能", "スマート", "ひらめき", "人工知能"]]
+];
+
+function normalizeKeywordText(text: string): string {
+  return text.normalize("NFKC").toLowerCase();
+}
+
+// Match a synonym/tag inside the keyword text. Pure-ASCII (Latin) needles must match on
+// whole-word boundaries so they do not false-match inside unrelated words (e.g. "ratio"
+// inside "collaboration", or "x" inside "xyzzy"). CJK needles use substring matching since
+// Japanese has no word spaces.
+function keywordMatches(haystack: string, needle: string): boolean {
+  if (!needle) {
+    return false;
+  }
+  if (/^[a-z0-9 ]+$/.test(needle)) {
+    return new RegExp(`(^|[^a-z0-9])${needle.replace(/ /g, "\\s+")}([^a-z0-9]|$)`).test(haystack);
+  }
+  return haystack.includes(needle);
+}
+
+/**
+ * Map a free-text concept/keyword (Japanese or English) to the best-matching builtin
+ * icon name, or `null` when nothing matches confidently. Curated synonyms are checked
+ * first; icon tags/titles are used as a fallback. Longer matched synonyms win so that
+ * specific phrases (e.g. "zero trust") beat short generic tokens.
+ */
+export function suggestIconForKeyword(text: string): BuiltinIconName | null {
+  const haystack = normalizeKeywordText(text ?? "");
+  if (!haystack.trim()) {
+    return null;
+  }
+
+  let best: { name: BuiltinIconName; score: number } | null = null;
+  for (const [name, synonyms] of ICON_KEYWORD_SYNONYMS) {
+    for (const synonym of synonyms) {
+      const needle = normalizeKeywordText(synonym);
+      if (keywordMatches(haystack, needle)) {
+        const score = needle.length;
+        if (!best || score > best.score) {
+          best = { name, score };
+        }
+      }
+    }
+  }
+  if (best) {
+    return best.name;
+  }
+
+  // Fallback: match against builtin icon tags/titles (skip the generic "icon" tag).
+  for (const name of BUILTIN_ICON_NAMES) {
+    const definition = BUILTIN_ICON_DEFINITIONS[name];
+    const tags = definition.tags.filter((tag) => tag !== "icon");
+    for (const tag of tags) {
+      const needle = normalizeKeywordText(tag);
+      if (keywordMatches(haystack, needle)) {
+        return name;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Resolve a free-text keyword to a builtin icon SvgAsset (recolored to `color`), or
+ * `null` when nothing matches. Convenience wrapper over `suggestIconForKeyword` for
+ * callers that need a ready-to-embed inline SVG (e.g. the visual scaffold emblem).
+ */
+export function resolveIconForKeyword(text: string, color = "#1d4ed8"): SvgAsset | null {
+  const name = suggestIconForKeyword(text);
+  return name ? createSimpleIconSvg(name, color) : null;
+}
+
 function defaultConfigRoot(): string {
   if (process.env.PPTCREATER_HOME) {
     return resolve(process.env.PPTCREATER_HOME);

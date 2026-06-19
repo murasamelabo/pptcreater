@@ -2,7 +2,14 @@
 
 ## Unreleased
 
-## v0.1.9 - 2026-06-20
+## v0.2.0 - 2026-06-20
+
+- Added keyword-to-icon auto-mapping so cards, lists, and visual scaffolds carry a meaningful builtin icon instead of a bare monogram. A curated Japanese/English synonym table (`suggestIconForKeyword`) plus an icon-tag fallback maps concepts such as `セキュリティ`/`security`→shield, `コスト削減`/`cost`→cash, `自動化`/`automation`→workflow, and `ガバナンス`/`governance`→settings.
+- `generate_visual_scaffold` (MCP) now auto-selects an emblem icon from the slide `concept` when no explicit `icon` is passed, and only falls back to a monogram when nothing matches; an explicit `icon` still wins.
+- Added a `suggest_icon` MCP tool and a `pptcreater icon-suggest <keyword>` CLI command that return the resolved builtin icon name and recolored inline SVG (or null) for use in your own card/grid compositions.
+- Hardened keyword matching so Latin synonyms/tags match on whole-word boundaries (e.g. `ratio` no longer false-matches inside `collaboration`) while Japanese keywords keep substring matching.
+
+
 
 - Expanded `generate_intent_diagram` / `pptcreater diagram-intent` with four new editable native-object presets so process and change stories keep a fixed, intended composition: `lifecycle` (continuous improvement loop of numbered stages), `maturity-ladder` (ascending capability levels with an axis and risers), `before-after` (current-vs-target two-panel comparison with a transition arrow), and `relationship-map` (a central hub function connected to surrounding related domains).
 - All new presets render as native PowerPoint `shape`/`text` elements with orthogonal connectors, frame-preserving scaling, AA-contrast labels, and visible callouts (never flattened/crushed SVG raster), so they satisfy the diagram visible-label and editable-object gates.

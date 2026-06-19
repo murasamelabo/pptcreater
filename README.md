@@ -143,7 +143,19 @@ CLI usage:
 pptcreater visual-scaffold .\examples\visual-scaffold.json --output generated\scaffold.json
 ```
 
-The input is a JSON object `{ concept, caption?, points?, icon?, locale?, accent?, frame?, idPrefix? }`; the output is a JSON payload with `elements`, `summary`, `longDescription`, and `warnings`. Push the `elements` into the target slide's `elements` array, and use `summary`/`longDescription` for alt text or speaker notes. Pass `--icon <name>` (a builtin icon name) for the emblem, `--accent <#hex>` to override the color, and omit `icon` to fall back to a monogram of the concept's first character.
+The input is a JSON object `{ concept, caption?, points?, icon?, locale?, accent?, frame?, idPrefix? }`; the output is a JSON payload with `elements`, `summary`, `longDescription`, and `warnings`. Push the `elements` into the target slide's `elements` array, and use `summary`/`longDescription` for alt text or speaker notes. Pass `--icon <name>` (a builtin icon name) for the emblem, `--accent <#hex>` to override the color, and omit `icon` to auto-map an icon from the `concept` keyword (falling back to a monogram of the concept's first character only when nothing matches).
+
+### Keyword-to-icon auto-mapping
+
+Cards, lists, and the visual scaffold read better with a meaningful icon than a bare monogram. `suggest_icon` (MCP) and `pptcreater icon-suggest <keyword>` (CLI) map a free-text concept (Japanese or English) to the best-matching builtin icon name and return its recolored inline SVG (or `null` when nothing matches). `generate_visual_scaffold` applies this mapping automatically when no explicit `icon` is given; call `suggest_icon` yourself when composing your own card/grid layouts.
+
+```powershell
+pptcreater icon-suggest "セキュリティ強化" --json   # -> shield
+pptcreater icon-suggest "コスト削減"                 # -> cash
+pptcreater icon-suggest "Automation workflow"        # -> workflow
+```
+
+Matching uses a curated synonym table first (e.g. `セキュリティ`/`security`→shield, `ガバナンス`/`governance`→settings, `ライフサイクル`→workflow) and falls back to builtin icon tags. Latin keywords match on whole-word boundaries so short tokens do not false-match inside unrelated words; Japanese keywords match as substrings.
 
 ## Slideland-style schematic presets
 
@@ -206,14 +218,14 @@ To use it from another terminal after cloning this repository:
 ```powershell
 git clone https://github.com/murasamelabo/pptcreater.git C:\tools\pptcreater
 cd C:\tools\pptcreater
-git checkout v0.1.7
+git checkout v0.2.0
 npm install
 npm run build
 npm link
 pptcreater --help
 ```
 
-For development or quick follow-up, use `main` instead of a release tag. For stable operational use, pin a tag such as `v0.1.7`, record that tag/commit in the consuming project, and update deliberately after smoke testing.
+For development or quick follow-up, use `main` instead of a release tag. For stable operational use, pin a tag such as `v0.2.0`, record that tag/commit in the consuming project, and update deliberately after smoke testing.
 
 ## Updating an existing installation
 
@@ -223,14 +235,14 @@ When `pptcreater` is installed as a normal Git clone, updates are easy to track 
 cd C:\tools\pptcreater
 git status
 git fetch --tags origin
-git checkout v0.1.7
+git checkout v0.2.0
 npm install
 npm run build
 npm link
 pptcreater --help
 ```
 
-If you intentionally track active development, replace `git checkout v0.1.7` with:
+If you intentionally track active development, replace `git checkout v0.2.0` with:
 
 ```powershell
 git checkout main
@@ -389,6 +401,7 @@ From an MCP-capable AI agent, use:
 - `generate_schematic` before freehand SVG when the visual is a table, tree, flow, list, or mockup.
 - `generate_section_divider` to insert accessible section/chapter title slides between major sections of decks longer than six slides.
 - `generate_visual_scaffold` to attach an editable right-rail concept visual (panel + icon/monogram + heading + aspect chips) to a content slide that lacks a dedicated diagram.
+- `suggest_icon` to map a concept/keyword to a builtin icon name and inline SVG for cards, lists, and grids.
 - `register_svg_asset` to sanitize and register the asset with `id`, `title`, `description`, `tags`, `license`, `decorative`, `altText`, and `svg`.
 - `search_assets` again after registration to reuse the asset in future DeckSpecs.
 
@@ -416,6 +429,7 @@ From MCP, use:
 - `generate_schematic` for table/tree/flow/list/mockup visuals before attempting custom SVG.
 - `generate_section_divider` for section/chapter title slides when a deck has more than six slides and spans multiple major sections.
 - `generate_visual_scaffold` to attach an editable right-rail concept visual (panel + icon/monogram + heading + aspect chips) to a content slide that has no dedicated diagram, avoiding text-only/low-richness slides.
+- `suggest_icon` to map a free-text concept/keyword (JA/EN) to the best-matching builtin icon name and inline SVG when composing your own cards, lists, or grids.
 - `design://modern-slide-principles` when the agent needs modern slide composition guidance.
 - `plan_source_visual` when summarizing a source document or URL that contains figures. It helps the agent choose whether to quote the original figure, recreate it as editable PowerPoint objects, or use it only as inspiration.
 
