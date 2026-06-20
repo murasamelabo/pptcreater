@@ -628,6 +628,72 @@ describe("DeckSpec linting", () => {
     expect(report.ok).toBe(false);
   });
 
+  it("allows a thin connector-track diagram whose node labels sit in adjacent aligned text", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push(
+      {
+        id: "route-track",
+        type: "diagram",
+        x: 0.72,
+        y: 1.75,
+        w: 11.9,
+        h: 1.7,
+        svg: [
+          "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 220\">",
+          "<path d=\"M95 110 H835\" stroke=\"#8f3d35\" stroke-width=\"8\"/>",
+          "<circle cx=\"120\" cy=\"110\" r=\"34\" fill=\"#8f3d35\"/>",
+          "<circle cx=\"480\" cy=\"110\" r=\"34\" fill=\"#2f6f55\"/>",
+          "<circle cx=\"840\" cy=\"110\" r=\"34\" fill=\"#9f3a38\"/>",
+          "</svg>"
+        ].join(""),
+        summary: "Alert triage workflow track",
+        longDescription: "A read-only alert triage workflow connector track whose stage names appear in the cards directly beneath it.",
+        decorative: false,
+        altText: "Alert triage workflow track",
+        readingOrder: 360
+      },
+      { id: "track-step-0", type: "text", role: "caption", text: "Alert", x: 1, y: 3.7, w: 2.4, h: 0.4, bold: false, decorative: false, readingOrder: 361 },
+      { id: "track-step-1", type: "text", role: "caption", text: "Collect", x: 5.8, y: 3.7, w: 2.4, h: 0.4, bold: false, decorative: false, readingOrder: 362 },
+      { id: "track-step-2", type: "text", role: "caption", text: "Judge", x: 10.2, y: 3.7, w: 2.4, h: 0.4, bold: false, decorative: false, readingOrder: 363 }
+    );
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "diagram.visible-labels-missing")).toBe(false);
+  });
+
+  it("still blocks a thin connector-track diagram when no adjacent labels accompany it", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements = [
+      { id: "bare-title", type: "text", role: "title", text: "孤立トラック", x: 0.72, y: 0.38, w: 11.9, h: 0.58, bold: false, decorative: false, readingOrder: 1 },
+      {
+        id: "lonely-track",
+        type: "diagram",
+        x: 0.72,
+        y: 4,
+        w: 11.9,
+        h: 1.7,
+        svg: [
+          "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 220\">",
+          "<path d=\"M95 110 H835\" stroke=\"#8f3d35\" stroke-width=\"8\"/>",
+          "<circle cx=\"120\" cy=\"110\" r=\"34\" fill=\"#8f3d35\"/>",
+          "<circle cx=\"480\" cy=\"110\" r=\"34\" fill=\"#2f6f55\"/>",
+          "<circle cx=\"840\" cy=\"110\" r=\"34\" fill=\"#9f3a38\"/>",
+          "</svg>"
+        ].join(""),
+        summary: "Unlabeled workflow track",
+        longDescription: "A connector track with no adjacent or inline labels, so slide viewers cannot read the stages.",
+        decorative: false,
+        altText: "Unlabeled workflow track",
+        readingOrder: 2
+      }
+    ];
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "diagram.visible-labels-missing")).toBe(true);
+  });
+
   it("allows visible SVG labels that use non-zero opacity styles", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     deck.slides[0].elements.push({

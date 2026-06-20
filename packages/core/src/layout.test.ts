@@ -654,7 +654,7 @@ describe("layout polish", () => {
       layout: "title-content",
       elements: [
         {
-          id: "card",
+          id: "sample-card-box",
           type: "shape",
           shape: "roundRect",
           x: 1,
@@ -666,7 +666,7 @@ describe("layout polish", () => {
           readingOrder: 1
         },
         {
-          id: "bar",
+          id: "sample-card-bar",
           type: "shape",
           shape: "rect",
           x: 1,
@@ -681,7 +681,7 @@ describe("layout polish", () => {
     };
 
     const normalized = normalizeSlideLayout(slide);
-    const bar = normalized.elements.find((element) => element.id === "bar");
+    const bar = normalized.elements.find((element) => element.id === "sample-card-bar");
 
     expect(bar?.type === "shape" ? bar.shape : undefined).toBe("roundRect");
     expect(bar?.x ?? 0).toBeGreaterThan(1);
@@ -696,7 +696,7 @@ describe("layout polish", () => {
       layout: "title-content",
       elements: [
         {
-          id: "card",
+          id: "sample-card-box",
           type: "shape",
           shape: "roundRect",
           x: 1,
@@ -708,7 +708,7 @@ describe("layout polish", () => {
           readingOrder: 1
         },
         {
-          id: "bar",
+          id: "sample-card-bar",
           type: "shape",
           shape: "roundRect",
           x: 1,
@@ -720,7 +720,7 @@ describe("layout polish", () => {
           readingOrder: 2
         },
         {
-          id: "dot",
+          id: "sample-card-dot",
           type: "shape",
           shape: "ellipse",
           x: 1.28,
@@ -732,7 +732,7 @@ describe("layout polish", () => {
           readingOrder: 3
         },
         {
-          id: "label",
+          id: "sample-card-label",
           type: "text",
           role: "caption",
           text: "Card label",
@@ -749,11 +749,148 @@ describe("layout polish", () => {
     };
 
     const normalized = normalizeSlideLayout(slide);
-    const card = normalized.elements.find((element) => element.id === "card");
-    const bar = normalized.elements.find((element) => element.id === "bar");
+    const card = normalized.elements.find((element) => element.id === "sample-card-box");
+    const bar = normalized.elements.find((element) => element.id === "sample-card-bar");
 
     expect(card?.h ?? 0).toBeGreaterThan(1.1);
     expect(bar?.h ?? 0).toBeGreaterThan(1.0);
+  });
+
+  it("keeps card rows uniform without expanding into following table blocks", () => {
+    const slide: Slide = {
+      id: "card-table-spacing",
+      title: "Card table spacing",
+      layout: "title-content",
+      elements: [
+        {
+          id: "card-a-box",
+          type: "shape",
+          shape: "roundRect",
+          x: 1,
+          y: 1,
+          w: 3,
+          h: 1,
+          fill: "#ffffff",
+          decorative: true,
+          readingOrder: 1
+        },
+        {
+          id: "card-b-box",
+          type: "shape",
+          shape: "roundRect",
+          x: 4.4,
+          y: 1,
+          w: 3,
+          h: 1,
+          fill: "#ffffff",
+          decorative: true,
+          readingOrder: 2
+        },
+        {
+          id: "card-a-label",
+          type: "text",
+          role: "caption",
+          text: "First row",
+          x: 1.3,
+          y: 1.92,
+          w: 2.3,
+          h: 0.3,
+          fontSize: 12,
+          bold: false,
+          decorative: false,
+          readingOrder: 3
+        },
+        {
+          id: "table-cell",
+          type: "shape",
+          shape: "rect",
+          x: 1,
+          y: 2.42,
+          w: 6.4,
+          h: 0.5,
+          fill: "#f1f5f9",
+          decorative: true,
+          readingOrder: 4
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const cardA = normalized.elements.find((element) => element.id === "card-a-box");
+    const cardB = normalized.elements.find((element) => element.id === "card-b-box");
+    const table = normalized.elements.find((element) => element.id === "table-cell");
+
+    expect(cardA?.h).toBe(cardB?.h);
+    expect((cardA?.y ?? 0) + (cardA?.h ?? 0)).toBeLessThan((table?.y ?? 0) - 0.02);
+  });
+
+  it("shrinks oversized cards in a row back to the needed uniform height", () => {
+    const slide: Slide = {
+      id: "oversized-card-row",
+      title: "Oversized card row",
+      layout: "title-content",
+      elements: [
+        {
+          id: "flow-0-box",
+          type: "shape",
+          shape: "roundRect",
+          x: 1,
+          y: 1,
+          w: 2,
+          h: 2.2,
+          fill: "#ffffff",
+          decorative: true,
+          readingOrder: 1
+        },
+        {
+          id: "flow-1-box",
+          type: "shape",
+          shape: "roundRect",
+          x: 3.4,
+          y: 1,
+          w: 2,
+          h: 1.5,
+          fill: "#ffffff",
+          decorative: true,
+          readingOrder: 2
+        },
+        {
+          id: "flow-0-label",
+          type: "text",
+          role: "caption",
+          text: "Short label",
+          x: 1.2,
+          y: 1.85,
+          w: 1.5,
+          h: 0.3,
+          fontSize: 12,
+          bold: false,
+          decorative: false,
+          readingOrder: 3
+        },
+        {
+          id: "flow-1-label",
+          type: "text",
+          role: "caption",
+          text: "Short label",
+          x: 3.6,
+          y: 1.85,
+          w: 1.5,
+          h: 0.3,
+          fontSize: 12,
+          bold: false,
+          decorative: false,
+          readingOrder: 4
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const cardA = normalized.elements.find((element) => element.id === "flow-0-box");
+    const cardB = normalized.elements.find((element) => element.id === "flow-1-box");
+
+    expect(cardA?.h).toBe(cardB?.h);
+    expect(cardA?.h ?? 99).toBeLessThan(2.2);
   });
 
   it("expands short two-line labels instead of shrinking below readable floors", () => {

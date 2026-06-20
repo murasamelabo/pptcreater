@@ -23,6 +23,8 @@ const LINE_WIDTH_SAFETY = 0.94;
 // is even slightly wider than the real box they re-wrap it and push "、"/"。" to the next line start.
 // Reserving this margin keeps every emitted line comfortably inside the box so no re-wrap happens.
 const TEXT_BOX_INSET = 0.06;
+const CARD_CONTENT_PADDING = 0.16;
+const CARD_BLOCK_GAP = 0.18;
 const BAD_LINE_START_PATTERN = /^[、。，．・,，!?！？:：;；）」』】\]\})]/;
 const BAD_LINE_END_PATTERN = /[（「『【\[\({]$/;
 // Characters that must not start a line (closing punctuation, small kana, prolonged sound mark,
@@ -185,14 +187,15 @@ function canBreakBetween(left: string, right: string): boolean {
 // Greedy line breaking that never splits an atomic token (Latin word, identifier, or grouped
 // number) and never starts a line with closing punctuation. Reports overflow when a single
 // token is wider than the available line width, which would otherwise force an ugly mid-word break.
-function wrapTokens(value: string, maxUnits: number): { lines: string[]; overflow: boolean } {
+function wrapTokens(value: string, maxUnits: number, avoidOrphanOnset = false): { lines: string[]; overflow: boolean } {
   const tokens = tokenizeForWrap(value);
   const lines: string[] = [];
   let line = "";
   let lineUnits = 0;
   let overflow = false;
 
-  for (const token of tokens) {
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
     if (/^\s+$/.test(token)) {
       if (line) {
         line += " ";
@@ -218,7 +221,16 @@ function wrapTokens(value: string, maxUnits: number): { lines: string[]; overflo
     }
 
     const trimmed = line.replace(/\s+$/, "");
-    if (canBreakBetween(trimmed.slice(-1), token[0])) {
+    // When emitting text (not when only estimating physical overflow), mirror the line-break linter:
+    // never break so the next line begins with a hiragana bound to the text before it (okurigana like
+    // "覆/す反" or a verb suffix). Otherwise the wrap creates exactly the orphan continuation
+    // findTextLineBreakIssue flags, so a reflow can never clear it. Only hold the onset back when it
+    // still fits the real box width — never trade an orphan onset for an overflow that would force a
+    // Latin identifier to be hard-split.
+    const onsetFitsBox = avoidOrphanOnset && textUnits(trimmed) + tokenUnits <= maxUnits / LINE_WIDTH_SAFETY;
+    const breakWouldOrphanJapanese =
+      onsetFitsBox && startsWithBadJapaneseContinuation(trimmed, tokens.slice(index, index + 4).join(""));
+    if (canBreakBetween(trimmed.slice(-1), token[0]) && !breakWouldOrphanJapanese) {
       lines.push(trimmed);
       line = token;
       lineUnits = tokenUnits;
@@ -240,8 +252,8 @@ function wrapTokens(value: string, maxUnits: number): { lines: string[]; overflo
 
 // Reduce the per-line width as far as possible while keeping the same line count, so the last
 // line is not left noticeably shorter than the others (avoids orphan lines on titles and bodies).
-function wrapBalanced(value: string, maxUnits: number): string[] {
-  const greedy = wrapTokens(value, maxUnits);
+function wrapBalanced(value: string, maxUnits: number, avoidOrphanOnset = false): string[] {
+  const greedy = wrapTokens(value, maxUnits, avoidOrphanOnset);
   const lineCount = greedy.lines.length;
   if (lineCount <= 1 || greedy.overflow) {
     return greedy.lines;
@@ -249,12 +261,12 @@ function wrapBalanced(value: string, maxUnits: number): string[] {
 
   const longestToken = Math.max(...tokenizeForWrap(value).filter((token) => token.trim()).map(textUnits), 0);
   const balancedCap = Math.max(longestToken, textUnits(value) / lineCount + 0.5);
-  const balanced = wrapTokens(value, balancedCap);
+  const balanced = wrapTokens(value, balancedCap, avoidOrphanOnset);
   return balanced.lines.length === lineCount && !balanced.overflow ? balanced.lines : greedy.lines;
 }
 
 function wrapParagraph(value: string, maxUnits: number): string[] {
-  return wrapBalanced(value.trim(), maxUnits);
+  return wrapBalanced(value.trim(), maxUnits, true);
 }
 
 function wrapLineIfOverwide(value: string, maxUnits: number): string[] {
@@ -464,6 +476,75 @@ function isCompactManualStructure(element: TextElement, lines: string[]): boolea
   return element.role !== "title" && lines.length === 2 && lines.every((line) => textUnits(line.trim()) <= compactStructureLimit);
 }
 
+/**
+ * Rejoin list items that an author split mid-item (e.g. a bullet whose text continues on the next
+ * line, or a marker-only line), then re-wrap each whole item to the box width. A new item begins
+ * only at a line that itself carries a list marker, so distinct bullets stay separate.
+ */
+function reflowListLines(lines: string[], unitsPerLine: number): string[] {
+  const items: string[] = [];
+  for (const raw of lines) {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      continue;
+    }
+
+    if (items.length === 0 || isListLine(trimmed)) {
+      items.push(trimmed);
+    } else {
+      items[items.length - 1] = joinReflowLines([items[items.length - 1], trimmed]);
+    }
+  }
+
+  return items.flatMap((item) => wrapListItem(item, unitsPerLine));
+}
+
+/**
+ * Wrap one list item, guaranteeing the leading marker is never orphaned on its own line. When the
+ * first content token is nearly as wide as the box (e.g. a long identifier), a plain wrap pushes the
+ * marker onto a line by itself — which the line-break linter flags. Re-glue the marker to the first
+ * content line; the combined line still fits the real box width even if it exceeds the early-wrap
+ * target, so the renderer does not re-wrap it.
+ */
+function wrapListItem(item: string, maxUnits: number): string[] {
+  const wrapped = wrapLineIfOverwide(item, maxUnits);
+  if (wrapped.length > 1 && isListMarkerOnly(wrapped[0])) {
+    const [marker, next, ...rest] = wrapped;
+    return [joinReflowLines([marker, next]), ...rest];
+  }
+
+  return wrapped;
+}
+
+/**
+ * Last-resort guard for author-supplied manual breaks that fall mid-word or leave orphan
+ * continuations. Polish advertises `layout.bad-line-break` as auto-fixable, but the manual-break
+ * preserving branches above can keep a break the line-break linter still flags. When that happens we
+ * recompute a kinsoku-aware reflow (per-item for lists, whole-paragraph otherwise) and adopt it only
+ * if it removes the flagged break — so we never make a layout worse, and we leave intentional compact
+ * label stacks, generated diagram-intent captions, titles, and preformatted text untouched.
+ */
+function resolveManualBreakIssues(element: TextElement, candidateText: string, unitsPerLine: number): string {
+  if (!candidateText.includes("\n") || element.role === "title" || isGeneratedDiagramIntentText(element) || isPreformattedText(candidateText)) {
+    return candidateText;
+  }
+
+  if (!findTextLineBreakIssue({ ...element, text: candidateText })) {
+    return candidateText;
+  }
+
+  const lines = candidateText.split(/\r?\n/);
+  const reflowed = lines.some((line) => isListLine(line))
+    ? reflowListLines(lines, unitsPerLine).join("\n")
+    : wrapParagraph(joinReflowLines(lines), unitsPerLine).join("\n");
+
+  if (reflowed && !findTextLineBreakIssue({ ...element, text: reflowed })) {
+    return reflowed;
+  }
+
+  return candidateText;
+}
+
 function normalizeTextLines(element: TextElement, fontSize: number): string {
   const maxLinesByHeight = Math.max(1, Math.floor((element.h * 72) / (fontSize * LINE_HEIGHT_FACTOR)));
   const roleLineCap = element.role === "title" ? 2 : element.role === "caption" ? 2 : 3;
@@ -489,7 +570,8 @@ function normalizeTextLines(element: TextElement, fontSize: number): string {
     const hasBlankLine = lines.some((line) => !line.trim());
     const nonEmptyLines = lines.filter((line) => line.trim());
     if (nonEmptyLines.length > 1 && nonEmptyLines.some(isListLine)) {
-      return lines.flatMap((line) => (line.trim() ? wrapLineIfOverwide(line, unitsPerLine) : [line])).join("\n");
+      const wrappedList = lines.flatMap((line) => (line.trim() ? wrapLineIfOverwide(line, unitsPerLine) : [line])).join("\n");
+      return resolveManualBreakIssues(element, wrappedList, unitsPerLine);
     }
 
     if (!hasBlankLine && !isPreformattedText(element.text)) {
@@ -497,7 +579,7 @@ function normalizeTextLines(element: TextElement, fontSize: number): string {
       // such as "Active\nDirectory" collapse to one line instead of overflowing a one-line-tall box.
       const exceedsHeight = nonEmptyLines.length > maxLinesByHeight;
       if (!exceedsHeight && !shouldReflowManualLines(lines, unitsPerLine)) {
-        return lines.join("\n");
+        return resolveManualBreakIssues(element, lines.join("\n"), unitsPerLine);
       }
 
       const joined = joinReflowLines(lines);
@@ -671,55 +753,120 @@ function isCardEdgeAccentBar(element: SlideElement): element is Extract<SlideEle
   return element.type === "shape" && (element.shape === "rect" || element.shape === "roundRect" || element.shape === "roundedRect") && element.fill !== "none" && element.decorative && element.w <= 0.22 && element.h >= 0.45;
 }
 
+function isSmallBulletMark(element: SlideElement): element is Extract<SlideElement, { type: "shape" }> {
+  return element.type === "shape" && (element.shape === "ellipse" || element.shape === "oval") && element.decorative && element.w <= 0.28 && element.h <= 0.28;
+}
+
+function cardContentPrefix(cardId: string): string | undefined {
+  const structural = /^(.*)-(?:box|card|panel|container|tile)$/u.exec(cardId);
+  if (structural) {
+    return `${structural[1]}-`;
+  }
+
+  const indexed = /^(.*-(?:card|metric)-\d+)$/u.exec(cardId);
+  if (indexed) {
+    return `${indexed[1]}-`;
+  }
+
+  return undefined;
+}
+
+function isCardAssociatedElement(element: SlideElement, card: Extract<SlideElement, { type: "shape" }>): boolean {
+  if (element.id === card.id || element.type === "image" || element.type === "svg" || element.type === "diagram") {
+    return false;
+  }
+
+  const prefix = cardContentPrefix(card.id);
+  if (!prefix) {
+    return false;
+  }
+
+  if (!element.id.startsWith(prefix)) {
+    return false;
+  }
+
+  if (element.type !== "text" && !isCardEdgeAccentBar(element) && !isSmallBulletMark(element)) {
+    return false;
+  }
+
+  const horizontallyInside = element.x >= card.x - 0.04 && element.x + element.w <= card.x + card.w + 0.04;
+  const verticallyAssociated = element.y >= card.y - 0.04 && element.y <= card.y + card.h + 0.85;
+  return horizontallyInside && verticallyAssociated;
+}
+
 function expandCardsToContainContent(elements: SlideElement[]): SlideElement[] {
   const cards = elements.filter(isRoundedCardShape).filter((card) => !isFullBleed(card));
   if (cards.length === 0) {
     return elements;
   }
 
-  const expandedHeights = new Map<string, number>();
+  type CardPlan = { card: Extract<SlideElement, { type: "shape" }>; needed: number; limit: number };
+  const targetHeights = new Map<string, number>();
+  const cardPlans = new Map<string, CardPlan>();
   for (const card of cards) {
+    const associatedElements = elements.filter((element) => isCardAssociatedElement(element, card));
     const blockingTop = Math.min(
-      ...cards
-        .filter((candidate) => candidate.id !== card.id && candidate.y > card.y + 0.12 && horizontalOverlap(card, candidate) > Math.min(card.w, candidate.w) * 0.35)
-        .map((candidate) => candidate.y),
-      SLIDE_WIDE.height
-    );
-    const maxBottom = Math.min(SLIDE_WIDE.height - 0.08, blockingTop - 0.08);
-    const contentBottom = Math.max(
-      card.y + card.h,
       ...elements
-        .filter((element) => {
-          if (element.id === card.id || element.type === "image" || element.type === "svg" || element.type === "diagram") {
+        .filter((candidate) => {
+          if (candidate.id === card.id || associatedElements.some((element) => element.id === candidate.id)) {
             return false;
           }
 
-          const horizontallyInside = element.x >= card.x - 0.04 && element.x + element.w <= card.x + card.w + 0.04;
-          const verticallyAssociated = element.y >= card.y - 0.04 && element.y <= card.y + card.h + 0.85;
-          const isNestedCard = isRoundedCardShape(element) && element.w > card.w * 0.55 && element.h > card.h * 0.55;
-          return horizontallyInside && verticallyAssociated && !isNestedCard;
+          return candidate.y > card.y + card.h + 0.12 && horizontalOverlap(card, candidate) > Math.min(card.w, candidate.w) * 0.35;
         })
-        .map((element) => element.y + element.h)
+        .map((candidate) => candidate.y),
+      SLIDE_WIDE.height
     );
-    const desiredHeight = Math.min(maxBottom, contentBottom + 0.16) - card.y;
-    if (desiredHeight > card.h + 0.03) {
-      expandedHeights.set(card.id, Math.max(card.h, desiredHeight));
+    const maxBottom = Math.min(SLIDE_WIDE.height - 0.08, blockingTop - CARD_BLOCK_GAP);
+    const limit = Math.max(card.h, maxBottom - card.y);
+    const contentBottom = associatedElements.length > 0 ? Math.max(...associatedElements.map((element) => element.y + element.h)) : card.y + card.h;
+    const needed = associatedElements.length > 0 ? Math.max(0.45, contentBottom + CARD_CONTENT_PADDING - card.y) : card.h;
+    cardPlans.set(card.id, { card, needed, limit });
+  }
+
+  for (const row of cards.reduce<Extract<SlideElement, { type: "shape" }>[][]>((rows, card) => {
+    const row = rows.find((candidate) => candidate.some((item) => nearlyEqual(item.y, card.y, 0.08)));
+    if (row) {
+      row.push(card);
+    } else {
+      rows.push([card]);
+    }
+    return rows;
+  }, [])) {
+    if (row.length <= 1) {
+      const plan = cardPlans.get(row[0].id);
+      if (plan && plan.needed > plan.card.h + 0.03) {
+        targetHeights.set(plan.card.id, Math.min(plan.needed, plan.limit));
+      }
+      continue;
+    }
+
+    const rowPlans = row.map((card) => cardPlans.get(card.id)).filter((plan): plan is CardPlan => Boolean(plan));
+    const rowBase = Math.min(...rowPlans.map((plan) => plan.card.h));
+    const target = Math.min(
+      Math.max(rowBase, ...rowPlans.map((plan) => plan.needed)),
+      Math.min(...rowPlans.map((plan) => plan.limit))
+    );
+    for (const plan of rowPlans) {
+      if (Math.abs(target - plan.card.h) > 0.03) {
+        targetHeights.set(plan.card.id, target);
+      }
     }
   }
 
-  if (expandedHeights.size === 0) {
+  if (targetHeights.size === 0) {
     return elements;
   }
 
   return elements.map((element) => {
-    if (isRoundedCardShape(element) && expandedHeights.has(element.id)) {
-      return { ...element, h: expandedHeights.get(element.id) ?? element.h };
+    if (isRoundedCardShape(element) && targetHeights.has(element.id)) {
+      return { ...element, h: targetHeights.get(element.id) ?? element.h };
     }
 
     if (isCardEdgeAccentBar(element)) {
-      const card = cards.find((candidate) => expandedHeights.has(candidate.id) && nearlyEqual(candidate.x, element.x) && nearlyEqual(candidate.y, element.y) && nearlyEqual(candidate.h, element.h));
+      const card = cards.find((candidate) => targetHeights.has(candidate.id) && nearlyEqual(candidate.x, element.x) && nearlyEqual(candidate.y, element.y) && nearlyEqual(candidate.h, element.h));
       if (card) {
-        return { ...element, h: expandedHeights.get(card.id) ?? element.h };
+        return { ...element, h: targetHeights.get(card.id) ?? element.h };
       }
     }
 

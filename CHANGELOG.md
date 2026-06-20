@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## v0.2.10 - 2026-06-20
+
+- Fixed a false-positive `diagram.visible-labels-missing` blocking error that aborted `finalize` on decks with thin horizontal connector-track diagrams (e.g. a left-to-right phase rail) whose stage labels live as adjacent text elements directly below the diagram. The lint is now context-aware: connector-track-shaped diagrams (very thin minor axis or aspect ratio ≥ 3) are accepted when ≥2 aligned sibling labels span ≥40% of the diagram's major axis, while ordinary block diagrams still require inline labels.
+- `layout.bad-line-break` is now genuinely auto-fixed by polish/`finalize` instead of merely being advertised as polish-fixable. Two author-supplied break defects are resolved at the engine level:
+  - Japanese okurigana / particle onsets: the text wrapper no longer emits a line that starts by binding a hiragana to the preceding kanji (e.g. `…覆` / `す反…`), mirroring the line-break linter — but only when the held-back onset still fits the real box width, so it never trades an orphan onset for an overflow that would hard-split a Latin identifier.
+  - Orphaned list markers: a long Latin identifier that nearly fills the line no longer pushes its `• ` bullet onto a line of its own; the marker is glued to the following content.
+- Hardened the wrap/overflow estimator so onset-suppression only affects emitted text, not the physical-overflow measurement, keeping sample decks lint-clean.
+- Added regression tests for the connector-track lint exception and the line-break fixes; full suite at 222 tests.
+
 ## v0.2.9 - 2026-06-20
 
 - Fixed card/background containment for dense card layouts: rounded card backgrounds and their accent bars now expand to include associated text and bullet markers, preventing text from visually spilling below the card while still preserving slide boundaries.

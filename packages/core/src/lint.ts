@@ -425,7 +425,81 @@ function svgPrimitiveCount(svg: string): number {
   return (svg.match(/<(?:rect|circle|ellipse|path|line|polyline|polygon)\b/giu) ?? []).length;
 }
 
-function lintVisibleDiagramLabels(element: Extract<SlideElement, { type: "svg" | "diagram" }>, path: string): LintIssue[] {
+/** Inches a label may sit beyond a diagram edge and still read as one of its node labels. */
+const DIAGRAM_ADJACENT_LABEL_GAP_IN = 0.85;
+/** Slack applied when testing whether a label aligns with the diagram's cross axis. */
+const DIAGRAM_LABEL_ALIGN_TOLERANCE_IN = 0.12;
+
+/**
+ * True when a label-less connector/track diagram is accompanied by visible text elements that act as
+ * its node labels — e.g. a horizontal flow whose stage names sit in cards directly beneath it. In
+ * that layout the labels are real and readable, just authored as sibling text instead of inline
+ * `<text>`, so flagging the SVG as "missing visible labels" would be a false positive that dead-ends
+ * one-shot finalize. We only treat this as a pass for thin connector tracks/rails (a small minor
+ * dimension or high aspect ratio) and require at least two aligned, adjacent labels that span a
+ * meaningful portion of the diagram, so a full-canvas diagram or a lone figure caption never
+ * satisfies the check.
+ */
+function diagramHasAdjacentVisibleLabels(diagram: Extract<SlideElement, { type: "svg" | "diagram" }>, slide: Slide): boolean {
+  const minorExtent = Math.min(diagram.w, diagram.h);
+  const majorExtent = Math.max(diagram.w, diagram.h);
+  const aspectRatio = minorExtent > 0 ? majorExtent / minorExtent : Number.POSITIVE_INFINITY;
+  const isConnectorTrack = minorExtent <= 2.2 || aspectRatio >= 3;
+  if (!isConnectorTrack) {
+    return false;
+  }
+
+  const dx0 = diagram.x;
+  const dy0 = diagram.y;
+  const dx1 = diagram.x + diagram.w;
+  const dy1 = diagram.y + diagram.h;
+  const horizontal = diagram.w >= diagram.h;
+
+  let count = 0;
+  let spanMin = Number.POSITIVE_INFINITY;
+  let spanMax = Number.NEGATIVE_INFINITY;
+
+  for (const candidate of slide.elements) {
+    if (candidate === diagram || candidate.type !== "text" || candidate.text.trim().length === 0) {
+      continue;
+    }
+
+    const ex0 = candidate.x;
+    const ey0 = candidate.y;
+    const ex1 = candidate.x + candidate.w;
+    const ey1 = candidate.y + candidate.h;
+
+    const horizontallyAligned = ex1 > dx0 - DIAGRAM_LABEL_ALIGN_TOLERANCE_IN && ex0 < dx1 + DIAGRAM_LABEL_ALIGN_TOLERANCE_IN;
+    const verticallyAligned = ey1 > dy0 - DIAGRAM_LABEL_ALIGN_TOLERANCE_IN && ey0 < dy1 + DIAGRAM_LABEL_ALIGN_TOLERANCE_IN;
+    const verticalGap = Math.max(dy0 - ey1, ey0 - dy1);
+    const horizontalGap = Math.max(dx0 - ex1, ex0 - dx1);
+    const belongsAboveBelow = horizontallyAligned && verticalGap <= DIAGRAM_ADJACENT_LABEL_GAP_IN;
+    const belongsBeside = verticallyAligned && horizontalGap <= DIAGRAM_ADJACENT_LABEL_GAP_IN;
+
+    if (!belongsAboveBelow && !belongsBeside) {
+      continue;
+    }
+
+    count += 1;
+    if (horizontal) {
+      spanMin = Math.min(spanMin, ex0);
+      spanMax = Math.max(spanMax, ex1);
+    } else {
+      spanMin = Math.min(spanMin, ey0);
+      spanMax = Math.max(spanMax, ey1);
+    }
+  }
+
+  if (count < 2) {
+    return false;
+  }
+
+  const diagramExtent = horizontal ? diagram.w : diagram.h;
+  const labelSpan = spanMax - spanMin;
+  return diagramExtent <= 0 || labelSpan / diagramExtent >= 0.4;
+}
+
+function lintVisibleDiagramLabels(element: Extract<SlideElement, { type: "svg" | "diagram" }>, path: string, slide: Slide): LintIssue[] {
   if (element.decorative) {
     return [];
   }
@@ -440,6 +514,10 @@ function lintVisibleDiagramLabels(element: Extract<SlideElement, { type: "svg" |
   const isDiagram = element.type === "diagram";
   const isLargeComplexSvg = element.type === "svg" && renderedArea >= 8 && primitiveCount >= 6;
   if ((!isDiagram && !isLargeComplexSvg) || (isDiagram && primitiveCount < 2 && renderedArea < 8)) {
+    return [];
+  }
+
+  if (diagramHasAdjacentVisibleLabels(element, slide)) {
     return [];
   }
 
@@ -667,7 +745,7 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
     }
 
     if (element.type === "svg" || element.type === "diagram") {
-      issues.push(...lintVisibleDiagramLabels(element, path));
+      issues.push(...lintVisibleDiagramLabels(element, path, slide));
       issues.push(...lintEmbeddedSvgText(element, path));
     }
 
