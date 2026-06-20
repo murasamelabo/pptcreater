@@ -1153,4 +1153,232 @@ describe("layout polish", () => {
     expect(atmosphere?.readingOrder ?? 99).toBeLessThan(title?.readingOrder ?? 0);
     expect(atmosphere?.readingOrder).toBe(1);
   });
+
+  it("pushes card text clear of a left accent bar while preserving bullet size", () => {
+    const slide: Slide = {
+      id: "left-bar-clearance",
+      title: "Left bar clearance",
+      layout: "title-content",
+      elements: [
+        {
+          id: "cat-box",
+          type: "shape",
+          shape: "roundRect",
+          x: 0.7,
+          y: 3.2,
+          w: 3.9,
+          h: 2.4,
+          fill: "#ffffff",
+          decorative: true,
+          readingOrder: 1
+        },
+        {
+          id: "cat-bar",
+          type: "shape",
+          shape: "rect",
+          x: 0.7,
+          y: 3.2,
+          w: 0.16,
+          h: 2.4,
+          fill: "#8f3d35",
+          decorative: true,
+          readingOrder: 2
+        },
+        {
+          id: "cat-dot",
+          type: "shape",
+          shape: "ellipse",
+          x: 0.82,
+          y: 3.9,
+          w: 0.12,
+          h: 0.1,
+          fill: "#8f3d35",
+          decorative: true,
+          readingOrder: 3
+        },
+        {
+          id: "cat-title",
+          type: "text",
+          role: "subtitle",
+          text: "カテゴリ見出し",
+          x: 0.78,
+          y: 3.3,
+          w: 3.6,
+          h: 0.4,
+          fontSize: 16,
+          bold: true,
+          decorative: false,
+          readingOrder: 4
+        },
+        {
+          id: "cat-body",
+          type: "text",
+          role: "body",
+          text: "説明テキストが色付きのバーと重ならないようにします。",
+          x: 1.0,
+          y: 3.8,
+          w: 3.4,
+          h: 1.6,
+          fontSize: 13,
+          bold: false,
+          decorative: false,
+          readingOrder: 5
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const bar = normalized.elements.find((element) => element.id === "cat-bar");
+    const dot = normalized.elements.find((element) => element.id === "cat-dot");
+    const title = normalized.elements.find((element) => element.id === "cat-title");
+    const body = normalized.elements.find((element) => element.id === "cat-body");
+
+    const barRight = (bar?.x ?? 0) + (bar?.w ?? 0);
+    expect(title?.x ?? 0).toBeGreaterThan(barRight + 0.05);
+    expect(dot?.x ?? 0).toBeGreaterThan(barRight + 0.05);
+    expect(body?.x ?? 0).toBeGreaterThan(barRight + 0.05);
+    // The bullet dot must not balloon to a text-width floor.
+    expect(dot?.w ?? 0).toBeCloseTo(0.12, 5);
+  });
+
+  it("is idempotent: re-running the polish keeps card text positions stable", () => {
+    const slide: Slide = {
+      id: "left-bar-idempotent",
+      title: "Idempotent",
+      layout: "title-content",
+      elements: [
+        {
+          id: "cat-box",
+          type: "shape",
+          shape: "roundRect",
+          x: 0.7,
+          y: 3.2,
+          w: 3.9,
+          h: 2.4,
+          fill: "#ffffff",
+          decorative: true,
+          readingOrder: 1
+        },
+        {
+          id: "cat-bar",
+          type: "shape",
+          shape: "rect",
+          x: 0.7,
+          y: 3.2,
+          w: 0.16,
+          h: 2.4,
+          fill: "#8f3d35",
+          decorative: true,
+          readingOrder: 2
+        },
+        {
+          id: "cat-title",
+          type: "text",
+          role: "subtitle",
+          text: "カテゴリ見出し",
+          x: 0.78,
+          y: 3.3,
+          w: 3.6,
+          h: 0.4,
+          fontSize: 16,
+          bold: true,
+          decorative: false,
+          readingOrder: 3
+        }
+      ]
+    };
+
+    const once = normalizeSlideLayout(slide);
+    const twice = normalizeSlideLayout({ ...slide, elements: once.elements });
+    const titleOnce = once.elements.find((element) => element.id === "cat-title");
+    const titleTwice = twice.elements.find((element) => element.id === "cat-title");
+
+    expect(titleTwice?.x ?? 0).toBeCloseTo(titleOnce?.x ?? -1, 5);
+    expect(titleTwice?.w ?? 0).toBeCloseTo(titleOnce?.w ?? -1, 5);
+  });
+
+  it("clamps card text that overflows the card right edge back inside the card", () => {
+    const slide: Slide = {
+      id: "overflow-clamp",
+      title: "Overflow clamp",
+      layout: "title-content",
+      elements: [
+        {
+          id: "ov-box",
+          type: "shape",
+          shape: "roundRect",
+          x: 5.0,
+          y: 1.0,
+          w: 3.0,
+          h: 1.2,
+          fill: "#ffffff",
+          decorative: true,
+          readingOrder: 1
+        },
+        {
+          id: "ov-title",
+          type: "text",
+          role: "subtitle",
+          text: "見出し",
+          x: 5.1,
+          y: 1.05,
+          w: 3.4,
+          h: 0.4,
+          fontSize: 16,
+          bold: true,
+          decorative: false,
+          readingOrder: 2
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const card = normalized.elements.find((element) => element.id === "ov-box");
+    const title = normalized.elements.find((element) => element.id === "ov-title");
+    const cardRight = (card?.x ?? 0) + (card?.w ?? 0);
+    const textRight = (title?.x ?? 0) + (title?.w ?? 0);
+
+    expect(textRight).toBeLessThanOrEqual(cardRight + 0.01);
+  });
+
+  it("does not over-indent plain cards that have no left accent bar", () => {
+    const slide: Slide = {
+      id: "no-bar-card",
+      title: "No bar",
+      layout: "title-content",
+      elements: [
+        {
+          id: "plain-box",
+          type: "shape",
+          shape: "roundRect",
+          x: 0.7,
+          y: 1.0,
+          w: 3.9,
+          h: 1.4,
+          fill: "#ffffff",
+          decorative: true,
+          readingOrder: 1
+        },
+        {
+          id: "plain-title",
+          type: "text",
+          role: "subtitle",
+          text: "番号付きカード",
+          x: 1.05,
+          y: 1.05,
+          w: 3.2,
+          h: 0.4,
+          fontSize: 16,
+          bold: true,
+          decorative: false,
+          readingOrder: 2
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const title = normalized.elements.find((element) => element.id === "plain-title");
+
+    expect(title?.x ?? 0).toBeCloseTo(1.05, 5);
+  });
 });

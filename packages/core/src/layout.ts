@@ -25,6 +25,13 @@ const LINE_WIDTH_SAFETY = 0.94;
 const TEXT_BOX_INSET = 0.06;
 const CARD_CONTENT_PADDING = 0.16;
 const CARD_BLOCK_GAP = 0.18;
+// Horizontal breathing room kept between a card's inner content and its left/right edges.
+const CARD_SIDE_PADDING = 0.16;
+// Left inset (inches) applied to a card's inner content when the card carries a left-edge accent
+// bar. normalizeCardAccentBars insets the bar to at most card.x + 0.08 and widens it to 0.14, so a
+// 0.34 content inset guarantees the text never touches the colored bar (>=0.12in clearance) while
+// keeping every card in a row aligned to the same content margin.
+const CARD_ACCENT_CONTENT_INSET = 0.34;
 const BAD_LINE_START_PATTERN = /^[、。，．・,，!?！？:：;；）」』】\]\})]/;
 const BAD_LINE_END_PATTERN = /[（「『【\[\({]$/;
 // Characters that must not start a line (closing punctuation, small kana, prolonged sound mark,
@@ -771,27 +778,164 @@ function cardContentPrefix(cardId: string): string | undefined {
   return undefined;
 }
 
+function isCardContentCandidate(element: SlideElement): boolean {
+  if (element.type === "image" || element.type === "svg" || element.type === "diagram") {
+    return false;
+  }
+  return element.type === "text" || isCardEdgeAccentBar(element) || isSmallBulletMark(element);
+}
+
+// How much of `element` (by area) sits within the card's box.
+function containmentRatio(element: SlideElement, card: Extract<SlideElement, { type: "shape" }>): number {
+  const overlapW = Math.min(element.x + element.w, card.x + card.w) - Math.max(element.x, card.x);
+  const overlapH = Math.min(element.y + element.h, card.y + card.h) - Math.max(element.y, card.y);
+  if (overlapW <= 0 || overlapH <= 0) {
+    return 0;
+  }
+  const area = element.w * element.h;
+  return area > 0 ? (overlapW * overlapH) / area : 0;
+}
+
 function isCardAssociatedElement(element: SlideElement, card: Extract<SlideElement, { type: "shape" }>): boolean {
-  if (element.id === card.id || element.type === "image" || element.type === "svg" || element.type === "diagram") {
+  if (element.id === card.id || !isCardContentCandidate(element)) {
     return false;
   }
 
   const prefix = cardContentPrefix(card.id);
-  if (!prefix) {
-    return false;
+  if (prefix && element.id.startsWith(prefix)) {
+    const horizontallyInside = element.x >= card.x - 0.04 && element.x + element.w <= card.x + card.w + 0.04;
+    const verticallyAssociated = element.y >= card.y - 0.04 && element.y <= card.y + card.h + 0.85;
+    if (horizontallyInside && verticallyAssociated) {
+      return true;
+    }
   }
 
-  if (!element.id.startsWith(prefix)) {
+  // Geometric fallback so cards still grow to contain their content even when the deck author did
+  // not follow the `<card>-<content>` id convention (e.g. agent-authored category cards).
+  if (isFullBleed(card)) {
     return false;
   }
+  const verticallyInside = element.y >= card.y - 0.08 && element.y <= card.y + card.h + 0.04;
+  return verticallyInside && containmentRatio(element, card) >= 0.6;
+}
 
-  if (element.type !== "text" && !isCardEdgeAccentBar(element) && !isSmallBulletMark(element)) {
-    return false;
+// Detect a colored vertical accent bar sitting on the card's left edge. Used to push the card's
+// inner content clear of the bar so text never overlaps or crowds the categorizing color block.
+function cardLeftAccentBar(
+  card: Extract<SlideElement, { type: "shape" }>,
+  elements: SlideElement[]
+): Extract<SlideElement, { type: "shape" }> | undefined {
+  return elements.find(
+    (element): element is Extract<SlideElement, { type: "shape" }> =>
+      element.id !== card.id &&
+      isCardEdgeAccentBar(element) &&
+      element.x >= card.x - 0.12 &&
+      element.x <= card.x + Math.min(card.w * 0.25, 0.6) &&
+      element.y >= card.y - 0.16 &&
+      element.y + element.h <= card.y + card.h + 0.16 &&
+      element.h >= card.h * 0.5
+  );
+}
+
+function refitAdjustedText(element: TextElement, tokens: DesignTokens): TextElement {
+  let fitted = fitTextElement(element, tokens, { shortenAtMinimum: true });
+  const fontSize = fitted.fontSize ?? defaultFontSizeForRole(fitted.role, tokens);
+  const requiredHeight = requiredTextHeightInches(fitted, fontSize);
+  if (requiredHeight > fitted.h) {
+    fitted = fitTextElement(
+      { ...fitted, h: clamp(requiredHeight, fitted.h, SLIDE_WIDE.height - fitted.y) },
+      tokens,
+      { shortenAtMinimum: true }
+    );
+  }
+  return fitted;
+}
+
+// Keep a card's inner text/markers comfortably inside the card and clear of a left accent bar.
+// Returns the adjusted elements plus the ids of text elements that moved/shrank so the caller can
+// re-fit their font size and height (a narrower box may need to re-wrap onto more lines).
+function insetCardContentForBars(
+  elements: SlideElement[],
+  tokens: DesignTokens
+): { elements: SlideElement[]; adjustedIds: Set<string> } {
+  const cards = elements.filter(isRoundedCardShape).filter((card) => !isFullBleed(card));
+  if (cards.length === 0) {
+    return { elements, adjustedIds: new Set() };
   }
 
-  const horizontallyInside = element.x >= card.x - 0.04 && element.x + element.w <= card.x + card.w + 0.04;
-  const verticallyAssociated = element.y >= card.y - 0.04 && element.y <= card.y + card.h + 0.85;
-  return horizontallyInside && verticallyAssociated;
+  // Per-element horizontal shift (keeps a bullet marker aligned with its text) and an absolute right
+  // edge each inside-card text must stay within. Shifts move the whole left-aligned content block
+  // together so the dot/text spacing is preserved while clearing the colored accent bar.
+  const shifts = new Map<string, number>();
+  const maxRights = new Map<string, number>();
+  for (const card of cards) {
+    const hasLeftBar = Boolean(cardLeftAccentBar(card, elements));
+    const contentLeft = card.x + (hasLeftBar ? CARD_ACCENT_CONTENT_INSET : CARD_SIDE_PADDING);
+    const contentRight = card.x + card.w - CARD_SIDE_PADDING;
+    if (contentRight - contentLeft < 0.4) {
+      continue;
+    }
+
+    const insideContent = elements.filter(
+      (element) =>
+        element.id !== card.id &&
+        (element.type === "text" || isSmallBulletMark(element)) &&
+        containmentRatio(element, card) >= 0.6
+    );
+
+    if (hasLeftBar) {
+      const leftBlock = insideContent.filter((element) => element.x < card.x + card.w * 0.5);
+      if (leftBlock.length > 0) {
+        const minLeft = Math.min(...leftBlock.map((element) => element.x));
+        if (minLeft < contentLeft - 0.01) {
+          const delta = contentLeft - minLeft;
+          for (const element of leftBlock) {
+            shifts.set(element.id, (shifts.get(element.id) ?? 0) + delta);
+          }
+        }
+      }
+    }
+
+    for (const element of insideContent) {
+      if (element.type === "text") {
+        maxRights.set(element.id, Math.min(maxRights.get(element.id) ?? Infinity, contentRight));
+      }
+    }
+  }
+
+  if (shifts.size === 0 && maxRights.size === 0) {
+    return { elements, adjustedIds: new Set() };
+  }
+
+  const adjustedIds = new Set<string>();
+  const next = elements.map((element) => {
+    const dx = shifts.get(element.id) ?? 0;
+    const maxRight = maxRights.get(element.id);
+    if (dx === 0 && maxRight === undefined) {
+      return element;
+    }
+
+    const x = element.x + dx;
+    if (element.type !== "text") {
+      return dx === 0 ? element : { ...element, x };
+    }
+
+    let w = element.w;
+    if (dx > 0) {
+      // Shrink by the shift so the right edge keeps the author's original margin.
+      w = Math.max(0.4, w - dx);
+    }
+    if (maxRight !== undefined && x + w > maxRight + 0.01) {
+      w = Math.max(0.4, maxRight - x);
+    }
+
+    if (x === element.x && w === element.w) {
+      return element;
+    }
+    adjustedIds.add(element.id);
+    return refitAdjustedText({ ...element, x, w }, tokens);
+  });
+  return { elements: next, adjustedIds };
 }
 
 function expandCardsToContainContent(elements: SlideElement[]): SlideElement[] {
@@ -952,9 +1096,10 @@ function fitElementToSlide(element: SlideElement, tokens: DesignTokens): SlideEl
 
 export function normalizeSlideLayout(slide: Slide, tokens: DesignTokens = defaultTokens("en-US")): Slide {
   const fittedElements = slide.elements.map((element) => fitElementToSlide(element, tokens));
+  const { elements: insetElements } = insetCardContentForBars(fittedElements, tokens);
   return normalizeReadingOrder({
     ...slide,
-    elements: normalizeCardAccentBars(expandCardsToContainContent(fittedElements))
+    elements: normalizeCardAccentBars(expandCardsToContainContent(insetElements))
   });
 }
 

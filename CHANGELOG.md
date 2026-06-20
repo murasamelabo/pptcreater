@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.3.1 - 2026-06-21
+
+- Fixed card text overlapping or crowding a left-edge color accent bar (the colored "category" block on report/overview cards) and card text overflowing past the card's right edge. The layout/polish engine now runs an `insetCardContentForBars` pass that, for every rounded card carrying a left accent bar, shifts the card's whole left-aligned content block (heading, body, and any bullet dots) right as one unit so it clears the normalized bar with ≥0.12in breathing room while preserving the original dot↔text spacing. In-card text that runs past the card's right edge is clamped back inside, and any narrowed text box is re-fit (font + height) so it never silently overflows.
+  - Card-content association now has a **geometric fallback** (≥60% area containment, vertically inside, non-full-bleed) so agent-authored category cards that do not use the `<card>-<content>` id convention still get their backgrounds grown to contain text and their content inset clear of accent bars.
+  - The fix is purely positional in polish, so it applies to every rendered/finalized deck (CLI, MCP, samples) without changing copy; bullet markers keep their size and are never ballooned to a text-width floor.
+- Added regression tests covering left-bar clearance (text + dot pushed right of the bar, dot size preserved), idempotency, right-edge overflow clamping, and no over-indentation of plain (no-bar) cards; full suite now at 233 tests.
+
 ## v0.3.0 - 2026-06-21
 
 - Added **PowerPoint (.pptx) template import**: extract a presentation's design system — theme colors (background/surface/text/muted/accent, plus best-effort danger/success derived from the accent palette), heading/body fonts (including East-Asian font fallbacks), slide size, header/footer visibility + footer text, and title/closing slide scaffolding — into a reusable pptcreater `TemplateManifest`.
