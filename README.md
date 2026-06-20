@@ -203,6 +203,9 @@ pptcreater new --output samples\pptcreater-overview.deck.json --locale ja-JP --p
 pptcreater lint samples\pptcreater-overview.deck.json
 pptcreater render samples\pptcreater-overview.deck.json --output samples\pptcreater-overview.pptx --polish
 pptcreater studio samples\pptcreater-overview.deck.json --output samples\pptcreater-overview.html
+npm run sample:schematics
+pptcreater render samples\schematic-patterns.deck.json --output samples\schematic-patterns.pptx --polish
+pptcreater studio samples\schematic-patterns.deck.json --output samples\schematic-patterns.html
 ```
 
 The style-pattern samples intentionally change the communication context, not just the color palette:

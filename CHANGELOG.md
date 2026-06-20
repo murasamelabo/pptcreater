@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.2.5 - 2026-06-20
+
+- Regenerated `samples/schematic-patterns.deck.json`, `samples/schematic-patterns.pptx`, and `samples/schematic-patterns.html` so the sample catalog now includes one slide for every supported schematic kind: all 25 patterns from `table` through `mockup`.
+- Added `scripts/generate-schematic-pattern-samples.mjs` and `npm run sample:schematics` so the schematic sample deck can be rebuilt directly from the current renderer/catalog instead of hand-maintaining embedded SVG.
+- Increased a few small schematic labels to avoid SVG internal text readability warnings in the generated sample deck.
+
 ## v0.2.4 - 2026-06-20
 
 - Added a complete Slideland-style schematic pattern library for overflow-safe slide visuals: `table`, `tree`, `flow`, `vertical-flow`, `cycle`, `before-after`, `map`, `puzzle`/honeycomb, `correlation`, `matrix`, `venn`, `cross`/equation, `set`, `contrast`, `scale-contrast`, `grow`/TAM-SAM-SOM, `layer`, `triangle`, `step`, `gantt`, `ranking`, `list`, `list-horizontal`, `list-enumeration`, and `mockup`.

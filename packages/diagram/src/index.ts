@@ -917,7 +917,7 @@ function mockupSchematic(diagram: SchematicDiagram, palette: SchematicPalette): 
       return [
         `<circle cx="${x + 58}" cy="${rowY}" r="7" fill="${palette.accent}" />`,
         `<rect x="${x + 78}" y="${rowY - 7}" width="${w - 150 - index * 18}" height="14" rx="7" fill="${palette.surfaceAlt}" />`,
-        textBlock([item], x + w - 40, rowY + 5, { color: palette.muted, size: 10, weight: 600, anchor: "middle" })
+        textBlock([item], x + w - 40, rowY + 5, { color: palette.muted, size: 11, weight: 600, anchor: "middle" })
       ].join("");
     })
   ].join("");
@@ -1110,7 +1110,7 @@ function puzzleSchematic(diagram: SchematicDiagram, palette: SchematicPalette): 
     .map((position, index) => [
       `<polygon points="${hexPolygonPoints(position.x, position.y, radius)}" fill="${index === 0 ? palette.accentSoft : palette.surface}" stroke="${index === 0 ? palette.accent : palette.line}" stroke-width="2" />`,
       `<circle cx="${(position.x - radius * 0.42).toFixed(1)}" cy="${(position.y - radius * 0.32).toFixed(1)}" r="12" fill="${palette.accent}" />`,
-      `<text x="${(position.x - radius * 0.42).toFixed(1)}" y="${(position.y - radius * 0.32 + 4).toFixed(1)}" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="700" fill="${palette.background}">${index + 1}</text>`,
+      `<text x="${(position.x - radius * 0.42).toFixed(1)}" y="${(position.y - radius * 0.32 + 4).toFixed(1)}" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="700" fill="${palette.background}">${index + 1}</text>`,
       fittedTextBlock(items[index], position.x, position.y + 8, radius * 1.25, { color: palette.text, weight: 700, preferredSize: 13, minimumSize: 8, maxLines: 3, anchor: "middle" })
     ].join(""))
     .join("");
@@ -1134,7 +1134,7 @@ function correlationSchematic(diagram: SchematicDiagram, palette: SchematicPalet
       const label = diagram.secondaryItems[index];
       return [
         `<path d="M${cx.toFixed(1)} ${cy.toFixed(1)}L${point.x.toFixed(1)} ${point.y.toFixed(1)}" stroke="${palette.line}" stroke-width="2" />`,
-        label ? `<rect x="${(mx - 38).toFixed(1)}" y="${(my - 14).toFixed(1)}" width="76" height="24" rx="12" fill="${palette.background}" stroke="${palette.line}" />${fittedTextBlock(label, mx, my + 1, 64, { color: palette.muted, weight: 600, preferredSize: 9, minimumSize: 7, maxLines: 1, anchor: "middle" })}` : ""
+        label ? `<rect x="${(mx - 38).toFixed(1)}" y="${(my - 14).toFixed(1)}" width="76" height="24" rx="12" fill="${palette.background}" stroke="${palette.line}" />${fittedTextBlock(label, mx, my + 1, 64, { color: palette.muted, weight: 600, preferredSize: 11, minimumSize: 10, maxLines: 1, anchor: "middle" })}` : ""
       ].join("");
     }),
     ...points.map((point, index) => [
@@ -1313,7 +1313,7 @@ function growSchematic(diagram: SchematicDiagram, palette: SchematicPalette): st
       return [
         `<circle cx="638" cy="${rowY}" r="${14 - index * 2}" fill="${index === 2 ? palette.accent : palette.accentSoft}" stroke="${palette.accent}" />`,
         fittedTextBlock(label, 664, rowY + 1, 194, { color: palette.text, weight: 700, preferredSize: 14, minimumSize: 9, maxLines: 2, anchor: "start" }),
-        diagram.secondaryItems[index] ? fittedTextBlock(diagram.secondaryItems[index], 664, rowY + 30, 194, { color: palette.muted, weight: 500, preferredSize: 10, minimumSize: 8, maxLines: 1, anchor: "start" }) : ""
+        diagram.secondaryItems[index] ? fittedTextBlock(diagram.secondaryItems[index], 664, rowY + 30, 194, { color: palette.muted, weight: 500, preferredSize: 11, minimumSize: 10, maxLines: 1, anchor: "start" }) : ""
       ].join("");
     })
   ].join("");
@@ -1334,7 +1334,7 @@ function layerSchematic(diagram: SchematicDiagram, palette: SchematicPalette): s
         `<circle cx="${x + index * 16 + 30}" cy="${bandY + bandH / 2 - 4}" r="14" fill="${palette.accent}" />`,
         `<text x="${x + index * 16 + 30}" y="${bandY + bandH / 2 + 1}" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="800" fill="${palette.background}">${index + 1}</text>`,
         fittedTextBlock(item, x + index * 16 + 58, bandY + bandH / 2 - 4, w - index * 32 - 210, { color: palette.text, weight: 800, preferredSize: 15, minimumSize: 9, maxLines: 1, anchor: "start" }),
-        diagram.secondaryItems[index] ? fittedTextBlock(diagram.secondaryItems[index], x + w - index * 16 - 132, bandY + bandH / 2 - 4, 120, { color: palette.muted, weight: 600, preferredSize: 10, minimumSize: 8, maxLines: 2, anchor: "middle" }) : ""
+        diagram.secondaryItems[index] ? fittedTextBlock(diagram.secondaryItems[index], x + w - index * 16 - 132, bandY + bandH / 2 - 4, 120, { color: palette.muted, weight: 600, preferredSize: 11, minimumSize: 10, maxLines: 2, anchor: "middle" }) : ""
       ].join("");
     })
     .join("");
