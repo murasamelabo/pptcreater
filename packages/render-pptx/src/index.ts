@@ -13,13 +13,17 @@ import {
   parseDeckSpec,
   POLISH_FIXABLE_LINT_CODES,
   type DeckSpec,
+  type DesignTokens,
   type SlideElement
 } from "@pptcreater/core";
+
+export * from "./templateImport.js";
 
 const require = createRequire(import.meta.url);
 const JSZip = require("jszip") as { loadAsync(data: Buffer): Promise<{ file(name: string): { async(type: "string"): Promise<string> } | null; file(name: string, data: string): void; remove(name: string): void; generateAsync(options: { type: "nodebuffer" }): Promise<Buffer> }> };
 type PptxSlide = {
   background: { color: string };
+  slideNumber?: Record<string, unknown>;
   addText(text: string, options: Record<string, unknown>): void;
   addShape(shapeName: string, options?: Record<string, unknown>): void;
   addImage(options: { data?: string; path?: string; x: number; y: number; w: number; h: number; altText?: string }): void;
@@ -38,6 +42,7 @@ type PptxPresentation = {
     bodyFontFace: string;
     lang: string;
   };
+  defineLayout(options: { name: string; width: number; height: number }): void;
   addSlide(): PptxSlide;
   writeFile(options: { fileName: string }): Promise<void>;
 };
@@ -258,6 +263,30 @@ async function safeImageDataUri(dataUri: string): Promise<string> {
 
 function sortedElements(elements: SlideElement[]): SlideElement[] {
   return [...elements].sort((a, b) => (a.readingOrder ?? Number.MAX_SAFE_INTEGER) - (b.readingOrder ?? Number.MAX_SAFE_INTEGER));
+}
+
+function addHeaderFooter(slide: PptxSlide, deck: DeckSpec, tokens: DesignTokens): void {
+  const hf = deck.headerFooter;
+  if (!hf) {
+    return;
+  }
+  const slideWidth = deck.slideSize?.widthInches ?? 13.333;
+  const slideHeight = deck.slideSize?.heightInches ?? 7.5;
+  const baselineY = Math.max(0, slideHeight - 0.45);
+  const color = tokens.colors.mutedText.replace("#", "");
+  const fontFace = tokens.typography.bodyFont;
+  const common = { y: baselineY, h: 0.3, fontSize: 10, color, fontFace } as const;
+
+  if (hf.showDate && hf.dateText) {
+    slide.addText(hf.dateText, { ...common, x: 0.5, w: Math.min(3, slideWidth / 3), align: "left" });
+  }
+  if (hf.showFooter && hf.footerText) {
+    const w = Math.min(6, slideWidth - 2);
+    slide.addText(hf.footerText, { ...common, x: (slideWidth - w) / 2, w, align: "center" });
+  }
+  if (hf.showSlideNumber) {
+    slide.slideNumber = { ...common, x: slideWidth - 1.3, w: 0.8, align: "right" };
+  }
 }
 
 function safeObjectId(value: string): string {
@@ -552,7 +581,13 @@ export async function renderDeckToPptx(input: unknown, outputPath: string, optio
   const tokens = deck.tokens ?? defaultTokens(deck.locale);
   const pptx = new PptxGenJSConstructor();
 
-  pptx.layout = "LAYOUT_WIDE";
+  if (deck.slideSize) {
+    const layoutName = "IMPORTED_SIZE";
+    pptx.defineLayout({ name: layoutName, width: deck.slideSize.widthInches, height: deck.slideSize.heightInches });
+    pptx.layout = layoutName;
+  } else {
+    pptx.layout = "LAYOUT_WIDE";
+  }
   pptx.author = deck.metadata.author ?? "pptcreater";
   pptx.subject = deck.metadata.subject ?? deck.title;
   pptx.title = deck.title;
@@ -570,6 +605,10 @@ export async function renderDeckToPptx(input: unknown, outputPath: string, optio
     const safeSlide = normalizeReadingOrder(deckSlide);
     for (const element of sortedElements(safeSlide.elements)) {
       await addElement(slide, element, deck, slideIndex);
+    }
+
+    if (deck.headerFooter) {
+      addHeaderFooter(slide, deck, tokens);
     }
 
     const notes = [deckSlide.speakerNotes, ...collectSlideAccessibilityNotes(deck, deckSlide, slideIndex)]

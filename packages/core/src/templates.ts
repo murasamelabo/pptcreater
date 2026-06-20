@@ -6,7 +6,17 @@ import { dirname, parse, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
 import { defaultTokens } from "./color.js";
-import { DesignTokensSchema, LocaleSchema, type ContentMode, type DesignTokens, type Locale } from "./schema.js";
+import {
+  DesignTokensSchema,
+  HeaderFooterSchema,
+  LocaleSchema,
+  SlideSizeSchema,
+  TemplateScaffoldSlideSchema,
+  type ContentMode,
+  type DeckSpec,
+  type DesignTokens,
+  type Locale
+} from "./schema.js";
 
 export const TemplateLayoutSchema = z.object({
   id: z.string().min(1),
@@ -29,6 +39,10 @@ export const TemplateManifestSchema = z.object({
     requiresReadingOrder: z.boolean(),
     requiresAltText: z.boolean()
   }),
+  slideSize: SlideSizeSchema.optional(),
+  headerFooter: HeaderFooterSchema.optional(),
+  titleSlide: TemplateScaffoldSlideSchema.optional(),
+  closingSlide: TemplateScaffoldSlideSchema.optional(),
   tags: z.array(z.string()).default([])
 });
 
@@ -666,4 +680,134 @@ export async function searchTemplates(query: string, options: { registryPath?: s
   }
 
   return templates.filter((template) => [template.id, template.name, template.description, ...template.tags].join(" ").toLowerCase().includes(normalized));
+}
+
+const SCAFFOLD_DEFAULTS: Record<Locale, { title: string; subtitle: string; closingTitle: string; closingSubtitle: string }> = {
+  "ja-JP": {
+    title: "プレゼンテーションタイトル",
+    subtitle: "サブタイトル / 発表者・日付",
+    closingTitle: "ご清聴ありがとうございました",
+    closingSubtitle: "ご質問・お問い合わせはこちらまで"
+  },
+  "en-US": {
+    title: "Presentation title",
+    subtitle: "Subtitle / presenter and date",
+    closingTitle: "Thank you",
+    closingSubtitle: "Questions and contact details"
+  }
+};
+
+/**
+ * Build a starter, editable DeckSpec from a template so an imported template can be reused
+ * immediately. Emits a title slide and a closing slide (using the template's title/closing
+ * scaffolds when present), and carries the template tokens, slide size, and header/footer through
+ * so the rendered .pptx reflects the imported design. Title/closing elements stay within the real
+ * canvas width so non-16:9 imported sizes still render without overflow.
+ */
+export function scaffoldDeckFromTemplate(
+  template: TemplateManifest,
+  options: { title?: string; subtitle?: string; locale?: Locale } = {}
+): DeckSpec {
+  const locale = options.locale ?? template.locale;
+  const defaults = SCAFFOLD_DEFAULTS[locale];
+  const canvasWidth = Math.min(template.slideSize?.widthInches ?? 13.333, 13.333);
+  const canvasHeight = Math.min(template.slideSize?.heightInches ?? 7.5, 7.5);
+  const margin = template.tokens.spacing.margin;
+  const contentWidth = Math.max(1, canvasWidth - margin * 2);
+
+  const title = options.title ?? template.titleSlide?.title ?? defaults.title;
+  const subtitle = options.subtitle ?? template.titleSlide?.subtitle ?? defaults.subtitle;
+  const closingTitle = template.closingSlide?.title ?? defaults.closingTitle;
+  const closingSubtitle = template.closingSlide?.subtitle ?? defaults.closingSubtitle;
+
+  const titleY = Math.max(0.5, canvasHeight / 2 - 1.1);
+  const closingY = Math.max(0.5, canvasHeight / 2 - 0.9);
+
+  const deck: DeckSpec = {
+    version: "0.1",
+    title,
+    locale,
+    template: template.id,
+    tokens: template.tokens,
+    ...(template.slideSize ? { slideSize: template.slideSize } : {}),
+    ...(template.headerFooter ? { headerFooter: template.headerFooter } : {}),
+    slides: [
+      {
+        id: "title",
+        title,
+        layout: "title-slide",
+        elements: [
+          {
+            id: "title-heading",
+            type: "text",
+            role: "title",
+            text: title,
+            x: margin,
+            y: titleY,
+            w: contentWidth,
+            h: 1.4,
+            align: "center",
+            bold: true,
+            decorative: false,
+            readingOrder: 1
+          },
+          {
+            id: "title-subtitle",
+            type: "text",
+            role: "subtitle",
+            text: subtitle,
+            x: margin,
+            y: titleY + 1.5,
+            w: contentWidth,
+            h: 0.9,
+            align: "center",
+            bold: false,
+            decorative: false,
+            readingOrder: 2
+          }
+        ]
+      },
+      {
+        id: "closing",
+        title: closingTitle,
+        layout: "closing-slide",
+        elements: [
+          {
+            id: "closing-heading",
+            type: "text",
+            role: "title",
+            text: closingTitle,
+            x: margin,
+            y: closingY,
+            w: contentWidth,
+            h: 1.4,
+            align: "center",
+            bold: true,
+            decorative: false,
+            readingOrder: 1
+          },
+          {
+            id: "closing-subtitle",
+            type: "text",
+            role: "caption",
+            text: closingSubtitle,
+            x: margin,
+            y: closingY + 1.4,
+            w: contentWidth,
+            h: 0.8,
+            align: "center",
+            bold: false,
+            decorative: false,
+            readingOrder: 2
+          }
+        ]
+      }
+    ],
+    metadata: {
+      keywords: [...template.tags],
+      sources: []
+    }
+  };
+
+  return deck;
 }

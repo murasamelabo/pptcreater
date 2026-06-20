@@ -28,6 +28,7 @@ import {
   registerTemplateManifest,
   reviewBusinessDeck,
   reviewDeckContent,
+  scaffoldDeckFromTemplate,
   STYLE_PROFILES,
   formatSlideCreationRules,
   type BusinessStyleMode,
@@ -35,7 +36,7 @@ import {
   type Locale,
   type StyleProfile
 } from "@pptcreater/core";
-import { renderDeckToPptx } from "@pptcreater/render-pptx";
+import { importTemplateFromPptx, renderDeckToPptx } from "@pptcreater/render-pptx";
 import { renderStudioHtml } from "@pptcreater/studio";
 import { installGuidance } from "./installGuidance.js";
 
@@ -534,6 +535,72 @@ templateCommand
   .action(() => {
     console.log(getDefaultTemplateRegistryPath());
   });
+
+templateCommand
+  .command("import")
+  .description("Import colors, fonts, slide size, and header/footer from an existing .pptx as a reusable template.")
+  .argument("<pptx>", "Source .pptx file path")
+  .option("--id <id>", "Template id (defaults to the file name)")
+  .option("--name <name>", "Template display name (defaults to the file name)")
+  .option("--locale <locale>", "Template locale (ja-JP or en-US)")
+  .option("--register", "Save the imported template to the registry for reuse", false)
+  .option("--overwrite", "Replace an existing custom template with the same id", false)
+  .option("-o, --output <path>", "Write the imported template manifest JSON to this path")
+  .option("--json", "Emit JSON", false)
+  .action(
+    commandAction(
+      async (
+        pptxPath: string,
+        options: { id?: string; name?: string; locale?: string; register: boolean; overwrite: boolean; output?: string; json: boolean }
+      ) => {
+        const locale = options.locale === "ja-JP" || options.locale === "en-US" ? options.locale : undefined;
+        const result = await importTemplateFromPptx(pptxPath, {
+          id: options.id,
+          name: options.name,
+          locale,
+          register: options.register,
+          overwrite: options.overwrite
+        });
+        if (options.output) {
+          await writeJson(options.output, result.template);
+        }
+        if (options.json) {
+          console.log(JSON.stringify(result, null, 2));
+        } else {
+          const where = result.registryPath ? ` (registered in ${result.registryPath})` : "";
+          console.log(`Imported template ${result.template.id}${where}`);
+        }
+      }
+    )
+  );
+
+templateCommand
+  .command("scaffold")
+  .description("Create a starter deck (title + closing slide) that reuses an imported or built-in template.")
+  .argument("<templateId>", "Template id to reuse")
+  .option("--title <title>", "Title slide heading")
+  .option("--subtitle <subtitle>", "Title slide subtitle")
+  .option("--locale <locale>", "Deck locale (ja-JP or en-US)")
+  .option("-o, --output <path>", "Write the scaffolded DeckSpec JSON to this path", "generated/scaffold.deck.json")
+  .option("--json", "Emit JSON", false)
+  .action(
+    commandAction(
+      async (
+        templateId: string,
+        options: { title?: string; subtitle?: string; locale?: string; output: string; json: boolean }
+      ) => {
+        const templates = await listAllTemplates();
+        const template = templates.find((item) => item.id === templateId);
+        if (!template) {
+          throw new InvalidArgumentError(`Template "${templateId}" was not found. Run "pptcreater template list" to see available ids.`);
+        }
+        const locale = options.locale === "ja-JP" || options.locale === "en-US" ? options.locale : undefined;
+        const deck = scaffoldDeckFromTemplate(template, { title: options.title, subtitle: options.subtitle, locale });
+        await writeJson(options.output, deck);
+        console.log(options.json ? JSON.stringify(deck, null, 2) : `Scaffolded deck from ${template.id} to ${options.output}`);
+      }
+    )
+  );
 
 const assetCommand = program
   .command("asset")

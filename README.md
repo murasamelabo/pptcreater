@@ -354,10 +354,24 @@ pptcreater template registry-path
 
 By default this is a user-level registry under your pptcreater config directory, such as `%APPDATA%\pptcreater\templates\registry.json` on Windows or `~/.config/pptcreater/templates/registry.json` on Linux. Commit a registry file only when you intentionally set `PPTCREATER_TEMPLATE_REGISTRY_PATH` to a project path and want to share it with teammates.
 
+### Reuse an existing PowerPoint as a template
+
+Import the design system (theme colors, heading/body fonts, slide size, header/footer, and title/closing slide text) from any `.pptx` into a reusable template, then scaffold a starter deck that inherits it:
+
+```powershell
+pptcreater template import brand-deck.pptx --id brand --name "Brand" --register
+pptcreater template scaffold brand --title "四半期レビュー" -o generated\brand.deck.json
+pptcreater finalize generated\brand.deck.json --output generated\brand.pptx
+```
+
+Accessibility defaults (minimum body size, contrast, required slide titles / reading order / alt text) are always preserved on imported templates. The layout/polish engine assumes a 13.333×7.5in (16:9) canvas, so non-16:9 imports are rendered at their original size but very dense decks on those sizes may need manual width tweaks.
+
 From an MCP-capable AI agent, use:
 
 - `search_templates` to inspect existing templates before creating duplicates.
 - `register_template` to register a complete template manifest.
+- `import_template` to extract a reusable template from a local `.pptx` file (optionally `register: true`).
+- `scaffold_from_template` to create a starter title+closing deck that reuses a built-in or imported template.
 - `deckspec://schema` to understand how `template` ids are referenced from decks.
 
 ## Add reusable SVG icons and assets

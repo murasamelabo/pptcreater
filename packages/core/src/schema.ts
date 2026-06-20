@@ -38,6 +38,29 @@ export const DesignTokensSchema = z.object({
   spacing: SpacingTokensSchema
 });
 
+export const SlideSizeSchema = z.object({
+  widthInches: z.number().positive(),
+  heightInches: z.number().positive(),
+  aspect: z.string().optional()
+});
+
+export const HeaderFooterSchema = z.object({
+  showFooter: z.boolean().default(false),
+  footerText: z.string().optional(),
+  showSlideNumber: z.boolean().default(false),
+  showDate: z.boolean().default(false),
+  dateText: z.string().optional()
+});
+
+export const TemplateScaffoldSlideSchema = z.object({
+  title: z.string().optional(),
+  subtitle: z.string().optional()
+});
+
+export type SlideSize = z.infer<typeof SlideSizeSchema>;
+export type HeaderFooter = z.infer<typeof HeaderFooterSchema>;
+export type TemplateScaffoldSlide = z.infer<typeof TemplateScaffoldSlideSchema>;
+
 export const AccessibilityMetadataSchema = z.object({
   title: z.string().min(1),
   language: LocaleSchema,
@@ -147,6 +170,8 @@ export const DeckSpecSchema = z.object({
   template: z.string().min(1),
   skillPack: z.string().optional(),
   tokens: DesignTokensSchema.optional(),
+  slideSize: SlideSizeSchema.optional(),
+  headerFooter: HeaderFooterSchema.optional(),
   slides: z.array(SlideSchema).min(1),
   metadata: z
     .object({

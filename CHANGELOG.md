@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## v0.3.0 - 2026-06-21
+
+- Added **PowerPoint (.pptx) template import**: extract a presentation's design system — theme colors (background/surface/text/muted/accent, plus best-effort danger/success derived from the accent palette), heading/body fonts (including East-Asian font fallbacks), slide size, header/footer visibility + footer text, and title/closing slide scaffolding — into a reusable pptcreater `TemplateManifest`.
+  - New CLI commands: `pptcreater template import <file.pptx> [--id --name --locale --register --overwrite -o --json]` and `pptcreater template scaffold <templateId> [--title --subtitle --locale -o --json]`.
+  - New MCP tools: `import_template` (reads a local `.pptx`, optionally registers it) and `scaffold_from_template` (creates a starter title+closing deck that reuses a built-in or imported template).
+  - New core helper `scaffoldDeckFromTemplate(template, options)` builds a lint-clean 2-slide starter deck carrying the imported tokens, slide size, and header/footer.
+- The PPTX renderer now honors `deck.slideSize` (via a custom `defineLayout`) and `deck.headerFooter` (footer text / date / slide number placeholders) so imported templates render at their original canvas with their footer chrome.
+- The DeckSpec and template manifest schemas gained optional `slideSize`, `headerFooter`, `titleSlide`, and `closingSlide` fields; importing never weakens accessibility defaults (imported templates keep min 18pt body / 4.5:1 contrast / required slide titles, reading order, and alt text).
+- Note: the layout/polish engine still assumes the standard 13.333×7.5in (16:9) canvas. Imported 16:9 templates (the common case) render with zero behavioral change; non-16:9 slide sizes are applied to the output canvas but dense decks on those sizes may need manual width tweaks. `scaffoldDeckFromTemplate` clamps starter elements to ≤13.333×7.5 so scaffolds always render safely.
+- Added unit + integration tests for the OOXML parsers, manifest extraction, and scaffold rendering; full suite at 229 tests.
+
 ## v0.2.10 - 2026-06-20
 
 - Fixed a false-positive `diagram.visible-labels-missing` blocking error that aborted `finalize` on decks with thin horizontal connector-track diagrams (e.g. a left-to-right phase rail) whose stage labels live as adjacent text elements directly below the diagram. The lint is now context-aware: connector-track-shaped diagrams (very thin minor axis or aspect ratio ≥ 3) are accepted when ≥2 aligned sibling labels span ≥40% of the diagram's major axis, while ordinary block diagrams still require inline labels.

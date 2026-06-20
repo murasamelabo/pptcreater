@@ -20,6 +20,7 @@ import {
   getContentGuidance,
   getDefaultTemplateRegistryPath,
   getSlideCreationRules,
+  listAllTemplates,
   listSkillPacks,
   lintDeckSpec,
   LocaleSchema,
@@ -32,12 +33,13 @@ import {
   registerTemplateManifest,
   reviewBusinessDeck,
   reviewDeckContent,
+  scaffoldDeckFromTemplate,
   searchTemplates,
   STYLE_PROFILES,
   TemplateManifestSchema,
   type DeckSpec
 } from "@pptcreater/core";
-import { renderDeckToPptx } from "@pptcreater/render-pptx";
+import { importTemplateFromPptx, renderDeckToPptx } from "@pptcreater/render-pptx";
 import { renderStudioHtml } from "@pptcreater/studio";
 
 function jsonText(value: unknown) {
@@ -646,6 +648,48 @@ export function createPptcreaterMcpServer(): McpServer {
       }
     },
     async ({ template, overwrite }) => jsonText(await registerTemplateManifest(template, { overwrite }))
+  );
+
+  server.registerTool(
+    "import_template",
+    {
+      title: "Import template from .pptx",
+      description:
+        "Extract colors, fonts, slide size, header/footer, and title/closing scaffolding from an existing PowerPoint (.pptx) file into a reusable template manifest. Set register=true to save it for use with scaffold_from_template / search_templates.",
+      inputSchema: {
+        pptxPath: z.string().min(1).describe("Absolute or relative path to the source .pptx file"),
+        id: z.string().optional(),
+        name: z.string().optional(),
+        locale: LocaleSchema.optional(),
+        register: z.boolean().default(false),
+        overwrite: z.boolean().default(false)
+      }
+    },
+    async ({ pptxPath, id, name, locale, register, overwrite }) =>
+      jsonText(await importTemplateFromPptx(pptxPath, { id, name, locale, register, overwrite }))
+  );
+
+  server.registerTool(
+    "scaffold_from_template",
+    {
+      title: "Scaffold deck from template",
+      description:
+        "Create a starter DeckSpec (title slide + closing slide) that reuses a built-in or imported template's colors, fonts, slide size, and header/footer. Pair with import_template to reuse a provided .pptx design.",
+      inputSchema: {
+        templateId: z.string().min(1),
+        title: z.string().optional(),
+        subtitle: z.string().optional(),
+        locale: LocaleSchema.optional()
+      }
+    },
+    async ({ templateId, title, subtitle, locale }) => {
+      const templates = await listAllTemplates();
+      const template = templates.find((item) => item.id === templateId);
+      if (!template) {
+        throw new Error(`Template "${templateId}" was not found. Use search_templates to list available ids.`);
+      }
+      return jsonText(scaffoldDeckFromTemplate(template, { title, subtitle, locale }));
+    }
   );
 
   server.registerTool(
