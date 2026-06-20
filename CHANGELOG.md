@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.2.9 - 2026-06-20
+
+- Fixed card/background containment for dense card layouts: rounded card backgrounds and their accent bars now expand to include associated text and bullet markers, preventing text from visually spilling below the card while still preserving slide boundaries.
+- Regenerated shipped sample PPTX files with the card containment polish.
+- Re-rendered the reported Yokohama "メリットと注意点" slide; the card backgrounds now contain all bullet rows, with readable 12pt labels and no text overflow.
+
 ## v0.2.8 - 2026-06-20
 
 - Improved global text fitting for dense diagrams and tables: captions/diagram labels now keep a 12pt readable floor instead of shrinking into tiny text; if a compact label still cannot fit, polish shortens it with an ellipsis rather than allowing visible overflow or unreadable glyphs.

@@ -689,6 +689,73 @@ describe("layout polish", () => {
     expect(bar?.h ?? 99).toBeLessThan(2);
   });
 
+  it("expands card backgrounds to contain associated text and bullet marks", () => {
+    const slide: Slide = {
+      id: "card-content",
+      title: "Card content",
+      layout: "title-content",
+      elements: [
+        {
+          id: "card",
+          type: "shape",
+          shape: "roundRect",
+          x: 1,
+          y: 1,
+          w: 3.5,
+          h: 1,
+          fill: "#ffffff",
+          decorative: true,
+          readingOrder: 1
+        },
+        {
+          id: "bar",
+          type: "shape",
+          shape: "roundRect",
+          x: 1,
+          y: 1,
+          w: 0.12,
+          h: 1,
+          fill: "#315f9f",
+          decorative: true,
+          readingOrder: 2
+        },
+        {
+          id: "dot",
+          type: "shape",
+          shape: "ellipse",
+          x: 1.28,
+          y: 2.02,
+          w: 0.12,
+          h: 0.09,
+          fill: "#315f9f",
+          decorative: true,
+          readingOrder: 3
+        },
+        {
+          id: "label",
+          type: "text",
+          role: "caption",
+          text: "Card label",
+          x: 1.5,
+          y: 1.95,
+          w: 2.6,
+          h: 0.3,
+          fontSize: 12,
+          bold: false,
+          decorative: false,
+          readingOrder: 4
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const card = normalized.elements.find((element) => element.id === "card");
+    const bar = normalized.elements.find((element) => element.id === "bar");
+
+    expect(card?.h ?? 0).toBeGreaterThan(1.1);
+    expect(bar?.h ?? 0).toBeGreaterThan(1.0);
+  });
+
   it("expands short two-line labels instead of shrinking below readable floors", () => {
     const slide: Slide = {
       id: "short-label",

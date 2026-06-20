@@ -659,12 +659,72 @@ function nearlyEqual(a: number, b: number, tolerance = 0.04): boolean {
   return Math.abs(a - b) <= tolerance;
 }
 
+function horizontalOverlap(a: SlideElement, b: SlideElement): number {
+  return Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
+}
+
 function isRoundedCardShape(element: SlideElement): element is Extract<SlideElement, { type: "shape" }> {
   return element.type === "shape" && (element.shape === "roundRect" || element.shape === "roundedRect") && element.fill !== "none" && element.w >= 1 && element.h >= 0.45;
 }
 
 function isCardEdgeAccentBar(element: SlideElement): element is Extract<SlideElement, { type: "shape" }> {
-  return element.type === "shape" && element.shape === "rect" && element.fill !== "none" && element.decorative && element.w <= 0.22 && element.h >= 0.45;
+  return element.type === "shape" && (element.shape === "rect" || element.shape === "roundRect" || element.shape === "roundedRect") && element.fill !== "none" && element.decorative && element.w <= 0.22 && element.h >= 0.45;
+}
+
+function expandCardsToContainContent(elements: SlideElement[]): SlideElement[] {
+  const cards = elements.filter(isRoundedCardShape).filter((card) => !isFullBleed(card));
+  if (cards.length === 0) {
+    return elements;
+  }
+
+  const expandedHeights = new Map<string, number>();
+  for (const card of cards) {
+    const blockingTop = Math.min(
+      ...cards
+        .filter((candidate) => candidate.id !== card.id && candidate.y > card.y + 0.12 && horizontalOverlap(card, candidate) > Math.min(card.w, candidate.w) * 0.35)
+        .map((candidate) => candidate.y),
+      SLIDE_WIDE.height
+    );
+    const maxBottom = Math.min(SLIDE_WIDE.height - 0.08, blockingTop - 0.08);
+    const contentBottom = Math.max(
+      card.y + card.h,
+      ...elements
+        .filter((element) => {
+          if (element.id === card.id || element.type === "image" || element.type === "svg" || element.type === "diagram") {
+            return false;
+          }
+
+          const horizontallyInside = element.x >= card.x - 0.04 && element.x + element.w <= card.x + card.w + 0.04;
+          const verticallyAssociated = element.y >= card.y - 0.04 && element.y <= card.y + card.h + 0.85;
+          const isNestedCard = isRoundedCardShape(element) && element.w > card.w * 0.55 && element.h > card.h * 0.55;
+          return horizontallyInside && verticallyAssociated && !isNestedCard;
+        })
+        .map((element) => element.y + element.h)
+    );
+    const desiredHeight = Math.min(maxBottom, contentBottom + 0.16) - card.y;
+    if (desiredHeight > card.h + 0.03) {
+      expandedHeights.set(card.id, Math.max(card.h, desiredHeight));
+    }
+  }
+
+  if (expandedHeights.size === 0) {
+    return elements;
+  }
+
+  return elements.map((element) => {
+    if (isRoundedCardShape(element) && expandedHeights.has(element.id)) {
+      return { ...element, h: expandedHeights.get(element.id) ?? element.h };
+    }
+
+    if (isCardEdgeAccentBar(element)) {
+      const card = cards.find((candidate) => expandedHeights.has(candidate.id) && nearlyEqual(candidate.x, element.x) && nearlyEqual(candidate.y, element.y) && nearlyEqual(candidate.h, element.h));
+      if (card) {
+        return { ...element, h: expandedHeights.get(card.id) ?? element.h };
+      }
+    }
+
+    return element;
+  });
 }
 
 function normalizeCardAccentBars(elements: SlideElement[]): SlideElement[] {
@@ -744,9 +804,10 @@ function fitElementToSlide(element: SlideElement, tokens: DesignTokens): SlideEl
 }
 
 export function normalizeSlideLayout(slide: Slide, tokens: DesignTokens = defaultTokens("en-US")): Slide {
+  const fittedElements = slide.elements.map((element) => fitElementToSlide(element, tokens));
   return normalizeReadingOrder({
     ...slide,
-    elements: normalizeCardAccentBars(slide.elements.map((element) => fitElementToSlide(element, tokens)))
+    elements: normalizeCardAccentBars(expandCardsToContainContent(fittedElements))
   });
 }
 
