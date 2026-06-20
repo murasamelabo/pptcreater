@@ -2,6 +2,7 @@
 import { createRequire } from "node:module";
 import { extname, isAbsolute, relative, resolve } from "node:path";
 import { sanitizeSvg } from "@pptcreater/assets-svg";
+import sharp from "sharp";
 import {
   defaultFontSizeForRole,
   defaultTokens,
@@ -43,6 +44,9 @@ type PptxPresentation = {
 
 const PptxGenJSConstructor = require("pptxgenjs") as { new (): PptxPresentation };
 const MAX_LOCAL_IMAGE_BYTES = 20 * 1024 * 1024;
+const MAX_SVG_RASTER_BYTES = 2 * 1024 * 1024;
+const MAX_SVG_RASTER_SIDE = 2048;
+const MAX_SVG_RASTER_PIXELS = 4_000_000;
 const RASTER_IMAGE_MIME_TYPES: Record<string, string> = {
   ".gif": "image/gif",
   ".jpeg": "image/jpeg",
@@ -65,8 +69,79 @@ function inches(value: number): number {
   return Number(value.toFixed(3));
 }
 
-function svgDataUri(svg: string): string {
-  return `data:image/svg+xml;base64,${Buffer.from(sanitizeSvg(svg), "utf8").toString("base64")}`;
+function svgPixelDimensions(svg: string): { width: number; height: number } {
+  const attribute = (attrs: string, name: string): string | undefined => {
+    const match = new RegExp(`(?:^|\\s)${name}=(["'])(.*?)\\1`, "i").exec(attrs);
+    return match?.[2];
+  };
+  const absoluteLength = (value: string | undefined): number | undefined => {
+    const match = value?.trim().match(/^(\d+(?:\.\d+)?)(?:px)?$/i);
+    if (!match) {
+      return undefined;
+    }
+
+    const parsed = Number(match[1]);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+  };
+  const rootAttrs = svg.match(/<svg\b([^>]*)>/i)?.[1] ?? "";
+  const width = absoluteLength(attribute(rootAttrs, "width"));
+  const height = absoluteLength(attribute(rootAttrs, "height"));
+  if (width && height) {
+    return { width, height };
+  }
+
+  const viewBox = rootAttrs.match(/\bviewBox=["']\s*[-\d.]+\s+[-\d.]+\s+([\d.]+)\s+([\d.]+)\s*["']/i);
+  if (viewBox) {
+    const viewBoxWidth = absoluteLength(viewBox[1]);
+    const viewBoxHeight = absoluteLength(viewBox[2]);
+    return {
+      width: viewBoxWidth ?? 960,
+      height: viewBoxHeight ?? 540
+    };
+  }
+
+  return {
+    width: width ?? 960,
+    height: height ?? 540
+  };
+}
+
+function svgWithRasterDimensions(svg: string, width: number, height: number, originalSize: { width: number; height: number }): string {
+  return svg.replace(/<svg\b([^>]*)>/i, (_match, attrs: string) => {
+    const cleanedAttrs = attrs
+      .replace(/\s+width=(["'])[\s\S]*?\1/i, "")
+      .replace(/\s+height=(["'])[\s\S]*?\1/i, "");
+    const viewBoxAttr = /\sviewBox=(["'])[\s\S]*?\1/i.test(cleanedAttrs)
+      ? ""
+      : ` viewBox="0 0 ${originalSize.width} ${originalSize.height}"`;
+    return `<svg${cleanedAttrs}${viewBoxAttr} width="${width}" height="${height}">`;
+  });
+}
+
+async function svgPngDataUri(svg: string): Promise<string> {
+  if (Buffer.byteLength(svg, "utf8") > MAX_SVG_RASTER_BYTES) {
+    throw new Error(`SVG image is too large to rasterize. Maximum size is ${MAX_SVG_RASTER_BYTES} bytes.`);
+  }
+
+  const sanitized = sanitizeSvg(svg);
+  if (Buffer.byteLength(sanitized, "utf8") > MAX_SVG_RASTER_BYTES) {
+    throw new Error(`Sanitized SVG image is too large to rasterize. Maximum size is ${MAX_SVG_RASTER_BYTES} bytes.`);
+  }
+
+  const size = svgPixelDimensions(sanitized);
+  const scale = Math.min(
+    2,
+    MAX_SVG_RASTER_SIDE / size.width,
+    MAX_SVG_RASTER_SIDE / size.height,
+    Math.sqrt(MAX_SVG_RASTER_PIXELS / (size.width * size.height))
+  );
+  const outputWidth = Math.max(1, Math.floor(size.width * scale));
+  const outputHeight = Math.max(1, Math.floor(size.height * scale));
+  const rasterSvg = svgWithRasterDimensions(sanitized, outputWidth, outputHeight, size);
+  const png = await sharp(Buffer.from(rasterSvg, "utf8"), { density: 72, limitInputPixels: MAX_SVG_RASTER_PIXELS })
+    .png()
+    .toBuffer();
+  return `data:image/png;base64,${png.toString("base64")}`;
 }
 
 function isPathInside(child: string, parent: string): boolean {
@@ -120,30 +195,29 @@ async function localImagePathToDataUri(path: string, workspaceRoot = process.cwd
   }
 
   if (isSvg) {
-    return svgDataUri(await readFile(realPath, "utf8"));
+    return svgPngDataUri(await readFile(realPath, "utf8"));
   }
 
   return `data:${mimeType};base64,${(await readFile(realPath)).toString("base64")}`;
 }
 
 async function inlineLocalImagePaths(deck: DeckSpec): Promise<DeckSpec> {
-  const slides = await Promise.all(
-    deck.slides.map(async (slide) => ({
-      ...slide,
-      elements: await Promise.all(
-        slide.elements.map(async (element) => {
-          if (element.type !== "image" || !element.path || element.dataUri) {
-            return element;
-          }
+  const slides: DeckSpec["slides"] = [];
+  for (const slide of deck.slides) {
+    const elements: SlideElement[] = [];
+    for (const element of slide.elements) {
+      if (element.type !== "image" || !element.path || element.dataUri) {
+        elements.push(element);
+        continue;
+      }
 
-          return {
-            ...element,
-            dataUri: await localImagePathToDataUri(element.path)
-          };
-        })
-      )
-    }))
-  );
+      elements.push({
+        ...element,
+        dataUri: await localImagePathToDataUri(element.path)
+      });
+    }
+    slides.push({ ...slide, elements });
+  }
 
   return {
     ...deck,
@@ -151,14 +225,32 @@ async function inlineLocalImagePaths(deck: DeckSpec): Promise<DeckSpec> {
   };
 }
 
-function safeImageDataUri(dataUri: string): string {
-  const match = /^data:image\/(svg\+xml|png|jpe?g|gif|webp);base64,([a-zA-Z0-9+/=\s]+)$/i.exec(dataUri);
-  if (!match) {
+async function safeImageDataUri(dataUri: string): Promise<string> {
+  const header = /^data:image\/(svg\+xml|png|jpe?g|gif|webp);base64,/i.exec(dataUri);
+  if (!header) {
     throw new Error("image.dataUri must be a base64 SVG, PNG, JPEG, GIF, or WebP image.");
   }
 
-  if (match[1].toLowerCase() === "svg+xml") {
-    return svgDataUri(Buffer.from(match[2].replace(/\s+/g, ""), "base64").toString("utf8"));
+  const mimeType = header[1].toLowerCase();
+  const payload = dataUri.slice(header[0].length);
+  if (!/^[a-zA-Z0-9+/=\s]+$/.test(payload)) {
+    throw new Error("image.dataUri must be a valid base64 SVG, PNG, JPEG, GIF, or WebP image.");
+  }
+
+  if (mimeType === "svg+xml") {
+    const normalized = payload.replace(/\s+/g, "");
+    const padding = normalized.endsWith("==") ? 2 : normalized.endsWith("=") ? 1 : 0;
+    const estimatedDecodedBytes = Math.floor((normalized.length * 3) / 4) - padding;
+    if (estimatedDecodedBytes > MAX_SVG_RASTER_BYTES) {
+      throw new Error(`SVG image is too large to rasterize. Maximum size is ${MAX_SVG_RASTER_BYTES} bytes.`);
+    }
+
+    return svgPngDataUri(Buffer.from(normalized, "base64").toString("utf8"));
+  }
+
+  const match = /^data:image\/(png|jpe?g|gif|webp);base64,[a-zA-Z0-9+/=\s]+$/i.exec(dataUri);
+  if (!match) {
+    throw new Error("image.dataUri must be a base64 SVG, PNG, JPEG, GIF, or WebP image.");
   }
 
   return dataUri;
@@ -193,7 +285,7 @@ function pptxShapeName(shape: Extract<SlideElement, { type: "shape" }>["shape"])
   return shape;
 }
 
-function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpec, slideIndex: number): void {
+async function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpec, slideIndex: number): Promise<void> {
   const tokens = deck.tokens ?? defaultTokens(deck.locale);
   const position = {
     x: inches(element.x),
@@ -250,7 +342,7 @@ function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpec, sli
 
   if (element.type === "svg" || element.type === "diagram") {
     slide.addImage({
-      data: svgDataUri(element.svg),
+      data: await svgPngDataUri(element.svg),
       altText: element.decorative ? "" : element.altText ?? (element.type === "diagram" ? element.summary : undefined),
       ...position
     });
@@ -259,7 +351,7 @@ function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpec, sli
 
   if (element.type === "image") {
     if (element.dataUri) {
-      slide.addImage({ data: safeImageDataUri(element.dataUri), altText: element.decorative ? "" : element.altText, ...position });
+      slide.addImage({ data: await safeImageDataUri(element.dataUri), altText: element.decorative ? "" : element.altText, ...position });
     } else if (element.path) {
       slide.addImage({ path: element.path, altText: element.decorative ? "" : element.altText, ...position });
     }
@@ -306,24 +398,6 @@ function decorateCnvPr(attrs: string, description: string, selfClosing: boolean)
   return `<p:cNvPr${cleanedAttrs} ${descriptionAttr}${selfClosing ? "/>" : ">"}`;
 }
 
-// pptxgenjs emits `notesMasterIdLst` after `sldIdLst`, but the CT_Presentation schema
-// requires it immediately after `sldMasterIdLst`. The out-of-order element makes the file
-// schema-invalid (PowerPoint may flag it during repair), so we move it into place.
-function reorderPresentationParts(xml: string): string {
-  const notesMatch = xml.match(/<p:notesMasterIdLst\b[\s\S]*?<\/p:notesMasterIdLst>/);
-  if (!notesMatch) {
-    return xml;
-  }
-
-  const notesBlock = notesMatch[0];
-  const withoutNotes = xml.replace(notesBlock, "");
-  if (!/<\/p:sldMasterIdLst>/.test(withoutNotes)) {
-    return xml;
-  }
-
-  return withoutNotes.replace("</p:sldMasterIdLst>", () => `</p:sldMasterIdLst>${notesBlock}`);
-}
-
 async function markShapeAccessibility(pptxPath: string, deck: DeckSpec): Promise<void> {
   const descriptionsBySlide = shapeDescriptions(deck);
   const zip = await JSZip.loadAsync(await readFile(pptxPath));
@@ -355,15 +429,6 @@ async function markShapeAccessibility(pptxPath: string, deck: DeckSpec): Promise
       zip.file(name, patched);
     })
   );
-
-  const presentationFile = zip.file("ppt/presentation.xml");
-  if (presentationFile) {
-    const presentationXml = await presentationFile.async("string");
-    const reordered = reorderPresentationParts(presentationXml);
-    if (reordered !== presentationXml) {
-      zip.file("ppt/presentation.xml", reordered);
-    }
-  }
 
   await writeFile(pptxPath, await zip.generateAsync({ type: "nodebuffer" }));
 }
@@ -445,11 +510,13 @@ export async function renderDeckToPptx(input: unknown, outputPath: string, optio
     lang: deck.locale
   };
 
-  deck.slides.forEach((deckSlide, slideIndex) => {
+  for (const [slideIndex, deckSlide] of deck.slides.entries()) {
     const slide = pptx.addSlide();
     slide.background = { color: tokens.colors.background.replace("#", "") };
     const safeSlide = normalizeReadingOrder(deckSlide);
-    sortedElements(safeSlide.elements).forEach((element) => addElement(slide, element, deck, slideIndex));
+    for (const element of sortedElements(safeSlide.elements)) {
+      await addElement(slide, element, deck, slideIndex);
+    }
 
     const notes = [deckSlide.speakerNotes, ...collectSlideAccessibilityNotes(deck, deckSlide, slideIndex)]
       .filter((note): note is string => Boolean(note))
@@ -457,7 +524,7 @@ export async function renderDeckToPptx(input: unknown, outputPath: string, optio
     if (notes) {
       slide.addNotes(notes);
     }
-  });
+  }
 
   await pptx.writeFile({ fileName: outputPath });
   await markShapeAccessibility(outputPath, deck);

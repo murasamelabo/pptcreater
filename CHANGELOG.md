@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.2.6 - 2026-06-20
+
+- Fixed PPTX files being unreadable in PowerPoint even when Open XML validation reported zero errors. Root cause: the renderer's post-processing moved `notesMasterIdLst` before `sldIdLst`; that ordering can be schema-friendly but PowerPoint rejects it. The renderer now preserves pptxgenjs' PowerPoint-compatible `presentation.xml` order.
+- Fixed another PowerPoint corruption path for SVG/diagram elements. pptxgenjs created `.png` fallback media whose bytes were actually SVG XML, so PowerPoint treated the package as corrupt. The renderer now rasterizes SVG, diagram, local `.svg`, and SVG data URI images to real PNG bytes before embedding them.
+- Added `sharp` to `@pptcreater/render-pptx`, updated renderer tests to assert PNG signatures/no embedded SVG media, and regenerated every shipped sample `.pptx` with the fixed renderer. The regenerated samples were opened successfully through PowerPoint automation.
+
 ## v0.2.5 - 2026-06-20
 
 - Regenerated `samples/schematic-patterns.deck.json`, `samples/schematic-patterns.pptx`, and `samples/schematic-patterns.html` so the sample catalog now includes one slide for every supported schematic kind: all 25 patterns from `table` through `mockup`.
