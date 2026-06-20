@@ -102,6 +102,33 @@ describe("PPTX renderer", () => {
     expect(result.warnings.some((warning) => warning.includes("layout.card-accent-bar-unshaped"))).toBe(false);
   });
 
+  it("does not emit round-rectangle adjustment guides on ellipse shapes", async () => {
+    const deck = createSampleDeck("en-US", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "ellipse-with-radius",
+      type: "shape",
+      shape: "ellipse",
+      x: 1,
+      y: 3,
+      w: 2,
+      h: 1.2,
+      radius: 0.08,
+      fill: "#1d4ed8",
+      decorative: true,
+      readingOrder: 20
+    });
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-render-"));
+    const outputPath = join(outputDir, "ellipse-radius.pptx");
+
+    await renderDeckToPptx(deck, outputPath);
+
+    const zip = await JSZip.loadAsync(await readFile(outputPath));
+    const slide1 = (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
+    const ellipseShape = slide1.match(/<p:sp>[\s\S]*?prst="ellipse"[\s\S]*?<\/p:sp>/)?.[0] ?? "";
+    expect(ellipseShape).toContain('prst="ellipse"');
+    expect(ellipseShape).not.toContain('<a:gd name="adj"');
+  });
+
   it("does not hide non-text out-of-bounds errors by polishing", async () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     deck.slides[0].elements.push({
@@ -416,7 +443,7 @@ describe("PPTX renderer", () => {
     await expect(renderDeckToPptx(deck, join(outputDir, "oversized-svg.pptx"))).rejects.toThrow(/too large to rasterize/);
   });
 
-  it("encodes decorative shapes as a valid extension and preserves PowerPoint-compatible presentation order", async () => {
+  it("encodes decorative shapes as a valid extension and removes the generated notes master reference", async () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     deck.slides[0].elements.push({
       id: "decorative-panel",
@@ -443,9 +470,13 @@ describe("PPTX renderer", () => {
     expect(slide1).toContain("adec:decorative");
 
     const presentation = (await zip.file("ppt/presentation.xml")?.async("string")) ?? "";
-    if (presentation.includes("notesMasterIdLst")) {
-      // PowerPoint rejects files when notesMasterIdLst is moved before sldIdLst; preserve pptxgenjs order.
-      expect(presentation.indexOf("sldIdLst")).toBeLessThan(presentation.indexOf("notesMasterIdLst"));
-    }
+    const presentationRels = (await zip.file("ppt/_rels/presentation.xml.rels")?.async("string")) ?? "";
+    const notesSlideRels = (await zip.file("ppt/notesSlides/_rels/notesSlide1.xml.rels")?.async("string")) ?? "";
+    const contentTypes = (await zip.file("[Content_Types].xml")?.async("string")) ?? "";
+    expect(presentation).not.toContain("notesMasterIdLst");
+    expect(presentationRels).not.toContain("notesMaster");
+    expect(notesSlideRels).not.toContain("notesMaster");
+    expect(contentTypes).not.toContain("notesMasters");
+    expect(Object.keys(zip.files).some((name) => name.startsWith("ppt/notesMasters/"))).toBe(false);
   });
 });

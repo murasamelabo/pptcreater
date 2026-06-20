@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## v0.2.7 - 2026-06-20
+
+- Added explicit per-mode schematic template definitions (`SCHEMATIC_MODE_TEMPLATES`) so each style profile (`minimal`, `stylish`, `report`, `presentation`, `technical`) carries a complete 25-pattern schematic template set instead of only sharing one generic pattern list.
+- Updated `list_schematic_presets` (MCP) and `pptcreater schematic-presets --json` to return the selected mode's concrete templates, including tone, title, usage, items, secondary items, and axis labels.
+- Reworked `npm run sample:schematics` so every mode overview sample (`pptcreater-overview-minimal/stylish/report/presentation/technical`) now contains all 25 schematic slides in that mode's tone, plus a reference slide. The standalone `schematic-patterns` sample remains as a minimal-mode quick catalog.
+- Improved schematic sample titles, including the table pattern, by replacing mechanical labels like `表: ...` with cleaner slide-ready phrasing such as `判断材料を一枚でそろえる`.
+- Fixed another PowerPoint corruption path from native `ellipse` shapes: `rectRadius` is now emitted only for rounded rectangles, never for ellipses/ovals. Decks with decorative ellipse backgrounds and bullet dots now open correctly.
+- Removed generated notes master references/parts from rendered PPTX packages while keeping notes slides. This avoids stale `notesMaster` references and keeps both PowerPoint and Open XML validation happy.
+
 ## v0.2.6 - 2026-06-20
 
 - Fixed PPTX files being unreadable in PowerPoint even when Open XML validation reported zero errors. Root cause: the renderer's post-processing moved `notesMasterIdLst` before `sldIdLst`; that ordering can be schema-friendly but PowerPoint rejects it. The renderer now preserves pptxgenjs' PowerPoint-compatible `presentation.xml` order.

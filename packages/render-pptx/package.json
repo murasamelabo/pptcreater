@@ -1,6 +1,6 @@
 ﻿{
   "name": "@pptcreater/render-pptx",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "type": "module",
   "engines": {
     "node": ">=22.12.0",
@@ -18,8 +18,8 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@pptcreater/assets-svg": "0.2.6",
-    "@pptcreater/core": "0.2.6",
+    "@pptcreater/assets-svg": "0.2.7",
+    "@pptcreater/core": "0.2.7",
     "jszip": "^3.10.1",
     "pptxgenjs": "^4.0.1",
     "sharp": "^0.35.2"

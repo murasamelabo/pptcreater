@@ -40,10 +40,45 @@
       "deck",
       "native-shape",
       "editable",
-      "minimal"
+      "minimal",
+      "schematic",
+      "slideland-inspired",
+      "table",
+      "tree",
+      "flow",
+      "vertical-flow",
+      "cycle",
+      "before-after",
+      "map",
+      "puzzle",
+      "correlation",
+      "matrix",
+      "venn",
+      "cross",
+      "set",
+      "contrast",
+      "scale-contrast",
+      "grow",
+      "layer",
+      "triangle",
+      "step",
+      "gantt",
+      "ranking",
+      "list",
+      "list-horizontal",
+      "list-enumeration",
+      "mockup"
     ],
     "contentMode": "decision",
-    "sources": []
+    "sources": [
+      {
+        "id": "slideland-schematic-inspiration",
+        "title": "Slideland schematic and taste references",
+        "url": "https://www.slideland.tech/docs/schematic",
+        "usage": "inspiration",
+        "notes": "Layouts are inspired by common schematic categories, not copied from source visuals."
+      }
+    ]
   },
   "slides": [
     {
@@ -979,6 +1014,612 @@
           "bold": false,
           "decorative": false,
           "readingOrder": 4
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-table",
+      "title": "判断材料を一枚でそろえる",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 1: table. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-table-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "表 (table) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>判断材料を一枚でそろえる</title><desc>主要な観点と確認事項を二列で整理し、論点の抜け漏れを減らす表形式の図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">判断材料を一枚でそろえる</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><rect x=\"72\" y=\"126\" width=\"816\" height=\"58\" rx=\"18\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"96\" y=\"162\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#1f2933\">観点</text><text x=\"504\" y=\"162\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#1f2933\">確認事項</text><path d=\"M480 126v348\" stroke=\"#d8d3c8\" /><rect x=\"72\" y=\"184\" width=\"816\" height=\"58\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"96\" y=\"218\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"500\" fill=\"#1f2933\">品質</text><text x=\"504\" y=\"218\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"500\" fill=\"#65707b\">lintで検証</text><rect x=\"72\" y=\"242\" width=\"816\" height=\"58\" fill=\"#f3f1ea\" stroke=\"#d8d3c8\" /><text x=\"96\" y=\"276\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"500\" fill=\"#1f2933\">速度</text><text x=\"504\" y=\"276\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"500\" fill=\"#65707b\">finalizeで短縮</text><rect x=\"72\" y=\"300\" width=\"816\" height=\"58\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"96\" y=\"334\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"500\" fill=\"#1f2933\">再利用</text><text x=\"504\" y=\"334\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"500\" fill=\"#65707b\">assetsを検索</text><rect x=\"72\" y=\"358\" width=\"816\" height=\"58\" fill=\"#f3f1ea\" stroke=\"#d8d3c8\" /><text x=\"96\" y=\"392\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"500\" fill=\"#1f2933\">安全性</text><text x=\"504\" y=\"392\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"500\" fill=\"#65707b\">safe SVGのみ</text><rect x=\"72\" y=\"416\" width=\"816\" height=\"58\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"96\" y=\"450\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"500\" fill=\"#1f2933\">安全性</text><text x=\"504\" y=\"450\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"500\" fill=\"#65707b\">safe SVGのみ</text></svg>",
+          "summary": "判断材料をそろえる表",
+          "longDescription": "主要な観点と確認事項を二列で整理し、論点の抜け漏れを減らす表形式の図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-tree",
+      "title": "構造を階層でほどく",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 2: tree. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-tree-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "ツリー (tree) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>構造を階層でほどく</title><desc>中心テーマから構成要素へ枝分かれさせ、複雑な情報を上位下位の関係で理解しやすくする図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">構造を階層でほどく</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><rect x=\"370\" y=\"120\" width=\"220\" height=\"72\" rx=\"20\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"480\" y=\"154\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"700\" fill=\"#1f2933\">PPT作成</text><path d=\"M480 192v70\" stroke=\"#d8d3c8\" stroke-width=\"2\" /><path d=\"M480 262H140V315\" fill=\"none\" stroke=\"#d8d3c8\" stroke-width=\"2\" /><rect x=\"65\" y=\"315\" width=\"150\" height=\"82\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"140\" y=\"349\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#1f2933\">構成</text><path d=\"M480 262H310V315\" fill=\"none\" stroke=\"#d8d3c8\" stroke-width=\"2\" /><rect x=\"235\" y=\"315\" width=\"150\" height=\"82\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"310\" y=\"349\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#1f2933\">図解</text><path d=\"M480 262H480V315\" fill=\"none\" stroke=\"#d8d3c8\" stroke-width=\"2\" /><rect x=\"405\" y=\"315\" width=\"150\" height=\"82\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"480\" y=\"349\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#1f2933\">資産</text><path d=\"M480 262H650V315\" fill=\"none\" stroke=\"#d8d3c8\" stroke-width=\"2\" /><rect x=\"575\" y=\"315\" width=\"150\" height=\"82\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"650\" y=\"349\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#1f2933\">検証</text><path d=\"M480 262H820V315\" fill=\"none\" stroke=\"#d8d3c8\" stroke-width=\"2\" /><rect x=\"745\" y=\"315\" width=\"150\" height=\"82\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"820\" y=\"349\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#1f2933\">出力</text></svg>",
+          "summary": "階層を整理するツリー",
+          "longDescription": "中心テーマから構成要素へ枝分かれさせ、複雑な情報を上位下位の関係で理解しやすくする図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-flow",
+      "title": "作成から検証までを一直線で進める",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 3: flow. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-flow-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "横フロー (flow) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>作成から検証までを一直線で進める</title><desc>左から右へ進む作業や判断の流れを短いステップで示し、次の行動を迷わせない図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">作成から検証までを一直線で進める</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><rect x=\"48\" y=\"210\" width=\"153.6\" height=\"96\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"82\" cy=\"244\" r=\"14\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"82\" y=\"249\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#315f9f\">1</text><text x=\"108\" y=\"246\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#1f2933\">brief</text><path d=\"M209.6 258h8m-8-8 8 8-8 8\" fill=\"none\" stroke=\"#315f9f\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><rect x=\"225.6\" y=\"210\" width=\"153.6\" height=\"96\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"259.6\" cy=\"244\" r=\"14\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"259.6\" y=\"249\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#315f9f\">2</text><text x=\"285.6\" y=\"246\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#1f2933\">template</text><path d=\"M387.2 258h8m-8-8 8 8-8 8\" fill=\"none\" stroke=\"#315f9f\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><rect x=\"403.2\" y=\"210\" width=\"153.6\" height=\"96\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"437.2\" cy=\"244\" r=\"14\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"437.2\" y=\"249\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#315f9f\">3</text><text x=\"463.2\" y=\"246\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#1f2933\">schematic</text><path d=\"M564.8 258h8m-8-8 8 8-8 8\" fill=\"none\" stroke=\"#315f9f\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><rect x=\"580.8\" y=\"210\" width=\"153.6\" height=\"96\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"614.8\" cy=\"244\" r=\"14\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"614.8\" y=\"249\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#315f9f\">4</text><text x=\"640.8\" y=\"246\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#1f2933\">lint</text><path d=\"M742.4 258h8m-8-8 8 8-8 8\" fill=\"none\" stroke=\"#315f9f\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><rect x=\"758.4\" y=\"210\" width=\"153.6\" height=\"96\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"792.4\" cy=\"244\" r=\"14\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"792.4\" y=\"249\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#315f9f\">5</text><text x=\"818.4\" y=\"246\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#1f2933\">render</text></svg>",
+          "summary": "横方向の作業フロー",
+          "longDescription": "左から右へ進む作業や判断の流れを短いステップで示し、次の行動を迷わせない図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-vertical-flow",
+      "title": "承認の流れを上から下へ迷わせない",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 4: vertical-flow. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-vertical-flow-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "縦フロー (vertical-flow) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>承認の流れを上から下へ迷わせない</title><desc>上から下へ流れる手順、承認、エスカレーションを、読み順どおりに追える図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">承認の流れを上から下へ迷わせない</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><rect x=\"190\" y=\"120\" width=\"580\" height=\"62\" rx=\"16\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><rect x=\"190\" y=\"120\" width=\"7\" height=\"62\" rx=\"3.5\" fill=\"#315f9f\" /><text x=\"222\" y=\"146\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"700\" fill=\"#1f2933\">申請</text><path d=\"M480 186v10m-7-7 7 7 7-7\" fill=\"none\" stroke=\"#315f9f\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><rect x=\"190\" y=\"200\" width=\"580\" height=\"62\" rx=\"16\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><rect x=\"190\" y=\"200\" width=\"7\" height=\"62\" rx=\"3.5\" fill=\"#315f9f\" /><text x=\"222\" y=\"226\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"700\" fill=\"#1f2933\">レビュー</text><path d=\"M480 266v10m-7-7 7 7 7-7\" fill=\"none\" stroke=\"#315f9f\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><rect x=\"190\" y=\"280\" width=\"580\" height=\"62\" rx=\"16\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><rect x=\"190\" y=\"280\" width=\"7\" height=\"62\" rx=\"3.5\" fill=\"#315f9f\" /><text x=\"222\" y=\"306\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"700\" fill=\"#1f2933\">承認</text><path d=\"M480 346v10m-7-7 7 7 7-7\" fill=\"none\" stroke=\"#315f9f\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><rect x=\"190\" y=\"360\" width=\"580\" height=\"62\" rx=\"16\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><rect x=\"190\" y=\"360\" width=\"7\" height=\"62\" rx=\"3.5\" fill=\"#315f9f\" /><text x=\"222\" y=\"386\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"700\" fill=\"#1f2933\">配布</text><path d=\"M480 426v10m-7-7 7 7 7-7\" fill=\"none\" stroke=\"#315f9f\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><rect x=\"190\" y=\"440\" width=\"580\" height=\"62\" rx=\"16\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><rect x=\"190\" y=\"440\" width=\"7\" height=\"62\" rx=\"3.5\" fill=\"#315f9f\" /><text x=\"222\" y=\"466\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"700\" fill=\"#1f2933\">改善</text></svg>",
+          "summary": "縦方向の承認フロー",
+          "longDescription": "上から下へ流れる手順、承認、エスカレーションを、読み順どおりに追える図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-cycle",
+      "title": "改善の循環を途切れなく回す",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 5: cycle. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-cycle-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "サイクル (cycle) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>改善の循環を途切れなく回す</title><desc>繰り返し発生する活動を循環として示し、単発ではなく継続的に改善する関係を伝える図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">改善の循環を途切れなく回す</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><path d=\"M523.3 165.0L570.1 192.0\" fill=\"none\" stroke=\"#315f9f\" stroke-width=\"2.5\" stroke-linecap=\"round\" /><polygon points=\"570.1 192.0 559.8 191.8 564.7 183.2\" fill=\"#315f9f\" /><path d=\"M620.3 271.0L620.3 325.0\" fill=\"none\" stroke=\"#315f9f\" stroke-width=\"2.5\" stroke-linecap=\"round\" /><polygon points=\"620.3 325.0 615.3 316.0 625.2 316.0\" fill=\"#315f9f\" /><path d=\"M577.0 408.0L530.2 435.0\" fill=\"none\" stroke=\"#315f9f\" stroke-width=\"2.5\" stroke-linecap=\"round\" /><polygon points=\"530.2 435.0 535.5 426.2 540.5 434.8\" fill=\"#315f9f\" /><path d=\"M436.7 439.0L389.9 412.0\" fill=\"none\" stroke=\"#315f9f\" stroke-width=\"2.5\" stroke-linecap=\"round\" /><polygon points=\"389.9 412.0 400.2 412.2 395.3 420.8\" fill=\"#315f9f\" /><path d=\"M339.7 333.0L339.7 279.0\" fill=\"none\" stroke=\"#315f9f\" stroke-width=\"2.5\" stroke-linecap=\"round\" /><polygon points=\"339.7 279.0 344.7 288.0 334.8 288.0\" fill=\"#315f9f\" /><path d=\"M383.0 196.0L429.8 169.0\" fill=\"none\" stroke=\"#315f9f\" stroke-width=\"2.5\" stroke-linecap=\"round\" /><polygon points=\"429.8 169.0 424.5 177.8 419.5 169.2\" fill=\"#315f9f\" /><circle cx=\"480.0\" cy=\"140.0\" r=\"50\" fill=\"#dfe8f5\" stroke=\"#d8d3c8\" stroke-width=\"1.5\" /><circle cx=\"448.0\" cy=\"108.0\" r=\"13\" fill=\"#315f9f\" /><text x=\"448.0\" y=\"113.0\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"700\" fill=\"#fbfaf7\">1</text><text x=\"480\" y=\"150.76\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#1f2933\">計画</text><circle cx=\"620.3\" cy=\"221.0\" r=\"50\" fill=\"#ffffff\" stroke=\"#d8d3c8\" stroke-width=\"1.5\" /><circle cx=\"588.3\" cy=\"189.0\" r=\"13\" fill=\"#315f9f\" /><text x=\"588.3\" y=\"194.0\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"700\" fill=\"#fbfaf7\">2</text><text x=\"620.2961154130791\" y=\"231.76\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#1f2933\">作成</text><circle cx=\"620.3\" cy=\"383.0\" r=\"50\" fill=\"#ffffff\" stroke=\"#d8d3c8\" stroke-width=\"1.5\" /><circle cx=\"588.3\" cy=\"351.0\" r=\"13\" fill=\"#315f9f\" /><text x=\"588.3\" y=\"356.0\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"700\" fill=\"#fbfaf7\">3</text><text x=\"620.2961154130791\" y=\"393.76\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#1f2933\">確認</text><circle cx=\"480.0\" cy=\"464.0\" r=\"50\" fill=\"#ffffff\" stroke=\"#d8d3c8\" stroke-width=\"1.5\" /><circle cx=\"448.0\" cy=\"432.0\" r=\"13\" fill=\"#315f9f\" /><text x=\"448.0\" y=\"437.0\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"700\" fill=\"#fbfaf7\">4</text><text x=\"480\" y=\"474.76\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#1f2933\">修正</text><circle cx=\"339.7\" cy=\"383.0\" r=\"50\" fill=\"#ffffff\" stroke=\"#d8d3c8\" stroke-width=\"1.5\" /><circle cx=\"307.7\" cy=\"351.0\" r=\"13\" fill=\"#315f9f\" /><text x=\"307.7\" y=\"356.0\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"700\" fill=\"#fbfaf7\">5</text><text x=\"339.70388458692094\" y=\"393.76000000000005\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#1f2933\">公開</text><circle cx=\"339.7\" cy=\"221.0\" r=\"50\" fill=\"#ffffff\" stroke=\"#d8d3c8\" stroke-width=\"1.5\" /><circle cx=\"307.7\" cy=\"189.0\" r=\"13\" fill=\"#315f9f\" /><text x=\"307.7\" y=\"194.0\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"700\" fill=\"#fbfaf7\">6</text><text x=\"339.70388458692094\" y=\"231.76\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#1f2933\">学習</text></svg>",
+          "summary": "継続改善サイクル",
+          "longDescription": "繰り返し発生する活動を循環として示し、単発ではなく継続的に改善する関係を伝える図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-before-after",
+      "title": "現状と改善後の差分を一目で伝える",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 6: before-after. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-before-after-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "前後比較 (before-after) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>現状と改善後の差分を一目で伝える</title><desc>現在の課題と改善後の状態を左右に置き、中央の遷移で変化の意味を説明する図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">現状と改善後の差分を一目で伝える</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><rect x=\"64\" y=\"134\" width=\"389\" height=\"284\" rx=\"26\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><rect x=\"64\" y=\"134\" width=\"389\" height=\"58\" rx=\"26\" fill=\"#f3f1ea\" /><text x=\"258.5\" y=\"172.78\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"17\" font-weight=\"700\" fill=\"#1f2933\">Before</text><circle cx=\"94\" cy=\"220\" r=\"9\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"114\" y=\"225.42\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"600\" fill=\"#65707b\">手作業で配置</text><circle cx=\"94\" cy=\"264\" r=\"9\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"114\" y=\"269.42\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"600\" fill=\"#65707b\">改行が不安定</text><circle cx=\"94\" cy=\"308\" r=\"9\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"114\" y=\"313.42\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"600\" fill=\"#65707b\">修正ループが長い</text><circle cx=\"94\" cy=\"352\" r=\"9\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"114\" y=\"357.42\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"600\" fill=\"#65707b\">再利用しづらい</text><rect x=\"507\" y=\"134\" width=\"389\" height=\"284\" rx=\"26\" fill=\"#dfe8f5\" stroke=\"#d8d3c8\" /><rect x=\"507\" y=\"134\" width=\"389\" height=\"58\" rx=\"26\" fill=\"#315f9f\" /><text x=\"701.5\" y=\"172.78\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"17\" font-weight=\"700\" fill=\"#fbfaf7\">After</text><circle cx=\"537\" cy=\"220\" r=\"9\" fill=\"#315f9f\" stroke=\"#315f9f\" /><text x=\"557\" y=\"225.42\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"600\" fill=\"#1f2933\">プリセットを選択</text><circle cx=\"537\" cy=\"264\" r=\"9\" fill=\"#315f9f\" stroke=\"#315f9f\" /><text x=\"557\" y=\"269.42\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"600\" fill=\"#1f2933\">自動fit</text><circle cx=\"537\" cy=\"308\" r=\"9\" fill=\"#315f9f\" stroke=\"#315f9f\" /><text x=\"557\" y=\"313.42\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"600\" fill=\"#1f2933\">finalizeで短縮</text><circle cx=\"537\" cy=\"352\" r=\"9\" fill=\"#315f9f\" stroke=\"#315f9f\" /><text x=\"557\" y=\"357.42\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"600\" fill=\"#1f2933\">サンプルを再利用</text><circle cx=\"480\" cy=\"276\" r=\"28\" fill=\"#315f9f\" stroke=\"#fbfaf7\" stroke-width=\"4\" /><path d=\"M470 266l12 10-12 10M484 266l12 10-12 10\" fill=\"none\" stroke=\"#fbfaf7\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /></svg>",
+          "summary": "Before/After 比較",
+          "longDescription": "現在の課題と改善後の状態を左右に置き、中央の遷移で変化の意味を説明する図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-map",
+      "title": "制御ポイントを地図のように把握する",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 7: map. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-map-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "マップ (map) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>制御ポイントを地図のように把握する</title><desc>複数の重要地点を空間的に配置し、どこを確認・制御するかを直感的に把握するための図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">制御ポイントを地図のように把握する</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><rect x=\"54\" y=\"124\" width=\"548\" height=\"308\" rx=\"28\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><path d=\"M86 356c90-66 142-36 210-92 74-61 145-42 248 20\" fill=\"none\" stroke=\"#dfe8f5\" stroke-width=\"54\" stroke-linecap=\"round\" opacity=\"0.85\" /><path d=\"M163.6 124v308M54 185.6h548\" stroke=\"#d8d3c8\" stroke-width=\"1\" opacity=\"0.55\" /><path d=\"M273.2 124v308M54 247.2h548\" stroke=\"#d8d3c8\" stroke-width=\"1\" opacity=\"0.55\" /><path d=\"M382.8 124v308M54 308.8h548\" stroke=\"#d8d3c8\" stroke-width=\"1\" opacity=\"0.55\" /><path d=\"M492.4 124v308M54 370.4h548\" stroke=\"#d8d3c8\" stroke-width=\"1\" opacity=\"0.55\" /><path d=\"M174.6 228.7c0-18 14-32 32-32s32 14 32 32c0 24-32 56-32 56s-32-32-32-56z\" fill=\"#315f9f\" stroke=\"#fbfaf7\" stroke-width=\"3\" transform=\"translate(-32 -32)\" /><text x=\"174.6\" y=\"193.7\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#fbfaf7\">1</text><circle cx=\"174.6\" cy=\"252.7\" r=\"5\" fill=\"#315f9f\" opacity=\"0.28\" /><text x=\"174.56\" y=\"278.46000000000004\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#1f2933\">入力</text><path d=\"M339.0 191.8c0-18 14-32 32-32s32 14 32 32c0 24-32 56-32 56s-32-32-32-56z\" fill=\"#315f9f\" stroke=\"#fbfaf7\" stroke-width=\"3\" transform=\"translate(-32 -32)\" /><text x=\"339.0\" y=\"156.8\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#fbfaf7\">2</text><circle cx=\"339.0\" cy=\"215.8\" r=\"5\" fill=\"#315f9f\" opacity=\"0.28\" /><text x=\"338.96000000000004\" y=\"241.5\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#1f2933\">生成</text><path d=\"M465.0 265.7c0-18 14-32 32-32s32 14 32 32c0 24-32 56-32 56s-32-32-32-56z\" fill=\"#315f9f\" stroke=\"#fbfaf7\" stroke-width=\"3\" transform=\"translate(-32 -32)\" /><text x=\"465.0\" y=\"230.7\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#fbfaf7\">3</text><circle cx=\"465.0\" cy=\"289.7\" r=\"5\" fill=\"#315f9f\" opacity=\"0.28\" /><text x=\"465\" y=\"315.42\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#1f2933\">検証</text><path d=\"M273.2 333.4c0-18 14-32 32-32s32 14 32 32c0 24-32 56-32 56s-32-32-32-56z\" fill=\"#315f9f\" stroke=\"#fbfaf7\" stroke-width=\"3\" transform=\"translate(-32 -32)\" /><text x=\"273.2\" y=\"298.4\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#fbfaf7\">4</text><circle cx=\"273.2\" cy=\"357.4\" r=\"5\" fill=\"#315f9f\" opacity=\"0.28\" /><text x=\"273.20000000000005\" y=\"383.18000000000006\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#1f2933\">公開</text><path d=\"M426.6 364.2c0-18 14-32 32-32s32 14 32 32c0 24-32 56-32 56s-32-32-32-56z\" fill=\"#315f9f\" stroke=\"#fbfaf7\" stroke-width=\"3\" transform=\"translate(-32 -32)\" /><text x=\"426.6\" y=\"329.2\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#fbfaf7\">5</text><circle cx=\"426.6\" cy=\"388.2\" r=\"5\" fill=\"#315f9f\" opacity=\"0.28\" /><text x=\"426.64000000000004\" y=\"413.98\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#1f2933\">改善</text><rect x=\"638\" y=\"126\" width=\"270\" height=\"302\" rx=\"22\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"662\" y=\"163.44\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"700\" fill=\"#1f2933\">主要ポイント</text><circle cx=\"664\" cy=\"198\" r=\"12\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"664\" y=\"202\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#315f9f\">1</text><text x=\"686\" y=\"203.08\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"600\" fill=\"#65707b\">入力</text><circle cx=\"664\" cy=\"240\" r=\"12\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"664\" y=\"244\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#315f9f\">2</text><text x=\"686\" y=\"245.08\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"600\" fill=\"#65707b\">生成</text><circle cx=\"664\" cy=\"282\" r=\"12\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"664\" y=\"286\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#315f9f\">3</text><text x=\"686\" y=\"287.08\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"600\" fill=\"#65707b\">検証</text><circle cx=\"664\" cy=\"324\" r=\"12\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"664\" y=\"328\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#315f9f\">4</text><text x=\"686\" y=\"329.08\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"600\" fill=\"#65707b\">公開</text><circle cx=\"664\" cy=\"366\" r=\"12\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"664\" y=\"370\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#315f9f\">5</text><text x=\"686\" y=\"371.08\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"600\" fill=\"#65707b\">改善</text></svg>",
+          "summary": "制御ポイントマップ",
+          "longDescription": "複数の重要地点を空間的に配置し、どこを確認・制御するかを直感的に把握するための図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-puzzle",
+      "title": "構成要素を一体の仕組みに見せる",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 8: puzzle. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-puzzle-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "パズル/ハニカム (puzzle) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>構成要素を一体の仕組みに見せる</title><desc>複数の機能や観点が連動して一つの価値を作ることを、ハニカム状のまとまりで示す図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">構成要素を一体の仕組みに見せる</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><polygon points=\"533.7,323.0 480.0,354.0 426.3,323.0 426.3,261.0 480.0,230.0 533.7,261.0\" fill=\"#dfe8f5\" stroke=\"#315f9f\" stroke-width=\"2\" /><circle cx=\"454.0\" cy=\"272.2\" r=\"12\" fill=\"#315f9f\" /><text x=\"454.0\" y=\"276.2\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#fbfaf7\">1</text><text x=\"480\" y=\"295.84000000000003\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">テンプレー</text><text x=\"480\" y=\"313.39000000000004\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">ト</text><polygon points=\"626.0,376.3 572.4,407.3 518.7,376.3 518.7,314.3 572.4,283.3 626.0,314.3\" fill=\"#ffffff\" stroke=\"#d8d3c8\" stroke-width=\"2\" /><circle cx=\"546.3\" cy=\"325.5\" r=\"12\" fill=\"#315f9f\" /><text x=\"546.3\" y=\"329.5\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#fbfaf7\">2</text><text x=\"572.3529490595726\" y=\"357.74\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">配色</text><polygon points=\"533.7,429.6 480.0,460.6 426.3,429.6 426.3,367.6 480.0,336.6 533.7,367.6\" fill=\"#ffffff\" stroke=\"#d8d3c8\" stroke-width=\"2\" /><circle cx=\"454.0\" cy=\"378.8\" r=\"12\" fill=\"#315f9f\" /><text x=\"454.0\" y=\"382.8\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#fbfaf7\">3</text><text x=\"480\" y=\"411.06\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">余白</text><polygon points=\"441.3,376.3 387.6,407.3 334.0,376.3 334.0,314.3 387.6,283.3 441.3,314.3\" fill=\"#ffffff\" stroke=\"#d8d3c8\" stroke-width=\"2\" /><circle cx=\"361.6\" cy=\"325.5\" r=\"12\" fill=\"#315f9f\" /><text x=\"361.6\" y=\"329.5\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#fbfaf7\">4</text><text x=\"387.64705094042745\" y=\"357.74\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">アイコン</text><polygon points=\"441.3,269.7 387.6,300.7 334.0,269.7 334.0,207.7 387.6,176.7 441.3,207.7\" fill=\"#ffffff\" stroke=\"#d8d3c8\" stroke-width=\"2\" /><circle cx=\"361.6\" cy=\"218.8\" r=\"12\" fill=\"#315f9f\" /><text x=\"361.6\" y=\"222.8\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#fbfaf7\">5</text><text x=\"387.64705094042745\" y=\"251.09999999999997\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">図解</text><polygon points=\"533.7,216.4 480.0,247.4 426.3,216.4 426.3,154.4 480.0,123.4 533.7,154.4\" fill=\"#ffffff\" stroke=\"#d8d3c8\" stroke-width=\"2\" /><circle cx=\"454.0\" cy=\"165.5\" r=\"12\" fill=\"#315f9f\" /><text x=\"454.0\" y=\"169.5\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#fbfaf7\">6</text><text x=\"480\" y=\"197.78\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">検証</text><polygon points=\"626.0,269.7 572.4,300.7 518.7,269.7 518.7,207.7 572.4,176.7 626.0,207.7\" fill=\"#ffffff\" stroke=\"#d8d3c8\" stroke-width=\"2\" /><circle cx=\"546.3\" cy=\"218.8\" r=\"12\" fill=\"#315f9f\" /><text x=\"546.3\" y=\"222.8\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#fbfaf7\">7</text><text x=\"572.3529490595726\" y=\"251.09999999999994\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">出力</text></svg>",
+          "summary": "ハニカム型の構成要素",
+          "longDescription": "複数の機能や観点が連動して一つの価値を作ることを、ハニカム状のまとまりで示す図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-correlation",
+      "title": "中心概念と周辺要素の関係を描く",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 9: correlation. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-correlation-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "相関図/概念図 (correlation) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>中心概念と周辺要素の関係を描く</title><desc>中心となる概念と周辺要素の関係を放射状に整理し、全体像と関連性を一度に説明する図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">中心概念と周辺要素の関係を描く</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><path d=\"M480.0 292.0L480.0 156.0\" stroke=\"#d8d3c8\" stroke-width=\"2\" /><rect x=\"442.0\" y=\"210.0\" width=\"76\" height=\"24\" rx=\"12\" fill=\"#fbfaf7\" stroke=\"#d8d3c8\" /><text x=\"480\" y=\"228.74\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#65707b\">選択</text><path d=\"M480.0 292.0L679.7 250.0\" stroke=\"#d8d3c8\" stroke-width=\"2\" /><rect x=\"541.9\" y=\"257.0\" width=\"76\" height=\"24\" rx=\"12\" fill=\"#fbfaf7\" stroke=\"#d8d3c8\" /><text x=\"579.8609342109911\" y=\"275.7268443825036\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#65707b\">装飾</text><path d=\"M480.0 292.0L603.4 402.0\" stroke=\"#d8d3c8\" stroke-width=\"2\" /><rect x=\"503.7\" y=\"333.0\" width=\"76\" height=\"24\" rx=\"12\" fill=\"#fbfaf7\" stroke=\"#d8d3c8\" /><text x=\"541.7174514907097\" y=\"351.7531556174964\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#65707b\">構造化</text><path d=\"M480.0 292.0L356.6 402.0\" stroke=\"#d8d3c8\" stroke-width=\"2\" /><rect x=\"380.3\" y=\"333.0\" width=\"76\" height=\"24\" rx=\"12\" fill=\"#fbfaf7\" stroke=\"#d8d3c8\" /><text x=\"418.28254850929034\" y=\"351.7531556174964\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#65707b\">検査</text><path d=\"M480.0 292.0L280.3 250.0\" stroke=\"#d8d3c8\" stroke-width=\"2\" /><rect x=\"342.1\" y=\"257.0\" width=\"76\" height=\"24\" rx=\"12\" fill=\"#fbfaf7\" stroke=\"#d8d3c8\" /><text x=\"380.1390657890089\" y=\"275.7268443825036\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#65707b\">出力</text><rect x=\"403\" y=\"121\" width=\"154\" height=\"70\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"480\" y=\"162.42\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">テンプレート</text><rect x=\"602.7218684219822\" y=\"214.97368876500715\" width=\"154\" height=\"70\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"679.7218684219822\" y=\"256.39368876500714\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">アイコン</text><rect x=\"526.4349029814193\" y=\"367.0263112349928\" width=\"154\" height=\"70\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"603.4349029814193\" y=\"408.44631123499283\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">図解</text><rect x=\"279.5650970185807\" y=\"367.0263112349928\" width=\"154\" height=\"70\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"356.5650970185807\" y=\"408.44631123499283\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">lint</text><rect x=\"203.27813157801774\" y=\"214.97368876500718\" width=\"154\" height=\"70\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"280.27813157801774\" y=\"256.3936887650072\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">render</text><rect x=\"364\" y=\"246\" width=\"232\" height=\"92\" rx=\"24\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"480\" y=\"300.44\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"800\" fill=\"#1f2933\">高品質なDeckSpec</text></svg>",
+          "summary": "中心概念の相関図",
+          "longDescription": "中心となる概念と周辺要素の関係を放射状に整理し、全体像と関連性を一度に説明する図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-matrix",
+      "title": "優先度を二軸で判断する",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 10: matrix. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-matrix-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "マトリクス (matrix) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>優先度を二軸で判断する</title><desc>二つの評価軸で施策や論点を配置し、優先順位や位置づけを判断しやすくする図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">優先度を二軸で判断する</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><path d=\"M144 418v-276m-8 8 8-8 8 8M172 446h610m-8-8 8 8-8 8\" fill=\"none\" stroke=\"#315f9f\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><text x=\"114\" y=\"275\" transform=\"rotate(-90 114 275)\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#65707b\">効果</text><text x=\"482\" y=\"476.42\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#65707b\">実装容易性</text><rect x=\"172\" y=\"132\" width=\"620\" height=\"286\" rx=\"22\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><rect x=\"172\" y=\"132\" width=\"310\" height=\"143\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"327\" y=\"209.28\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"17\" font-weight=\"700\" fill=\"#1f2933\">Quick win</text><rect x=\"482\" y=\"132\" width=\"310\" height=\"143\" fill=\"#dfe8f5\" stroke=\"#d8d3c8\" /><text x=\"637\" y=\"209.28\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"17\" font-weight=\"700\" fill=\"#1f2933\">Strategic</text><rect x=\"172\" y=\"275\" width=\"310\" height=\"143\" fill=\"#f3f1ea\" stroke=\"#d8d3c8\" /><text x=\"327\" y=\"352.28\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"17\" font-weight=\"700\" fill=\"#1f2933\">Defer</text><rect x=\"482\" y=\"275\" width=\"310\" height=\"143\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"637\" y=\"352.28\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"17\" font-weight=\"700\" fill=\"#1f2933\">Maintain</text></svg>",
+          "summary": "二軸の優先度マトリクス",
+          "longDescription": "二つの評価軸で施策や論点を配置し、優先順位や位置づけを判断しやすくする図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-venn",
+      "title": "重なりから価値を説明する",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 11: venn. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-venn-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "ベン図 (venn) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>重なりから価値を説明する</title><desc>二つまたは三つの領域の重なりを示し、共通価値や交差領域を説明する図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">重なりから価値を説明する</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><circle cx=\"390\" cy=\"268\" r=\"118\" fill=\"#315f9f\" fill-opacity=\"0.42\" stroke=\"#315f9f\" stroke-width=\"2\" /><circle cx=\"570\" cy=\"268\" r=\"118\" fill=\"#dfe8f5\" fill-opacity=\"0.42\" stroke=\"#315f9f\" stroke-width=\"2\" /><circle cx=\"480\" cy=\"382\" r=\"118\" fill=\"#f3f1ea\" fill-opacity=\"0.42\" stroke=\"#315f9f\" stroke-width=\"2\" /><text x=\"390\" y=\"245.1\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#1f2933\">Design</text><text x=\"570\" y=\"245.1\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#1f2933\">Automation</text><text x=\"480\" y=\"423.1\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#1f2933\">Accessibility</text><rect x=\"390\" y=\"268\" width=\"180\" height=\"46\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"480\" y=\"297.76\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"800\" fill=\"#1f2933\">信頼できるスライド</text></svg>",
+          "summary": "重なりを示すベン図",
+          "longDescription": "二つまたは三つの領域の重なりを示し、共通価値や交差領域を説明する図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-cross",
+      "title": "構成要素を成果へつなげる",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 12: cross. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-cross-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "数式 (cross) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>構成要素を成果へつなげる</title><desc>複数の入力や条件が組み合わさって成果へつながることを、数式のように簡潔に示す図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">構成要素を成果へつなげる</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><rect x=\"46\" y=\"238\" width=\"160\" height=\"92\" rx=\"22\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"126\" y=\"290.1\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#1f2933\">構成</text><text x=\"221\" y=\"294\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"30\" font-weight=\"700\" fill=\"#315f9f\">+</text><rect x=\"262\" y=\"238\" width=\"160\" height=\"92\" rx=\"22\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"342\" y=\"290.1\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#1f2933\">図解</text><text x=\"437\" y=\"294\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"30\" font-weight=\"700\" fill=\"#315f9f\">+</text><rect x=\"478\" y=\"238\" width=\"160\" height=\"92\" rx=\"22\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"558\" y=\"290.1\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#1f2933\">検証</text><text x=\"653\" y=\"294\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"30\" font-weight=\"700\" fill=\"#315f9f\">=</text><rect x=\"694\" y=\"238\" width=\"190\" height=\"92\" rx=\"22\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"789\" y=\"290.44\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"800\" fill=\"#1f2933\">美しいPPTX</text></svg>",
+          "summary": "要素を足し合わせる数式図",
+          "longDescription": "複数の入力や条件が組み合わさって成果へつながることを、数式のように簡潔に示す図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-set",
+      "title": "要素をまとまりごとに整理する",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 13: set. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-set-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "グループ/集合 (set) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>要素をまとまりごとに整理する</title><desc>関連する要素をグループに分け、どの要素がどのまとまりに属するかを整理する図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">要素をまとまりごとに整理する</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><rect x=\"64\" y=\"134\" width=\"262.6666666666667\" height=\"282\" rx=\"26\" fill=\"#dfe8f5\" stroke=\"#d8d3c8\" /><circle cx=\"195.33333333333334\" cy=\"192\" r=\"34\" fill=\"#315f9f\" opacity=\"1\" /><text x=\"195.33333333333334\" y=\"257.44\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"800\" fill=\"#1f2933\">Planning</text><rect x=\"90\" y=\"298\" width=\"210.66666666666669\" height=\"28\" rx=\"14\" fill=\"#f3f1ea\" stroke=\"#d8d3c8\" /><text x=\"195.33333333333334\" y=\"316.74\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#65707b\">brief</text><rect x=\"90\" y=\"340\" width=\"210.66666666666669\" height=\"28\" rx=\"14\" fill=\"#f3f1ea\" stroke=\"#d8d3c8\" /><text x=\"195.33333333333334\" y=\"358.74\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#65707b\">schematic</text><rect x=\"348.6666666666667\" y=\"134\" width=\"262.6666666666667\" height=\"282\" rx=\"26\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"480\" cy=\"192\" r=\"34\" fill=\"#315f9f\" opacity=\"0.85\" /><text x=\"480\" y=\"257.44\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"800\" fill=\"#1f2933\">Visual</text><rect x=\"374.6666666666667\" y=\"298\" width=\"210.66666666666669\" height=\"28\" rx=\"14\" fill=\"#f3f1ea\" stroke=\"#d8d3c8\" /><text x=\"480\" y=\"316.74\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#65707b\">story</text><rect x=\"374.6666666666667\" y=\"340\" width=\"210.66666666666669\" height=\"28\" rx=\"14\" fill=\"#f3f1ea\" stroke=\"#d8d3c8\" /><text x=\"480\" y=\"358.74\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#65707b\">lint</text><rect x=\"633.3333333333334\" y=\"134\" width=\"262.6666666666667\" height=\"282\" rx=\"26\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"764.6666666666667\" cy=\"192\" r=\"34\" fill=\"#315f9f\" opacity=\"0.85\" /><text x=\"764.6666666666667\" y=\"257.44\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"800\" fill=\"#1f2933\">Quality</text><rect x=\"659.3333333333334\" y=\"298\" width=\"210.66666666666669\" height=\"28\" rx=\"14\" fill=\"#f3f1ea\" stroke=\"#d8d3c8\" /><text x=\"764.6666666666667\" y=\"316.74\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#65707b\">icons</text><rect x=\"659.3333333333334\" y=\"340\" width=\"210.66666666666669\" height=\"28\" rx=\"14\" fill=\"#f3f1ea\" stroke=\"#d8d3c8\" /><text x=\"764.6666666666667\" y=\"358.74\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#65707b\">render</text></svg>",
+          "summary": "グループ別の集合図",
+          "longDescription": "関連する要素をグループに分け、どの要素がどのまとまりに属するかを整理する図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-contrast",
+      "title": "二つの選択肢の違いを際立たせる",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 14: contrast. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-contrast-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "項目比較 (contrast) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>二つの選択肢の違いを際立たせる</title><desc>二つの選択肢や状態を左右に並べ、差分と判断材料を強調する比較図です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">二つの選択肢の違いを際立たせる</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><rect x=\"70\" y=\"136\" width=\"355\" height=\"278\" rx=\"24\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><rect x=\"70\" y=\"136\" width=\"355\" height=\"52\" rx=\"24\" fill=\"#f3f1ea\" /><text x=\"247.5\" y=\"172.44\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"800\" fill=\"#1f2933\">Freehand</text><path d=\"M96 232h303\" stroke=\"#d8d3c8\" opacity=\"0.65\" /><text x=\"102\" y=\"225.08\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"600\" fill=\"#1f2933\">自由度が高い</text><path d=\"M96 277h303\" stroke=\"#d8d3c8\" opacity=\"0.65\" /><text x=\"102\" y=\"270.08\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"600\" fill=\"#1f2933\">崩れやすい</text><path d=\"M96 322h303\" stroke=\"#d8d3c8\" opacity=\"0.65\" /><text x=\"102\" y=\"315.08\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"600\" fill=\"#1f2933\">再現性が低い</text><rect x=\"535\" y=\"136\" width=\"355\" height=\"278\" rx=\"24\" fill=\"#dfe8f5\" stroke=\"#d8d3c8\" /><rect x=\"535\" y=\"136\" width=\"355\" height=\"52\" rx=\"24\" fill=\"#315f9f\" /><text x=\"712.5\" y=\"172.44\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"800\" fill=\"#fbfaf7\">Preset</text><path d=\"M561 232h303\" stroke=\"#d8d3c8\" opacity=\"0.65\" /><text x=\"567\" y=\"225.08\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"600\" fill=\"#1f2933\">短時間で作れる</text><path d=\"M561 277h303\" stroke=\"#d8d3c8\" opacity=\"0.65\" /><text x=\"567\" y=\"270.08\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"600\" fill=\"#1f2933\">崩れにくい</text><path d=\"M561 322h303\" stroke=\"#d8d3c8\" opacity=\"0.65\" /><text x=\"567\" y=\"315.08\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"600\" fill=\"#1f2933\">再利用しやすい</text><circle cx=\"480\" cy=\"275\" r=\"34\" fill=\"#fbfaf7\" stroke=\"#315f9f\" stroke-width=\"3\" /><text x=\"480\" y=\"284\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"22\" font-weight=\"800\" fill=\"#315f9f\">VS</text></svg>",
+          "summary": "二案比較",
+          "longDescription": "二つの選択肢や状態を左右に並べ、差分と判断材料を強調する比較図です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-scale-contrast",
+      "title": "数値差を面積で直感化する",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 15: scale-contrast. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-scale-contrast-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "規模比較 (scale-contrast) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>数値差を面積で直感化する</title><desc>複数の数値差を円の面積で表し、大小関係を直感的に伝える図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">数値差を面積で直感化する</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><circle cx=\"150.75\" cy=\"296\" r=\"112.0\" fill=\"#315f9f\" fill-opacity=\"0.88\" stroke=\"#315f9f\" stroke-width=\"2\" /><text x=\"150.75\" y=\"303\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"22\" font-weight=\"800\" fill=\"#fbfaf7\">80</text><text x=\"150.75\" y=\"446.42\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">Manual</text><circle cx=\"370.25\" cy=\"296\" r=\"92.5\" fill=\"#dfe8f5\" fill-opacity=\"0.72\" stroke=\"#315f9f\" stroke-width=\"2\" /><text x=\"370.25\" y=\"303\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"22\" font-weight=\"800\" fill=\"#1f2933\">45</text><text x=\"370.25\" y=\"426.92\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">Preset</text><circle cx=\"589.75\" cy=\"296\" r=\"77.6\" fill=\"#dfe8f5\" fill-opacity=\"0.72\" stroke=\"#315f9f\" stroke-width=\"2\" /><text x=\"589.75\" y=\"303\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"22\" font-weight=\"800\" fill=\"#1f2933\">25</text><text x=\"589.75\" y=\"412.02332556124594\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">Finalize</text><circle cx=\"809.25\" cy=\"296\" r=\"67.8\" fill=\"#dfe8f5\" fill-opacity=\"0.72\" stroke=\"#315f9f\" stroke-width=\"2\" /><text x=\"809.25\" y=\"303\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"22\" font-weight=\"800\" fill=\"#1f2933\">15</text><text x=\"809.25\" y=\"402.1949907475931\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">Sample</text></svg>",
+          "summary": "規模比較",
+          "longDescription": "複数の数値差を円の面積で表し、大小関係を直感的に伝える図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-grow",
+      "title": "市場や対象範囲を段階で絞る",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 16: grow. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-grow-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "規模分析 (grow) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>市場や対象範囲を段階で絞る</title><desc>全体から到達可能範囲、初期対象へと段階的に絞り込む考え方を同心円で示す図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">市場や対象範囲を段階で絞る</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><circle cx=\"368\" cy=\"292\" r=\"148\" fill=\"#dfe8f5\" stroke=\"#315f9f\" stroke-width=\"1.5\" /><circle cx=\"368\" cy=\"292\" r=\"104\" fill=\"#e8eef8\" stroke=\"#315f9f\" stroke-width=\"1.5\" /><circle cx=\"368\" cy=\"292\" r=\"62\" fill=\"#f1f5fb\" stroke=\"#315f9f\" stroke-width=\"2.5\" /><text x=\"368\" y=\"183.1\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"800\" fill=\"#1f2933\">TAM</text><text x=\"368\" y=\"285.1\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"800\" fill=\"#1f2933\">SAM</text><text x=\"368\" y=\"385.1\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"800\" fill=\"#1f2933\">SOM</text><rect x=\"604\" y=\"142\" width=\"286\" height=\"276\" rx=\"24\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"638\" cy=\"186\" r=\"14\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"664\" y=\"191.76\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#1f2933\">TAM</text><text x=\"664\" y=\"219.74\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"500\" fill=\"#65707b\">全体市場</text><circle cx=\"638\" cy=\"258\" r=\"12\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"664\" y=\"263.76\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#1f2933\">SAM</text><text x=\"664\" y=\"291.74\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"500\" fill=\"#65707b\">到達可能市場</text><circle cx=\"638\" cy=\"330\" r=\"10\" fill=\"#315f9f\" stroke=\"#315f9f\" /><text x=\"664\" y=\"335.76\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"700\" fill=\"#1f2933\">SOM</text><text x=\"664\" y=\"363.74\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"500\" fill=\"#65707b\">初期対象</text></svg>",
+          "summary": "TAM/SAM/SOM 型の規模分析",
+          "longDescription": "全体から到達可能範囲、初期対象へと段階的に絞り込む考え方を同心円で示す図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-layer",
+      "title": "役割をレイヤーで積み上げる",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 17: layer. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-layer-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "レイヤー構造 (layer) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>役割をレイヤーで積み上げる</title><desc>上位から下位、または体験から基盤までの役割を層として積み上げる図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">役割をレイヤーで積み上げる</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><rect x=\"112\" y=\"128\" width=\"736\" height=\"51.2\" rx=\"18\" fill=\"#dfe8f5\" stroke=\"#d8d3c8\" /><circle cx=\"142\" cy=\"153.6\" r=\"14\" fill=\"#315f9f\" /><text x=\"142\" y=\"158.6\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"800\" fill=\"#fbfaf7\">1</text><text x=\"170\" y=\"158.7\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"800\" fill=\"#1f2933\">Experience</text><text x=\"716\" y=\"157.34\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#65707b\">UI</text><rect x=\"128\" y=\"187.2\" width=\"704\" height=\"51.2\" rx=\"18\" fill=\"#f3f1ea\" stroke=\"#d8d3c8\" /><circle cx=\"158\" cy=\"212.79999999999998\" r=\"14\" fill=\"#315f9f\" /><text x=\"158\" y=\"217.79999999999998\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"800\" fill=\"#fbfaf7\">2</text><text x=\"186\" y=\"217.89999999999998\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"800\" fill=\"#1f2933\">Workflow</text><text x=\"700\" y=\"216.54\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#65707b\">Agent</text><rect x=\"144\" y=\"246.4\" width=\"672\" height=\"51.2\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"174\" cy=\"272\" r=\"14\" fill=\"#315f9f\" /><text x=\"174\" y=\"277\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"800\" fill=\"#fbfaf7\">3</text><text x=\"202\" y=\"277.1\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"800\" fill=\"#1f2933\">Validation</text><text x=\"684\" y=\"275.74\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#65707b\">Core</text><rect x=\"160\" y=\"305.6\" width=\"640\" height=\"51.2\" rx=\"18\" fill=\"#f3f1ea\" stroke=\"#d8d3c8\" /><circle cx=\"190\" cy=\"331.20000000000005\" r=\"14\" fill=\"#315f9f\" /><text x=\"190\" y=\"336.20000000000005\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"800\" fill=\"#fbfaf7\">4</text><text x=\"218\" y=\"336.30000000000007\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"800\" fill=\"#1f2933\">Rendering</text><text x=\"668\" y=\"334.94000000000005\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#65707b\">PPTX</text><rect x=\"176\" y=\"364.8\" width=\"608\" height=\"51.2\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"206\" cy=\"390.40000000000003\" r=\"14\" fill=\"#315f9f\" /><text x=\"206\" y=\"395.40000000000003\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"800\" fill=\"#fbfaf7\">5</text><text x=\"234\" y=\"395.50000000000006\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"800\" fill=\"#1f2933\">Assets</text><text x=\"652\" y=\"394.14000000000004\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#65707b\">SVG</text></svg>",
+          "summary": "積層レイヤー構造",
+          "longDescription": "上位から下位、または体験から基盤までの役割を層として積み上げる図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-triangle",
+      "title": "基盤から成果までを積み上げる",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 18: triangle. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-triangle-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "トライアングル (triangle) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>基盤から成果までを積み上げる</title><desc>下層の基盤から上層の成果へ段階的に積み上がる関係を示す図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">基盤から成果までを積み上げる</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><path d=\"M395.0 128.0H565.0L621.3 195.0H338.8Z\" fill=\"#315f9f\" stroke=\"#d8d3c8\" /><text x=\"480\" y=\"169.6\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"800\" fill=\"#fbfaf7\">Outcome</text><path d=\"M338.8 203.0H621.3L677.5 270.0H282.5Z\" fill=\"#eaf0f8\" stroke=\"#d8d3c8\" /><text x=\"480\" y=\"244.6\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"800\" fill=\"#1f2933\">Visual grammar</text><path d=\"M282.5 278.0H677.5L733.8 345.0H226.3Z\" fill=\"#f4f7fc\" stroke=\"#d8d3c8\" /><text x=\"480\" y=\"319.6\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"800\" fill=\"#1f2933\">DeckSpec rules</text><path d=\"M226.3 353.0H733.8L790.0 420.0H170.0Z\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"480\" y=\"394.6\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"800\" fill=\"#1f2933\">Accessible tokens</text></svg>",
+          "summary": "ピラミッド型の階層",
+          "longDescription": "下層の基盤から上層の成果へ段階的に積み上がる関係を示す図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-step",
+      "title": "成熟度を段階的に上げる",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 19: step. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-step-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "階段/ステップ (step) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>成熟度を段階的に上げる</title><desc>導入から展開までの成長段階を階段状に示し、進むべき順序を明確にする図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">成熟度を段階的に上げる</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><rect x=\"86\" y=\"299.6\" width=\"144.8\" height=\"124.4\" rx=\"20\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"114\" cy=\"327.6\" r=\"14\" fill=\"#315f9f\" /><text x=\"114\" y=\"332.6\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"800\" fill=\"#fbfaf7\">1</text><text x=\"158.4\" y=\"378.56\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"800\" fill=\"#1f2933\">導入</text><path d=\"M230.8 299.6h16v-30.72\" fill=\"none\" stroke=\"#315f9f\" stroke-width=\"2\" stroke-linecap=\"round\" /><rect x=\"246.8\" y=\"261.2\" width=\"144.8\" height=\"162.8\" rx=\"20\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"274.8\" cy=\"289.2\" r=\"14\" fill=\"#315f9f\" /><text x=\"274.8\" y=\"294.2\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"800\" fill=\"#fbfaf7\">2</text><text x=\"319.20000000000005\" y=\"359.36\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"800\" fill=\"#1f2933\">標準化</text><path d=\"M391.6 261.2h16v-23.04\" fill=\"none\" stroke=\"#315f9f\" stroke-width=\"2\" stroke-linecap=\"round\" /><rect x=\"407.6\" y=\"222.8\" width=\"144.8\" height=\"201.2\" rx=\"20\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"435.6\" cy=\"250.8\" r=\"14\" fill=\"#315f9f\" /><text x=\"435.6\" y=\"255.8\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"800\" fill=\"#fbfaf7\">3</text><text x=\"480\" y=\"340.15999999999997\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"800\" fill=\"#1f2933\">自動化</text><path d=\"M552.4000000000001 222.8h16v-15.360000000000003\" fill=\"none\" stroke=\"#315f9f\" stroke-width=\"2\" stroke-linecap=\"round\" /><rect x=\"568.4000000000001\" y=\"184.39999999999998\" width=\"144.8\" height=\"239.60000000000002\" rx=\"20\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"596.4000000000001\" cy=\"212.39999999999998\" r=\"14\" fill=\"#315f9f\" /><text x=\"596.4000000000001\" y=\"217.39999999999998\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"800\" fill=\"#fbfaf7\">4</text><text x=\"640.8000000000001\" y=\"320.96\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"800\" fill=\"#1f2933\">最適化</text><path d=\"M713.2 184.39999999999998h16v-7.679999999999995\" fill=\"none\" stroke=\"#315f9f\" stroke-width=\"2\" stroke-linecap=\"round\" /><rect x=\"729.2\" y=\"146\" width=\"144.8\" height=\"278\" rx=\"20\" fill=\"#dfe8f5\" stroke=\"#d8d3c8\" /><circle cx=\"757.2\" cy=\"174\" r=\"14\" fill=\"#315f9f\" /><text x=\"757.2\" y=\"179\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"800\" fill=\"#fbfaf7\">5</text><text x=\"801.6\" y=\"301.76\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"800\" fill=\"#1f2933\">展開</text></svg>",
+          "summary": "成熟度の階段図",
+          "longDescription": "導入から展開までの成長段階を階段状に示し、進むべき順序を明確にする図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-gantt",
+      "title": "作業と期間を同じ面で見る",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 20: gantt. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-gantt-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "ガントチャート (gantt) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>作業と期間を同じ面で見る</title><desc>タスクと期間を同じ表面に並べ、進行計画や担当タイミングを把握しやすくする図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">作業と期間を同じ面で見る</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><rect x=\"64\" y=\"130\" width=\"138\" height=\"246\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><rect x=\"216\" y=\"130\" width=\"680\" height=\"246\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><rect x=\"216\" y=\"130\" width=\"170\" height=\"36\" fill=\"#dfe8f5\" stroke=\"#d8d3c8\" /><text x=\"301\" y=\"154.74\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"800\" fill=\"#1f2933\">W1</text><rect x=\"386\" y=\"130\" width=\"170\" height=\"36\" fill=\"#f3f1ea\" stroke=\"#d8d3c8\" /><text x=\"471\" y=\"154.74\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"800\" fill=\"#1f2933\">W2</text><rect x=\"556\" y=\"130\" width=\"170\" height=\"36\" fill=\"#dfe8f5\" stroke=\"#d8d3c8\" /><text x=\"641\" y=\"154.74\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"800\" fill=\"#1f2933\">W3</text><rect x=\"726\" y=\"130\" width=\"170\" height=\"36\" fill=\"#f3f1ea\" stroke=\"#d8d3c8\" /><text x=\"811\" y=\"154.74\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"800\" fill=\"#1f2933\">W4</text><rect x=\"64\" y=\"166\" width=\"138\" height=\"42\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"78\" y=\"191.74\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#1f2933\">設計</text><rect x=\"216\" y=\"166\" width=\"680\" height=\"42\" fill=\"#ffffff\" stroke=\"#d8d3c8\" opacity=\"0.74\" /><rect x=\"226\" y=\"176\" width=\"320\" height=\"22\" rx=\"11\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><rect x=\"64\" y=\"208\" width=\"138\" height=\"42\" fill=\"#f3f1ea\" stroke=\"#d8d3c8\" /><text x=\"78\" y=\"233.74\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#1f2933\">実装</text><rect x=\"216\" y=\"208\" width=\"680\" height=\"42\" fill=\"#f3f1ea\" stroke=\"#d8d3c8\" opacity=\"0.74\" /><rect x=\"396\" y=\"218\" width=\"150\" height=\"22\" rx=\"11\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><rect x=\"64\" y=\"250\" width=\"138\" height=\"42\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"78\" y=\"275.74\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#1f2933\">サンプル</text><rect x=\"216\" y=\"250\" width=\"680\" height=\"42\" fill=\"#ffffff\" stroke=\"#d8d3c8\" opacity=\"0.74\" /><rect x=\"566\" y=\"260\" width=\"320\" height=\"22\" rx=\"11\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><rect x=\"64\" y=\"292\" width=\"138\" height=\"42\" fill=\"#f3f1ea\" stroke=\"#d8d3c8\" /><text x=\"78\" y=\"317.74\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#1f2933\">検証</text><rect x=\"216\" y=\"292\" width=\"680\" height=\"42\" fill=\"#f3f1ea\" stroke=\"#d8d3c8\" opacity=\"0.74\" /><rect x=\"736\" y=\"302\" width=\"150\" height=\"22\" rx=\"11\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><rect x=\"64\" y=\"334\" width=\"138\" height=\"42\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><text x=\"78\" y=\"359.74\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#1f2933\">公開</text><rect x=\"216\" y=\"334\" width=\"680\" height=\"42\" fill=\"#ffffff\" stroke=\"#d8d3c8\" opacity=\"0.74\" /><rect x=\"736\" y=\"344\" width=\"150\" height=\"22\" rx=\"11\" fill=\"#315f9f\" stroke=\"#315f9f\" /></svg>",
+          "summary": "簡易ガントチャート",
+          "longDescription": "タスクと期間を同じ表面に並べ、進行計画や担当タイミングを把握しやすくする図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-ranking",
+      "title": "優先順位と差を同時に見せる",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 21: ranking. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-ranking-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "ランキング (ranking) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>優先順位と差を同時に見せる</title><desc>順位だけでなく数値差も棒で示し、優先順位の意味を伝えやすくする図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">優先順位と差を同時に見せる</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><rect x=\"78\" y=\"124\" width=\"804\" height=\"38\" rx=\"18\" fill=\"#dfe8f5\" stroke=\"#d8d3c8\" /><circle cx=\"102\" cy=\"143\" r=\"16\" fill=\"#315f9f\" stroke=\"#315f9f\" /><text x=\"102\" y=\"149\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"800\" fill=\"#fbfaf7\">1</text><text x=\"132\" y=\"148.42\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">Flow</text><rect x=\"370\" y=\"134\" width=\"438.0\" height=\"18\" rx=\"9\" fill=\"#315f9f\" stroke=\"#315f9f\" /><text x=\"824\" y=\"149\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#65707b\">95</text><rect x=\"78\" y=\"172\" width=\"804\" height=\"38\" rx=\"18\" fill=\"#dfe8f5\" stroke=\"#d8d3c8\" /><circle cx=\"102\" cy=\"191\" r=\"16\" fill=\"#315f9f\" stroke=\"#315f9f\" /><text x=\"102\" y=\"197\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"800\" fill=\"#fbfaf7\">2</text><text x=\"132\" y=\"196.42\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">Matrix</text><rect x=\"370\" y=\"182\" width=\"368.8\" height=\"18\" rx=\"9\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"754.8421052631579\" y=\"197\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#65707b\">80</text><rect x=\"78\" y=\"220\" width=\"804\" height=\"38\" rx=\"18\" fill=\"#dfe8f5\" stroke=\"#d8d3c8\" /><circle cx=\"102\" cy=\"239\" r=\"16\" fill=\"#315f9f\" stroke=\"#315f9f\" /><text x=\"102\" y=\"245\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"800\" fill=\"#fbfaf7\">3</text><text x=\"132\" y=\"244.42\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">Layer</text><rect x=\"370\" y=\"230\" width=\"322.7\" height=\"18\" rx=\"9\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"708.7368421052631\" y=\"245\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#65707b\">70</text><rect x=\"78\" y=\"268\" width=\"804\" height=\"38\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"102\" cy=\"287\" r=\"16\" fill=\"#f3f1ea\" stroke=\"#315f9f\" /><text x=\"102\" y=\"293\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"800\" fill=\"#315f9f\">4</text><text x=\"132\" y=\"292.42\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">Gantt</text><rect x=\"370\" y=\"278\" width=\"239.7\" height=\"18\" rx=\"9\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"625.7473684210527\" y=\"293\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#65707b\">52</text><rect x=\"78\" y=\"316\" width=\"804\" height=\"38\" rx=\"18\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"102\" cy=\"335\" r=\"16\" fill=\"#f3f1ea\" stroke=\"#315f9f\" /><text x=\"102\" y=\"341\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"14\" font-weight=\"800\" fill=\"#315f9f\">5</text><text x=\"132\" y=\"340.42\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"13\" font-weight=\"700\" fill=\"#1f2933\">Venn</text><rect x=\"370\" y=\"326\" width=\"161.4\" height=\"18\" rx=\"9\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"547.3684210526316\" y=\"341\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"700\" fill=\"#65707b\">35</text></svg>",
+          "summary": "ランキング図",
+          "longDescription": "順位だけでなく数値差も棒で示し、優先順位の意味を伝えやすくする図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-list",
+      "title": "重要項目を縦に読みやすく並べる",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 22: list. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-list-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "箇条書き縦 (list) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>重要項目を縦に読みやすく並べる</title><desc>複数の要点を縦方向に並べ、読み順と視線移動を安定させる図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">重要項目を縦に読みやすく並べる</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><rect x=\"96\" y=\"128\" width=\"768\" height=\"48\" rx=\"14\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"124\" cy=\"152\" r=\"12\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"124\" y=\"157\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"700\" fill=\"#315f9f\">✓</text><text x=\"154\" y=\"158\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"600\" fill=\"#1f2933\">1スライド1メッセージ</text><rect x=\"96\" y=\"190\" width=\"768\" height=\"48\" rx=\"14\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"124\" cy=\"214\" r=\"12\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"124\" y=\"219\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"700\" fill=\"#315f9f\">✓</text><text x=\"154\" y=\"220\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"600\" fill=\"#1f2933\">十分な余白</text><rect x=\"96\" y=\"252\" width=\"768\" height=\"48\" rx=\"14\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"124\" cy=\"276\" r=\"12\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"124\" y=\"281\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"700\" fill=\"#315f9f\">✓</text><text x=\"154\" y=\"282\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"600\" fill=\"#1f2933\">可視ラベル</text><rect x=\"96\" y=\"314\" width=\"768\" height=\"48\" rx=\"14\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"124\" cy=\"338\" r=\"12\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"124\" y=\"343\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"700\" fill=\"#315f9f\">✓</text><text x=\"154\" y=\"344\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"600\" fill=\"#1f2933\">高コントラスト</text><rect x=\"96\" y=\"376\" width=\"768\" height=\"48\" rx=\"14\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"124\" cy=\"400\" r=\"12\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"124\" y=\"405\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"700\" fill=\"#315f9f\">✓</text><text x=\"154\" y=\"406\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"600\" fill=\"#1f2933\">出典管理</text></svg>",
+          "summary": "縦型リスト",
+          "longDescription": "複数の要点を縦方向に並べ、読み順と視線移動を安定させる図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-list-horizontal",
+      "title": "三つから四つの要点を横並びで見せる",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 23: list-horizontal. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-list-horizontal-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "箇条書き横 (list-horizontal) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>三つから四つの要点を横並びで見せる</title><desc>少数の重要ポイントを横並びカードで配置し、同列の観点として比較しやすくする図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">三つから四つの要点を横並びで見せる</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><rect x=\"48\" y=\"205\" width=\"202.5\" height=\"138\" rx=\"22\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"149.25\" cy=\"184\" r=\"18\" fill=\"#315f9f\" /><text x=\"149.25\" y=\"190\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"700\" fill=\"#fbfaf7\">1</text><text x=\"149.25\" y=\"255\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#1f2933\">低彩度カラー</text><rect x=\"268.5\" y=\"205\" width=\"202.5\" height=\"138\" rx=\"22\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"369.75\" cy=\"184\" r=\"18\" fill=\"#315f9f\" /><text x=\"369.75\" y=\"190\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"700\" fill=\"#fbfaf7\">2</text><text x=\"369.75\" y=\"255\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#1f2933\">8ptグリッド</text><rect x=\"489\" y=\"205\" width=\"202.5\" height=\"138\" rx=\"22\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"590.25\" cy=\"184\" r=\"18\" fill=\"#315f9f\" /><text x=\"590.25\" y=\"190\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"700\" fill=\"#fbfaf7\">3</text><text x=\"590.25\" y=\"255\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#1f2933\">アイコン活用</text><rect x=\"709.5\" y=\"205\" width=\"202.5\" height=\"138\" rx=\"22\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"810.75\" cy=\"184\" r=\"18\" fill=\"#315f9f\" /><text x=\"810.75\" y=\"190\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"16\" font-weight=\"700\" fill=\"#fbfaf7\">4</text><text x=\"810.75\" y=\"255\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"700\" fill=\"#1f2933\">可読性優先</text></svg>",
+          "summary": "横型リスト",
+          "longDescription": "少数の重要ポイントを横並びカードで配置し、同列の観点として比較しやすくする図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-list-enumeration",
+      "title": "手順とチェックを番号で示す",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 24: list-enumeration. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-list-enumeration-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "箇条書き羅列 (list-enumeration) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>手順とチェックを番号で示す</title><desc>順番のある手順やチェック項目を番号付きで示し、抜け漏れなく追えるようにする図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">手順とチェックを番号で示す</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><rect x=\"96\" y=\"128\" width=\"768\" height=\"48\" rx=\"14\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"124\" cy=\"152\" r=\"12\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"124\" y=\"157\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"700\" fill=\"#315f9f\">1</text><text x=\"154\" y=\"158\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"600\" fill=\"#1f2933\">rulesを読む</text><rect x=\"96\" y=\"190\" width=\"768\" height=\"48\" rx=\"14\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"124\" cy=\"214\" r=\"12\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"124\" y=\"219\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"700\" fill=\"#315f9f\">2</text><text x=\"154\" y=\"220\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"600\" fill=\"#1f2933\">型を選ぶ</text><rect x=\"96\" y=\"252\" width=\"768\" height=\"48\" rx=\"14\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"124\" cy=\"276\" r=\"12\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"124\" y=\"281\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"700\" fill=\"#315f9f\">3</text><text x=\"154\" y=\"282\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"600\" fill=\"#1f2933\">DeckSpecを書く</text><rect x=\"96\" y=\"314\" width=\"768\" height=\"48\" rx=\"14\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"124\" cy=\"338\" r=\"12\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"124\" y=\"343\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"700\" fill=\"#315f9f\">4</text><text x=\"154\" y=\"344\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"600\" fill=\"#1f2933\">finalizeする</text><rect x=\"96\" y=\"376\" width=\"768\" height=\"48\" rx=\"14\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><circle cx=\"124\" cy=\"400\" r=\"12\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><text x=\"124\" y=\"405\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"12\" font-weight=\"700\" fill=\"#315f9f\">5</text><text x=\"154\" y=\"406\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"15\" font-weight=\"600\" fill=\"#1f2933\">公開する</text></svg>",
+          "summary": "番号付きリスト",
+          "longDescription": "順番のある手順やチェック項目を番号付きで示し、抜け漏れなく追えるようにする図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "schematic-minimal-mockup",
+      "title": "画面イメージを簡潔に共有する",
+      "layout": "schematic-minimal",
+      "speakerNotes": "Pattern 25: mockup. 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+      "elements": [
+        {
+          "id": "minimal-mockup-visual",
+          "x": 0,
+          "y": 0,
+          "w": 13.333,
+          "h": 7.5,
+          "readingOrder": 1,
+          "decorative": false,
+          "altText": "モックアップ (mockup) minimal schematic template",
+          "type": "diagram",
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 960 540\" role=\"img\"><title>画面イメージを簡潔に共有する</title><desc>アプリやポータルの雰囲気を簡潔な画面風カードとして示し、概念を共有しやすくする図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。</desc><rect width=\"960\" height=\"540\" fill=\"#fbfaf7\" /><text x=\"48\" y=\"58\" text-anchor=\"start\" font-family=\"Arial, sans-serif\" font-size=\"24\" font-weight=\"700\" fill=\"#1f2933\">画面イメージを簡潔に共有する</text><rect x=\"48\" y=\"84\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#315f9f\" /><rect x=\"170\" y=\"116\" width=\"620\" height=\"310\" rx=\"28\" fill=\"#ffffff\" stroke=\"#d8d3c8\" /><rect x=\"170\" y=\"116\" width=\"620\" height=\"46\" rx=\"28\" fill=\"#f3f1ea\" /><circle cx=\"198\" cy=\"139\" r=\"5\" fill=\"#315f9f\" /><circle cx=\"216\" cy=\"139\" r=\"5\" fill=\"#d8d3c8\" /><circle cx=\"234\" cy=\"139\" r=\"5\" fill=\"#d8d3c8\" /><rect x=\"212\" y=\"198\" width=\"536\" height=\"64\" rx=\"18\" fill=\"#dfe8f5\" stroke=\"#315f9f\" /><circle cx=\"228\" cy=\"294\" r=\"7\" fill=\"#315f9f\" /><rect x=\"248\" y=\"287\" width=\"470\" height=\"14\" rx=\"7\" fill=\"#f3f1ea\" /><text x=\"750\" y=\"299\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#65707b\">Templates</text><circle cx=\"228\" cy=\"332\" r=\"7\" fill=\"#315f9f\" /><rect x=\"248\" y=\"325\" width=\"452\" height=\"14\" rx=\"7\" fill=\"#f3f1ea\" /><text x=\"750\" y=\"337\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#65707b\">Assets</text><circle cx=\"228\" cy=\"370\" r=\"7\" fill=\"#315f9f\" /><rect x=\"248\" y=\"363\" width=\"434\" height=\"14\" rx=\"7\" fill=\"#f3f1ea\" /><text x=\"750\" y=\"375\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#65707b\">Schematics</text><circle cx=\"228\" cy=\"408\" r=\"7\" fill=\"#315f9f\" /><rect x=\"248\" y=\"401\" width=\"416\" height=\"14\" rx=\"7\" fill=\"#f3f1ea\" /><text x=\"750\" y=\"413\" text-anchor=\"middle\" font-family=\"Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" fill=\"#65707b\">Finalize</text></svg>",
+          "summary": "UIモックアップ",
+          "longDescription": "アプリやポータルの雰囲気を簡潔な画面風カードとして示し、概念を共有しやすくする図解です。 余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。"
+        }
+      ]
+    },
+    {
+      "id": "source-references",
+      "title": "参考URL・出典",
+      "layout": "references",
+      "speakerNotes": "Source URLs and attribution:\n1. Slideland schematic and taste references | URL: https://www.slideland.tech/docs/schematic | Notes: Layouts are inspired by common schematic categories, not copied from source visuals.",
+      "elements": [
+        {
+          "id": "references-title",
+          "type": "text",
+          "role": "title",
+          "text": "参考URL・出典",
+          "x": 0.75,
+          "y": 0.58,
+          "w": 11.8,
+          "h": 0.9,
+          "fontSize": 34,
+          "color": "#1f2933",
+          "contrastBackground": "#ffffff",
+          "bold": true,
+          "decorative": false,
+          "readingOrder": 1
+        },
+        {
+          "id": "references-message",
+          "type": "text",
+          "role": "body",
+          "text": "外部サイトを参照した内容は、以下のURLを出典として確認できます（1件）。",
+          "x": 0.78,
+          "y": 1.48,
+          "w": 11.6,
+          "h": 0.42,
+          "fontSize": 20,
+          "color": "#59636e",
+          "contrastBackground": "#ffffff",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 2
+        },
+        {
+          "id": "reference-1",
+          "type": "text",
+          "role": "caption",
+          "text": "1. Slideland schematic and taste references\nhttps://www.slideland.tech/docs/schematic",
+          "x": 0.85,
+          "y": 2.08,
+          "w": 11.45,
+          "h": 4.76,
+          "fontSize": 14,
+          "color": "#1f2933",
+          "contrastBackground": "#ffffff",
+          "bold": false,
+          "decorative": false,
+          "readingOrder": 3
         }
       ]
     }

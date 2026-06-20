@@ -187,13 +187,13 @@ A sample deck explaining this tool is included:
 - `samples/pptcreater-overview.deck.json` — source DeckSpec
 - `samples/pptcreater-overview.pptx` — generated PowerPoint
 - `samples/pptcreater-overview.html` — static Studio preview
-- `samples/pptcreater-overview-minimal.*` — minimal/simple explanation pattern
-- `samples/pptcreater-overview-stylish.*` — stylish/cool presentation pattern
-- `samples/pptcreater-overview-report.*` — formal report pattern
-- `samples/pptcreater-overview-presentation.*` — bold live-presentation pattern
-- `samples/pptcreater-overview-technical.*` — technical/architecture pattern
-- `samples/schematic-patterns.deck.json` — Slideland-inspired schematic preset examples
-- `samples/schematic-patterns.pptx` — generated schematic examples
+- `samples/pptcreater-overview-minimal.*` — minimal/simple explanation pattern plus all 25 minimal schematic templates
+- `samples/pptcreater-overview-stylish.*` — stylish/cool presentation pattern plus all 25 stylish schematic templates
+- `samples/pptcreater-overview-report.*` — formal report pattern plus all 25 report schematic templates
+- `samples/pptcreater-overview-presentation.*` — bold live-presentation pattern plus all 25 presentation schematic templates
+- `samples/pptcreater-overview-technical.*` — technical/architecture pattern plus all 25 technical schematic templates
+- `samples/schematic-patterns.deck.json` — minimal-mode Slideland-inspired schematic preset examples
+- `samples/schematic-patterns.pptx` — generated minimal schematic examples
 - `samples/schematic-patterns.html` — static Studio preview
 
 Regenerate it with:
@@ -204,8 +204,10 @@ pptcreater lint samples\pptcreater-overview.deck.json
 pptcreater render samples\pptcreater-overview.deck.json --output samples\pptcreater-overview.pptx --polish
 pptcreater studio samples\pptcreater-overview.deck.json --output samples\pptcreater-overview.html
 npm run sample:schematics
-pptcreater render samples\schematic-patterns.deck.json --output samples\schematic-patterns.pptx --polish
-pptcreater studio samples\schematic-patterns.deck.json --output samples\schematic-patterns.html
+foreach ($name in "pptcreater-overview-minimal","pptcreater-overview-stylish","pptcreater-overview-report","pptcreater-overview-presentation","pptcreater-overview-technical","pptcreater-overview","schematic-patterns") {
+  pptcreater render "samples\$name.deck.json" --output "samples\$name.pptx" --polish
+  pptcreater studio "samples\$name.deck.json" --output "samples\$name.html"
+}
 ```
 
 The style-pattern samples intentionally change the communication context, not just the color palette:

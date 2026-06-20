@@ -4,7 +4,7 @@ import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, resolveIconForKeyword, searchAllSvgAssets, suggestIconForKeyword } from "@pptcreater/assets-svg";
-import { DiagramIntentSchema, SCHEMATIC_KIND_CATALOG, SCHEMATIC_STYLE_PRESETS, SchematicKindSchema, SchematicToneSchema, renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram, schematicPresetForStyleProfile } from "@pptcreater/diagram";
+import { DiagramIntentSchema, SCHEMATIC_KIND_CATALOG, SCHEMATIC_MODE_TEMPLATES, SCHEMATIC_STYLE_PRESETS, SchematicKindSchema, SchematicToneSchema, renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram, schematicPresetForStyleProfile, schematicTemplatesForStyleProfile } from "@pptcreater/diagram";
 import {
   BUSINESS_STYLE_MODES,
   createEditWithCopilotPrompt,
@@ -893,13 +893,16 @@ export function createPptcreaterMcpServer(): McpServer {
       title: "List schematic presets",
       description: "List Slideland-style schematic kinds and mode-aware presets. Use this before selecting a schematic kind for a slide.",
       inputSchema: {
-        styleProfile: z.enum(["minimal", "stylish", "report", "presentation", "technical"]).optional()
+        styleProfile: z.enum(["minimal", "stylish", "report", "presentation", "technical"]).optional(),
+        includeAll: z.boolean().default(false)
       }
     },
-    async ({ styleProfile }) =>
+    async ({ styleProfile, includeAll }) =>
       jsonText({
         selected: schematicPresetForStyleProfile(styleProfile),
+        selectedTemplates: schematicTemplatesForStyleProfile(styleProfile),
         presets: SCHEMATIC_STYLE_PRESETS,
+        ...(includeAll ? { templates: SCHEMATIC_MODE_TEMPLATES } : {}),
         kinds: SCHEMATIC_KIND_CATALOG
       })
   );

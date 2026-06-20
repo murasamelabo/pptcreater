@@ -17,7 +17,7 @@ import {
 } from "@pptcreater/core";
 
 const require = createRequire(import.meta.url);
-const JSZip = require("jszip") as { loadAsync(data: Buffer): Promise<{ file(name: string): { async(type: "string"): Promise<string> } | null; file(name: string, data: string): void; generateAsync(options: { type: "nodebuffer" }): Promise<Buffer> }> };
+const JSZip = require("jszip") as { loadAsync(data: Buffer): Promise<{ file(name: string): { async(type: "string"): Promise<string> } | null; file(name: string, data: string): void; remove(name: string): void; generateAsync(options: { type: "nodebuffer" }): Promise<Buffer> }> };
 type PptxSlide = {
   background: { color: string };
   addText(text: string, options: Record<string, unknown>): void;
@@ -330,13 +330,14 @@ async function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpe
           endArrowType: element.line.endArrowType
         }
       : { color: "64748b", transparency: 100 };
-    slide.addShape(pptxShapeName(element.shape), {
+    const shapeOptions = {
       ...position,
       objectName: shapeObjectName(element, slideIndex),
       fill,
       line,
-      rectRadius: element.radius
-    });
+      ...(element.shape === "roundRect" || element.shape === "roundedRect" ? { rectRadius: element.radius } : {})
+    };
+    slide.addShape(pptxShapeName(element.shape), shapeOptions);
     return;
   }
 
@@ -398,6 +399,10 @@ function decorateCnvPr(attrs: string, description: string, selfClosing: boolean)
   return `<p:cNvPr${cleanedAttrs} ${descriptionAttr}${selfClosing ? "/>" : ">"}`;
 }
 
+function removeNotesMasterReference(xml: string): string {
+  return xml.replace(/<p:notesMasterIdLst\b[\s\S]*?<\/p:notesMasterIdLst>/, "");
+}
+
 async function markShapeAccessibility(pptxPath: string, deck: DeckSpec): Promise<void> {
   const descriptionsBySlide = shapeDescriptions(deck);
   const zip = await JSZip.loadAsync(await readFile(pptxPath));
@@ -429,6 +434,55 @@ async function markShapeAccessibility(pptxPath: string, deck: DeckSpec): Promise
       zip.file(name, patched);
     })
   );
+
+  const presentationFile = zip.file("ppt/presentation.xml");
+  if (presentationFile) {
+    const presentationXml = await presentationFile.async("string");
+    const normalized = removeNotesMasterReference(presentationXml);
+    if (normalized !== presentationXml) {
+      zip.file("ppt/presentation.xml", normalized);
+    }
+  }
+
+  const presentationRels = zip.file("ppt/_rels/presentation.xml.rels");
+  if (presentationRels) {
+    const relsXml = await presentationRels.async("string");
+    const normalizedRels = relsXml.replace(/<Relationship\b(?=[^>]*(?:\/notesMaster|\/notesMasters))[^>]*\/>/gi, "");
+    if (normalizedRels !== relsXml) {
+      zip.file("ppt/_rels/presentation.xml.rels", normalizedRels);
+    }
+  }
+
+  const relationshipNames = Object.keys((zip as unknown as { files: Record<string, unknown> }).files).filter((name) => name.startsWith("ppt/notesSlides/_rels/") && name.endsWith(".rels"));
+  await Promise.all(
+    relationshipNames.map(async (name) => {
+      const relsFile = zip.file(name);
+      if (!relsFile) {
+        return;
+      }
+
+      const relsXml = await relsFile.async("string");
+      const normalizedRels = relsXml.replace(/<Relationship\b(?=[^>]*(?:\/notesMaster|\/notesMasters))[^>]*\/>/gi, "");
+      if (normalizedRels !== relsXml) {
+        zip.file(name, normalizedRels);
+      }
+    })
+  );
+
+  const contentTypes = zip.file("[Content_Types].xml");
+  if (contentTypes) {
+    const contentTypesXml = await contentTypes.async("string");
+    const normalizedContentTypes = contentTypesXml.replace(/<Override\b[^>]*\/notesMasters\/notesMaster\d+\.xml[^>]*\/>/g, "");
+    if (normalizedContentTypes !== contentTypesXml) {
+      zip.file("[Content_Types].xml", normalizedContentTypes);
+    }
+  }
+
+  for (const name of Object.keys((zip as unknown as { files: Record<string, unknown> }).files)) {
+    if (name.startsWith("ppt/notesMasters/")) {
+      zip.remove(name);
+    }
+  }
 
   await writeFile(pptxPath, await zip.generateAsync({ type: "nodebuffer" }));
 }

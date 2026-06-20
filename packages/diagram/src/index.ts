@@ -416,6 +416,22 @@ export type SchematicStylePreset = {
   note: string;
 };
 
+export type SchematicModeTemplate = {
+  styleProfile: SchematicStyleProfile;
+  kind: SchematicKind;
+  tone: SchematicTone;
+  titleJa: string;
+  summary: string;
+  longDescription: string;
+  items: readonly string[];
+  secondaryItems?: readonly string[];
+  axisX?: string;
+  axisY?: string;
+  usage: string;
+};
+
+type BaseSchematicModeTemplate = Omit<SchematicModeTemplate, "styleProfile" | "kind" | "tone" | "usage">;
+
 const COMPLETE_SCHEMATIC_SET = [
   "table",
   "tree",
@@ -477,6 +493,213 @@ export const SCHEMATIC_STYLE_PRESETS = {
   }
 } satisfies Record<SchematicStyleProfile, SchematicStylePreset>;
 
+const BASE_SCHEMATIC_TEMPLATES: Record<SchematicKind, BaseSchematicModeTemplate> = {
+  table: {
+    titleJa: "判断材料を一枚でそろえる",
+    summary: "判断材料をそろえる表",
+    longDescription: "主要な観点と確認事項を二列で整理し、論点の抜け漏れを減らす表形式の図解です。",
+    items: ["観点", "品質", "速度", "再利用", "安全性"],
+    secondaryItems: ["確認事項", "lintで検証", "finalizeで短縮", "assetsを検索", "safe SVGのみ"]
+  },
+  tree: {
+    titleJa: "構造を階層でほどく",
+    summary: "階層を整理するツリー",
+    longDescription: "中心テーマから構成要素へ枝分かれさせ、複雑な情報を上位下位の関係で理解しやすくする図解です。",
+    items: ["PPT作成", "構成", "図解", "資産", "検証", "出力"]
+  },
+  flow: {
+    titleJa: "作成から検証までを一直線で進める",
+    summary: "横方向の作業フロー",
+    longDescription: "左から右へ進む作業や判断の流れを短いステップで示し、次の行動を迷わせない図解です。",
+    items: ["brief", "template", "schematic", "lint", "render"]
+  },
+  "vertical-flow": {
+    titleJa: "承認の流れを上から下へ迷わせない",
+    summary: "縦方向の承認フロー",
+    longDescription: "上から下へ流れる手順、承認、エスカレーションを、読み順どおりに追える図解です。",
+    items: ["申請", "レビュー", "承認", "配布", "改善"]
+  },
+  cycle: {
+    titleJa: "改善の循環を途切れなく回す",
+    summary: "継続改善サイクル",
+    longDescription: "繰り返し発生する活動を循環として示し、単発ではなく継続的に改善する関係を伝える図解です。",
+    items: ["計画", "作成", "確認", "修正", "公開", "学習"]
+  },
+  "before-after": {
+    titleJa: "現状と改善後の差分を一目で伝える",
+    summary: "Before/After 比較",
+    longDescription: "現在の課題と改善後の状態を左右に置き、中央の遷移で変化の意味を説明する図解です。",
+    items: ["Before", "手作業で配置", "改行が不安定", "修正ループが長い", "再利用しづらい"],
+    secondaryItems: ["After", "プリセットを選択", "自動fit", "finalizeで短縮", "サンプルを再利用"]
+  },
+  map: {
+    titleJa: "制御ポイントを地図のように把握する",
+    summary: "制御ポイントマップ",
+    longDescription: "複数の重要地点を空間的に配置し、どこを確認・制御するかを直感的に把握するための図解です。",
+    items: ["入力", "生成", "検証", "公開", "改善"],
+    secondaryItems: ["主要ポイント"]
+  },
+  puzzle: {
+    titleJa: "構成要素を一体の仕組みに見せる",
+    summary: "ハニカム型の構成要素",
+    longDescription: "複数の機能や観点が連動して一つの価値を作ることを、ハニカム状のまとまりで示す図解です。",
+    items: ["テンプレート", "配色", "余白", "アイコン", "図解", "検証", "出力"]
+  },
+  correlation: {
+    titleJa: "中心概念と周辺要素の関係を描く",
+    summary: "中心概念の相関図",
+    longDescription: "中心となる概念と周辺要素の関係を放射状に整理し、全体像と関連性を一度に説明する図解です。",
+    items: ["高品質なDeckSpec", "テンプレート", "アイコン", "図解", "lint", "render"],
+    secondaryItems: ["選択", "装飾", "構造化", "検査", "出力"]
+  },
+  matrix: {
+    titleJa: "優先度を二軸で判断する",
+    summary: "二軸の優先度マトリクス",
+    longDescription: "二つの評価軸で施策や論点を配置し、優先順位や位置づけを判断しやすくする図解です。",
+    items: ["Quick win", "Strategic", "Defer", "Maintain"],
+    axisX: "実装容易性",
+    axisY: "効果"
+  },
+  venn: {
+    titleJa: "重なりから価値を説明する",
+    summary: "重なりを示すベン図",
+    longDescription: "二つまたは三つの領域の重なりを示し、共通価値や交差領域を説明する図解です。",
+    items: ["Design", "Automation", "Accessibility"],
+    secondaryItems: ["信頼できるスライド"]
+  },
+  cross: {
+    titleJa: "構成要素を成果へつなげる",
+    summary: "要素を足し合わせる数式図",
+    longDescription: "複数の入力や条件が組み合わさって成果へつながることを、数式のように簡潔に示す図解です。",
+    items: ["構成", "図解", "検証"],
+    secondaryItems: ["美しいPPTX"]
+  },
+  set: {
+    titleJa: "要素をまとまりごとに整理する",
+    summary: "グループ別の集合図",
+    longDescription: "関連する要素をグループに分け、どの要素がどのまとまりに属するかを整理する図解です。",
+    items: ["Planning", "Visual", "Quality"],
+    secondaryItems: ["brief", "story", "icons", "schematic", "lint", "render"]
+  },
+  contrast: {
+    titleJa: "二つの選択肢の違いを際立たせる",
+    summary: "二案比較",
+    longDescription: "二つの選択肢や状態を左右に並べ、差分と判断材料を強調する比較図です。",
+    items: ["Freehand", "自由度が高い", "崩れやすい", "再現性が低い"],
+    secondaryItems: ["Preset", "短時間で作れる", "崩れにくい", "再利用しやすい"]
+  },
+  "scale-contrast": {
+    titleJa: "数値差を面積で直感化する",
+    summary: "規模比較",
+    longDescription: "複数の数値差を円の面積で表し、大小関係を直感的に伝える図解です。",
+    items: ["Manual 80", "Preset 45", "Finalize 25", "Sample 15"],
+    secondaryItems: ["80", "45", "25", "15"]
+  },
+  grow: {
+    titleJa: "市場や対象範囲を段階で絞る",
+    summary: "TAM/SAM/SOM 型の規模分析",
+    longDescription: "全体から到達可能範囲、初期対象へと段階的に絞り込む考え方を同心円で示す図解です。",
+    items: ["TAM", "SAM", "SOM"],
+    secondaryItems: ["全体市場", "到達可能市場", "初期対象"]
+  },
+  layer: {
+    titleJa: "役割をレイヤーで積み上げる",
+    summary: "積層レイヤー構造",
+    longDescription: "上位から下位、または体験から基盤までの役割を層として積み上げる図解です。",
+    items: ["Experience", "Workflow", "Validation", "Rendering", "Assets"],
+    secondaryItems: ["UI", "Agent", "Core", "PPTX", "SVG"]
+  },
+  triangle: {
+    titleJa: "基盤から成果までを積み上げる",
+    summary: "ピラミッド型の階層",
+    longDescription: "下層の基盤から上層の成果へ段階的に積み上がる関係を示す図解です。",
+    items: ["Outcome", "Visual grammar", "DeckSpec rules", "Accessible tokens"]
+  },
+  step: {
+    titleJa: "成熟度を段階的に上げる",
+    summary: "成熟度の階段図",
+    longDescription: "導入から展開までの成長段階を階段状に示し、進むべき順序を明確にする図解です。",
+    items: ["導入", "標準化", "自動化", "最適化", "展開"]
+  },
+  gantt: {
+    titleJa: "作業と期間を同じ面で見る",
+    summary: "簡易ガントチャート",
+    longDescription: "タスクと期間を同じ表面に並べ、進行計画や担当タイミングを把握しやすくする図解です。",
+    items: ["設計", "実装", "サンプル", "検証", "公開"],
+    secondaryItems: ["W1", "W2", "W3", "W4"]
+  },
+  ranking: {
+    titleJa: "優先順位と差を同時に見せる",
+    summary: "ランキング図",
+    longDescription: "順位だけでなく数値差も棒で示し、優先順位の意味を伝えやすくする図解です。",
+    items: ["Flow 95", "Matrix 80", "Layer 70", "Gantt 52", "Venn 35"],
+    secondaryItems: ["95", "80", "70", "52", "35"]
+  },
+  list: {
+    titleJa: "重要項目を縦に読みやすく並べる",
+    summary: "縦型リスト",
+    longDescription: "複数の要点を縦方向に並べ、読み順と視線移動を安定させる図解です。",
+    items: ["1スライド1メッセージ", "十分な余白", "可視ラベル", "高コントラスト", "出典管理"]
+  },
+  "list-horizontal": {
+    titleJa: "三つから四つの要点を横並びで見せる",
+    summary: "横型リスト",
+    longDescription: "少数の重要ポイントを横並びカードで配置し、同列の観点として比較しやすくする図解です。",
+    items: ["低彩度カラー", "8ptグリッド", "アイコン活用", "可読性優先"]
+  },
+  "list-enumeration": {
+    titleJa: "手順とチェックを番号で示す",
+    summary: "番号付きリスト",
+    longDescription: "順番のある手順やチェック項目を番号付きで示し、抜け漏れなく追えるようにする図解です。",
+    items: ["rulesを読む", "型を選ぶ", "DeckSpecを書く", "finalizeする", "公開する"]
+  },
+  mockup: {
+    titleJa: "画面イメージを簡潔に共有する",
+    summary: "UIモックアップ",
+    longDescription: "アプリやポータルの雰囲気を簡潔な画面風カードとして示し、概念を共有しやすくする図解です。",
+    items: ["Templates", "Assets", "Schematics", "Finalize"]
+  }
+};
+
+const SCHEMATIC_STYLE_TEMPLATE_USAGE: Record<SchematicStyleProfile, string> = {
+  minimal: "余白を広く取り、情報を削ぎ落として静かに見せるモード向けテンプレート。",
+  stylish: "濃色背景と強い焦点を使い、印象に残るビジュアルとして見せるモード向けテンプレート。",
+  report: "説明責任、比較、証跡、表形式の読みやすさを優先するモード向けテンプレート。",
+  presentation: "登壇時に一目で追える大きな流れと対比を優先するモード向けテンプレート。",
+  technical: "構造、制御点、依存関係、レイヤーを読み解きやすくするモード向けテンプレート。"
+};
+
+function buildSchematicModeTemplates(styleProfile: SchematicStyleProfile): Record<SchematicKind, SchematicModeTemplate> {
+  const preset = SCHEMATIC_STYLE_PRESETS[styleProfile];
+  const templates = {} as Record<SchematicKind, SchematicModeTemplate>;
+  for (const kind of COMPLETE_SCHEMATIC_SET) {
+    const base = BASE_SCHEMATIC_TEMPLATES[kind];
+    templates[kind] = {
+      styleProfile,
+      kind,
+      tone: preset.tone,
+      titleJa: base.titleJa,
+      summary: base.summary,
+      longDescription: `${base.longDescription} ${SCHEMATIC_STYLE_TEMPLATE_USAGE[styleProfile]}`,
+      items: base.items,
+      secondaryItems: base.secondaryItems,
+      axisX: base.axisX,
+      axisY: base.axisY,
+      usage: SCHEMATIC_STYLE_TEMPLATE_USAGE[styleProfile]
+    };
+  }
+
+  return templates;
+}
+
+export const SCHEMATIC_MODE_TEMPLATES = {
+  minimal: buildSchematicModeTemplates("minimal"),
+  stylish: buildSchematicModeTemplates("stylish"),
+  report: buildSchematicModeTemplates("report"),
+  presentation: buildSchematicModeTemplates("presentation"),
+  technical: buildSchematicModeTemplates("technical")
+} satisfies Record<SchematicStyleProfile, Record<SchematicKind, SchematicModeTemplate>>;
+
 function isSchematicStyleProfile(value: string | undefined): value is SchematicStyleProfile {
   return value === "minimal" || value === "stylish" || value === "report" || value === "presentation" || value === "technical";
 }
@@ -492,6 +715,14 @@ export function schematicToneForStyleProfile(styleProfile: string | undefined = 
 
 export function schematicKindsForStyleProfile(styleProfile: string | undefined = "minimal"): readonly SchematicKind[] {
   return schematicPresetForStyleProfile(styleProfile).kinds;
+}
+
+export function schematicTemplatesForStyleProfile(styleProfile: string | undefined = "minimal"): Record<SchematicKind, SchematicModeTemplate> {
+  return SCHEMATIC_MODE_TEMPLATES[schematicPresetForStyleProfile(styleProfile).styleProfile];
+}
+
+export function schematicTemplateForStyleProfile(styleProfile: string | undefined, kind: SchematicKind): SchematicModeTemplate {
+  return schematicTemplatesForStyleProfile(styleProfile)[kind];
 }
 
 type SchematicPalette = {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SCHEMATIC_KIND_CATALOG, SCHEMATIC_KINDS, SCHEMATIC_STYLE_PRESETS, renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram, schematicKindsForStyleProfile, schematicToneForStyleProfile } from "./index.js";
+import { SCHEMATIC_KIND_CATALOG, SCHEMATIC_KINDS, SCHEMATIC_MODE_TEMPLATES, SCHEMATIC_STYLE_PRESETS, renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram, schematicKindsForStyleProfile, schematicTemplatesForStyleProfile, schematicToneForStyleProfile } from "./index.js";
 
 const TEST_FULL_WIDTH_PATTERN = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}\u30FC\u30FB\uFF01-\uFF60\uFFE0-\uFFE6]/u;
 
@@ -518,9 +518,34 @@ describe("schematic diagram rendering", () => {
       expect(schematicToneForStyleProfile(styleProfile)).toBe(preset.tone);
       expect(new Set(schematicKindsForStyleProfile(styleProfile))).toEqual(new Set(SCHEMATIC_KINDS));
       expect(preset.primaryKinds.every((kind) => preset.kinds.includes(kind))).toBe(true);
+      expect(Object.keys(schematicTemplatesForStyleProfile(styleProfile)).sort()).toEqual([...SCHEMATIC_KINDS].sort());
     }
     expect(schematicToneForStyleProfile("unknown")).toBe("minimal");
     expect(Object.keys(SCHEMATIC_KIND_CATALOG).sort()).toEqual([...SCHEMATIC_KINDS].sort());
+    expect(Object.keys(SCHEMATIC_MODE_TEMPLATES).sort()).toEqual(["minimal", "presentation", "report", "stylish", "technical"]);
+  });
+
+  it("renders every mode-specific schematic template", () => {
+    for (const [styleProfile, templates] of Object.entries(SCHEMATIC_MODE_TEMPLATES)) {
+      for (const template of Object.values(templates)) {
+        const rendered = renderSchematicDiagram({
+          kind: template.kind,
+          title: template.titleJa,
+          summary: template.summary,
+          longDescription: template.longDescription,
+          items: [...template.items],
+          secondaryItems: [...(template.secondaryItems ?? [])],
+          axisX: template.axisX,
+          axisY: template.axisY,
+          tone: template.tone
+        });
+
+        expect(rendered.svg).toContain("<svg");
+        expect(rendered.svg).toContain(template.titleJa);
+        expect(template.styleProfile).toBe(styleProfile);
+        expect(rendered.svg).not.toContain("NaN");
+      }
+    }
   });
 
   it("keeps scale comparison radii finite for negative numeric labels", () => {

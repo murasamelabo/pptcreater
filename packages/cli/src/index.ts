@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import { dirname } from "node:path";
 import { Command, InvalidArgumentError, Option } from "commander";
 import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, resolveIconForKeyword, searchAllSvgAssets, suggestIconForKeyword, type BuiltinIconName } from "@pptcreater/assets-svg";
-import { SCHEMATIC_KIND_CATALOG, SCHEMATIC_STYLE_PRESETS, renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram, schematicPresetForStyleProfile } from "@pptcreater/diagram";
+import { SCHEMATIC_KIND_CATALOG, SCHEMATIC_MODE_TEMPLATES, SCHEMATIC_STYLE_PRESETS, renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram, schematicPresetForStyleProfile, schematicTemplatesForStyleProfile } from "@pptcreater/diagram";
 import {
   BUSINESS_STYLE_MODES,
   cliMessage,
@@ -851,13 +851,16 @@ program
 program
   .command("schematic-presets")
   .description("List Slideland-style schematic kinds and mode-aware preset recommendations.")
-  .option("--style-profile <profile>", "minimal, stylish, report, presentation, or technical")
+  .option("--style-profile <profile>", "minimal, stylish, report, presentation, or technical", parseStyleProfile)
+  .option("--all", "Include all mode template sets in JSON output", false)
   .option("--json", "Emit JSON", false)
-  .action(commandAction((options: { styleProfile?: string; json: boolean }) => {
+  .action(commandAction((options: { styleProfile?: StyleProfile; all: boolean; json: boolean }) => {
     const selected = schematicPresetForStyleProfile(options.styleProfile);
     const payload = {
       selected,
+      selectedTemplates: schematicTemplatesForStyleProfile(options.styleProfile),
       presets: SCHEMATIC_STYLE_PRESETS,
+      ...(options.all ? { templates: SCHEMATIC_MODE_TEMPLATES } : {}),
       kinds: SCHEMATIC_KIND_CATALOG
     };
     if (options.json) {
@@ -868,6 +871,7 @@ program
     console.log(`Selected style: ${selected.styleProfile} (${selected.tone})`);
     console.log(selected.note);
     console.log(`Primary kinds: ${selected.primaryKinds.join(", ")}`);
+    console.log(`Mode templates: ${Object.keys(payload.selectedTemplates).length}`);
     console.log("");
     console.log(Object.entries(SCHEMATIC_KIND_CATALOG).map(([kind, entry]) => `${kind}\t${entry.labelEn}\t${entry.description}`).join("\n"));
   }));
