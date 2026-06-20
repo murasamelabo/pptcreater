@@ -528,6 +528,125 @@ describe("layout polish", () => {
     expect(callout?.type === "text" ? callout.fontSize : undefined).toBe(14);
   });
 
+  it("keeps dense caption labels readable by shortening instead of shrinking below 12pt", () => {
+    const slide: Slide = {
+      id: "dense-caption",
+      title: "Dense caption",
+      layout: "title-content",
+      elements: [
+        {
+          id: "caption",
+          type: "text",
+          role: "caption",
+          text: "出産費用助成 母子訪問 赤ちゃん訪問 申請期限と口座",
+          x: 12.1,
+          y: 7.02,
+          w: 0.55,
+          h: 0.44,
+          fontSize: 9,
+          bold: false,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const caption = normalized.elements[0];
+
+    expect(caption.type === "text" ? caption.fontSize : undefined).toBeGreaterThanOrEqual(12);
+    expect(caption.type === "text" ? caption.text : "").toContain("…");
+  });
+
+  it("uses a verified ellipsis fallback for extremely narrow captions", () => {
+    const slide: Slide = {
+      id: "narrow-caption",
+      title: "Narrow caption",
+      layout: "title-content",
+      elements: [
+        {
+          id: "caption",
+          type: "text",
+          role: "caption",
+          text: "abcdef",
+          x: 13.1,
+          y: 7.12,
+          w: 0.12,
+          h: 0.2,
+          fontSize: 9,
+          bold: false,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const caption = normalized.elements[0];
+
+    expect(caption.type === "text" ? caption.text : "").toBe("…");
+  });
+
+  it("preserves generated Diagram Intent caption sizing during polish", () => {
+    const slide: Slide = {
+      id: "intent-caption",
+      title: "Intent caption",
+      layout: "title-content",
+      elements: [
+        {
+          id: "diagram-intent-step-label",
+          type: "text",
+          role: "caption",
+          text: "PIM\nJIT / approval",
+          x: 6,
+          y: 3,
+          w: 1.0,
+          h: 0.42,
+          fontSize: 8.5,
+          bold: false,
+          decorative: false,
+          altText: "generated diagram intent text",
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const caption = normalized.elements[0];
+
+    expect(caption.type === "text" ? caption.fontSize : undefined).toBe(8.5);
+    expect(caption.type === "text" ? caption.text : "").toBe("PIM\nJIT / approval");
+  });
+
+  it("does not silently truncate callout text during polish", () => {
+    const slide: Slide = {
+      id: "callout-overflow",
+      title: "Callout overflow",
+      layout: "title-content",
+      elements: [
+        {
+          id: "callout",
+          type: "text",
+          role: "callout",
+          text: "Important callout text that should remain available to the author",
+          x: 12.1,
+          y: 7.0,
+          w: 0.55,
+          h: 0.4,
+          fontSize: 10,
+          bold: true,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const callout = normalized.elements[0];
+
+    expect(callout.type === "text" ? callout.text : "").not.toContain("…");
+  });
+
   it("insets square accent bars that are flush with rounded card edges", () => {
     const slide: Slide = {
       id: "accent-bars",
@@ -597,7 +716,8 @@ describe("layout polish", () => {
     const label = normalized.elements[0];
 
     expect(label.type === "text" ? label.fontSize : undefined).toBe(14);
-    expect(label.h).toBeGreaterThan(0.42);
+    expect(label.type === "text" ? label.text : "").toBe("Evidence\ncollection");
+    expect(label.h).toBeGreaterThanOrEqual(0.42);
   });
 
   it("does not silently truncate copy that cannot fit", () => {

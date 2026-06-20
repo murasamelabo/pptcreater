@@ -1214,8 +1214,8 @@ describe("DeckSpec linting", () => {
 
     const report = lintDeckSpec(parseDeckSpec(deck));
 
-    expect(report.issues.some((issue) => issue.code === "text.small-font")).toBe(false);
-    expect(report.issues.some((issue) => issue.code === "layout.text-too-small-to-read")).toBe(false);
+    expect(report.issues.some((issue) => issue.code === "text.small-font")).toBe(true);
+    expect(report.issues.some((issue) => issue.code === "layout.text-too-small-to-read")).toBe(true);
   });
 
   it("allows compact Diagram Intent captions without small-font warnings", () => {

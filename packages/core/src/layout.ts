@@ -89,14 +89,20 @@ function textMinimumFontSize(element: TextElement): number {
   }
 
   if (element.role === "caption") {
-    // Captions include hand-placed diagram labels in very small boxes; allow shrinking far enough
-    // to fit them (a non-blocking small-font warning is preferable to overflow or a blocked render).
-    return 8.5;
+    if (isGeneratedDiagramIntentText(element)) {
+      return 8.5;
+    }
+
+    return 12;
   }
 
   // Dense Japanese report cards still need a practical floor; below 12pt, projected decks and
   // Studio/PDF previews become visibly fragile even when the text technically fits.
   return 12;
+}
+
+function isGeneratedDiagramIntentText(element: TextElement): boolean {
+  return /^diagram-intent-/u.test(element.id) || element.altText === "generated diagram intent text";
 }
 
 export function textReadableMinimumFontSize(element: TextElement): number {
@@ -109,7 +115,11 @@ export function textReadableMinimumFontSize(element: TextElement): number {
   }
 
   if (element.role === "caption") {
-    return 8.5;
+    if (isGeneratedDiagramIntentText(element)) {
+      return 8.5;
+    }
+
+    return 12;
   }
 
   return 12;
@@ -472,6 +482,10 @@ function normalizeTextLines(element: TextElement, fontSize: number): string {
 
   if (element.text.includes("\n") && element.role !== "title") {
     const lines = element.text.split(/\r?\n/);
+    if (element.role === "caption" && isGeneratedDiagramIntentText(element)) {
+      return lines.join("\n");
+    }
+
     const hasBlankLine = lines.some((line) => !line.trim());
     const nonEmptyLines = lines.filter((line) => line.trim());
     if (nonEmptyLines.length > 1 && nonEmptyLines.some(isListLine)) {
@@ -518,6 +532,42 @@ function normalizeTextLines(element: TextElement, fontSize: number): string {
   }
 
   return wrapParagraph(element.text, unitsPerLine).join("\n");
+}
+
+function textFitsAtSize(element: TextElement, fontSize: number): { fits: boolean; text: string } {
+  const text = normalizeTextLines(element, fontSize);
+  const candidate = { ...element, text, fontSize };
+  const overflow = estimateTextOverflow(candidate);
+  const hasBadBreak = Boolean(findTextLineBreakIssue(candidate));
+  const lineWidthBudget = lineCapacity(candidate.w, fontSize);
+  const anyLineTooWide = text.split(/\r?\n/).some((line) => textUnits(line.trim()) > lineWidthBudget + 0.01);
+  return { fits: !overflow.overflows && !hasBadBreak && !anyLineTooWide, text };
+}
+
+function shortenTextToFit(element: TextElement, fontSize: number): string {
+  const normalized = element.text.replace(/\s+/g, " ").trim();
+  const chars = Array.from(normalized);
+  if (chars.length <= 1) {
+    return normalized;
+  }
+
+  let low = 1;
+  let high = chars.length;
+  const ellipsisFit = textFitsAtSize({ ...element, text: "…" }, fontSize);
+  let best = ellipsisFit.fits ? ellipsisFit.text : "…";
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const candidateText = `${chars.slice(0, mid).join("").trimEnd()}…`;
+    const result = textFitsAtSize({ ...element, text: candidateText }, fontSize);
+    if (result.fits) {
+      best = result.text;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  return best;
 }
 
 export function findTextLineBreakIssue(element: TextElement): string | undefined {
@@ -568,27 +618,25 @@ export function findTextLineBreakIssue(element: TextElement): string | undefined
   return undefined;
 }
 
-function fitTextElement(element: TextElement, tokens: DesignTokens): TextElement {
+function fitTextElement(element: TextElement, tokens: DesignTokens, options: { shortenAtMinimum?: boolean } = {}): TextElement {
   let next: TextElement = cloneElement(element);
-  let fontSize = Math.max(next.fontSize ?? defaultFontSizeForRole(next.role, tokens), textReadableMinimumFontSize(next));
-  const minimumFontSize = Math.min(textMinimumFontSize(next), fontSize);
+  let fontSize = Math.max(next.fontSize ?? defaultFontSizeForRole(next.role, tokens), textMinimumFontSize(next));
+  const minimumFontSize = textMinimumFontSize(next);
 
   for (let attempt = 0; attempt < 24; attempt += 1) {
-    const text = normalizeTextLines(next, fontSize);
-    const candidate = { ...next, text, fontSize };
-    const overflow = estimateTextOverflow(candidate);
-    const hasBadBreak = Boolean(findTextLineBreakIssue(candidate));
-    // Every emitted line must fit the real box at this size, otherwise PowerPoint re-wraps it with
-    // its own greedy rule and splits words. Shrinking until each line fits keeps our breaks authoritative.
-    const lineWidthBudget = lineCapacity(next.w, fontSize);
-    const anyLineTooWide = text.split(/\r?\n/).some((line) => textUnits(line.trim()) > lineWidthBudget + 0.01);
-    if (!overflow.overflows && !hasBadBreak && !anyLineTooWide) {
-      next = { ...next, text };
+    const result = textFitsAtSize(next, fontSize);
+    if (result.fits) {
+      next = { ...next, text: result.text };
       break;
     }
 
     if (fontSize <= minimumFontSize) {
-      next = { ...next, text: isPreformattedText(text) ? text : enforceLineWidths(text, next.w, fontSize) };
+      const text = result.text;
+      const shouldShorten = next.role === "caption" && !isGeneratedDiagramIntentText(next);
+      next = {
+        ...next,
+        text: shouldShorten && options.shortenAtMinimum ? shortenTextToFit({ ...next, text }, fontSize) : isPreformattedText(text) ? text : enforceLineWidths(text, next.w, fontSize)
+      };
       break;
     }
     fontSize = Math.max(minimumFontSize, fontSize - 1);
@@ -681,14 +729,15 @@ function fitElementToSlide(element: SlideElement, tokens: DesignTokens): SlideEl
       }, tokens);
     }
     const requiredHeight = requiredTextHeightInches(fitted, fitted.fontSize ?? defaultFontSizeForRole(fitted.role, tokens));
+    let expanded = fitted;
     if (requiredHeight > fitted.h) {
-      return {
+      expanded = {
         ...fitted,
         h: clamp(requiredHeight, fitted.h, SLIDE_WIDE.height - fitted.y)
       };
     }
 
-    return fitted;
+    return fitTextElement(expanded, tokens, { shortenAtMinimum: true });
   }
 
   return next;

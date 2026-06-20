@@ -103,7 +103,7 @@ function textElementMinimumSize(element: TextElement, deck: DeckSpec): number {
     }
 
     if (element.role === "caption") {
-      return 8.5;
+      return 12;
     }
 
     if (element.role === "callout" || element.role === "subtitle") {

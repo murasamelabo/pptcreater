@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.2.8 - 2026-06-20
+
+- Improved global text fitting for dense diagrams and tables: captions/diagram labels now keep a 12pt readable floor instead of shrinking into tiny text; if a compact label still cannot fit, polish shortens it with an ellipsis rather than allowing visible overflow or unreadable glyphs.
+- Tightened small-font lint guidance so ordinary captions below 12pt are treated as too small to read, while existing generated Diagram Intent exceptions remain allowed.
+- Regenerated all shipped samples with the updated fitting behavior and re-rendered the reported Yokohama child-rearing support deck. The regenerated deck has no estimated text overflow, no text below 12pt, and opens in PowerPoint.
+
 ## v0.2.7 - 2026-06-20
 
 - Added explicit per-mode schematic template definitions (`SCHEMATIC_MODE_TEMPLATES`) so each style profile (`minimal`, `stylish`, `report`, `presentation`, `technical`) carries a complete 25-pattern schematic template set instead of only sharing one generic pattern list.
