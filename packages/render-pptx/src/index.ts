@@ -22,7 +22,7 @@ export * from "./templateImport.js";
 const require = createRequire(import.meta.url);
 const JSZip = require("jszip") as { loadAsync(data: Buffer): Promise<{ file(name: string): { async(type: "string"): Promise<string> } | null; file(name: string, data: string): void; remove(name: string): void; generateAsync(options: { type: "nodebuffer" }): Promise<Buffer> }> };
 type PptxSlide = {
-  background: { color: string };
+  background: { color?: string; data?: string };
   slideNumber?: Record<string, unknown>;
   addText(text: string, options: Record<string, unknown>): void;
   addShape(shapeName: string, options?: Record<string, unknown>): void;
@@ -259,6 +259,22 @@ async function safeImageDataUri(dataUri: string): Promise<string> {
   }
 
   return dataUri;
+}
+
+async function resolveSlideBackground(
+  slide: DeckSpec["slides"][number],
+  tokens: DesignTokens
+): Promise<{ color?: string; data?: string }> {
+  const background = slide.background;
+  if (background?.imageDataUri) {
+    try {
+      return { data: await safeImageDataUri(background.imageDataUri) };
+    } catch {
+      // Fall through to a solid color when the embedded background image is unusable.
+    }
+  }
+  const color = background?.color ?? tokens.colors.background;
+  return { color: color.replace("#", "") };
 }
 
 function sortedElements(elements: SlideElement[]): SlideElement[] {
@@ -601,7 +617,7 @@ export async function renderDeckToPptx(input: unknown, outputPath: string, optio
 
   for (const [slideIndex, deckSlide] of deck.slides.entries()) {
     const slide = pptx.addSlide();
-    slide.background = { color: tokens.colors.background.replace("#", "") };
+    slide.background = await resolveSlideBackground(deckSlide, tokens);
     const safeSlide = normalizeReadingOrder(deckSlide);
     for (const element of sortedElements(safeSlide.elements)) {
       await addElement(slide, element, deck, slideIndex);

@@ -52,13 +52,49 @@ export const HeaderFooterSchema = z.object({
   dateText: z.string().optional()
 });
 
+export const SlideBackgroundSchema = z
+  .object({
+    color: HexColorSchema.optional(),
+    imageDataUri: z.string().min(1).optional()
+  })
+  .refine((value) => Boolean(value.color || value.imageDataUri), {
+    message: "Slide background requires color or imageDataUri"
+  });
+
+export const ScaffoldTextBoxSchema = z.object({
+  x: z.number().min(0),
+  y: z.number().min(0),
+  w: z.number().positive(),
+  h: z.number().positive(),
+  fontSize: z.number().positive().optional(),
+  color: HexColorSchema.optional(),
+  align: z.enum(["left", "center", "right"]).optional(),
+  bold: z.boolean().optional()
+});
+
+export const ScaffoldImageSchema = z.object({
+  dataUri: z.string().min(1),
+  x: z.number().min(0),
+  y: z.number().min(0),
+  w: z.number().positive(),
+  h: z.number().positive(),
+  altText: z.string().optional()
+});
+
 export const TemplateScaffoldSlideSchema = z.object({
   title: z.string().optional(),
-  subtitle: z.string().optional()
+  subtitle: z.string().optional(),
+  background: SlideBackgroundSchema.optional(),
+  logos: z.array(ScaffoldImageSchema).default([]),
+  titleBox: ScaffoldTextBoxSchema.optional(),
+  subtitleBox: ScaffoldTextBoxSchema.optional()
 });
 
 export type SlideSize = z.infer<typeof SlideSizeSchema>;
 export type HeaderFooter = z.infer<typeof HeaderFooterSchema>;
+export type SlideBackground = z.infer<typeof SlideBackgroundSchema>;
+export type ScaffoldTextBox = z.infer<typeof ScaffoldTextBoxSchema>;
+export type ScaffoldImage = z.infer<typeof ScaffoldImageSchema>;
 export type TemplateScaffoldSlide = z.infer<typeof TemplateScaffoldSlideSchema>;
 
 export const AccessibilityMetadataSchema = z.object({
@@ -160,6 +196,7 @@ export const SlideSchema = z.object({
   title: z.string().min(1),
   layout: z.string().default("title-content"),
   speakerNotes: z.string().optional(),
+  background: SlideBackgroundSchema.optional(),
   elements: z.array(SlideElementSchema).min(1)
 });
 

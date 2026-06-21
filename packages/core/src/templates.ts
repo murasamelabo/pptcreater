@@ -5,7 +5,8 @@ import { homedir } from "node:os";
 import { dirname, parse, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
-import { defaultTokens } from "./color.js";
+import { contrastRatio, defaultTokens } from "./color.js";
+import { SLIDE_WIDE } from "./layout.js";
 import {
   DesignTokensSchema,
   HeaderFooterSchema,
@@ -15,7 +16,12 @@ import {
   type ContentMode,
   type DeckSpec,
   type DesignTokens,
-  type Locale
+  type Locale,
+  type ScaffoldImage,
+  type ScaffoldTextBox,
+  type SlideBackground,
+  type SlideElement,
+  type TemplateScaffoldSlide
 } from "./schema.js";
 
 export const TemplateLayoutSchema = z.object({
@@ -697,12 +703,152 @@ const SCAFFOLD_DEFAULTS: Record<Locale, { title: string; subtitle: string; closi
   }
 };
 
+type ScaffoldSlideInput = {
+  id: string;
+  layout: string;
+  title: string;
+  subtitle: string;
+  blueprint?: TemplateScaffoldSlide;
+  titleRole: "title";
+  subtitleRole: "subtitle" | "caption";
+  fallbackTitleY: number;
+  fallbackSubtitleGap: number;
+};
+
+/**
+ * Decide a readable text color for a box that also clears the linter's contrast floor. Honors the
+ * captured run color when it already meets the required ratio; otherwise it picks the light/dark side
+ * with more contrast and, if the soft anchor (#ffffff / #111827) falls short, drops to a pure anchor
+ * (#ffffff / #000000) — which guarantees ≥4.58:1 against any solid background, so the scaffold never
+ * emits a render-blocking `text.low-contrast` error over mid-tone brand fills.
+ */
+function scaffoldTextColor(
+  box: ScaffoldTextBox | undefined,
+  background: SlideBackground | undefined,
+  tokens: DesignTokens,
+  minRatio: number
+): string {
+  const backgroundColor = background?.color ?? (background?.imageDataUri ? undefined : tokens.colors.background);
+  if (box?.color && (!backgroundColor || contrastRatio(box.color, backgroundColor) >= minRatio)) {
+    return box.color;
+  }
+  if (backgroundColor) {
+    const softDark = "#111827";
+    const softDarkRatio = contrastRatio(softDark, backgroundColor);
+    const whiteRatio = contrastRatio("#ffffff", backgroundColor);
+    if (softDarkRatio >= whiteRatio && softDarkRatio >= minRatio) {
+      return softDark;
+    }
+    if (whiteRatio >= minRatio) {
+      return "#ffffff";
+    }
+    return contrastRatio("#000000", backgroundColor) >= whiteRatio ? "#000000" : "#ffffff";
+  }
+  return box?.color ?? tokens.colors.text;
+}
+
+function buildScaffoldSlide(
+  input: ScaffoldSlideInput,
+  canvasWidth: number,
+  canvasHeight: number,
+  margin: number,
+  tokens: DesignTokens
+): DeckSpec["slides"][number] {
+  const boundsWidth = Math.min(canvasWidth, SLIDE_WIDE.width);
+  const boundsHeight = Math.min(canvasHeight, SLIDE_WIDE.height);
+  const contentWidth = Math.max(1, boundsWidth - margin * 2);
+  // Keep every emitted box inside the 13.333×7.5 canvas the layout engine and linter assume, so an
+  // imported non-16:9 template (or oversized captured geometry) can never trip the non-polish-fixable
+  // `layout.out-of-bounds` error that would abort rendering.
+  const fitBox = (x: number, y: number, w: number, h: number): { x: number; y: number; w: number; h: number } => {
+    const cw = Math.min(Math.max(w, 0.1), boundsWidth);
+    const ch = Math.min(Math.max(h, 0.1), boundsHeight);
+    const cx = Math.max(0, Math.min(x, boundsWidth - cw));
+    const cy = Math.max(0, Math.min(y, boundsHeight - ch));
+    return { x: cx, y: cy, w: cw, h: ch };
+  };
+  const blueprint = input.blueprint;
+  const background = blueprint?.background;
+  const elements: SlideElement[] = [];
+  let readingOrder = 1;
+
+  for (const [index, logo] of (blueprint?.logos ?? []).entries()) {
+    const image: ScaffoldImage = logo;
+    const box = fitBox(image.x, image.y, image.w, image.h);
+    elements.push({
+      id: `${input.id}-logo-${index + 1}`,
+      type: "image",
+      dataUri: image.dataUri,
+      x: box.x,
+      y: box.y,
+      w: box.w,
+      h: box.h,
+      decorative: !image.altText,
+      ...(image.altText ? { altText: image.altText } : {}),
+      readingOrder: readingOrder++
+    });
+  }
+
+  const titleBox = blueprint?.titleBox;
+  const titleColor = scaffoldTextColor(titleBox, background, tokens, 4.5);
+  const contrastReference = background?.color ?? (background?.imageDataUri ? (titleColor === "#ffffff" ? "#1f2937" : "#ffffff") : undefined);
+  const titleGeo = fitBox(titleBox?.x ?? margin, titleBox?.y ?? input.fallbackTitleY, titleBox?.w ?? contentWidth, titleBox?.h ?? 1.4);
+  elements.push({
+    id: `${input.id}-heading`,
+    type: "text",
+    role: input.titleRole,
+    text: input.title,
+    x: titleGeo.x,
+    y: titleGeo.y,
+    w: titleGeo.w,
+    h: titleGeo.h,
+    align: titleBox?.align ?? "center",
+    bold: titleBox?.bold ?? true,
+    color: titleColor,
+    ...(contrastReference ? { contrastBackground: contrastReference } : {}),
+    ...(titleBox?.fontSize ? { fontSize: titleBox.fontSize } : {}),
+    decorative: false,
+    readingOrder: readingOrder++
+  });
+
+  const subtitleBox = blueprint?.subtitleBox;
+  const subtitleColor = scaffoldTextColor(subtitleBox, background, tokens, 4.5);
+  const subtitleYRaw = subtitleBox?.y ?? (titleBox ? titleBox.y + titleBox.h + 0.2 : input.fallbackTitleY + input.fallbackSubtitleGap);
+  const subtitleGeo = fitBox(subtitleBox?.x ?? margin, subtitleYRaw, subtitleBox?.w ?? contentWidth, subtitleBox?.h ?? 0.9);
+  elements.push({
+    id: `${input.id}-subtitle`,
+    type: "text",
+    role: input.subtitleRole,
+    text: input.subtitle,
+    x: subtitleGeo.x,
+    y: subtitleGeo.y,
+    w: subtitleGeo.w,
+    h: subtitleGeo.h,
+    align: subtitleBox?.align ?? "center",
+    bold: subtitleBox?.bold ?? false,
+    color: subtitleColor,
+    ...(contrastReference ? { contrastBackground: contrastReference } : {}),
+    ...(subtitleBox?.fontSize ? { fontSize: subtitleBox.fontSize } : {}),
+    decorative: false,
+    readingOrder: readingOrder++
+  });
+
+  return {
+    id: input.id,
+    title: input.title,
+    layout: input.layout,
+    ...(background ? { background } : {}),
+    elements
+  };
+}
+
 /**
  * Build a starter, editable DeckSpec from a template so an imported template can be reused
- * immediately. Emits a title slide and a closing slide (using the template's title/closing
- * scaffolds when present), and carries the template tokens, slide size, and header/footer through
- * so the rendered .pptx reflects the imported design. Title/closing elements stay within the real
- * canvas width so non-16:9 imported sizes still render without overflow.
+ * immediately. Emits a title slide and a closing slide that reproduce the source template's visual
+ * identity — background fill/image, logos, and the title/subtitle placement captured at import —
+ * swapping only the text. Carries the template tokens, slide size, and header/footer through so the
+ * rendered .pptx reflects the imported design. Falls back to centered text when no blueprint visuals
+ * were captured, staying within the real canvas so non-16:9 imported sizes still render cleanly.
  */
 export function scaffoldDeckFromTemplate(
   template: TemplateManifest,
@@ -710,10 +856,9 @@ export function scaffoldDeckFromTemplate(
 ): DeckSpec {
   const locale = options.locale ?? template.locale;
   const defaults = SCAFFOLD_DEFAULTS[locale];
-  const canvasWidth = Math.min(template.slideSize?.widthInches ?? 13.333, 13.333);
-  const canvasHeight = Math.min(template.slideSize?.heightInches ?? 7.5, 7.5);
+  const canvasWidth = template.slideSize?.widthInches ?? 13.333;
+  const canvasHeight = template.slideSize?.heightInches ?? 7.5;
   const margin = template.tokens.spacing.margin;
-  const contentWidth = Math.max(1, canvasWidth - margin * 2);
 
   const title = options.title ?? template.titleSlide?.title ?? defaults.title;
   const subtitle = options.subtitle ?? template.titleSlide?.subtitle ?? defaults.subtitle;
@@ -723,6 +868,42 @@ export function scaffoldDeckFromTemplate(
   const titleY = Math.max(0.5, canvasHeight / 2 - 1.1);
   const closingY = Math.max(0.5, canvasHeight / 2 - 0.9);
 
+  const titleSlide = buildScaffoldSlide(
+    {
+      id: "title",
+      layout: "title-slide",
+      title,
+      subtitle,
+      blueprint: template.titleSlide,
+      titleRole: "title",
+      subtitleRole: "subtitle",
+      fallbackTitleY: titleY,
+      fallbackSubtitleGap: 1.5
+    },
+    canvasWidth,
+    canvasHeight,
+    margin,
+    template.tokens
+  );
+
+  const closingSlide = buildScaffoldSlide(
+    {
+      id: "closing",
+      layout: "closing-slide",
+      title: closingTitle,
+      subtitle: closingSubtitle,
+      blueprint: template.closingSlide,
+      titleRole: "title",
+      subtitleRole: "caption",
+      fallbackTitleY: closingY,
+      fallbackSubtitleGap: 1.4
+    },
+    canvasWidth,
+    canvasHeight,
+    margin,
+    template.tokens
+  );
+
   const deck: DeckSpec = {
     version: "0.1",
     title,
@@ -731,78 +912,7 @@ export function scaffoldDeckFromTemplate(
     tokens: template.tokens,
     ...(template.slideSize ? { slideSize: template.slideSize } : {}),
     ...(template.headerFooter ? { headerFooter: template.headerFooter } : {}),
-    slides: [
-      {
-        id: "title",
-        title,
-        layout: "title-slide",
-        elements: [
-          {
-            id: "title-heading",
-            type: "text",
-            role: "title",
-            text: title,
-            x: margin,
-            y: titleY,
-            w: contentWidth,
-            h: 1.4,
-            align: "center",
-            bold: true,
-            decorative: false,
-            readingOrder: 1
-          },
-          {
-            id: "title-subtitle",
-            type: "text",
-            role: "subtitle",
-            text: subtitle,
-            x: margin,
-            y: titleY + 1.5,
-            w: contentWidth,
-            h: 0.9,
-            align: "center",
-            bold: false,
-            decorative: false,
-            readingOrder: 2
-          }
-        ]
-      },
-      {
-        id: "closing",
-        title: closingTitle,
-        layout: "closing-slide",
-        elements: [
-          {
-            id: "closing-heading",
-            type: "text",
-            role: "title",
-            text: closingTitle,
-            x: margin,
-            y: closingY,
-            w: contentWidth,
-            h: 1.4,
-            align: "center",
-            bold: true,
-            decorative: false,
-            readingOrder: 1
-          },
-          {
-            id: "closing-subtitle",
-            type: "text",
-            role: "caption",
-            text: closingSubtitle,
-            x: margin,
-            y: closingY + 1.4,
-            w: contentWidth,
-            h: 0.8,
-            align: "center",
-            bold: false,
-            decorative: false,
-            readingOrder: 2
-          }
-        ]
-      }
-    ],
+    slides: [titleSlide, closingSlide],
     metadata: {
       keywords: [...template.tags],
       sources: []

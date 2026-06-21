@@ -3,7 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { defaultTokens } from "./color.js";
-import { registerTemplateManifest, searchTemplates } from "./templates.js";
+import { registerTemplateManifest, scaffoldDeckFromTemplate, searchTemplates } from "./templates.js";
+import { lintDeckSpec } from "./lint.js";
+import { parseDeckSpec } from "./schema.js";
 
 function customTemplate(id: string) {
   return {
@@ -79,5 +81,57 @@ describe("template registry", () => {
     const templates = await searchTemplates("malformed-lock-template", { registryPath });
 
     expect(templates.some((template) => template.id === "malformed-lock-template")).toBe(true);
+  });
+});
+
+describe("scaffoldDeckFromTemplate stays renderable for imported templates", () => {
+  it("clamps oversized non-16:9 captured geometry inside the linter's slide bounds", () => {
+    const template = {
+      ...customTemplate("oversized-import"),
+      // A custom widescreen canvas larger than the 13.333x7.5 the layout/linter assume.
+      slideSize: { widthInches: 20, heightInches: 11.25, aspect: "16:9" as const },
+      titleSlide: {
+        title: "Imported title",
+        subtitle: "Imported subtitle",
+        logos: [],
+        background: { color: "#1f3a5f" },
+        // Geometry near the source canvas edges — would overflow 13.333x7.5 unclamped.
+        titleBox: { x: 1, y: 8.5, w: 18, h: 2 },
+        subtitleBox: { x: 1, y: 10.5, w: 18, h: 0.7 }
+      }
+    };
+
+    const deck = scaffoldDeckFromTemplate(template, { title: "新しいタイトル" });
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const outOfBounds = report.issues.filter((issue) => issue.code === "layout.out-of-bounds");
+    expect(outOfBounds).toHaveLength(0);
+
+    for (const slide of deck.slides) {
+      for (const element of slide.elements) {
+        expect(element.x + element.w).toBeLessThanOrEqual(13.333 + 1e-6);
+        expect(element.y + element.h).toBeLessThanOrEqual(7.5 + 1e-6);
+      }
+    }
+  });
+
+  it("emits contrast-safe title text over a mid-tone scheme background", () => {
+    const template = {
+      ...customTemplate("midtone-import"),
+      titleSlide: {
+        title: "Imported title",
+        subtitle: "Imported subtitle",
+        logos: [],
+        // Mid-tone fill where #ffffff (4.29:1) and #111827 (4.13:1) both fall short of 4.5:1,
+        // so the scaffold must drop to a pure #000000 anchor (4.89:1) to stay legible.
+        background: { color: "#7a7a7a" },
+        titleBox: { x: 0.75, y: 3, w: 8, h: 1.6, fontSize: 18 },
+        subtitleBox: { x: 0.75, y: 4.8, w: 8, h: 0.7, fontSize: 16 }
+      }
+    };
+
+    const deck = scaffoldDeckFromTemplate(template, { title: "新しいタイトル" });
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const lowContrast = report.issues.filter((issue) => issue.code === "text.low-contrast");
+    expect(lowContrast).toHaveLength(0);
   });
 });

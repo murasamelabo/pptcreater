@@ -538,7 +538,7 @@ templateCommand
 
 templateCommand
   .command("import")
-  .description("Import colors, fonts, slide size, and header/footer from an existing .pptx as a reusable template.")
+  .description("Import the design (colors, fonts, slide size, header/footer, and the title/closing slide background, logos, and layout) from an existing .pptx as a reusable template.")
   .argument("<pptx>", "Source .pptx file path")
   .option("--id <id>", "Template id (defaults to the file name)")
   .option("--name <name>", "Template display name (defaults to the file name)")

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## v0.4.0 - 2026-06-22
+
+- **PowerPoint (.pptx) template import now reproduces the source title slide's visual identity**, not just abstract theme tokens. Importing a designer template and scaffolding a deck reuses the original title slide's background, logos, placeholder geometry, and text alignment — only the title/subtitle copy changes — so a scaffolded deck looks like it came from the same template instead of a generic re-skin.
+  - **Background fidelity**: the importer now captures the title slide's actual background — solid fills, gradients (synthesized to an image so PowerPoint shows the real gradient), and picture/blip fills — and resolves them through the slide → slideLayout → slideMaster inheritance chain. Theme **scheme-color references** (`<a:schemeClr val="accent1"/>`, `<p:bgRef idx="1001">`) are resolved against the theme so a layout-level accent background (the common designer pattern) reproduces its true color (e.g. Duarte's `accent1` → `#006ea4`) instead of being dropped.
+  - **Logos & placeholder geometry**: top-of-deck logo/picture marks and the title/subtitle placeholder positions and sizes are captured. When a slide placeholder omits its own geometry or alignment, the importer inherits them from the slideLayout (and alignment from the slideMaster `txStyles`, defaulting to OOXML left), so the scaffold keeps the template's intended composition.
+  - **DeckSpec** gained a per-slide `background` ( `{ color? , imageDataUri? }` ); the renderer paints it via pptxgenjs `slide.background`. Template scaffold slides gained `background`, `logos`, `titleBox`, and `subtitleBox`.
+- **Scaffold safety hardening**: every scaffolded element (background, logos, title, subtitle) is clamped to the linter's 13.333×7.5in canvas, so importing a non-16:9 or oversized template can no longer emit a non-auto-fixable `layout.out-of-bounds` error. Scaffolded title/subtitle text now guarantees ≥4.5:1 contrast against the captured background — when softer brand-neutral anchors fall short on a mid-tone fill, it drops to a pure `#000000`/`#ffffff` anchor — preventing a render-blocking `text.low-contrast` error.
+- Added regression tests for scheme-color background capture + geometry/alignment inheritance, oversized non-16:9 canvas clamping, and the mid-tone contrast floor; full suite now at 239 tests.
+
 ## v0.3.1 - 2026-06-21
 
 - Fixed card text overlapping or crowding a left-edge color accent bar (the colored "category" block on report/overview cards) and card text overflowing past the card's right edge. The layout/polish engine now runs an `insetCardContentForBars` pass that, for every rounded card carrying a left accent bar, shifts the card's whole left-aligned content block (heading, body, and any bullet dots) right as one unit so it clears the normalized bar with ≥0.12in breathing room while preserving the original dot↔text spacing. In-card text that runs past the card's right edge is clamped back inside, and any narrowed text box is re-fit (font + height) so it never silently overflows.
