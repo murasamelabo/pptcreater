@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.5.1 - 2026-06-21
+
+- **`template import` now warns when an imported template is not saved.** The importer only persists a template when `--register` (registry) or `-o <path>` (manifest file) is supplied; without one of those the import previously succeeded silently and the result was discarded, so the template never appeared in `template list` and could not be used by `template apply` / `template scaffold`. The CLI now prints the destination on success (`registered in …` / `manifest written to …`) and emits a clear warning to stderr when neither was given. The `import_template` MCP tool returns a `warning` field in the same situation (set `register=true` to persist).
+- Added shared, unit-tested persistence helpers (`isImportPersisted`, `importPersistenceSuffix`, `importNotPersistedWarning`) in `@pptcreater/render-pptx` reused by both the CLI and MCP server; full suite now at 258 tests.
+
 ## v0.5.0 - 2026-06-22
 
 - **Imported `.pptx` templates now re-skin a deck's *middle* content slides, not just the title/closing slides.** Previously, scaffolding from an imported template only carried the template identity onto the cover and closing slides; the content slides authored afterward kept the deck's generic palette and fonts, so a finished deck only "looked like" the template on its first and last pages.

@@ -8,7 +8,10 @@ import sharp from "sharp";
 import { lintDeckSpec, parseDeckSpec, scaffoldDeckFromTemplate } from "@pptcreater/core";
 import {
   extractTemplateManifestFromPptx,
+  importNotPersistedWarning,
+  importPersistenceSuffix,
   importTemplateFromPptx,
+  isImportPersisted,
   mapThemeToTokens,
   parseHeaderFooter,
   parseSlideSize,
@@ -473,6 +476,44 @@ describe("importTemplateFromPptx accepts PowerPoint template extensions", () => 
     expect(result.template.tokens.colors.background).toBe("#ffffff");
 
     await expect(importTemplateFromPptx(join(dir, "demo.key"))).rejects.toThrow(/PowerPoint file/);
+  });
+});
+
+describe("import persistence helpers", () => {
+  it("warns when an imported template is neither registered nor written to a file", () => {
+    const state = { templateId: "demo" };
+    expect(isImportPersisted(state)).toBe(false);
+    expect(importPersistenceSuffix(state)).toBe("");
+    const warning = importNotPersistedWarning(state);
+    expect(warning).toBeDefined();
+    expect(warning).toContain("demo");
+    expect(warning).toContain("register");
+    expect(warning).toContain("template list");
+    expect(warning).toContain("template apply");
+  });
+
+  it("does not warn and confirms the registry path when registered", () => {
+    const state = { templateId: "demo", registryPath: "/home/user/registry.json" };
+    expect(isImportPersisted(state)).toBe(true);
+    expect(importPersistenceSuffix(state)).toBe(" (registered in /home/user/registry.json)");
+    expect(importNotPersistedWarning(state)).toBeUndefined();
+  });
+
+  it("does not warn and confirms the manifest path when only an output path is given", () => {
+    const state = { templateId: "demo", outputPath: "out/demo.manifest.json" };
+    expect(isImportPersisted(state)).toBe(true);
+    expect(importPersistenceSuffix(state)).toBe(" (manifest written to out/demo.manifest.json)");
+    expect(importNotPersistedWarning(state)).toBeUndefined();
+  });
+
+  it("prefers the registry confirmation over the output path when both are present", () => {
+    const state = {
+      templateId: "demo",
+      registryPath: "/home/user/registry.json",
+      outputPath: "out/demo.manifest.json"
+    };
+    expect(importPersistenceSuffix(state)).toBe(" (registered in /home/user/registry.json)");
+    expect(importNotPersistedWarning(state)).toBeUndefined();
   });
 });
 

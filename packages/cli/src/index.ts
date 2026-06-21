@@ -40,7 +40,7 @@ import {
   type StyleProfile,
   type TemplateRegistryEntry
 } from "@pptcreater/core";
-import { importTemplateFromPptx, renderDeckToPptx } from "@pptcreater/render-pptx";
+import { importNotPersistedWarning, importPersistenceSuffix, importTemplateFromPptx, renderDeckToPptx } from "@pptcreater/render-pptx";
 import { renderStudioHtml } from "@pptcreater/studio";
 import { installGuidance } from "./installGuidance.js";
 
@@ -608,11 +608,20 @@ templateCommand
         if (options.output) {
           await writeJson(options.output, result.template);
         }
+        const persistence = {
+          templateId: result.template.id,
+          registryPath: result.registryPath,
+          outputPath: options.output
+        };
+        const notPersistedWarning = importNotPersistedWarning(persistence);
         if (options.json) {
-          console.log(JSON.stringify(result, null, 2));
+          const payload = notPersistedWarning ? { ...result, warning: notPersistedWarning } : result;
+          console.log(JSON.stringify(payload, null, 2));
         } else {
-          const where = result.registryPath ? ` (registered in ${result.registryPath})` : "";
-          console.log(`Imported template ${result.template.id}${where}`);
+          console.log(`Imported template ${result.template.id}${importPersistenceSuffix(persistence)}`);
+        }
+        if (notPersistedWarning) {
+          console.warn(`Warning: ${notPersistedWarning}`);
         }
       }
     )

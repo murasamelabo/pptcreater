@@ -1098,3 +1098,57 @@ export async function importTemplateFromPptx(
 
   return { template };
 }
+
+/**
+ * Persistence state for a `importTemplateFromPptx` result, used to tell the user whether the
+ * imported template was actually saved.
+ *
+ * `importTemplateFromPptx` only *persists* a template when `register` writes it to the registry
+ * or the caller writes the returned manifest to a file. Otherwise the import succeeds but is
+ * discarded, which surprises users who expect it to appear in `template list` and be usable by
+ * `template apply` / `template scaffold` (CLI) or `apply_template_design` / `scaffold_from_template`
+ * (MCP).
+ */
+export interface ImportPersistenceState {
+  /** The id of the imported template (used in the message). */
+  templateId: string;
+  /** The registry path returned by the importer when it was registered. */
+  registryPath?: string;
+  /** A path the manifest JSON was written to, if any. */
+  outputPath?: string;
+}
+
+/** True when the imported template was saved somewhere durable (registry or a manifest file). */
+export function isImportPersisted(state: ImportPersistenceState): boolean {
+  return Boolean(state.registryPath) || Boolean(state.outputPath);
+}
+
+/**
+ * Human-readable confirmation suffix appended after "Imported template <id>".
+ * Returns an empty string when the import was not persisted.
+ */
+export function importPersistenceSuffix(state: ImportPersistenceState): string {
+  if (state.registryPath) {
+    return ` (registered in ${state.registryPath})`;
+  }
+  if (state.outputPath) {
+    return ` (manifest written to ${state.outputPath})`;
+  }
+  return "";
+}
+
+/**
+ * Warning text shown when an imported template was neither registered nor written to a file,
+ * or `undefined` when the import was persisted and no warning is needed.
+ */
+export function importNotPersistedWarning(state: ImportPersistenceState): string | undefined {
+  if (isImportPersisted(state)) {
+    return undefined;
+  }
+  return (
+    `Imported template "${state.templateId}" was not saved: without registering it, the template is not added ` +
+    `to the registry, so it will not appear in "template list" and cannot be used by "template apply" / ` +
+    `"template scaffold" (or "apply_template_design" / "scaffold_from_template"). Set register=true (MCP) or ` +
+    `re-run with --register (CLI) to save it to the registry, or write the returned manifest to a file.`
+  );
+}

@@ -388,6 +388,8 @@ pptcreater finalize generated\brand.deck.json --output generated\brand.pptx
 
 The importer resolves the theme the slide master actually references (not just the first theme in the file), so imported colors and fonts match the template's real identity, and it captures a representative content-slide background/branding blueprint.
 
+> **Note:** `template import` only *saves* the template when you pass `--register` (add it to the registry) or `-o <path>` (write the manifest JSON to a file). Without one of those the import succeeds but the result is discarded — it will not appear in `template list` and cannot be used by `template apply` / `template scaffold` — so the CLI prints a warning. The `import_template` MCP tool behaves the same way (set `register=true`) and returns a `warning` field when the import was not persisted.
+
 `template scaffold` only carries the template identity onto the title and closing slides. After you author the middle content slides, re-skin them to the template — adopting its colors/fonts, remapping any baked old-palette colors, injecting the captured content background, and repairing contrast — with `template apply`:
 
 ```powershell

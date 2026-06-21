@@ -42,7 +42,7 @@ import {
   TemplateManifestSchema,
   type DeckSpec
 } from "@pptcreater/core";
-import { importTemplateFromPptx, renderDeckToPptx } from "@pptcreater/render-pptx";
+import { importNotPersistedWarning, importTemplateFromPptx, renderDeckToPptx } from "@pptcreater/render-pptx";
 import { renderStudioHtml } from "@pptcreater/studio";
 
 function jsonText(value: unknown) {
@@ -697,8 +697,14 @@ export function createPptcreaterMcpServer(): McpServer {
         overwrite: z.boolean().default(false)
       }
     },
-    async ({ pptxPath, id, name, locale, register, overwrite }) =>
-      jsonText(await importTemplateFromPptx(pptxPath, { id, name, locale, register, overwrite }))
+    async ({ pptxPath, id, name, locale, register, overwrite }) => {
+      const result = await importTemplateFromPptx(pptxPath, { id, name, locale, register, overwrite });
+      const warning = importNotPersistedWarning({
+        templateId: result.template.id,
+        registryPath: result.registryPath
+      });
+      return jsonText(warning ? { ...result, warning } : result);
+    }
   );
 
   server.registerTool(
