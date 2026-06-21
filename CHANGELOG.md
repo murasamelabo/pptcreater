@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## v0.5.0 - 2026-06-22
+
+- **Imported `.pptx` templates now re-skin a deck's *middle* content slides, not just the title/closing slides.** Previously, scaffolding from an imported template only carried the template identity onto the cover and closing slides; the content slides authored afterward kept the deck's generic palette and fonts, so a finished deck only "looked like" the template on its first and last pages.
+  - New core helper `applyTemplateContentDesign(deck, template, { retheme })` re-skins every content (middle) slide to the template: it adopts the template's design tokens (colors + heading/body fonts, unioning the deck's font fallbacks so Japanese fallbacks are preserved), remaps baked old-palette colors (accent bars, badges, rules, label text) to the new palette, injects the template's captured content-slide background/branding when present, and repairs any text whose known local background drops below the WCAG contrast floor (snapping it to black/white).
+  - New CLI command `pptcreater template apply <templateId> <deck> [-o --json --no-retheme]` and new MCP tool `apply_template_design` expose the helper.
+- **Template import now accepts PowerPoint template files (`.potx`, `.potm`, `.pptm`), not only `.pptx`.** Designer templates are most often shipped as `.potx`, so importing them no longer requires re-saving to `.pptx` first.
+- **Fixed importer theme selection (root cause for the "middle slides aren't themed" report).** The importer now resolves the theme the slide master actually references via `ppt/slideMasters/_rels/slideMasterN.xml.rels` instead of taking the first `themeN.xml` by zip order, which could be an unused Office-default theme (e.g. accent `#4f81bd` / Calibri). Imported tokens now reflect the template's real accent and fonts.
+- **Importer captures a content-slide blueprint.** A representative non-cover/closing content layout (background fill/branding) is captured into the manifest's new `contentSlide` field and noted in the template description, so `applyTemplateContentDesign` can reproduce the content-page look.
+- Fixed content-slide classification so common content layouts such as `title-content` / `title-and-content` are correctly treated as middle content slides; only genuine cover/section/closing layouts (`title`, `title-slide`, `section-title`, and `section`/`divider`/`closing`/`cover`/`agenda`/`quote` segments) are excluded from re-skinning.
+- Contrast repair during re-theme now treats an image background (element-level *or* a slide-level `background.imageDataUri`) as an unknown local background and never snaps light text to black over it, so a full-bleed photo slide with intentionally light text is preserved.
+- Added regression tests for token adoption + fallback union, palette remap, contrast repair, content-background injection, image-background safety, `retheme:false`, and idempotency, plus importer tests for master-rels theme selection, content-layout capture, and `.potx` acceptance/extension rejection; full suite now at 254 tests.
+
 ## v0.4.1 - 2026-06-21
 
 - Added template registry cleanup operations:

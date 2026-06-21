@@ -6,6 +6,7 @@ import { z } from "zod";
 import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, resolveIconForKeyword, searchAllSvgAssets, suggestIconForKeyword } from "@pptcreater/assets-svg";
 import { DiagramIntentSchema, SCHEMATIC_KIND_CATALOG, SCHEMATIC_MODE_TEMPLATES, SCHEMATIC_STYLE_PRESETS, SchematicKindSchema, SchematicToneSchema, renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram, schematicPresetForStyleProfile, schematicTemplatesForStyleProfile } from "@pptcreater/diagram";
 import {
+  applyTemplateContentDesign,
   BUSINESS_STYLE_MODES,
   createEditWithCopilotPrompt,
   ContentModeSchema,
@@ -720,6 +721,35 @@ export function createPptcreaterMcpServer(): McpServer {
         throw new Error(`Template "${templateId}" was not found. Use search_templates to list available ids.`);
       }
       return jsonText(scaffoldDeckFromTemplate(template, { title, subtitle, locale }));
+    }
+  );
+
+  server.registerTool(
+    "apply_template_design",
+    {
+      title: "Apply template design to an existing deck",
+      description:
+        "Re-skin an existing DeckSpec so its middle content slides adopt a built-in or imported template's identity. By default (retheme=true) it adopts the template's colors + fonts, remaps the deck's old baked palette colors to the template's, repairs any text that drops below the contrast threshold, and injects the template's content-slide background/branding. Use this after scaffold_from_template + authoring content slides so the whole deck — not just the title/closing — matches the template. Returns the updated deck plus appliedSlideCount and rethemed.",
+      inputSchema: {
+        deck: DeckSpecSchema,
+        templateId: z.string().min(1),
+        retheme: z.boolean().default(true)
+      }
+    },
+    async ({ deck, templateId, retheme }) => {
+      const templates = await listAllTemplates();
+      const template = templates.find((item) => item.id === templateId);
+      if (!template) {
+        throw new Error(`Template "${templateId}" was not found. Use search_templates to list available ids.`);
+      }
+      const result = applyTemplateContentDesign(parseDeckSpec(deck), template, { retheme });
+      return jsonText({
+        deck: result.deck,
+        appliedSlideCount: result.appliedSlideCount,
+        rethemed: result.rethemed,
+        nextStep:
+          "Call finalize_deck (polish + lint + render) on the returned deck to produce the .pptx."
+      });
     }
   );
 

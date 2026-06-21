@@ -6,6 +6,7 @@ import { Command, InvalidArgumentError, Option } from "commander";
 import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, resolveIconForKeyword, searchAllSvgAssets, suggestIconForKeyword, type BuiltinIconName } from "@pptcreater/assets-svg";
 import { SCHEMATIC_KIND_CATALOG, SCHEMATIC_MODE_TEMPLATES, SCHEMATIC_STYLE_PRESETS, renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram, schematicPresetForStyleProfile, schematicTemplatesForStyleProfile } from "@pptcreater/diagram";
 import {
+  applyTemplateContentDesign,
   BUSINESS_STYLE_MODES,
   cliMessage,
   classifyLintReport,
@@ -643,6 +644,50 @@ templateCommand
         console.log(options.json ? JSON.stringify(deck, null, 2) : `Scaffolded deck from ${template.id} to ${options.output}`);
       }
     )
+  );
+
+templateCommand
+  .command("apply")
+  .description("Re-skin an existing deck with an imported/built-in template's identity: adopt its colors and fonts (remapping the deck's old palette), and inject the template's content background and branding onto the middle slides. Cover and closing slides keep their own background but still follow the re-theme.")
+  .argument("<deck>", "DeckSpec JSON path to re-skin")
+  .argument("<templateId>", "Template id to apply")
+  .option("-o, --output <path>", "Write the re-skinned DeckSpec JSON (defaults to overwriting the input deck)")
+  .option("--no-retheme", "Only inject content background/branding; do not adopt the template tokens or remap baked colors")
+  .option("--json", "Emit JSON", false)
+  .action(
+    commandAction(async (deckPath: string, templateId: string, options: { output?: string; retheme: boolean; json: boolean }) => {
+      const templates = await listAllTemplates();
+      const template = templates.find((item) => item.id === templateId);
+      if (!template) {
+        throw new InvalidArgumentError(`Template "${templateId}" was not found. Run "pptcreater template list" to see available ids.`);
+      }
+      const deck = parseDeckSpec(await readJson(deckPath));
+      const result = applyTemplateContentDesign(deck, template, { retheme: options.retheme });
+      const outputPath = options.output ?? deckPath;
+      await writeJson(outputPath, result.deck);
+      if (options.json) {
+        console.log(
+          JSON.stringify(
+            { output: outputPath, appliedSlideCount: result.appliedSlideCount, rethemed: result.rethemed },
+            null,
+            2
+          )
+        );
+      } else {
+        const parts: string[] = [];
+        if (result.rethemed) {
+          parts.push(`adopted ${template.id} colors + fonts deck-wide`);
+        }
+        if (result.appliedSlideCount > 0) {
+          parts.push(`injected content background/branding on ${result.appliedSlideCount} slide(s)`);
+        }
+        if (parts.length === 0) {
+          console.log(`Template ${template.id} had no design to apply; ${outputPath} was written unchanged.`);
+        } else {
+          console.log(`Applied ${template.id}: ${parts.join("; ")}. Wrote ${outputPath}.`);
+        }
+      }
+    })
   );
 
 const assetCommand = program

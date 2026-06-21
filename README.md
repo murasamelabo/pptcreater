@@ -378,13 +378,24 @@ By default this is a user-level registry under your pptcreater config directory,
 
 ### Reuse an existing PowerPoint as a template
 
-Import the design system (theme colors, heading/body fonts, slide size, header/footer, and title/closing slide text) from any `.pptx` into a reusable template, then scaffold a starter deck that inherits it:
+Import the design system (theme colors, heading/body fonts, slide size, header/footer, and title/closing slide text) from any `.pptx`, `.potx`, `.potm`, or `.pptm` into a reusable template, then scaffold a starter deck that inherits it:
 
 ```powershell
-pptcreater template import brand-deck.pptx --id brand --name "Brand" --register
+pptcreater template import brand-deck.potx --id brand --name "Brand" --register
 pptcreater template scaffold brand --title "四半期レビュー" -o generated\brand.deck.json
 pptcreater finalize generated\brand.deck.json --output generated\brand.pptx
 ```
+
+The importer resolves the theme the slide master actually references (not just the first theme in the file), so imported colors and fonts match the template's real identity, and it captures a representative content-slide background/branding blueprint.
+
+`template scaffold` only carries the template identity onto the title and closing slides. After you author the middle content slides, re-skin them to the template — adopting its colors/fonts, remapping any baked old-palette colors, injecting the captured content background, and repairing contrast — with `template apply`:
+
+```powershell
+pptcreater template apply generated\brand.deck.json brand -o generated\brand.deck.json
+pptcreater finalize generated\brand.deck.json --output generated\brand.pptx
+```
+
+Use `--no-retheme` to only inject the template's content background/branding without changing the deck's tokens or baked colors. Re-apply from the originally authored deck, not a deck that was already re-skinned (a second remap is a no-op once the palette already matches).
 
 Accessibility defaults (minimum body size, contrast, required slide titles / reading order / alt text) are always preserved on imported templates. The layout/polish engine assumes a 13.333×7.5in (16:9) canvas, so non-16:9 imports are rendered at their original size but very dense decks on those sizes may need manual width tweaks.
 
@@ -393,9 +404,10 @@ From an MCP-capable AI agent, use:
 - `search_templates` to inspect existing templates before creating duplicates.
 - `list_templates` to inspect existing templates with `source` and `deletable` status.
 - `register_template` to register a complete template manifest.
-- `import_template` to extract a reusable template from a local `.pptx` file (optionally `register: true`).
+- `import_template` to extract a reusable template from a local `.pptx` / `.potx` / `.potm` / `.pptm` file (optionally `register: true`).
 - `delete_template` to delete a registered custom/imported template. Preset templates are locked.
 - `scaffold_from_template` to create a starter title+closing deck that reuses a built-in or imported template.
+- `apply_template_design` to re-skin an authored deck's middle content slides to a template (`retheme: true` by default).
 - `deckspec://schema` to understand how `template` ids are referenced from decks.
 
 ## Add reusable SVG icons and assets

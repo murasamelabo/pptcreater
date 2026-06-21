@@ -2,8 +2,8 @@
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { defaultTokens } from "./color.js";
-import { deleteTemplateManifest, listTemplateEntries, registerTemplateManifest, scaffoldDeckFromTemplate, searchTemplateEntries, searchTemplates } from "./templates.js";
+import { contrastRatio, defaultTokens } from "./color.js";
+import { applyTemplateContentDesign, deleteTemplateManifest, listTemplateEntries, registerTemplateManifest, scaffoldDeckFromTemplate, searchTemplateEntries, searchTemplates } from "./templates.js";
 import { lintDeckSpec } from "./lint.js";
 import { parseDeckSpec } from "./schema.js";
 
@@ -198,5 +198,210 @@ describe("scaffoldDeckFromTemplate stays renderable for imported templates", () 
     const report = lintDeckSpec(parseDeckSpec(deck));
     const lowContrast = report.issues.filter((issue) => issue.code === "text.low-contrast");
     expect(lowContrast).toHaveLength(0);
+  });
+});
+
+describe("applyTemplateContentDesign re-skins content slides to the template identity", () => {
+  const OLD_ACCENT = "#4f81bd";
+  const NEW_ACCENT = "#1860c5";
+
+  function rethemeTemplate(id: string) {
+    const base = defaultTokens("en-US");
+    return {
+      ...customTemplate(id),
+      tokens: {
+        colors: { ...base.colors, accent: NEW_ACCENT, surface: "#f2f2f2" },
+        typography: {
+          ...base.typography,
+          headingFont: "Segoe Sans Display Semilight",
+          bodyFont: "Segoe Sans Display Semilight",
+          fallbackFonts: ["Arial", "sans-serif"]
+        },
+        spacing: base.spacing
+      },
+      contentSlide: { background: { color: "#ffffff" }, logos: [] }
+    };
+  }
+
+  function deckWithOldPalette() {
+    const base = defaultTokens("en-US");
+    return parseDeckSpec({
+      version: "0.1" as const,
+      title: "Old palette deck",
+      locale: "en-US" as const,
+      template: "legacy",
+      tokens: {
+        colors: { ...base.colors, accent: OLD_ACCENT },
+        typography: {
+          ...base.typography,
+          headingFont: "Calibri",
+          bodyFont: "Calibri",
+          fallbackFonts: ["Meiryo"]
+        },
+        spacing: base.spacing
+      },
+      slides: [
+        {
+          id: "title",
+          title: "Cover",
+          layout: "title",
+          elements: [{ id: "cover-title", type: "text", role: "title", text: "Cover", x: 0.75, y: 3, w: 8, h: 1.2, fontSize: 40 }]
+        },
+        {
+          id: "s-content",
+          title: "Content",
+          layout: "title-content",
+          elements: [
+            { id: "badge", type: "shape", shape: "ellipse", fill: OLD_ACCENT, x: 0.75, y: 1.5, w: 0.4, h: 0.4 },
+            {
+              id: "badge-num",
+              type: "text",
+              role: "caption",
+              text: "1",
+              color: "#000000",
+              contrastBackground: OLD_ACCENT,
+              x: 0.75,
+              y: 1.5,
+              w: 0.4,
+              h: 0.4,
+              fontSize: 8.8
+            },
+            { id: "accent-text", type: "text", role: "body", text: "Accent label", color: OLD_ACCENT, x: 1.4, y: 1.5, w: 6, h: 0.5, fontSize: 24 },
+            { id: "rule", type: "shape", shape: "line", x: 0.75, y: 2.2, w: 6, h: 0, line: { color: OLD_ACCENT, width: 2 } }
+          ]
+        },
+        {
+          id: "closing",
+          title: "Closing",
+          layout: "closing",
+          elements: [{ id: "closing-title", type: "text", role: "title", text: "Thanks", x: 0.75, y: 3, w: 8, h: 1.2, fontSize: 40 }]
+        }
+      ]
+    });
+  }
+
+  it("adopts the template tokens and unions the deck's font fallbacks", () => {
+    const result = applyTemplateContentDesign(deckWithOldPalette(), rethemeTemplate("retheme-tokens"));
+
+    expect(result.rethemed).toBe(true);
+    expect(result.deck.tokens?.colors.accent).toBe(NEW_ACCENT);
+    expect(result.deck.tokens?.typography.headingFont).toBe("Segoe Sans Display Semilight");
+    // Japanese fallback from the deck is preserved alongside the template's Latin fallbacks.
+    expect(result.deck.tokens?.typography.fallbackFonts).toEqual(expect.arrayContaining(["Meiryo", "Arial", "sans-serif"]));
+  });
+
+  it("remaps baked old-palette colors on text, shape fill, and line across the deck", () => {
+    const result = applyTemplateContentDesign(deckWithOldPalette(), rethemeTemplate("retheme-remap"));
+    const content = result.deck.slides[1];
+    const badge = content.elements.find((element) => element.id === "badge");
+    const accentText = content.elements.find((element) => element.id === "accent-text");
+    const rule = content.elements.find((element) => element.id === "rule");
+
+    expect(badge?.type === "shape" && badge.fill).toBe(NEW_ACCENT);
+    expect(accentText?.type === "text" && accentText.color).toBe(NEW_ACCENT);
+    expect(rule?.type === "shape" && rule.line?.color).toBe(NEW_ACCENT);
+  });
+
+  it("repairs text whose known background darkens below the contrast threshold", () => {
+    const result = applyTemplateContentDesign(deckWithOldPalette(), rethemeTemplate("retheme-repair"));
+    const badgeNum = result.deck.slides[1].elements.find((element) => element.id === "badge-num");
+
+    expect(badgeNum?.type).toBe("text");
+    if (badgeNum?.type === "text") {
+      // The badge backdrop remapped to the darker accent, so black text is snapped to white.
+      expect(badgeNum.contrastBackground).toBe(NEW_ACCENT);
+      expect(badgeNum.color).toBe("#ffffff");
+      expect(contrastRatio(badgeNum.color ?? "#000000", NEW_ACCENT)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("injects the template content background and reports the applied slide count", () => {
+    const result = applyTemplateContentDesign(deckWithOldPalette(), rethemeTemplate("retheme-bg"));
+
+    expect(result.appliedSlideCount).toBe(1);
+    expect(result.deck.slides[1].background?.color).toBe("#ffffff");
+    // Cover and closing keep their own identity.
+    expect(result.deck.slides[0].background?.color).toBeUndefined();
+  });
+
+  it("leaves tokens and baked colors untouched when retheme is disabled", () => {
+    const result = applyTemplateContentDesign(deckWithOldPalette(), rethemeTemplate("retheme-off"), { retheme: false });
+    const badge = result.deck.slides[1].elements.find((element) => element.id === "badge");
+
+    expect(result.rethemed).toBe(false);
+    expect(result.deck.tokens?.colors.accent).toBe(OLD_ACCENT);
+    expect(badge?.type === "shape" && badge.fill).toBe(OLD_ACCENT);
+  });
+
+  it("is idempotent and leaves no residual old-palette colors or low contrast", () => {
+    const template = rethemeTemplate("retheme-idempotent");
+    const once = applyTemplateContentDesign(deckWithOldPalette(), template);
+    const twice = applyTemplateContentDesign(once.deck, template);
+
+    const serialized = JSON.stringify(twice.deck);
+    expect(serialized).not.toContain(OLD_ACCENT);
+
+    const report = lintDeckSpec(parseDeckSpec(twice.deck));
+    const lowContrast = report.issues.filter((issue) => issue.code === "text.low-contrast");
+    expect(lowContrast).toHaveLength(0);
+  });
+
+  it("does not snap light text to black over an image background it cannot read", () => {
+    const TINY_IMG =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    const base = defaultTokens("en-US");
+    // A template that re-themes tokens but defines NO solid content background, so a content slide's
+    // own full-bleed image background survives and its (unknown) local background must not be guessed.
+    const imageBgTemplate = {
+      ...customTemplate("retheme-image-bg"),
+      tokens: {
+        colors: { ...base.colors, accent: NEW_ACCENT },
+        typography: { ...base.typography, headingFont: "Segoe Sans Display Semilight", bodyFont: "Segoe Sans Display Semilight" },
+        spacing: base.spacing
+      },
+      contentSlide: { logos: [] }
+    };
+    const deck = parseDeckSpec({
+      version: "0.1" as const,
+      title: "Image background deck",
+      locale: "en-US" as const,
+      template: "legacy",
+      slides: [
+        {
+          id: "title",
+          title: "Cover",
+          layout: "title",
+          background: { imageDataUri: TINY_IMG },
+          elements: [
+            { id: "cover-title", type: "text", role: "title", text: "Cover", color: "#ffffff", x: 0.75, y: 3, w: 8, h: 1.2, fontSize: 40 }
+          ]
+        },
+        {
+          id: "s-photo",
+          title: "Photo slide",
+          layout: "title-content",
+          background: { imageDataUri: TINY_IMG },
+          elements: [
+            { id: "photo-text", type: "text", role: "body", text: "White caption on a dark photo", color: "#ffffff", x: 0.75, y: 1.5, w: 8, h: 0.6, fontSize: 24 }
+          ]
+        },
+        {
+          id: "closing",
+          title: "Closing",
+          layout: "closing",
+          elements: [{ id: "closing-title", type: "text", role: "title", text: "Thanks", x: 0.75, y: 3, w: 8, h: 1.2, fontSize: 40 }]
+        }
+      ]
+    });
+
+    const result = applyTemplateContentDesign(deck, imageBgTemplate);
+    const coverTitle = result.deck.slides[0].elements.find((element) => element.id === "cover-title");
+    const photoText = result.deck.slides[1].elements.find((element) => element.id === "photo-text");
+
+    // Light text over an unknown (image) background must be left as authored, never snapped to black —
+    // on the cover slide and on a content slide whose own image background is retained.
+    expect(coverTitle?.type === "text" && coverTitle.color).toBe("#ffffff");
+    expect(photoText?.type === "text" && photoText.color).toBe("#ffffff");
+    expect(result.deck.slides[1].background?.imageDataUri).toBe(TINY_IMG);
   });
 });

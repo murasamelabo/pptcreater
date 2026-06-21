@@ -1,5 +1,5 @@
 ﻿import { describe, expect, it } from "vitest";
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, writeFile } from "node:fs/promises";
 import { access } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -8,6 +8,7 @@ import sharp from "sharp";
 import { lintDeckSpec, parseDeckSpec, scaffoldDeckFromTemplate } from "@pptcreater/core";
 import {
   extractTemplateManifestFromPptx,
+  importTemplateFromPptx,
   mapThemeToTokens,
   parseHeaderFooter,
   parseSlideSize,
@@ -372,3 +373,106 @@ describe("template import reuses the source title-slide visual identity", () => 
     await expect(access(outputPath)).resolves.toBeUndefined();
   });
 });
+
+// An unused Office-default theme that ships alongside the real theme. It sits at theme1.xml so a naive
+// "first theme by zip order" pick would wrongly choose it; the slide master actually references theme2.
+const OFFICE_DEFAULT_THEME_XML = `<?xml version="1.0"?>
+<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <a:themeElements>
+    <a:clrScheme name="Office">
+      <a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1>
+      <a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1>
+      <a:dk2><a:srgbClr val="1F497D"/></a:dk2>
+      <a:lt2><a:srgbClr val="EEECE1"/></a:lt2>
+      <a:accent1><a:srgbClr val="4F81BD"/></a:accent1>
+      <a:accent2><a:srgbClr val="C0504D"/></a:accent2>
+      <a:accent3><a:srgbClr val="9BBB59"/></a:accent3>
+      <a:accent4><a:srgbClr val="8064A2"/></a:accent4>
+      <a:accent5><a:srgbClr val="4BACC6"/></a:accent5>
+      <a:accent6><a:srgbClr val="F79646"/></a:accent6>
+      <a:hlink><a:srgbClr val="0000FF"/></a:hlink>
+      <a:folHlink><a:srgbClr val="800080"/></a:folHlink>
+    </a:clrScheme>
+    <a:fontScheme name="Office">
+      <a:majorFont><a:latin typeface="Calibri Light"/></a:majorFont>
+      <a:minorFont><a:latin typeface="Calibri"/></a:minorFont>
+    </a:fontScheme>
+  </a:themeElements>
+</a:theme>`;
+
+const MASTER_RELS_THEME2 = `<?xml version="1.0"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme2.xml"/>
+</Relationships>`;
+
+async function buildTwoThemePptx(): Promise<Buffer> {
+  const zip = new JSZip();
+  // theme1 (the wrong, unused Office default) sits first in zip order on purpose.
+  zip.file("ppt/theme/theme1.xml", OFFICE_DEFAULT_THEME_XML);
+  zip.file("ppt/theme/theme2.xml", THEME_XML);
+  zip.file("ppt/presentation.xml", PRESENTATION_XML);
+  zip.file("ppt/slideMasters/slideMaster1.xml", MASTER_XML);
+  zip.file("ppt/slideMasters/_rels/slideMaster1.xml.rels", MASTER_RELS_THEME2);
+  zip.file("ppt/slideLayouts/slideLayout1.xml", LAYOUT_TITLE_XML);
+  zip.file("ppt/slideLayouts/slideLayout2.xml", LAYOUT_CLOSING_XML);
+  return zip.generateAsync({ type: "nodebuffer" });
+}
+
+const LAYOUT_CONTENT_XML = `<?xml version="1.0"?>
+<p:sldLayout xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" type="obj">
+  <p:cSld name="One Column Non-Bulleted Text">
+    <p:bg><p:bgPr><a:solidFill><a:srgbClr val="F2F2F2"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>
+    <p:spTree>
+      <p:sp><p:nvSpPr><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr><p:spPr><a:xfrm><a:off x="685800" y="457200"/><a:ext cx="7315200" cy="914400"/></a:xfrm></p:spPr><p:txBody><a:p><a:r><a:t>Title</a:t></a:r></a:p></p:txBody></p:sp>
+      <p:sp><p:nvSpPr><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr><p:spPr><a:xfrm><a:off x="685800" y="1600200"/><a:ext cx="7315200" cy="3886200"/></a:xfrm></p:spPr><p:txBody><a:p><a:r><a:t>Body</a:t></a:r></a:p></p:txBody></p:sp>
+    </p:spTree>
+  </p:cSld>
+</p:sldLayout>`;
+
+async function buildContentLayoutPptx(): Promise<Buffer> {
+  const zip = new JSZip();
+  zip.file("ppt/theme/theme1.xml", THEME_XML);
+  zip.file("ppt/presentation.xml", PRESENTATION_XML);
+  zip.file("ppt/slideMasters/slideMaster1.xml", MASTER_XML);
+  zip.file("ppt/slideLayouts/slideLayout1.xml", LAYOUT_TITLE_XML);
+  zip.file("ppt/slideLayouts/slideLayout2.xml", LAYOUT_CLOSING_XML);
+  zip.file("ppt/slideLayouts/slideLayout3.xml", LAYOUT_CONTENT_XML);
+  return zip.generateAsync({ type: "nodebuffer" });
+}
+
+describe("template import resolves the master-referenced theme", () => {
+  it("picks the theme the slide master links to, not the first theme by zip order", async () => {
+    const buffer = await buildTwoThemePptx();
+    const template = await extractTemplateManifestFromPptx(buffer, { id: "two-theme", name: "Two Theme" });
+
+    // theme2 (master-referenced) palette/fonts, not theme1's Office default (#4f81bd / Calibri).
+    expect(template.tokens.colors.accent).toBe("#2e74b5");
+    expect(template.tokens.colors.accent).not.toBe("#4f81bd");
+    expect(template.tokens.typography.headingFont).toBe("Yu Gothic UI");
+  });
+});
+
+describe("template import captures a content-slide blueprint", () => {
+  it("captures the neutral content layout background and notes it in the description", async () => {
+    const buffer = await buildContentLayoutPptx();
+    const template = await extractTemplateManifestFromPptx(buffer, { id: "content-demo", name: "Content Demo" });
+
+    expect(template.contentSlide?.background?.color).toBe("#f2f2f2");
+    expect(template.description).toContain("content-slide background/branding");
+  });
+});
+
+describe("importTemplateFromPptx accepts PowerPoint template extensions", () => {
+  it("imports a .potx file and rejects unsupported extensions", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "pptcreater-import-potx-"));
+    const potxPath = join(dir, "demo.potx");
+    await writeFile(potxPath, await buildMinimalPptx());
+
+    const result = await importTemplateFromPptx(potxPath);
+    expect(result.template.id).toBe("demo");
+    expect(result.template.tokens.colors.background).toBe("#ffffff");
+
+    await expect(importTemplateFromPptx(join(dir, "demo.key"))).rejects.toThrow(/PowerPoint file/);
+  });
+});
+

@@ -846,6 +846,36 @@ function naturalSlideSort(a: string, b: string): number {
   return na - nb;
 }
 
+/** Layout names that carry their own cover/section/closing identity and are not reusable as a content body. */
+const NON_CONTENT_LAYOUT_NAME =
+  /(title|section|cover|divider|closing|quote|agenda|photo|picture|film|round|code|demo|developer|dark|notes)/i;
+
+/** Ordered preferences for the most neutral text-content layout to capture a content background from. */
+const CONTENT_LAYOUT_PREFERENCES: RegExp[] = [
+  /^one column non-?bulleted text$/i,
+  /^one column bulleted text$/i,
+  /^header text only$/i,
+  /small header text light/i,
+  /^blank light$/i,
+  /^blank$/i,
+  /content/i,
+  /text/i
+];
+
+/** Pick the slideLayout path that best represents a plain text content page (for content backgrounds). */
+function pickContentLayoutPath(layoutNames: string[], layoutEntries: { name: string }[]): string | undefined {
+  const candidates = layoutEntries
+    .map((entry, index) => ({ name: (entry.name ?? "").trim(), path: layoutNames[index] }))
+    .filter((candidate) => candidate.name && !NON_CONTENT_LAYOUT_NAME.test(candidate.name));
+  for (const preference of CONTENT_LAYOUT_PREFERENCES) {
+    const hit = candidates.find((candidate) => preference.test(candidate.name));
+    if (hit) {
+      return hit.path;
+    }
+  }
+  return candidates[0]?.path;
+}
+
 export type ImportTemplateOptions = {
   id?: string;
   name?: string;
@@ -858,13 +888,30 @@ export async function extractTemplateManifestFromPptx(data: Buffer, options: Imp
   const zip = await JSZip.loadAsync(data);
   const names = Object.keys(zip.files);
 
-  const themeName = names.find((name) => /^ppt\/theme\/theme\d+\.xml$/i.test(name)) ?? names.find((name) => /theme.*\.xml$/i.test(name));
-  const themeXml = themeName ? await (zip.file(themeName)?.async("string") ?? Promise.resolve("")) : "";
-
   const presentationXml = (await zip.file("ppt/presentation.xml")?.async("string")) ?? "";
 
   const masterName = names.find((name) => /^ppt\/slideMasters\/slideMaster\d+\.xml$/i.test(name));
   const masterXml = masterName ? ((await zip.file(masterName)?.async("string")) ?? "") : "";
+
+  // Resolve the theme actually referenced by the slide master. A .potx can ship several extra themes
+  // (e.g. an unused Office-default theme), so picking the first `theme\d+.xml` by zip order can grab
+  // the wrong palette/fonts. Fall back to the first theme only when the master link is missing.
+  let themeName: string | undefined;
+  if (masterName) {
+    const masterRelsPath = masterName.replace(/slideMasters\/([^/]+)$/i, "slideMasters/_rels/$1.rels");
+    const masterRels = parseRels((await zip.file(masterRelsPath)?.async("string")) ?? "");
+    const themeRel = Object.values(masterRels).find((rel) => /theme$/i.test(rel.type));
+    if (themeRel) {
+      const resolved = resolveRelTarget(themeRel.target, "ppt/slideMasters");
+      if (resolved && zip.file(resolved)) {
+        themeName = resolved;
+      }
+    }
+  }
+  if (!themeName) {
+    themeName = names.find((name) => /^ppt\/theme\/theme\d+\.xml$/i.test(name)) ?? names.find((name) => /theme.*\.xml$/i.test(name));
+  }
+  const themeXml = themeName ? ((await zip.file(themeName)?.async("string")) ?? "") : "";
 
   const layoutNames = names.filter((name) => /^ppt\/slideLayouts\/slideLayout\d+\.xml$/i.test(name)).sort(naturalSlideSort);
   const layoutXmls: string[] = [];
@@ -952,6 +999,32 @@ export async function extractTemplateManifestFromPptx(data: Buffer, options: Imp
       }, themeXml, { title: titleAlign, subtitle: bodyAlign })
     : closingText;
 
+  // Capture a content-slide blueprint (background + footer branding) from a representative text layout
+  // so middle slides — not just the cover/closing — can inherit the template's visual identity.
+  let contentSlide: TemplateScaffoldSlide | undefined;
+  const contentLayoutPath = pickContentLayoutPath(layoutNames, layoutEntries);
+  if (contentLayoutPath) {
+    const contentLayoutXml = layoutByPath.get(contentLayoutPath) ?? "";
+    const contentRelsPath = contentLayoutPath.replace(/slideLayouts\/([^/]+)$/i, "slideLayouts/_rels/$1.rels");
+    const contentRels = parseRels((await zip.file(contentRelsPath)?.async("string")) ?? "");
+    const contentBlueprint = await extractSlideBlueprint(
+      { xml: contentLayoutXml, rels: contentRels, baseDir: "ppt/slideLayouts" },
+      masterBgXml,
+      zip,
+      canvas,
+      ["title", "body"],
+      {},
+      themeXml,
+      { title: titleAlign, subtitle: bodyAlign }
+    );
+    if (contentBlueprint && (contentBlueprint.background || (contentBlueprint.logos?.length ?? 0) > 0)) {
+      contentSlide = {
+        ...(contentBlueprint.background ? { background: contentBlueprint.background } : {}),
+        logos: contentBlueprint.logos ?? []
+      };
+    }
+  }
+
   const baseName = options.name ?? "Imported Template";
   const id = sanitizeId(options.id ?? baseName);
 
@@ -964,11 +1037,12 @@ export async function extractTemplateManifestFromPptx(data: Buffer, options: Imp
   );
 
   const reusesTitleVisual = Boolean(titleSlide && (titleSlide.background || (titleSlide.logos?.length ?? 0) > 0 || titleSlide.titleBox));
+  const reusesContentVisual = Boolean(contentSlide && (contentSlide.background || (contentSlide.logos?.length ?? 0) > 0));
   const manifest: TemplateManifest = {
     id,
     name: baseName,
     locale,
-    description: `Template imported from a PowerPoint file (colors, fonts${slideSize ? ", slide size" : ""}${headerFooter ? ", header/footer" : ""}${reusesTitleVisual ? ", title-slide background/logo/layout" : ""}).`,
+    description: `Template imported from a PowerPoint file (colors, fonts${slideSize ? ", slide size" : ""}${headerFooter ? ", header/footer" : ""}${reusesTitleVisual ? ", title-slide background/logo/layout" : ""}${reusesContentVisual ? ", content-slide background/branding" : ""}).`,
     tokens,
     layouts: buildLayouts(layoutEntries),
     accessibility: {
@@ -982,6 +1056,7 @@ export async function extractTemplateManifestFromPptx(data: Buffer, options: Imp
     ...(headerFooter ? { headerFooter } : {}),
     ...(titleSlide ? { titleSlide } : {}),
     ...(closingSlide ? { closingSlide } : {}),
+    ...(contentSlide ? { contentSlide } : {}),
     tags
   };
 
@@ -1001,8 +1076,9 @@ export async function importTemplateFromPptx(
   pptxPath: string,
   options: ImportTemplateOptions & { register?: boolean; overwrite?: boolean; registryPath?: string } = {}
 ): Promise<ImportTemplateFromPptxResult> {
-  if (extname(pptxPath).toLowerCase() !== ".pptx") {
-    throw new Error(`Expected a .pptx file, received: ${pptxPath}`);
+  const ext = extname(pptxPath).toLowerCase();
+  if (![".pptx", ".potx", ".pptm", ".potm"].includes(ext)) {
+    throw new Error(`Expected a PowerPoint file (.pptx, .potx, .pptm, or .potm), received: ${pptxPath}`);
   }
   const data = await readFile(pptxPath);
   const fallbackName = basename(pptxPath, extname(pptxPath));

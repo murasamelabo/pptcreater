@@ -7,6 +7,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
 import { contrastRatio, defaultTokens } from "./color.js";
 import { SLIDE_WIDE } from "./layout.js";
+import { defaultFontSizeForRole } from "./typography.js";
 import {
   DesignTokensSchema,
   HeaderFooterSchema,
@@ -49,6 +50,7 @@ export const TemplateManifestSchema = z.object({
   headerFooter: HeaderFooterSchema.optional(),
   titleSlide: TemplateScaffoldSlideSchema.optional(),
   closingSlide: TemplateScaffoldSlideSchema.optional(),
+  contentSlide: TemplateScaffoldSlideSchema.optional(),
   tags: z.array(z.string()).default([])
 });
 
@@ -993,4 +995,312 @@ export function scaffoldDeckFromTemplate(
   };
 
   return deck;
+}
+
+/** Prefix for elements injected by applyTemplateContentDesign so re-applying stays idempotent. */
+const TEMPLATE_CONTENT_LAYER_PREFIX = "__tmpl-content-";
+
+/**
+ * Layout names that already carry the template's cover/section/closing identity. `title` is matched
+ * only as a standalone cover layout (e.g. `title`, `title-slide`, `section-title`) — *not* as a
+ * substring, so genuine content layouts such as `title-content` / `title-and-content` are still
+ * treated as middle content slides.
+ */
+const COVER_SECTION_LAYOUT_PATTERN = /(^|[-_ ])(section|divider|closing|cover|agenda|quote)([-_ ]|$)/i;
+const COVER_TITLE_LAYOUTS = new Set(["title", "title-slide", "titleslide", "title slide", "section-title"]);
+
+/**
+ * Decide whether a slide is a "middle" content slide that should inherit the template's content
+ * background, as opposed to a cover/section/closing slide that carries its own identity. The first
+ * and last slide of a deck are treated as cover/closing by position; everything else is judged by
+ * its layout name and id.
+ */
+function isTemplateContentSlide(slide: DeckSpec["slides"][number], index: number, total: number): boolean {
+  const layout = (slide.layout ?? "").toLowerCase();
+  if (COVER_TITLE_LAYOUTS.has(layout) || COVER_SECTION_LAYOUT_PATTERN.test(layout)) {
+    return false;
+  }
+  if (slide.id === "title" || slide.id === "closing") {
+    return false;
+  }
+  if (index === 0 || index === total - 1) {
+    return false;
+  }
+  return true;
+}
+
+export type ApplyTemplateContentDesignOptions = {
+  /** When true (default), adopt the template's tokens (colors + fonts) and remap the deck's old
+   *  palette colors to the new one across all slides, not just inject content backgrounds. */
+  retheme?: boolean;
+};
+
+export type ApplyTemplateContentDesignResult = {
+  deck: DeckSpec;
+  /** Number of content (middle) slides that received the template's content background/branding. */
+  appliedSlideCount: number;
+  /** Whether the deck tokens + baked palette colors were re-themed to the template. */
+  rethemed: boolean;
+};
+
+/** Normalize a hex color to lowercase `#rrggbb`, expanding 3-digit shorthand. */
+function normalizeHexLower(hex: string | undefined): string | undefined {
+  if (!hex) {
+    return undefined;
+  }
+  const value = hex.trim().toLowerCase();
+  if (/^#[0-9a-f]{6}$/.test(value)) {
+    return value;
+  }
+  if (/^#[0-9a-f]{3}$/.test(value)) {
+    return `#${value[1]}${value[1]}${value[2]}${value[2]}${value[3]}${value[3]}`;
+  }
+  return undefined;
+}
+
+/**
+ * Build a remap from the deck's previous palette to the template's palette so baked element colors
+ * (e.g. an accent bar authored with the old accent hex) follow the template. Only roles whose color
+ * actually changes are remapped, so unrelated neutrals (pure black text / white) are left alone.
+ */
+function buildPaletteRemap(oldColors: DesignTokens["colors"] | undefined, newColors: DesignTokens["colors"]): Map<string, string> {
+  const remap = new Map<string, string>();
+  if (!oldColors) {
+    return remap;
+  }
+  const roles: (keyof DesignTokens["colors"])[] = ["background", "surface", "text", "mutedText", "accent", "danger", "success"];
+  for (const role of roles) {
+    const from = normalizeHexLower(oldColors[role]);
+    const to = normalizeHexLower(newColors[role]);
+    if (from && to && from !== to && !remap.has(from)) {
+      remap.set(from, to);
+    }
+  }
+  return remap;
+}
+
+/** Apply a palette remap to a single element's color-bearing fields, returning a new element. */
+function rethemeElement(element: SlideElement, remap: Map<string, string>): SlideElement {
+  if (remap.size === 0) {
+    return element;
+  }
+  const swap = (hex: string | undefined): string | undefined => {
+    const key = normalizeHexLower(hex);
+    return key && remap.has(key) ? remap.get(key) : hex;
+  };
+  if (element.type === "text") {
+    const nextColor = swap(element.color);
+    const nextContrast = swap(element.contrastBackground);
+    if (nextColor === element.color && nextContrast === element.contrastBackground) {
+      return element;
+    }
+    return {
+      ...element,
+      ...(nextColor !== element.color ? { color: nextColor } : {}),
+      ...(nextContrast !== element.contrastBackground ? { contrastBackground: nextContrast } : {})
+    };
+  }
+  if (element.type === "shape") {
+    const fill = element.fill && element.fill !== "none" ? swap(element.fill) : element.fill;
+    const line = element.line ? { ...element.line, ...(element.line.color ? { color: swap(element.line.color) } : {}) } : element.line;
+    if (fill === element.fill && line === element.line) {
+      return element;
+    }
+    return { ...element, ...(fill !== undefined ? { fill } : {}), ...(line ? { line } : {}) };
+  }
+  return element;
+}
+
+/** True when a slide carries a large image/svg/diagram backdrop, so the true local background of
+ *  text without an explicit `contrastBackground` is unknown and must not be repaired blindly. This
+ *  considers both element-level backdrops and a slide-level `background.imageDataUri`. */
+function slideHasLargeBackdrop(
+  elements: SlideElement[],
+  canvasWidth: number,
+  canvasHeight: number,
+  slideBackground?: SlideBackground
+): boolean {
+  if (slideBackground?.imageDataUri) {
+    return true;
+  }
+  const area = canvasWidth * canvasHeight;
+  return elements.some(
+    (element) =>
+      (element.type === "image" || element.type === "svg" || element.type === "diagram") &&
+      (element.w * element.h) / area >= 0.4
+  );
+}
+
+/**
+ * After a palette re-theme, a text element's known local background can darken (e.g. a number badge
+ * whose fill moved to a darker accent), dropping contrast below the readable threshold. Snap such a
+ * text color to whichever of black/white reads best against the known background, mirroring the lint
+ * contrast model (large text ≥24pt needs 3:1, else 4.5:1). `localBackground` must be the genuine
+ * background — pass `undefined` to skip when it cannot be determined safely.
+ */
+function repairTextContrast(element: SlideElement, localBackground: string | undefined, tokens: DesignTokens): SlideElement {
+  if (element.type !== "text" || !localBackground) {
+    return element;
+  }
+  const fontSize = element.fontSize ?? defaultFontSizeForRole(element.role, tokens);
+  const foreground = element.color ?? tokens.colors.text;
+  const minimumRatio = fontSize >= 24 ? 3 : 4.5;
+  if (contrastRatio(foreground, localBackground) >= minimumRatio) {
+    return element;
+  }
+  const best = contrastRatio("#ffffff", localBackground) >= contrastRatio("#000000", localBackground) ? "#ffffff" : "#000000";
+  if (normalizeHexLower(best) === normalizeHexLower(foreground)) {
+    return element;
+  }
+  return { ...element, color: best };
+}
+
+/**
+ * Re-skin an existing deck so it adopts an imported/built-in template's identity:
+ *  - adopt the template's tokens (colors + fonts), preserving the deck's locale font fallbacks, and
+ *    remap any baked element colors from the deck's previous palette to the template's (deck-wide);
+ *  - inject the template's content-slide background and footer branding onto the middle slides.
+ *
+ * This complements `scaffoldDeckFromTemplate`, which only styles the title and closing slides —
+ * content slides are authored afterwards, so without this step the middle of a deck keeps a generic
+ * look and never matches the template identity.
+ *
+ * Cover (first / `title-*` / `section-*`) and closing (`closing-*` / last) slides keep their own
+ * background but still follow the re-theme. A captured full-bleed image becomes a decorative
+ * behind-content background layer; smaller marks become footer branding. The operation is
+ * idempotent: previously injected layers (prefixed `__tmpl-content-`) are stripped and rebuilt.
+ */
+export function applyTemplateContentDesign(
+  deck: DeckSpec,
+  template: TemplateManifest,
+  options: ApplyTemplateContentDesignOptions = {}
+): ApplyTemplateContentDesignResult {
+  const retheme = options.retheme ?? true;
+  const blueprint = template.contentSlide;
+  const hasBackgroundBlueprint = Boolean(blueprint && (blueprint.background || (blueprint.logos?.length ?? 0) > 0));
+
+  const canvasWidth = deck.slideSize?.widthInches ?? template.slideSize?.widthInches ?? SLIDE_WIDE.width;
+  const canvasHeight = deck.slideSize?.heightInches ?? template.slideSize?.heightInches ?? SLIDE_WIDE.height;
+  const fitBox = (x: number, y: number, w: number, h: number): { x: number; y: number; w: number; h: number } => {
+    const cw = Math.min(Math.max(w, 0.1), canvasWidth);
+    const ch = Math.min(Math.max(h, 0.1), canvasHeight);
+    const cx = Math.max(0, Math.min(x, canvasWidth - cw));
+    const cy = Math.max(0, Math.min(y, canvasHeight - ch));
+    return { x: cx, y: cy, w: cw, h: ch };
+  };
+
+  const fullBleed: ScaffoldImage[] = [];
+  const marks: ScaffoldImage[] = [];
+  for (const logo of blueprint?.logos ?? []) {
+    const areaFraction = (logo.w * logo.h) / (canvasWidth * canvasHeight);
+    if (areaFraction >= 0.55) {
+      fullBleed.push(logo);
+    } else {
+      marks.push(logo);
+    }
+  }
+
+  // Build the re-theme tokens + palette remap (deck-wide) before per-slide work.
+  const newColors = template.tokens.colors;
+  const remap = retheme ? buildPaletteRemap(deck.tokens?.colors, newColors) : new Map<string, string>();
+  let rethemedTokens: DesignTokens | undefined;
+  if (retheme) {
+    const mergedFallbacks = Array.from(
+      new Set([...(template.tokens.typography.fallbackFonts ?? []), ...((deck.tokens?.typography.fallbackFonts ?? []) as string[])])
+    );
+    rethemedTokens = {
+      colors: { ...template.tokens.colors },
+      typography: { ...template.tokens.typography, fallbackFonts: mergedFallbacks },
+      spacing: deck.tokens?.spacing ?? template.tokens.spacing
+    };
+  }
+
+  const total = deck.slides.length;
+  const repairTokens = rethemedTokens ?? deck.tokens ?? defaultTokens(deck.locale);
+  let appliedSlideCount = 0;
+  const slides = deck.slides.map((slide, index) => {
+    const isContent = isTemplateContentSlide(slide, index, total);
+    const baseElements = slide.elements.filter((element) => !element.id.startsWith(TEMPLATE_CONTENT_LAYER_PREFIX));
+    const rethemedElements = retheme ? baseElements.map((element) => rethemeElement(element, remap)) : baseElements;
+
+    const applyBackground = isContent && hasBackgroundBlueprint && Boolean(blueprint);
+    const injected: SlideElement[] = [];
+    if (applyBackground && blueprint) {
+      let order = 1;
+      for (const image of fullBleed) {
+        const box = fitBox(image.x, image.y, image.w, image.h);
+        injected.push({
+          id: `${TEMPLATE_CONTENT_LAYER_PREFIX}bg-${order}`,
+          type: "image",
+          dataUri: image.dataUri,
+          x: box.x,
+          y: box.y,
+          w: box.w,
+          h: box.h,
+          decorative: true,
+          readingOrder: 900 + order
+        });
+        order += 1;
+      }
+      for (const image of marks) {
+        const box = fitBox(image.x, image.y, image.w, image.h);
+        injected.push({
+          id: `${TEMPLATE_CONTENT_LAYER_PREFIX}mark-${order}`,
+          type: "image",
+          dataUri: image.dataUri,
+          x: box.x,
+          y: box.y,
+          w: box.w,
+          h: box.h,
+          decorative: !image.altText,
+          ...(image.altText ? { altText: image.altText } : {}),
+          readingOrder: 900 + order
+        });
+        order += 1;
+      }
+      appliedSlideCount += 1;
+    }
+
+    let composed = [...injected, ...rethemedElements];
+    const nextBackground = applyBackground && blueprint?.background ? blueprint.background : slide.background;
+
+    // Re-theming can darken a known local background and drop text contrast below the readable
+    // threshold; snap such text to black/white. Only repair against a *known* background: an explicit
+    // contrastBackground, or the slide's solid color when there is no large image/diagram backdrop.
+    if (retheme) {
+      const solidBackground = nextBackground && !nextBackground.imageDataUri ? nextBackground.color : undefined;
+      const hasBackdrop = slideHasLargeBackdrop(composed, canvasWidth, canvasHeight, nextBackground);
+      composed = composed.map((element) => {
+        if (element.type !== "text") {
+          return element;
+        }
+        // Only repair against a *known* solid background. When the slide sits on an image backdrop
+        // (element-level or a slide-level image background), the true local background is unknown, so
+        // we must not fall back to the token background — that would wrongly snap light text authored
+        // for a dark photo to black. An explicit per-element contrastBackground always wins.
+        const localBackground = element.contrastBackground ?? (hasBackdrop ? undefined : solidBackground ?? repairTokens.colors.background);
+        return repairTextContrast(element, localBackground, repairTokens);
+      });
+    }
+
+    const unchanged =
+      composed.length === slide.elements.length &&
+      composed.every((element, position) => element === slide.elements[position]) &&
+      nextBackground === slide.background;
+    if (unchanged) {
+      return slide;
+    }
+    return {
+      ...slide,
+      ...(nextBackground ? { background: nextBackground } : {}),
+      elements: composed
+    };
+  });
+
+  const nextDeck: DeckSpec = {
+    ...deck,
+    ...(rethemedTokens ? { tokens: rethemedTokens } : {}),
+    slides
+  };
+  return { deck: nextDeck, appliedSlideCount, rethemed: retheme };
 }
