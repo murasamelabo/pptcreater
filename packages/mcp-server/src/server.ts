@@ -14,6 +14,7 @@ import {
   createVisualScaffold,
   classifyLintReport,
   DeckSpecSchema,
+  deleteTemplateManifest,
   ensureSourceReferenceSlide,
   formatSlideCreationRules,
   getBusinessDeckGuidance,
@@ -34,6 +35,7 @@ import {
   reviewBusinessDeck,
   reviewDeckContent,
   scaffoldDeckFromTemplate,
+  searchTemplateEntries,
   searchTemplates,
   STYLE_PROFILES,
   TemplateManifestSchema,
@@ -627,7 +629,7 @@ export function createPptcreaterMcpServer(): McpServer {
     "search_templates",
     {
       title: "Search templates",
-      description: "List built-in accessible slide templates.",
+      description: "List built-in and registered template manifests. Use list_templates when you need source/deletable status.",
       inputSchema: {
         query: z.string().default("")
       }
@@ -635,6 +637,22 @@ export function createPptcreaterMcpServer(): McpServer {
     async ({ query }) => {
       return jsonText(await searchTemplates(query));
     }
+  );
+
+  server.registerTool(
+    "list_templates",
+    {
+      title: "List templates with delete status",
+      description:
+        "List preset and registered templates with source/deletable status. Preset templates are built in and locked; registered custom/imported templates can be deleted with delete_template.",
+      inputSchema: {
+        query: z.string().default(""),
+        registeredOnly: z.boolean().default(false),
+        includeBuiltins: z.boolean().optional()
+      }
+    },
+    async ({ query, registeredOnly, includeBuiltins }) =>
+      jsonText(await searchTemplateEntries(query, { registeredOnly, includeBuiltins }))
   );
 
   server.registerTool(
@@ -648,6 +666,19 @@ export function createPptcreaterMcpServer(): McpServer {
       }
     },
     async ({ template, overwrite }) => jsonText(await registerTemplateManifest(template, { overwrite }))
+  );
+
+  server.registerTool(
+    "delete_template",
+    {
+      title: "Delete registered template",
+      description:
+        "Delete a registered custom/imported template from the user template registry. Built-in preset templates are locked and cannot be deleted.",
+      inputSchema: {
+        templateId: z.string().min(1)
+      }
+    },
+    async ({ templateId }) => jsonText(await deleteTemplateManifest(templateId))
   );
 
   server.registerTool(
@@ -1010,7 +1041,8 @@ export function createPptcreaterMcpServer(): McpServer {
             "Use `register_template` for reusable slide template manifests. A template manifest must include design tokens, layouts, locale, tags, and accessibility constraints.",
             `Default template registry: ${getDefaultTemplateRegistryPath()}`,
             "",
-            "After registration, use `search_assets` or `search_templates` to discover the new reusable item."
+            "After registration, use `search_assets`, `search_templates`, or `list_templates` to discover the new reusable item.",
+            "`list_templates` includes source/deletable status; preset templates are locked, while registered custom/imported templates can be removed with `delete_template`."
           ].join("\n")
         }
       ]

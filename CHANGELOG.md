@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## v0.4.1 - 2026-06-21
+
+- Added template registry cleanup operations:
+  - Core now exposes status-aware template listing entries with `source` (`preset` / `registered`) and `deletable` metadata, plus safe deletion for registered custom/imported templates.
+  - CLI `pptcreater template list` now shows `source` and `delete` columns, marking built-in presets as `locked` and registered/imported templates as `deletable`; `--registered-only` / `--custom-only` lists only registry-backed templates.
+  - CLI `pptcreater template delete <id>` (alias: `template remove`) deletes registered custom/imported templates and clearly rejects locked preset templates.
+  - MCP now includes `list_templates` (status-aware listing) and `delete_template` (registered template deletion), while keeping `search_templates` backward-compatible for template manifest discovery.
+- Preserved backward compatibility for `pptcreater template list --json` by keeping manifest fields at the top level and adding `source`, `deletable`, and optional `deleteReason` metadata alongside them.
+- Added regression tests for registered-only listing, deletion, built-in deletion rejection, and legacy preset-id collision cleanup; full suite now at 244 tests.
+
 ## v0.4.0 - 2026-06-22
 
 - **PowerPoint (.pptx) template import now reproduces the source title slide's visual identity**, not just abstract theme tokens. Importing a designer template and scaffolding a deck reuses the original title slide's background, logos, placeholder geometry, and text alignment — only the title/subtitle copy changes — so a scaffolded deck looks like it came from the same template instead of a generic re-skin.

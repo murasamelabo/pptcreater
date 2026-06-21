@@ -331,7 +331,7 @@ Both commands are idempotent. Existing instruction files are updated inside a ma
 
 ## Add PowerPoint templates
 
-Templates are registered as pptcreater template manifests: JSON files that define design tokens, layouts, locale, tags, and accessibility constraints. Direct `.pptx` / `.potx` template import is not supported yet; use a manifest to describe the reusable slide system.
+Templates are registered as pptcreater template manifests: JSON files that define design tokens, layouts, locale, tags, accessibility constraints, and optional title/closing slide scaffolding captured from `.pptx` files.
 
 Start from an existing template:
 
@@ -345,6 +345,28 @@ Create a manifest such as `templates\my-template\template.json`, then register i
 pptcreater template register templates\my-template\template.json
 pptcreater template list
 ```
+
+`pptcreater template list` shows whether each template is a locked preset or a deletable registered template:
+
+```text
+id                    name                  source      delete
+minimal-consulting    Minimal Consulting    preset      locked
+brand                 Brand                 registered  deletable
+```
+
+To list only custom/imported templates that are stored in the registry:
+
+```powershell
+pptcreater template list --registered-only
+```
+
+To delete a registered custom/imported template:
+
+```powershell
+pptcreater template delete brand
+```
+
+Built-in preset templates are marked `locked` and cannot be deleted.
 
 Registered custom templates are stored in:
 
@@ -369,8 +391,10 @@ Accessibility defaults (minimum body size, contrast, required slide titles / rea
 From an MCP-capable AI agent, use:
 
 - `search_templates` to inspect existing templates before creating duplicates.
+- `list_templates` to inspect existing templates with `source` and `deletable` status.
 - `register_template` to register a complete template manifest.
 - `import_template` to extract a reusable template from a local `.pptx` file (optionally `register: true`).
+- `delete_template` to delete a registered custom/imported template. Preset templates are locked.
 - `scaffold_from_template` to create a starter title+closing deck that reuses a built-in or imported template.
 - `deckspec://schema` to understand how `template` ids are referenced from decks.
 

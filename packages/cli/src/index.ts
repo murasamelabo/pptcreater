@@ -13,6 +13,7 @@ import {
   createSampleDeck,
   createSectionDividerSlides,
   createVisualScaffold,
+  deleteTemplateManifest,
   ensureSourceReferenceSlide,
   getBusinessDeckGuidance,
   getContentGuidance,
@@ -29,12 +30,14 @@ import {
   reviewBusinessDeck,
   reviewDeckContent,
   scaffoldDeckFromTemplate,
+  searchTemplateEntries,
   STYLE_PROFILES,
   formatSlideCreationRules,
   type BusinessStyleMode,
   type ContentMode,
   type Locale,
-  type StyleProfile
+  type StyleProfile,
+  type TemplateRegistryEntry
 } from "@pptcreater/core";
 import { importTemplateFromPptx, renderDeckToPptx } from "@pptcreater/render-pptx";
 import { renderStudioHtml } from "@pptcreater/studio";
@@ -48,6 +51,20 @@ async function readJson(path: string): Promise<unknown> {
 async function writeJson(path: string, value: unknown): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+function templateEntryJson(entry: TemplateRegistryEntry): Record<string, unknown> {
+  return {
+    ...entry.template,
+    source: entry.source,
+    deletable: entry.deletable,
+    ...(entry.deleteReason ? { deleteReason: entry.deleteReason } : {})
+  };
+}
+
+function templateEntryLine(entry: TemplateRegistryEntry): string {
+  const deleteStatus = entry.deletable ? "deletable" : "locked";
+  return `${entry.template.id}\t${entry.template.name}\t${entry.source}\t${deleteStatus}`;
 }
 
 function asLocale(value: string): Locale {
@@ -511,11 +528,26 @@ const templateCommand = program
 
 templateCommand
   .command("list")
-  .description("List built-in templates.")
+  .description("List templates with source and delete status. Preset templates are locked; registered custom/imported templates are deletable.")
+  .argument("[query]", "Optional search query", "")
+  .option("--registered-only", "List only custom/imported templates from the registry", false)
+  .option("--custom-only", "Alias for --registered-only", false)
   .option("--json", "Emit JSON", false)
-  .action(commandAction(async (options: { json: boolean }) => {
-    const templates = await listAllTemplates();
-    console.log(options.json ? JSON.stringify(templates, null, 2) : templates.map((template) => `${template.id}\t${template.name}`).join("\n"));
+  .action(commandAction(async (query: string, options: { registeredOnly: boolean; customOnly: boolean; json: boolean }) => {
+    const registeredOnly = options.registeredOnly || options.customOnly;
+    const entries = await searchTemplateEntries(query, { registeredOnly });
+    if (options.json) {
+      console.log(JSON.stringify(entries.map(templateEntryJson), null, 2));
+      return;
+    }
+
+    if (entries.length === 0) {
+      console.log(registeredOnly ? "No registered templates found." : "No templates found.");
+      return;
+    }
+
+    console.log(["id", "name", "source", "delete"].join("\t"));
+    console.log(entries.map(templateEntryLine).join("\n"));
   }));
 
 templateCommand
@@ -535,6 +567,17 @@ templateCommand
   .action(() => {
     console.log(getDefaultTemplateRegistryPath());
   });
+
+templateCommand
+  .command("delete")
+  .alias("remove")
+  .description("Delete a registered custom/imported template from the user registry. Built-in templates cannot be deleted.")
+  .argument("<templateId>", "Registered custom/imported template id to delete")
+  .option("--json", "Emit JSON", false)
+  .action(commandAction(async (templateId: string, options: { json: boolean }) => {
+    const result = await deleteTemplateManifest(templateId);
+    console.log(options.json ? JSON.stringify(result, null, 2) : `Deleted template ${result.template.id} from ${result.registryPath}`);
+  }));
 
 templateCommand
   .command("import")

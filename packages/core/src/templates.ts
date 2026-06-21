@@ -190,6 +190,13 @@ export const TemplateRegistrySchema = z.object({
 });
 
 export type TemplateRegistry = z.infer<typeof TemplateRegistrySchema>;
+export type TemplateRegistrySource = "preset" | "registered";
+export type TemplateRegistryEntry = {
+  template: TemplateManifest;
+  source: TemplateRegistrySource;
+  deletable: boolean;
+  deleteReason?: string;
+};
 const REGISTRY_LOCK_STALE_MS = 30_000;
 const REGISTRY_LOCK_OWNER_FILE = "owner.json";
 
@@ -672,10 +679,61 @@ export async function registerTemplateManifest(
   return { template, registryPath };
 }
 
+export async function deleteTemplateManifest(
+  id: string,
+  options: { registryPath?: string } = {}
+): Promise<{ template: TemplateManifest; registryPath: string }> {
+  const templateId = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,79}$/, "Use 1-80 letters, numbers, dots, underscores, or hyphens.").parse(id);
+  const registryPath = options.registryPath ?? getDefaultTemplateRegistryPath();
+  let deletedTemplate: TemplateManifest | undefined;
+  const existingBuiltin = listTemplates().some((item) => item.id === templateId);
+
+  await withRegistryLock(registryPath, async () => {
+    const registry = await readTemplateRegistry(registryPath);
+    const existingIndex = registry.templates.findIndex((item) => item.id === templateId);
+
+    if (existingIndex < 0) {
+      if (existingBuiltin) {
+        throw new Error(`Template "${templateId}" is built in and cannot be deleted from the custom template registry.`);
+      }
+      throw new Error(`Template "${templateId}" was not found in the custom template registry.`);
+    }
+
+    deletedTemplate = registry.templates[existingIndex];
+    const nextTemplates = registry.templates.filter((item) => item.id !== templateId);
+    await writeTemplateRegistryUnlocked({ version: "0.1", templates: nextTemplates }, registryPath);
+  });
+
+  if (!deletedTemplate) {
+    throw new Error(`Template "${templateId}" was not deleted.`);
+  }
+
+  return { template: deletedTemplate, registryPath };
+}
+
 export async function listAllTemplates(options: { includeBuiltins?: boolean; registryPath?: string } = {}): Promise<TemplateManifest[]> {
   const includeBuiltins = options.includeBuiltins ?? true;
   const registry = await readTemplateRegistry(options.registryPath);
   return includeBuiltins ? [...listTemplates(), ...registry.templates] : registry.templates;
+}
+
+export async function listTemplateEntries(options: { includeBuiltins?: boolean; registeredOnly?: boolean; registryPath?: string } = {}): Promise<TemplateRegistryEntry[]> {
+  const includeBuiltins = options.includeBuiltins ?? !options.registeredOnly;
+  const registry = await readTemplateRegistry(options.registryPath);
+  const presetEntries: TemplateRegistryEntry[] = includeBuiltins
+    ? listTemplates().map((template) => ({
+        template,
+        source: "preset",
+        deletable: false,
+        deleteReason: "Preset templates are built in and cannot be deleted from the custom template registry."
+      }))
+    : [];
+  const registeredEntries: TemplateRegistryEntry[] = registry.templates.map((template) => ({
+    template,
+    source: "registered",
+    deletable: true
+  }));
+  return [...presetEntries, ...registeredEntries];
 }
 
 export async function searchTemplates(query: string, options: { registryPath?: string } = {}): Promise<TemplateManifest[]> {
@@ -686,6 +744,21 @@ export async function searchTemplates(query: string, options: { registryPath?: s
   }
 
   return templates.filter((template) => [template.id, template.name, template.description, ...template.tags].join(" ").toLowerCase().includes(normalized));
+}
+
+export async function searchTemplateEntries(
+  query: string,
+  options: { includeBuiltins?: boolean; registeredOnly?: boolean; registryPath?: string } = {}
+): Promise<TemplateRegistryEntry[]> {
+  const normalized = query.trim().toLowerCase();
+  const entries = await listTemplateEntries(options);
+  if (!normalized) {
+    return entries;
+  }
+
+  return entries.filter((entry) =>
+    [entry.template.id, entry.template.name, entry.template.description, ...entry.template.tags].join(" ").toLowerCase().includes(normalized)
+  );
 }
 
 const SCAFFOLD_DEFAULTS: Record<Locale, { title: string; subtitle: string; closingTitle: string; closingSubtitle: string }> = {

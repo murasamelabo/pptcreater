@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { defaultTokens } from "./color.js";
-import { registerTemplateManifest, scaffoldDeckFromTemplate, searchTemplates } from "./templates.js";
+import { deleteTemplateManifest, listTemplateEntries, registerTemplateManifest, scaffoldDeckFromTemplate, searchTemplateEntries, searchTemplates } from "./templates.js";
 import { lintDeckSpec } from "./lint.js";
 import { parseDeckSpec } from "./schema.js";
 
@@ -41,6 +41,71 @@ describe("template registry", () => {
     const templates = await searchTemplates("board", { registryPath });
 
     expect(templates.some((template) => template.id === "custom-board-report")).toBe(true);
+  });
+
+  it("lists presets and registered templates with deletion status", async () => {
+    const registryPath = join(await mkdtemp(join(tmpdir(), "pptcreater-templates-")), "registry.json");
+    await registerTemplateManifest(customTemplate("registered-board-report"), { registryPath });
+
+    const entries = await listTemplateEntries({ registryPath });
+    const preset = entries.find((entry) => entry.template.id === "minimal-consulting");
+    const registered = entries.find((entry) => entry.template.id === "registered-board-report");
+
+    expect(preset?.source).toBe("preset");
+    expect(preset?.deletable).toBe(false);
+    expect(preset?.deleteReason).toMatch(/cannot be deleted/);
+    expect(registered?.source).toBe("registered");
+    expect(registered?.deletable).toBe(true);
+  });
+
+  it("can list only registered templates", async () => {
+    const registryPath = join(await mkdtemp(join(tmpdir(), "pptcreater-templates-")), "registry.json");
+    await registerTemplateManifest(customTemplate("registered-only-board-report"), { registryPath });
+
+    const entries = await searchTemplateEntries("", { registeredOnly: true, registryPath });
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.template.id).toBe("registered-only-board-report");
+    expect(entries[0]?.source).toBe("registered");
+    expect(entries[0]?.deletable).toBe(true);
+  });
+
+  it("deletes registered custom templates without removing other templates", async () => {
+    const registryPath = join(await mkdtemp(join(tmpdir(), "pptcreater-templates-")), "registry.json");
+    await registerTemplateManifest(customTemplate("delete-me"), { registryPath });
+    await registerTemplateManifest(customTemplate("keep-me"), { registryPath });
+
+    const result = await deleteTemplateManifest("delete-me", { registryPath });
+    const templates = await searchTemplates("", { registryPath });
+
+    expect(result.template.id).toBe("delete-me");
+    expect(templates.some((template) => template.id === "delete-me")).toBe(false);
+    expect(templates.some((template) => template.id === "keep-me")).toBe(true);
+  });
+
+  it("rejects deleting built-in templates from the custom registry", async () => {
+    const registryPath = join(await mkdtemp(join(tmpdir(), "pptcreater-templates-")), "registry.json");
+
+    await expect(deleteTemplateManifest("minimal-consulting", { registryPath })).rejects.toThrow(/built in/);
+  });
+
+  it("deletes registered entries even when their id collides with a preset", async () => {
+    const registryPath = join(await mkdtemp(join(tmpdir(), "pptcreater-templates-")), "registry.json");
+    await writeFile(
+      registryPath,
+      JSON.stringify({
+        version: "0.1",
+        templates: [customTemplate("minimal-consulting")]
+      })
+    );
+
+    const result = await deleteTemplateManifest("minimal-consulting", { registryPath });
+    const registeredEntries = await listTemplateEntries({ registeredOnly: true, registryPath });
+    const allEntries = await listTemplateEntries({ registryPath });
+
+    expect(result.template.id).toBe("minimal-consulting");
+    expect(registeredEntries).toHaveLength(0);
+    expect(allEntries.some((entry) => entry.template.id === "minimal-consulting" && entry.source === "preset" && !entry.deletable)).toBe(true);
   });
 
   it("preserves concurrent template registrations", async () => {
