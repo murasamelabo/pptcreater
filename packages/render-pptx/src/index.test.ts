@@ -26,6 +26,7 @@ const TEMPLATE_CONTENT_TYPES = `<?xml version="1.0" encoding="UTF-8" standalone=
   <Override PartName="/ppt/slideLayouts/slideLayout2.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
   <Override PartName="/ppt/slideLayouts/slideLayout3.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
   <Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
+  <Override PartName="/ppt/theme/theme2.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
 </Types>`;
 
 const TEMPLATE_PRESENTATION_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -40,10 +41,18 @@ const TEMPLATE_PRESENTATION_RELS = `<?xml version="1.0" encoding="UTF-8" standal
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>
 </Relationships>`;
 
+const TEMPLATE_UNUSED_THEME_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <a:themeElements>
+    <a:clrScheme name="Unused"><a:dk1><a:srgbClr val="000000"/></a:dk1><a:lt1><a:srgbClr val="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="00222E"/></a:dk2><a:lt2><a:srgbClr val="F2F2F2"/></a:lt2><a:accent1><a:srgbClr val="FFFFFF"/></a:accent1><a:accent2><a:srgbClr val="B91C1C"/></a:accent2><a:accent3><a:srgbClr val="85E89F"/></a:accent3><a:accent4><a:srgbClr val="8064A2"/></a:accent4><a:accent5><a:srgbClr val="4BACC6"/></a:accent5><a:accent6><a:srgbClr val="F79646"/></a:accent6><a:hlink><a:srgbClr val="0563C1"/></a:hlink><a:folHlink><a:srgbClr val="954F72"/></a:folHlink></a:clrScheme>
+    <a:fontScheme name="Unused"><a:majorFont><a:latin typeface="Aptos"/></a:majorFont><a:minorFont><a:latin typeface="Aptos"/></a:minorFont></a:fontScheme>
+  </a:themeElements>
+</a:theme>`;
+
 const TEMPLATE_THEME_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
   <a:themeElements>
-    <a:clrScheme name="Template"><a:dk1><a:srgbClr val="000000"/></a:dk1><a:lt1><a:srgbClr val="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="00222E"/></a:dk2><a:lt2><a:srgbClr val="F2F2F2"/></a:lt2><a:accent1><a:srgbClr val="1860C5"/></a:accent1><a:accent2><a:srgbClr val="B91C1C"/></a:accent2><a:accent3><a:srgbClr val="85E89F"/></a:accent3><a:accent4><a:srgbClr val="8064A2"/></a:accent4><a:accent5><a:srgbClr val="4BACC6"/></a:accent5><a:accent6><a:srgbClr val="F79646"/></a:accent6><a:hlink><a:srgbClr val="0563C1"/></a:hlink><a:folHlink><a:srgbClr val="954F72"/></a:folHlink></a:clrScheme>
+    <a:clrScheme name="Template"><a:dk1><a:srgbClr val="000000"/></a:dk1><a:lt1><a:srgbClr val="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="00222E"/></a:dk2><a:lt2><a:srgbClr val="F2F2F2"/></a:lt2><a:accent1><a:srgbClr val="00222E"/></a:accent1><a:accent2><a:srgbClr val="B91C1C"/></a:accent2><a:accent3><a:srgbClr val="85E89F"/></a:accent3><a:accent4><a:srgbClr val="8064A2"/></a:accent4><a:accent5><a:srgbClr val="4BACC6"/></a:accent5><a:accent6><a:srgbClr val="F79646"/></a:accent6><a:hlink><a:srgbClr val="0563C1"/></a:hlink><a:folHlink><a:srgbClr val="954F72"/></a:folHlink></a:clrScheme>
     <a:fontScheme name="Template"><a:majorFont><a:latin typeface="Segoe UI"/></a:majorFont><a:minorFont><a:latin typeface="Segoe UI"/></a:minorFont></a:fontScheme>
   </a:themeElements>
 </a:theme>`;
@@ -51,6 +60,7 @@ const TEMPLATE_THEME_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes
 const TEMPLATE_MASTER_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <p:sldMaster xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <p:cSld name="Office Theme"><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>
+    <p:sp><p:nvSpPr><p:cNvPr id="10" name="TEMPLATE_DARK_BACKGROUND"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="12192000" cy="6858000"/></a:xfrm><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody></p:sp>
     <p:sp><p:nvSpPr><p:cNvPr id="2" name="TEMPLATE_MASTER_MARK"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:solidFill><a:srgbClr val="1860C5"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>TEMPLATE_MASTER_MARK</a:t></a:r></a:p></p:txBody></p:sp>
   </p:spTree></p:cSld>
   <p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/><p:sldLayoutId id="2147483650" r:id="rId2"/><p:sldLayoutId id="2147483651" r:id="rId3"/></p:sldLayoutIdLst>
@@ -61,7 +71,7 @@ const TEMPLATE_MASTER_RELS = `<?xml version="1.0" encoding="UTF-8" standalone="y
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout2.xml"/>
   <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout3.xml"/>
-  <Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>
+  <Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme2.xml"/>
 </Relationships>`;
 
 function templateLayoutXml(name: string, type: string, placeholder: string): string {
@@ -83,7 +93,8 @@ async function buildTemplatePotx(): Promise<Buffer> {
   zip.file("[Content_Types].xml", TEMPLATE_CONTENT_TYPES);
   zip.file("ppt/presentation.xml", TEMPLATE_PRESENTATION_XML);
   zip.file("ppt/_rels/presentation.xml.rels", TEMPLATE_PRESENTATION_RELS);
-  zip.file("ppt/theme/theme1.xml", TEMPLATE_THEME_XML);
+  zip.file("ppt/theme/theme1.xml", TEMPLATE_UNUSED_THEME_XML);
+  zip.file("ppt/theme/theme2.xml", TEMPLATE_THEME_XML);
   zip.file("ppt/slideMasters/slideMaster1.xml", TEMPLATE_MASTER_XML);
   zip.file("ppt/slideMasters/_rels/slideMaster1.xml.rels", TEMPLATE_MASTER_RELS);
   zip.file("ppt/slideLayouts/slideLayout1.xml", templateLayoutXml("Title Layout", "title", "ctrTitle"));
@@ -590,6 +601,7 @@ describe("PPTX renderer", () => {
     deck.slides.forEach((slide) => {
       slide.background = { color: "#ffffff" };
     });
+    deck.metadata.sources = [{ id: "source", title: "Reference source", url: "https://example.com", usage: "quote" }];
 
     const outputPath = join(outputDir, "brand-output.pptx");
     const previousRegistryPath = process.env.PPTCREATER_TEMPLATE_REGISTRY_PATH;
@@ -611,7 +623,9 @@ describe("PPTX renderer", () => {
     const titleRels = (await zip.file("ppt/slides/_rels/slide1.xml.rels")?.async("string")) ?? "";
     const contentRels = (await zip.file("ppt/slides/_rels/slide2.xml.rels")?.async("string")) ?? "";
     const closingRels = (await zip.file("ppt/slides/_rels/slide3.xml.rels")?.async("string")) ?? "";
+    const referencesRels = (await zip.file("ppt/slides/_rels/slide4.xml.rels")?.async("string")) ?? "";
     const contentSlide = (await zip.file("ppt/slides/slide2.xml")?.async("string")) ?? "";
+    const referencesSlide = (await zip.file("ppt/slides/slide4.xml")?.async("string")) ?? "";
     const contentTypes = (await zip.file("[Content_Types].xml")?.async("string")) ?? "";
 
     expect(master).toContain("TEMPLATE_MASTER_MARK");
@@ -620,7 +634,10 @@ describe("PPTX renderer", () => {
     expect(titleRels).toContain("Target=\"../slideLayouts/slideLayout1.xml\"");
     expect(contentRels).toContain("Target=\"../slideLayouts/slideLayout2.xml\"");
     expect(closingRels).toContain("Target=\"../slideLayouts/slideLayout3.xml\"");
+    expect(referencesRels).toContain("Target=\"../slideLayouts/slideLayout2.xml\"");
     expect(contentSlide).not.toContain("<p:bg>");
+    expect(contentSlide).toContain('val="FFFFFF"');
+    expect(referencesSlide).toContain('val="FFFFFF"');
     expect(contentTypes).toContain('PartName="/ppt/slideMasters/slideMaster1.xml"');
     expect(contentTypes).toContain('PartName="/ppt/slideLayouts/slideLayout2.xml"');
     expect(contentTypes).not.toContain('PartName="/ppt/slideMasters/_rels/');

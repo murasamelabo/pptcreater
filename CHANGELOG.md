@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.5.3 - 2026-06-22
+
+- **Improved readability when real `.potx` slide masters use dark backgrounds.** Rendering now infers the imported template's master/layout background (using the theme referenced by the slide master, not the first theme by zip order) and repairs free-standing slide text to a readable black/white color before writing PowerPoint XML, while preserving dark text inside explicit light cards/panels. This prevents title, lead, and generated reference text from remaining black on a dark master background.
+- **Reference/source slides now include an accessible reading panel.** The automatically generated `参考URL・出典` / `References and sources` slide now places text on a surface panel with contrast-aware colors, so source URLs remain readable even when the imported master uses a dark or image-heavy background.
+- Added regression coverage for dark imported `.potx` masters, source-reference slide contrast, and `_rels/*.rels` content-type safety; full suite remains at 259 tests.
+
 ## v0.5.2 - 2026-06-22
 
 - **Imported `.potx` / PowerPoint templates now preserve and apply the real PowerPoint slide master.** Previously, pptcreater extracted colors, fonts, backgrounds, and representative content branding, then recreated the look in a fresh `pptxgenjs` presentation. That was still a visual approximation: the output PPTX did not inherit the original `.potx` `slideMaster`, `slideLayout`, or `theme` parts. Imported templates now store the source PowerPoint package in the registered manifest and, during render, transplant its `ppt/slideMasters`, `ppt/slideLayouts`, `ppt/theme`, and related media into the generated deck.

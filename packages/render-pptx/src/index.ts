@@ -7,6 +7,7 @@ import {
   defaultFontSizeForRole,
   defaultTokens,
   ensureSourceReferenceSlide,
+  contrastRatio,
   lintDeckSpec,
   listAllTemplates,
   normalizeDeckLayout,
@@ -16,8 +17,10 @@ import {
   type DeckSpec,
   type DesignTokens,
   type PowerPointTemplatePackage,
+  type TemplateManifest,
   type SlideElement
 } from "@pptcreater/core";
+import { themeColor } from "./templateImport.js";
 
 export * from "./templateImport.js";
 
@@ -801,6 +804,129 @@ function sourceSlideMasterRelationships(sourcePresentationRels: string): Relatio
   return parseRelationships(sourcePresentationRels).filter((rel) => /\/slideMaster$/i.test(rel.type));
 }
 
+function normalizeHexColor(value: string | undefined): string | undefined {
+  const hex = value?.trim().replace(/^#/, "");
+  return hex && /^[0-9a-fA-F]{6}$/.test(hex) ? `#${hex.toLowerCase()}` : undefined;
+}
+
+function themeSlotColor(themeXml: string, slot: string): string | undefined {
+  const aliases: Record<string, string> = { bg1: "lt1", tx1: "dk1", bg2: "lt2", tx2: "dk2" };
+  return themeColor(themeXml, aliases[slot] ?? slot);
+}
+
+function solidFillColor(xml: string, themeXml: string): string | undefined {
+  const solid = /<a:solidFill\b[^>]*>([\s\S]*?)<\/a:solidFill>/i.exec(xml)?.[1] ?? xml;
+  const srgb = normalizeHexColor(/<a:srgbClr\b[^>]*\bval="([0-9a-fA-F]{6})"/i.exec(solid)?.[1]);
+  if (srgb) {
+    return srgb;
+  }
+  const scheme = /<a:schemeClr\b[^>]*\bval="([^"]+)"/i.exec(solid)?.[1];
+  return scheme ? themeSlotColor(themeXml, scheme) : undefined;
+}
+
+function backgroundColorFromXml(xml: string, themeXml: string): string | undefined {
+  const bg = /<p:bg\b[\s\S]*?<\/p:bg>/i.exec(xml)?.[0];
+  return bg ? solidFillColor(bg, themeXml) : undefined;
+}
+
+function largestSolidShapeColor(xml: string, themeXml: string): string | undefined {
+  let best: { color: string; area: number } | undefined;
+  for (const match of xml.matchAll(/<p:sp\b[\s\S]*?<\/p:sp>/gi)) {
+    const shapeXml = match[0];
+    if (/<p:ph\b/i.test(shapeXml)) {
+      continue;
+    }
+    const color = solidFillColor(shapeXml, themeXml);
+    if (!color) {
+      continue;
+    }
+    const cx = Number(/<a:ext\b[^>]*\bcx="(\d+)"/i.exec(shapeXml)?.[1] ?? 0);
+    const cy = Number(/<a:ext\b[^>]*\bcy="(\d+)"/i.exec(shapeXml)?.[1] ?? 0);
+    const area = cx * cy;
+    if (!best || area > best.area) {
+      best = { color, area };
+    }
+  }
+  return best?.color;
+}
+
+async function templateMasterXml(sourceZip: ZipArchive): Promise<string> {
+  const masterName = zipNames(sourceZip).find((name) => /^ppt\/slideMasters\/slideMaster\d+\.xml$/i.test(name));
+  return masterName ? readZipXml(sourceZip, masterName) : "";
+}
+
+function relsPathForPackagePart(partName: string): string {
+  return partName.replace(/\/([^/]+)$/u, "/_rels/$1.rels");
+}
+
+function packagePartDirectory(partName: string): string {
+  return partName.replace(/\/[^/]+$/u, "");
+}
+
+function resolvePackageRelTarget(target: string, baseDir: string): string | undefined {
+  if (/^[a-z]+:/iu.test(target)) {
+    return undefined;
+  }
+  if (target.startsWith("/")) {
+    return target.replace(/^\/+/u, "");
+  }
+  const parts = baseDir.split("/").filter(Boolean);
+  for (const part of target.split("/")) {
+    if (!part || part === ".") {
+      continue;
+    }
+    if (part === "..") {
+      parts.pop();
+    } else {
+      parts.push(part);
+    }
+  }
+  return parts.join("/");
+}
+
+async function templateThemeXml(sourceZip: ZipArchive): Promise<string> {
+  const masterName = zipNames(sourceZip).find((name) => /^ppt\/slideMasters\/slideMaster\d+\.xml$/i.test(name));
+  if (masterName) {
+    const rels = parseRelationships(await readZipXml(sourceZip, relsPathForPackagePart(masterName)));
+    const themeRel = rels.find((rel) => /\/theme$/i.test(rel.type));
+    if (themeRel) {
+      const resolved = resolvePackageRelTarget(themeRel.target, packagePartDirectory(masterName));
+      if (resolved && sourceZip.file(resolved)) {
+        return readZipXml(sourceZip, resolved);
+      }
+    }
+  }
+
+  const themeName = zipNames(sourceZip).find((name) => /^ppt\/theme\/theme\d+\.xml$/i.test(name));
+  return themeName ? readZipXml(sourceZip, themeName) : "";
+}
+
+async function inferTemplateBackgrounds(
+  sourceZip: ZipArchive,
+  templatePackage: PowerPointTemplatePackage,
+  template: TemplateManifest
+): Promise<Record<"title" | "content" | "closing", string | undefined>> {
+  const layouts = await chooseTemplateLayouts(sourceZip, templatePackage);
+  const themeXml = await templateThemeXml(sourceZip);
+  const masterXml = await templateMasterXml(sourceZip);
+  const masterBackground = backgroundColorFromXml(masterXml, themeXml) ?? largestSolidShapeColor(masterXml, themeXml);
+  const colorFor = async (layoutPath: string, fallback?: string) => {
+    const layoutXml = await readZipXml(sourceZip, layoutPath);
+    return backgroundColorFromXml(layoutXml, themeXml) ?? largestSolidShapeColor(layoutXml, themeXml) ?? masterBackground ?? fallback;
+  };
+  return {
+    title: await colorFor(layouts.title, template.titleSlide?.background?.color ?? template.tokens.colors.background),
+    content: await colorFor(layouts.content, template.contentSlide?.background?.color ?? template.tokens.colors.background),
+    closing: await colorFor(layouts.closing, template.closingSlide?.background?.color ?? template.tokens.colors.background)
+  };
+}
+
+type ResolvedPowerPointTemplate = {
+  manifest: TemplateManifest;
+  templatePackage: PowerPointTemplatePackage;
+  backgrounds: Record<"title" | "content" | "closing", string | undefined>;
+};
+
 async function updatePresentationMasters(targetZip: ZipArchive, sourceZip: ZipArchive): Promise<void> {
   const sourcePresentation = await readZipXml(sourceZip, "ppt/presentation.xml");
   const sourceMasterList = /<p:sldMasterIdLst\b[\s\S]*?<\/p:sldMasterIdLst>/i.exec(sourcePresentation)?.[0];
@@ -832,9 +958,17 @@ async function updatePresentationMasters(targetZip: ZipArchive, sourceZip: ZipAr
   targetZip.file(targetPresentationPath, patched);
 }
 
-async function resolvePowerPointTemplate(deck: DeckSpec): Promise<PowerPointTemplatePackage | undefined> {
+async function resolvePowerPointTemplate(deck: DeckSpec): Promise<ResolvedPowerPointTemplate | undefined> {
   const template = (await listAllTemplates()).find((item) => item.id === deck.template);
-  return template?.powerPointTemplate;
+  if (!template?.powerPointTemplate) {
+    return undefined;
+  }
+  const sourceZip = await JSZip.loadAsync(decodePowerPointPackageDataUri(template.powerPointTemplate.dataUri));
+  return {
+    manifest: template,
+    templatePackage: template.powerPointTemplate,
+    backgrounds: await inferTemplateBackgrounds(sourceZip, template.powerPointTemplate, template)
+  };
 }
 
 async function applyPowerPointTemplatePackage(pptxPath: string, deck: DeckSpec, template: PowerPointTemplatePackage): Promise<void> {
@@ -851,6 +985,79 @@ async function applyPowerPointTemplatePackage(pptxPath: string, deck: DeckSpec, 
   }
 
   await writeFile(pptxPath, await targetZip.generateAsync({ type: "nodebuffer" }));
+}
+
+function elementOverlapArea(
+  a: { x: number; y: number; w: number; h: number },
+  b: { x: number; y: number; w: number; h: number }
+): number {
+  const x = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
+  const y = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+  return x * y;
+}
+
+function containingShapeFill(element: Extract<SlideElement, { type: "text" }>, elements: SlideElement[]): string | undefined {
+  const textArea = element.w * element.h;
+  if (textArea <= 0) {
+    return undefined;
+  }
+
+  let best: { fill: string; overlap: number; order: number } | undefined;
+  for (const candidate of elements) {
+    if (candidate.type !== "shape" || candidate.fill === "none" || (candidate.fillOpacity !== undefined && candidate.fillOpacity < 0.65)) {
+      continue;
+    }
+    if ((candidate.readingOrder ?? 0) > (element.readingOrder ?? Number.MAX_SAFE_INTEGER)) {
+      continue;
+    }
+    const overlap = elementOverlapArea(element, candidate) / textArea;
+    if (overlap < 0.6) {
+      continue;
+    }
+    const order = candidate.readingOrder ?? 0;
+    if (!best || overlap > best.overlap || (overlap === best.overlap && order > best.order)) {
+      best = { fill: candidate.fill, overlap, order };
+    }
+  }
+  return best?.fill;
+}
+
+function readableTextColor(foreground: string | undefined, background: string, fontSize: number): string | undefined {
+  const current = foreground ?? "#000000";
+  const minimum = fontSize >= 24 ? 3 : 4.5;
+  if (contrastRatio(current, background) >= minimum) {
+    return foreground;
+  }
+  return contrastRatio("#ffffff", background) >= contrastRatio("#000000", background) ? "#ffffff" : "#000000";
+}
+
+function adjustTextForTemplateBackground(
+  slide: DeckSpec["slides"][number],
+  slideIndex: number,
+  deck: DeckSpec,
+  tokens: DesignTokens,
+  template: ResolvedPowerPointTemplate
+): DeckSpec["slides"][number] {
+  const kind = layoutKindForSlide(slide, slideIndex);
+  const templateBackground = template.backgrounds[kind];
+  if (!templateBackground) {
+    return slide;
+  }
+
+  const elements = slide.elements.map((element) => {
+    if (element.type !== "text") {
+      return element;
+    }
+    const localBackground = containingShapeFill(element, slide.elements) ?? templateBackground;
+    const fontSize = element.fontSize ?? defaultFontSizeForRole(element.role, tokens);
+    const color = readableTextColor(element.color, localBackground, fontSize);
+    if (!color || color === element.color) {
+      return element;
+    }
+    return { ...element, color, contrastBackground: localBackground };
+  });
+
+  return { ...slide, elements };
 }
 
 function collectSlideAccessibilityNotes(deck: DeckSpec, deckSlide: DeckSpec["slides"][number], slideIndex: number): string[] {
@@ -937,21 +1144,26 @@ export async function renderDeckToPptx(input: unknown, outputPath: string, optio
     lang: deck.locale
   };
 
-  for (const [slideIndex, deckSlide] of deck.slides.entries()) {
+  const renderSlides = powerPointTemplate
+    ? deck.slides.map((slide, index) => adjustTextForTemplateBackground(slide, index, deck, tokens, powerPointTemplate))
+    : deck.slides;
+  const renderDeck = powerPointTemplate ? { ...deck, slides: renderSlides } : deck;
+
+  for (const [slideIndex, deckSlide] of renderSlides.entries()) {
     const slide = pptx.addSlide();
     if (!powerPointTemplate || deckSlide.background?.imageDataUri) {
       slide.background = await resolveSlideBackground(deckSlide, tokens);
     }
     const safeSlide = normalizeReadingOrder(deckSlide);
     for (const element of sortedElements(safeSlide.elements)) {
-      await addElement(slide, element, deck, slideIndex);
+      await addElement(slide, element, renderDeck, slideIndex);
     }
 
-    if (deck.headerFooter && !powerPointTemplate) {
-      addHeaderFooter(slide, deck, tokens);
+    if (renderDeck.headerFooter && !powerPointTemplate) {
+      addHeaderFooter(slide, renderDeck, tokens);
     }
 
-    const notes = [deckSlide.speakerNotes, ...collectSlideAccessibilityNotes(deck, deckSlide, slideIndex)]
+    const notes = [deckSlide.speakerNotes, ...collectSlideAccessibilityNotes(renderDeck, deckSlide, slideIndex)]
       .filter((note): note is string => Boolean(note))
       .join("\n");
     if (notes) {
@@ -960,9 +1172,9 @@ export async function renderDeckToPptx(input: unknown, outputPath: string, optio
   }
 
   await pptx.writeFile({ fileName: outputPath });
-  await markShapeAccessibility(outputPath, deck);
+  await markShapeAccessibility(outputPath, renderDeck);
   if (powerPointTemplate) {
-    await applyPowerPointTemplatePackage(outputPath, deck, powerPointTemplate);
+    await applyPowerPointTemplatePackage(outputPath, renderDeck, powerPointTemplate.templatePackage);
   }
   return { outputPath, warnings };
 }

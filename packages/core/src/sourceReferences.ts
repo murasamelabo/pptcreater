@@ -1,4 +1,4 @@
-﻿import { defaultTokens } from "./color.js";
+import { contrastRatio, defaultTokens } from "./color.js";
 import type { DeckSpec, Slide } from "./schema.js";
 
 const SOURCE_REFERENCE_SLIDE_ID = "source-references";
@@ -58,6 +58,13 @@ function referenceSlideEntryText(source: DeckSpec["metadata"]["sources"][number]
   return `${index + 1}. ${title}\n${source.url}`;
 }
 
+function readableText(preferred: string, background: string, minimumRatio: number): string {
+  if (contrastRatio(preferred, background) >= minimumRatio) {
+    return preferred;
+  }
+  return contrastRatio("#ffffff", background) >= contrastRatio("#000000", background) ? "#ffffff" : "#000000";
+}
+
 function uniqueSlideTitle(deck: DeckSpec, preferredTitle: string): string {
   const existingTitles = new Set(deck.slides.map((slide) => slide.title));
   if (!existingTitles.has(preferredTitle)) {
@@ -84,6 +91,10 @@ function createSourceReferenceSlide(deck: DeckSpec, existingTitle?: string): Sli
   const rowHeight = Math.max(0.42, usableHeight / Math.max(rows, 1) - rowGap);
   const fontSize = rows > 9 ? 12 : rows > 7 ? 13 : 14;
   const columnWidth = columns === 2 ? 5.65 : 11.45;
+  const panelFill = tokens.colors.surface;
+  const titleColor = readableText(tokens.colors.text, panelFill, 3);
+  const bodyColor = readableText(tokens.colors.text, panelFill, 4.5);
+  const mutedColor = readableText(tokens.colors.mutedText, panelFill, 4.5);
 
   return {
     id: SOURCE_REFERENCE_SLIDE_ID,
@@ -91,6 +102,20 @@ function createSourceReferenceSlide(deck: DeckSpec, existingTitle?: string): Sli
     layout: "references",
     speakerNotes: sourceReferenceNotes(sources),
     elements: [
+      {
+        id: "references-panel",
+        type: "shape",
+        shape: "roundRect",
+        x: 0.58,
+        y: 0.48,
+        w: 12.18,
+        h: 6.45,
+        fill: panelFill,
+        line: { color: tokens.colors.accent, width: 1 },
+        radius: 0.1,
+        decorative: true,
+        readingOrder: 0
+      },
       {
         id: "references-title",
         type: "text",
@@ -101,11 +126,11 @@ function createSourceReferenceSlide(deck: DeckSpec, existingTitle?: string): Sli
         w: 11.8,
         h: 0.9,
         fontSize: Math.max(28, tokens.typography.titleSize - 4),
-        color: tokens.colors.text,
-        contrastBackground: tokens.colors.background,
+        color: titleColor,
+        contrastBackground: panelFill,
         bold: true,
         decorative: false,
-        readingOrder: 0
+        readingOrder: 1
       },
       {
         id: "references-message",
@@ -117,11 +142,11 @@ function createSourceReferenceSlide(deck: DeckSpec, existingTitle?: string): Sli
         w: 11.6,
         h: 0.42,
         fontSize: 20,
-        color: tokens.colors.mutedText,
-        contrastBackground: tokens.colors.background,
+        color: mutedColor,
+        contrastBackground: panelFill,
         bold: false,
         decorative: false,
-        readingOrder: 1
+        readingOrder: 2
       },
       ...sources.map((source, index) => {
         const column = Math.floor(index / rows);
@@ -136,11 +161,11 @@ function createSourceReferenceSlide(deck: DeckSpec, existingTitle?: string): Sli
           w: columnWidth,
           h: rowHeight,
           fontSize,
-          color: tokens.colors.text,
-          contrastBackground: tokens.colors.background,
+          color: bodyColor,
+          contrastBackground: panelFill,
           bold: false,
           decorative: false,
-          readingOrder: index + 2
+          readingOrder: index + 3
         };
       })
     ]
@@ -196,4 +221,3 @@ export function ensureSourceReferenceSlide(deck: DeckSpec): DeckSpec {
     slides
   };
 }
-
