@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { SCHEMATIC_KIND_CATALOG, SCHEMATIC_KINDS, SCHEMATIC_MODE_TEMPLATES, SCHEMATIC_STYLE_PRESETS, renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram, schematicKindsForStyleProfile, schematicTemplatesForStyleProfile, schematicToneForStyleProfile } from "./index.js";
+import { DeckSpecSchema } from "@pptcreater/core";
+import { SCHEMATIC_KIND_CATALOG, SCHEMATIC_KINDS, SCHEMATIC_MODE_TEMPLATES, SCHEMATIC_STYLE_PRESETS, renderDiagramIntent, renderNativePonchiDiagram, renderNativeSchematicDiagram, renderPonchiDiagram, renderSchematicDiagram, schematicKindsForStyleProfile, schematicTemplatesForStyleProfile, schematicToneForStyleProfile } from "./index.js";
 
 const TEST_FULL_WIDTH_PATTERN = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}\u30FC\u30FB\uFF01-\uFF60\uFFE0-\uFFE6]/u;
 
@@ -594,6 +595,62 @@ describe("schematic diagram rendering", () => {
       expect(rendered.svg).not.toContain("undefined");
       expect(rendered.svg).not.toContain("<script");
     }
+  });
+
+  it("renders every schematic kind as editable native PowerPoint elements", () => {
+    for (const kind of SCHEMATIC_KINDS) {
+      const rendered = renderNativeSchematicDiagram(
+        {
+          kind,
+          title: `${kind} schematic`,
+          summary: `${kind} native visual`,
+          longDescription: `This ${kind} schematic is generated as editable PowerPoint shapes and text.`,
+          items: ["現状 40", "課題 30", "施策 20", "効果 10", "運用", "改善"],
+          secondaryItems: ["目標 100", "Before 60", "After 80", "Q1", "Q2", "Q3"],
+          axisX: "Maturity",
+          axisY: "Impact",
+          tone: "minimal"
+        },
+        { frame: { x: 0.5, y: 1.5, w: 12.2, h: 5.7 }, idPrefix: `native-${kind.replace(/[^a-z0-9]+/gi, "-")}` }
+      );
+
+      expect(rendered.elements.length).toBeGreaterThan(3);
+      expect(rendered.elements.every((element) => element.type === "shape" || element.type === "text")).toBe(true);
+      expect(rendered.elements.some((element) => element.type === "text")).toBe(true);
+      expect(JSON.stringify(rendered)).not.toContain("\"type\":\"svg\"");
+      expect(JSON.stringify(rendered)).not.toContain("\"type\":\"image\"");
+      expect(rendered.elements.every((element) => element.w > 0 && element.h >= 0)).toBe(true);
+    }
+  });
+
+  it("emits valid DeckSpec elements for native table schematics without secondary items", () => {
+    const rendered = renderNativeSchematicDiagram({
+      kind: "table",
+      title: "Table without right column",
+      summary: "Native table without right column",
+      longDescription: "This native table schematic intentionally omits secondary items to verify optional cells are not emitted as empty text.",
+      items: ["Header", "Row A", "Row B"],
+      tone: "minimal"
+    });
+    const emptyText = rendered.elements.filter((element) => element.type === "text" && element.text.length === 0);
+
+    expect(emptyText).toHaveLength(0);
+    expect(
+      DeckSpecSchema.safeParse({
+        version: "0.1",
+        title: "Native table",
+        locale: "ja-JP",
+        template: "modern-simple",
+        slides: [
+          {
+            id: "s1",
+            title: "Native table",
+            elements: rendered.elements
+          }
+        ],
+        metadata: { keywords: [], sources: [] }
+      }).success
+    ).toBe(true);
   });
 
   it("provides complete mode-aware schematic preset sets", () => {

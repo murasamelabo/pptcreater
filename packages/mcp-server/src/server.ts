@@ -4,7 +4,7 @@ import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, resolveIconForKeyword, searchAllSvgAssets, suggestIconForKeyword } from "@pptcreater/assets-svg";
-import { DiagramIntentSchema, SCHEMATIC_KIND_CATALOG, SCHEMATIC_MODE_TEMPLATES, SCHEMATIC_STYLE_PRESETS, SchematicKindSchema, SchematicToneSchema, renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram, schematicPresetForStyleProfile, schematicTemplatesForStyleProfile } from "@pptcreater/diagram";
+import { DiagramIntentSchema, SCHEMATIC_KIND_CATALOG, SCHEMATIC_MODE_TEMPLATES, SCHEMATIC_STYLE_PRESETS, SchematicKindSchema, SchematicToneSchema, renderDiagramIntent, renderNativePonchiDiagram, renderNativeSchematicDiagram, renderPonchiDiagram, renderSchematicDiagram, schematicPresetForStyleProfile, schematicTemplatesForStyleProfile } from "@pptcreater/diagram";
 import {
   applyTemplateContentDesign,
   BUSINESS_STYLE_MODES,
@@ -978,7 +978,7 @@ export function createPptcreaterMcpServer(): McpServer {
     {
       title: "Generate Slideland-style schematic",
       description:
-        "Generate a safe, presentation-ready schematic SVG from a preset kind. Prefer this over freehand SVG when creating `table`, `tree`, `flow`, `vertical-flow`, `cycle`, `before-after`, `map`, `puzzle`, `correlation`, `matrix`, `venn`, `cross`, `set`, `contrast`, `scale-contrast`, `grow`, `layer`, `triangle`, `step`, `gantt`, `ranking`, `list`, `list-horizontal`, `list-enumeration`, or `mockup` visuals.",
+        "Generate a safe, presentation-ready schematic from a preset kind. Returns editable native PowerPoint shape/text elements first, plus an SVG fallback for backward compatibility. Prefer inserting `elements` directly into slides so `table`, `tree`, `flow`, `vertical-flow`, `cycle`, `before-after`, `map`, `puzzle`, `correlation`, `matrix`, `venn`, `cross`, `set`, `contrast`, `scale-contrast`, `grow`, `layer`, `triangle`, `step`, `gantt`, `ranking`, `list`, `list-horizontal`, `list-enumeration`, or `mockup` visuals remain editable.",
       inputSchema: {
         schematic: z.object({
           kind: SchematicKindSchema,
@@ -995,7 +995,11 @@ export function createPptcreaterMcpServer(): McpServer {
         })
       }
     },
-    async ({ schematic }) => jsonText(renderSchematicDiagram(schematic))
+    async ({ schematic }) => {
+      const native = renderNativeSchematicDiagram(schematic, { frame: { x: 0.45, y: 1.5, w: 12.45, h: 5.75 }, idPrefix: `schematic-${schematic.kind}` });
+      const svg = renderSchematicDiagram(schematic);
+      return jsonText({ ...native, svg: svg.svg, svgSummary: svg.summary, svgLongDescription: svg.longDescription });
+    }
   );
 
   server.registerTool(

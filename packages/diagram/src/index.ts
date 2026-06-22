@@ -2408,6 +2408,293 @@ function nativeLineSegment(
   }
 
   return nativeShape(id, "line", { x, y, w, h }, { fill: "none", line, decorative: true, readingOrder: options.readingOrder });
+  return nativeShape(id, "line", { x, y, w, h }, { fill: "none", line, decorative: true, readingOrder: options.readingOrder });
+}
+function nativeSchematicText(
+  id: string,
+  value: string,
+  rect: NativeRect,
+  fill: string,
+  nextOrder: () => number,
+  options: { size?: number; min?: number; lines?: number; bold?: boolean; color?: string; align?: "left" | "center"; role?: "body" | "caption" } = {}
+): NativeDiagramTextElement {
+  const fit = nativeTextFit(value, rect.w - 0.12, {
+    preferredSize: options.size ?? 13,
+    minimumSize: options.min ?? 9,
+    maxLines: options.lines ?? 2
+  });
+  return nativeText(id, fit.text, rect, {
+    fontSize: fit.size,
+    color: options.color ?? "#0F172A",
+    contrastBackground: fill,
+    bold: options.bold ?? true,
+    align: options.align ?? "center",
+    valign: "middle",
+    role: options.role ?? "caption",
+    readingOrder: nextOrder()
+  });
+}
+
+function nativeSchematicCard(
+  id: string,
+  rect: NativeRect,
+  label: string,
+  fill: string,
+  accent: string,
+  nextOrder: () => number,
+  options: { badge?: string; sublabel?: string; stroke?: string } = {}
+): NativeDiagramElement[] {
+  const elements: NativeDiagramElement[] = [
+    nativeShape(`${id}-card`, "roundRect", rect, {
+      fill,
+      line: { color: options.stroke ?? "#CBD5E1", width: 1 },
+      radius: 0.1,
+      decorative: true,
+      readingOrder: nextOrder()
+    }),
+    nativeShape(`${id}-accent`, "rect", { x: rect.x, y: rect.y, w: 0.08, h: rect.h }, {
+      fill: accent,
+      line: { color: accent, width: 0.1 },
+      decorative: true,
+      readingOrder: nextOrder()
+    })
+  ];
+  if (options.badge) {
+    elements.push(
+      nativeShape(`${id}-badge`, "ellipse", { x: rect.x + 0.16, y: rect.y + 0.16, w: 0.32, h: 0.32 }, {
+        fill: accent,
+        line: { color: accent, width: 0.1 },
+        decorative: true,
+        readingOrder: nextOrder()
+      }),
+      nativeSchematicText(`${id}-badge-text`, options.badge, { x: rect.x + 0.16, y: rect.y + 0.205, w: 0.32, h: 0.12 }, accent, nextOrder, {
+        size: 9,
+        min: 8,
+        lines: 1,
+        color: "#FFFFFF",
+        bold: true
+      })
+    );
+  }
+  elements.push(
+    nativeSchematicText(`${id}-label`, label, {
+      x: rect.x + 0.24 + (options.badge ? 0.34 : 0),
+      y: rect.y + (options.sublabel ? 0.2 : 0.12),
+      w: rect.w - 0.42 - (options.badge ? 0.34 : 0),
+      h: options.sublabel ? rect.h * 0.45 : rect.h - 0.24
+    }, fill, nextOrder, { size: 13, min: 9, lines: options.sublabel ? 2 : 3, bold: true, align: "center" })
+  );
+  if (options.sublabel) {
+    elements.push(
+      nativeSchematicText(`${id}-sublabel`, options.sublabel, { x: rect.x + 0.24, y: rect.y + rect.h * 0.58, w: rect.w - 0.42, h: rect.h * 0.28 }, fill, nextOrder, {
+        size: 10.5,
+        min: 8,
+        lines: 2,
+        bold: false,
+        color: "#475569",
+        role: "body"
+      })
+    );
+  }
+  return elements;
+}
+
+function nativeSchematicArrow(id: string, from: Point, to: Point, nextOrder: () => number, dashed = false): NativeDiagramElement[] {
+  const line = nativeLineSegment(id, from, to, {
+    color: "#475569",
+    dashed,
+    arrowAtStart: false,
+    arrowAtEnd: true,
+    readingOrder: nextOrder()
+  });
+  return line ? [line] : [];
+}
+
+function nativeSchematicPanel(frame: NativeRect, idPrefix: string, nextOrder: () => number): NativeDiagramElement {
+  return nativeShape(`${idPrefix}-panel`, "roundRect", frame, {
+    fill: "#FFFFFF",
+    line: { color: "#D9DEE8", width: 1 },
+    radius: 0.08,
+    decorative: true,
+    readingOrder: nextOrder()
+  });
+}
+
+function renderNativeSchematicCards(
+  diagram: SchematicDiagram,
+  frame: NativeRect,
+  idPrefix: string,
+  nextOrder: () => number
+): NativeDiagramElement[] {
+  const kind = diagram.kind;
+  const accent = "#2563EB";
+  const fill = "#F8FAFC";
+  const fillAlt = "#EEF6FF";
+  const elements: NativeDiagramElement[] = [nativeSchematicPanel(frame, idPrefix, nextOrder)];
+  const items = diagram.items.slice(0, 8);
+  const secondary = diagram.secondaryItems;
+  const area = { x: frame.x + 0.32, y: frame.y + 0.38, w: frame.w - 0.64, h: frame.h - 0.76 };
+
+  if (kind === "table") {
+    const rows = Math.min(Math.max(items.length, secondary.length), 6);
+    const rowH = Math.min(0.62, area.h / Math.max(rows + 1, 1));
+    const colW = area.w / 2;
+    elements.push(nativeShape(`${idPrefix}-table-head`, "roundRect", { x: area.x, y: area.y, w: area.w, h: rowH }, { fill: "#DBEAFE", line: { color: "#93C5FD", width: 1 }, radius: 0.08, decorative: true, readingOrder: nextOrder() }));
+    elements.push(nativeSchematicText(`${idPrefix}-table-left-head`, items[0] ?? "Left", { x: area.x + 0.12, y: area.y + 0.12, w: colW - 0.24, h: rowH - 0.18 }, "#DBEAFE", nextOrder, { size: 12, lines: 1 }));
+    elements.push(nativeSchematicText(`${idPrefix}-table-right-head`, secondary[0] ?? "Right", { x: area.x + colW + 0.12, y: area.y + 0.12, w: colW - 0.24, h: rowH - 0.18 }, "#DBEAFE", nextOrder, { size: 12, lines: 1 }));
+    for (let index = 0; index < rows; index += 1) {
+      const y = area.y + rowH * (index + 1);
+      const rowFill = index % 2 === 0 ? "#FFFFFF" : fill;
+      const leftValue = items[index + 1] ?? items[index] ?? "";
+      const rightValue = secondary[index + 1] ?? secondary[index] ?? "";
+      elements.push(nativeShape(`${idPrefix}-table-row-${index}`, "rect", { x: area.x, y, w: area.w, h: rowH }, { fill: rowFill, line: { color: "#E2E8F0", width: 0.8 }, decorative: true, readingOrder: nextOrder() }));
+      if (leftValue.trim()) {
+        elements.push(nativeSchematicText(`${idPrefix}-table-l-${index}`, leftValue, { x: area.x + 0.14, y: y + 0.08, w: colW - 0.28, h: rowH - 0.12 }, rowFill, nextOrder, { size: 11, lines: 2, bold: false, align: "left" }));
+      }
+      if (rightValue.trim()) {
+        elements.push(nativeSchematicText(`${idPrefix}-table-r-${index}`, rightValue, { x: area.x + colW + 0.14, y: y + 0.08, w: colW - 0.28, h: rowH - 0.12 }, rowFill, nextOrder, { size: 11, lines: 2, bold: false, align: "left" }));
+      }
+    }
+    return elements;
+  }
+
+  if (kind === "matrix") {
+    const midX = area.x + area.w / 2;
+    const midY = area.y + area.h / 2;
+    const labels = items.slice(0, 4);
+    const rects = [
+      { x: area.x, y: area.y, w: area.w / 2, h: area.h / 2 },
+      { x: midX, y: area.y, w: area.w / 2, h: area.h / 2 },
+      { x: area.x, y: midY, w: area.w / 2, h: area.h / 2 },
+      { x: midX, y: midY, w: area.w / 2, h: area.h / 2 }
+    ];
+    rects.forEach((rect, index) => {
+      const cellFill = index === 1 ? "#DBEAFE" : index === 2 ? "#F1F5F9" : "#FFFFFF";
+      elements.push(nativeShape(`${idPrefix}-matrix-${index}`, "rect", rect, { fill: cellFill, line: { color: "#CBD5E1", width: 1 }, decorative: true, readingOrder: nextOrder() }));
+      elements.push(nativeSchematicText(`${idPrefix}-matrix-label-${index}`, labels[index] ?? `Q${index + 1}`, { x: rect.x + 0.18, y: rect.y + rect.h / 2 - 0.18, w: rect.w - 0.36, h: 0.36 }, cellFill, nextOrder, { size: 13, lines: 2 }));
+    });
+    elements.push(nativeSchematicText(`${idPrefix}-axis-x`, diagram.axisX ?? "X", { x: area.x + area.w / 2 - 1.2, y: area.y + area.h + 0.05, w: 2.4, h: 0.24 }, "#FFFFFF", nextOrder, { size: 10, lines: 1, color: "#475569" }));
+    elements.push(nativeSchematicText(`${idPrefix}-axis-y`, diagram.axisY ?? "Y", { x: area.x - 0.05, y: area.y - 0.28, w: 2.2, h: 0.24 }, "#FFFFFF", nextOrder, { size: 10, lines: 1, color: "#475569", align: "left" }));
+    return elements;
+  }
+
+  if (kind === "before-after" || kind === "contrast") {
+    const gap = 0.42;
+    const w = (area.w - gap) / 2;
+    const leftTitle = items[0] ?? "Before";
+    const rightTitle = secondary[0] ?? "After";
+    const left = { x: area.x, y: area.y, w, h: area.h };
+    const right = { x: area.x + w + gap, y: area.y, w, h: area.h };
+    for (const [side, rect, title, rows, sideFill] of [
+      ["left", left, leftTitle, items.slice(1, 5), "#FFFFFF"],
+      ["right", right, rightTitle, secondary.slice(1, 5).length ? secondary.slice(1, 5) : items.slice(1, 5), "#EAF2FF"]
+    ] as const) {
+      elements.push(nativeShape(`${idPrefix}-${side}`, "roundRect", rect, { fill: sideFill, line: { color: "#CBD5E1", width: 1 }, radius: 0.12, decorative: true, readingOrder: nextOrder() }));
+      elements.push(nativeSchematicText(`${idPrefix}-${side}-title`, title, { x: rect.x + 0.2, y: rect.y + 0.18, w: rect.w - 0.4, h: 0.34 }, sideFill, nextOrder, { size: 14, lines: 1 }));
+      rows.forEach((row, index) => elements.push(nativeSchematicText(`${idPrefix}-${side}-row-${index}`, `• ${row}`, { x: rect.x + 0.28, y: rect.y + 0.72 + index * 0.5, w: rect.w - 0.56, h: 0.36 }, sideFill, nextOrder, { size: 11, lines: 2, bold: false, align: "left" })));
+    }
+    elements.push(nativeShape(`${idPrefix}-vs`, "ellipse", { x: area.x + area.w / 2 - 0.25, y: area.y + area.h / 2 - 0.25, w: 0.5, h: 0.5 }, { fill: accent, line: { color: accent, width: 0.1 }, decorative: true, readingOrder: nextOrder() }));
+    elements.push(nativeSchematicText(`${idPrefix}-vs-text`, kind === "contrast" ? "VS" : "→", { x: area.x + area.w / 2 - 0.18, y: area.y + area.h / 2 - 0.09, w: 0.36, h: 0.18 }, accent, nextOrder, { size: 9, color: "#FFFFFF", lines: 1 }));
+    return elements;
+  }
+
+  if (kind === "venn") {
+    const labels = items.slice(0, 3);
+    const centers = [
+      { x: area.x + area.w * 0.42, y: area.y + area.h * 0.48 },
+      { x: area.x + area.w * 0.58, y: area.y + area.h * 0.48 },
+      { x: area.x + area.w * 0.5, y: area.y + area.h * 0.36 }
+    ];
+    centers.slice(0, labels.length).forEach((center, index) => {
+      elements.push(nativeShape(`${idPrefix}-venn-${index}`, "ellipse", { x: center.x - 1.05, y: center.y - 0.9, w: 2.1, h: 1.8 }, { fill: ["#DBEAFE", "#D1FAE5", "#FDE68A"][index] ?? "#E0E7FF", fillOpacity: 0.6, line: { color: accent, width: 1 }, decorative: true, readingOrder: nextOrder() }));
+      elements.push(nativeSchematicText(`${idPrefix}-venn-label-${index}`, labels[index], { x: center.x - 0.7, y: center.y - 0.1, w: 1.4, h: 0.28 }, "#FFFFFF", nextOrder, { size: 11, lines: 1 }));
+    });
+    elements.push(nativeSchematicText(`${idPrefix}-venn-center`, secondary[0] ?? "Value", { x: area.x + area.w / 2 - 1.0, y: area.y + area.h * 0.54, w: 2.0, h: 0.28 }, "#FFFFFF", nextOrder, { size: 12, lines: 1, color: "#0F172A" }));
+    return elements;
+  }
+
+  if (kind === "triangle") {
+    const levels = items.slice(0, 4).reverse();
+    const baseY = area.y + area.h - 0.32;
+    levels.forEach((item, index) => {
+      const w = area.w * (0.35 + index * 0.16);
+      const x = area.x + (area.w - w) / 2;
+      const y = baseY - (index + 1) * 0.72;
+      elements.push(nativeShape(`${idPrefix}-tri-${index}`, "roundRect", { x, y, w, h: 0.58 }, { fill: index === levels.length - 1 ? "#DBEAFE" : "#FFFFFF", line: { color: "#CBD5E1", width: 1 }, radius: 0.08, decorative: true, readingOrder: nextOrder() }));
+      elements.push(nativeSchematicText(`${idPrefix}-tri-label-${index}`, item, { x: x + 0.2, y: y + 0.15, w: w - 0.4, h: 0.22 }, index === levels.length - 1 ? "#DBEAFE" : "#FFFFFF", nextOrder, { size: 11, lines: 1 }));
+    });
+    return elements;
+  }
+
+  const flowKinds = new Set<SchematicKind>(["flow", "step", "gantt", "ranking", "list-horizontal", "cross"]);
+  if (flowKinds.has(kind)) {
+    const count = Math.min(items.length, kind === "list-horizontal" ? 4 : 5);
+    const gap = 0.22;
+    const cardW = (area.w - gap * (count - 1)) / count;
+    const y = area.y + area.h / 2 - 0.55;
+    items.slice(0, count).forEach((item, index) => {
+      const x = area.x + index * (cardW + gap);
+      const cardFill = index === 0 ? "#EAF2FF" : "#FFFFFF";
+      elements.push(...nativeSchematicCard(`${idPrefix}-card-${index}`, { x, y, w: cardW, h: 1.1 }, item, cardFill, accent, nextOrder, { badge: `${index + 1}` }));
+      if (index < count - 1) {
+        elements.push(...nativeSchematicArrow(`${idPrefix}-arrow-${index}`, { x: x + cardW + 0.04, y: y + 0.55 }, { x: x + cardW + gap - 0.04, y: y + 0.55 }, nextOrder));
+      }
+    });
+    return elements;
+  }
+
+  if (kind === "vertical-flow" || kind === "list" || kind === "list-enumeration" || kind === "layer") {
+    const count = Math.min(items.length, kind === "layer" ? 5 : 6);
+    const rowH = Math.min(0.58, area.h / Math.max(count, 1) - 0.08);
+    items.slice(0, count).forEach((item, index) => {
+      const y = area.y + index * (rowH + 0.1);
+      const fillColor = kind === "layer" ? ["#DBEAFE", "#E0F2FE", "#ECFDF5", "#FEF3C7", "#F8FAFC"][index] ?? "#FFFFFF" : index % 2 === 0 ? "#FFFFFF" : fill;
+      elements.push(...nativeSchematicCard(`${idPrefix}-row-${index}`, { x: area.x + 0.9, y, w: area.w - 1.8, h: rowH }, item, fillColor, accent, nextOrder, { badge: kind === "list" ? undefined : `${index + 1}` }));
+      if (kind === "vertical-flow" && index < count - 1) {
+        elements.push(...nativeSchematicArrow(`${idPrefix}-varrow-${index}`, { x: area.x + area.w / 2, y: y + rowH + 0.02 }, { x: area.x + area.w / 2, y: y + rowH + 0.08 }, nextOrder));
+      }
+    });
+    return elements;
+  }
+
+  const gridKinds = new Set<SchematicKind>(["tree", "map", "puzzle", "correlation", "set", "scale-contrast", "grow", "cycle", "mockup"]);
+  if (gridKinds.has(kind)) {
+    const count = Math.min(items.length, 6);
+    const cols = count <= 3 ? count : 3;
+    const rows = Math.ceil(count / cols);
+    const gap = 0.24;
+    const cardW = (area.w - gap * (cols - 1)) / cols;
+    const cardH = Math.min(1.05, (area.h - gap * (rows - 1)) / rows);
+    items.slice(0, count).forEach((item, index) => {
+      const col = index % cols;
+      const row = Math.floor(index / cols);
+      const x = area.x + col * (cardW + gap);
+      const y = area.y + row * (cardH + gap);
+      elements.push(...nativeSchematicCard(`${idPrefix}-grid-${index}`, { x, y, w: cardW, h: cardH }, item, index === 0 ? fillAlt : "#FFFFFF", accent, nextOrder, { badge: `${index + 1}` }));
+    });
+    return elements;
+  }
+
+  items.slice(0, 6).forEach((item, index) => {
+    elements.push(...nativeSchematicCard(`${idPrefix}-fallback-${index}`, { x: area.x + 0.8, y: area.y + index * 0.68, w: area.w - 1.6, h: 0.56 }, item, index % 2 === 0 ? "#FFFFFF" : fill, accent, nextOrder));
+  });
+  return elements;
+}
+
+export function renderNativeSchematicDiagram(
+  input: unknown,
+  optionsInput: unknown = {}
+): { elements: NativeDiagramElement[]; summary: string; longDescription: string; warnings: string[] } {
+  const diagram = SchematicDiagramSchema.parse(input);
+  const options = NativePonchiRenderOptionsSchema.parse(optionsInput);
+  let order = options.readingOrderStart;
+  const nextOrder = () => order++;
+  return {
+    elements: renderNativeSchematicCards(diagram, options.frame, options.idPrefix, nextOrder),
+    summary: diagram.summary,
+    longDescription: diagram.longDescription,
+    warnings: []
+  };
 }
 
 function constrainVerticalLabelWidth(anchor: Point, maxWidth: number, avoidRects: NativeRect[], frame: NativeRect): number {

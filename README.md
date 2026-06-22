@@ -161,7 +161,7 @@ Matching uses a curated synonym table first (e.g. `セキュリティ`/`security
 
 ## Slideland-style schematic presets
 
-For structured visuals, prefer MCP `generate_schematic` instead of freehand SVG. It returns safe SVG for common slide patterns inspired by Slideland categories:
+For structured visuals, prefer MCP `generate_schematic` instead of freehand SVG. It returns editable native PowerPoint shape/text elements for common slide patterns (with an SVG fallback for compatibility) inspired by Slideland categories:
 
 - `table`: comparison/KPI matrix
 - `tree`: hierarchy and branching

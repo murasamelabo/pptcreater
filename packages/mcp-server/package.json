@@ -1,6 +1,6 @@
 {
   "name": "@pptcreater/mcp-server",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "type": "module",
   "engines": {
     "node": ">=22.12.0",
@@ -23,11 +23,11 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@pptcreater/assets-svg": "0.5.5",
-    "@pptcreater/core": "0.5.5",
-    "@pptcreater/diagram": "0.5.5",
-    "@pptcreater/render-pptx": "0.5.5",
-    "@pptcreater/studio": "0.5.5",
+    "@pptcreater/assets-svg": "0.5.6",
+    "@pptcreater/core": "0.5.6",
+    "@pptcreater/diagram": "0.5.6",
+    "@pptcreater/render-pptx": "0.5.6",
+    "@pptcreater/studio": "0.5.6",
     "zod": "^4.4.3"
   },
   "devDependencies": {

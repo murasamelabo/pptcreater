@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.5.6 - 2026-06-22
+
+- **Structured schematic diagrams (`generate_schematic`) now return editable native PowerPoint shape/text elements.** The previous schematic path returned only SVG, so table/tree/flow/list/mockup and the other 25 schematic presets became flattened images in PowerPoint. `generate_schematic` now returns `elements` for direct insertion into DeckSpec slides while keeping the SVG output as a backward-compatible fallback.
+- Added `renderNativeSchematicDiagram` covering all 25 schematic kinds (`table` through `mockup`) with native `shape`/`text` elements. The GitHub Copilot diagram catalog was regenerated as `generated/copilot-diagram-catalog-native.pptx`, and slides 01-25 now contain no image/SVG/diagram elements.
+- Added regression coverage that every schematic kind can render as editable native elements, including optional table cells without invalid empty text; full suite now includes 264 tests.
+
 ## v0.5.5 - 2026-06-22
 
 - **Improved native ponchi-e readability and editability.** Auto-laid-out native diagrams now use wider cards, slightly smaller gaps, and a reserved top band so labels do not collide with accent bars or kind markers. Directly aligned adjacent nodes now use a single border-to-border connector segment instead of split half-lines.
