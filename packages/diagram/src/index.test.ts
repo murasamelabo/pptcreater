@@ -653,6 +653,27 @@ describe("schematic diagram rendering", () => {
     ).toBe(true);
   });
 
+  it("emits only horizontal or vertical native schematic connector segments", () => {
+    for (const kind of ["tree", "cycle", "correlation", "step"] as const) {
+      const rendered = renderNativeSchematicDiagram(
+        {
+          kind,
+          title: `${kind} native schematic`,
+          summary: `${kind} native schematic`,
+          longDescription: `This ${kind} native schematic verifies connector segments are safe horizontal or vertical lines.`,
+          items: ["Root", "A", "B", "C", "D", "E"],
+          secondaryItems: ["one", "two", "three"],
+          tone: "minimal"
+        },
+        { frame: { x: 0.5, y: 1.5, w: 12.2, h: 5.7 }, idPrefix: `native-${kind}` }
+      );
+      const lines = rendered.elements.filter((element) => element.type === "shape" && element.shape === "line");
+
+      expect(lines.length).toBeGreaterThan(0);
+      expect(lines.every((line) => line.type === "shape" && (line.w <= 0.01 || line.h <= 0.01))).toBe(true);
+    }
+  });
+
   it("provides complete mode-aware schematic preset sets", () => {
     for (const [styleProfile, preset] of Object.entries(SCHEMATIC_STYLE_PRESETS)) {
       expect(schematicToneForStyleProfile(styleProfile)).toBe(preset.tone);

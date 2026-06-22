@@ -2499,15 +2499,28 @@ function nativeSchematicCard(
   return elements;
 }
 
-function nativeSchematicArrow(id: string, from: Point, to: Point, nextOrder: () => number, dashed = false): NativeDiagramElement[] {
+function nativeSchematicLine(id: string, from: Point, to: Point, nextOrder: () => number, dashed = false, arrowAtEnd = true): NativeDiagramElement[] {
   const line = nativeLineSegment(id, from, to, {
     color: "#475569",
     dashed,
     arrowAtStart: false,
-    arrowAtEnd: true,
+    arrowAtEnd,
     readingOrder: nextOrder()
   });
   return line ? [line] : [];
+}
+
+function nativeSchematicArrow(id: string, from: Point, to: Point, nextOrder: () => number, dashed = false): NativeDiagramElement[] {
+  if (Math.abs(from.x - to.x) > 0.01 && Math.abs(from.y - to.y) > 0.01) {
+    const mid: Point = { x: (from.x + to.x) / 2, y: from.y };
+    const endTurn: Point = { x: mid.x, y: to.y };
+    return [
+      ...nativeSchematicLine(`${id}-a`, from, mid, nextOrder, dashed, false),
+      ...nativeSchematicLine(`${id}-b`, mid, endTurn, nextOrder, dashed, false),
+      ...nativeSchematicLine(`${id}-c`, endTurn, to, nextOrder, dashed, true)
+    ];
+  }
+  return nativeSchematicLine(id, from, to, nextOrder, dashed, true);
 }
 
 function nativeSchematicPanel(frame: NativeRect, idPrefix: string, nextOrder: () => number): NativeDiagramElement {
@@ -2626,6 +2639,259 @@ function renderNativeSchematicCards(
     return elements;
   }
 
+  if (kind === "tree") {
+    const root = items[0] ?? diagram.title;
+    const children = items.slice(1, 6);
+    const rootRect = { x: area.x + area.w / 2 - 1.25, y: area.y + 0.15, w: 2.5, h: 0.78 };
+    elements.push(...nativeSchematicCard(`${idPrefix}-root`, rootRect, root, "#DBEAFE", accent, nextOrder));
+    const count = Math.max(1, children.length);
+    const gap = 0.2;
+    const cardW = Math.min(2.1, (area.w - gap * (count - 1)) / count);
+    const startX = area.x + (area.w - (cardW * count + gap * (count - 1))) / 2;
+    const childY = area.y + area.h - 1.35;
+    const junction = { x: rootRect.x + rootRect.w / 2, y: area.y + 1.62 };
+    elements.push(...nativeSchematicArrow(`${idPrefix}-root-stem`, { x: rootRect.x + rootRect.w / 2, y: rootRect.y + rootRect.h }, junction, nextOrder, false));
+    children.forEach((child, index) => {
+      const x = startX + index * (cardW + gap);
+      const rect = { x, y: childY, w: cardW, h: 0.92 };
+      const top = { x: x + cardW / 2, y: childY };
+      elements.push(...nativeSchematicArrow(`${idPrefix}-branch-${index}`, junction, top, nextOrder, false));
+      elements.push(...nativeSchematicCard(`${idPrefix}-child-${index}`, rect, child, index === 0 ? fillAlt : "#FFFFFF", accent, nextOrder));
+    });
+    return elements;
+  }
+
+  if (kind === "cycle") {
+    const cycleItems = items.slice(0, 6);
+    const cx = area.x + area.w / 2;
+    const cy = area.y + area.h / 2 + 0.12;
+    const rx = Math.min(area.w * 0.32, 3.1);
+    const ry = Math.min(area.h * 0.32, 1.55);
+    const nodeW = cycleItems.length <= 4 ? 1.72 : 1.48;
+    const nodeH = 0.74;
+    const centers = cycleItems.map((_, index) => {
+      const angle = -Math.PI / 2 + (Math.PI * 2 * index) / cycleItems.length;
+      return { x: cx + Math.cos(angle) * rx, y: cy + Math.sin(angle) * ry };
+    });
+    centers.forEach((from, index) => {
+      const to = centers[(index + 1) % centers.length];
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const len = Math.hypot(dx, dy) || 1;
+      elements.push(...nativeSchematicArrow(`${idPrefix}-cycle-arrow-${index}`, { x: from.x + (dx / len) * nodeW * 0.48, y: from.y + (dy / len) * nodeH * 0.48 }, { x: to.x - (dx / len) * nodeW * 0.55, y: to.y - (dy / len) * nodeH * 0.55 }, nextOrder));
+    });
+    cycleItems.forEach((item, index) => {
+      const center = centers[index];
+      elements.push(...nativeSchematicCard(`${idPrefix}-cycle-${index}`, { x: center.x - nodeW / 2, y: center.y - nodeH / 2, w: nodeW, h: nodeH }, item, index === 0 ? "#DBEAFE" : "#FFFFFF", accent, nextOrder, { badge: `${index + 1}` }));
+    });
+    return elements;
+  }
+
+  if (kind === "map") {
+    const board = { x: area.x + 0.2, y: area.y + 0.1, w: area.w * 0.67, h: area.h - 0.2 };
+    const legend = { x: board.x + board.w + 0.3, y: area.y + 0.16, w: area.w - board.w - 0.5, h: area.h - 0.32 };
+    elements.push(nativeShape(`${idPrefix}-map-board`, "roundRect", board, { fill: fill, line: { color: "#CBD5E1", width: 1 }, radius: 0.12, decorative: true, readingOrder: nextOrder() }));
+    for (let index = 1; index < 5; index += 1) {
+      const gx = board.x + (board.w * index) / 5;
+      const gy = board.y + (board.h * index) / 5;
+      elements.push(nativeShape(`${idPrefix}-grid-v-${index}`, "line", { x: gx, y: board.y, w: 0.001, h: board.h }, { fill: "none", line: { color: "#E2E8F0", width: 0.8 }, decorative: true, readingOrder: nextOrder() }));
+      elements.push(nativeShape(`${idPrefix}-grid-h-${index}`, "line", { x: board.x, y: gy, w: board.w, h: 0 }, { fill: "none", line: { color: "#E2E8F0", width: 0.8 }, decorative: true, readingOrder: nextOrder() }));
+    }
+    elements.push(nativeShape(`${idPrefix}-route`, "line", { x: board.x + 0.45, y: board.y + board.h * 0.68, w: board.w - 0.9, h: 0 }, { fill: "none", line: { color: "#93C5FD", width: 6 }, decorative: true, readingOrder: nextOrder() }));
+    const pinPos = [
+      { x: 0.22, y: 0.34 },
+      { x: 0.52, y: 0.22 },
+      { x: 0.76, y: 0.48 },
+      { x: 0.38, y: 0.72 },
+      { x: 0.68, y: 0.78 }
+    ];
+    items.slice(0, 5).forEach((item, index) => {
+      const px = board.x + pinPos[index].x * board.w;
+      const py = board.y + pinPos[index].y * board.h;
+      elements.push(nativeShape(`${idPrefix}-pin-${index}`, "ellipse", { x: px - 0.17, y: py - 0.17, w: 0.34, h: 0.34 }, { fill: accent, line: { color: "#FFFFFF", width: 1.2 }, decorative: true, readingOrder: nextOrder() }));
+      elements.push(nativeSchematicText(`${idPrefix}-pin-label-${index}`, `${index + 1}`, { x: px - 0.08, y: py - 0.045, w: 0.16, h: 0.09 }, accent, nextOrder, { size: 8, min: 8, lines: 1, color: "#FFFFFF" }));
+      elements.push(nativeSchematicText(`${idPrefix}-pin-text-${index}`, item, { x: px - 0.55, y: py + 0.22, w: 1.1, h: 0.34 }, fill, nextOrder, { size: 9.5, min: 8, lines: 2 }));
+    });
+    elements.push(...nativeSchematicCard(`${idPrefix}-legend`, legend, secondary[0] ?? "Key points", "#FFFFFF", accent, nextOrder));
+    return elements;
+  }
+
+  if (kind === "puzzle") {
+    const cells = items.slice(0, 7);
+    const cx = area.x + area.w / 2;
+    const cy = area.y + area.h / 2;
+    const positions = [
+      { x: 0, y: 0 },
+      { x: -1.25, y: -0.72 },
+      { x: 1.25, y: -0.72 },
+      { x: -1.25, y: 0.72 },
+      { x: 1.25, y: 0.72 },
+      { x: 0, y: -1.44 },
+      { x: 0, y: 1.44 }
+    ];
+    cells.forEach((item, index) => {
+      const pos = positions[index] ?? { x: 0, y: 0 };
+      elements.push(...nativeSchematicCard(`${idPrefix}-puzzle-${index}`, { x: cx + pos.x - 0.9, y: cy + pos.y - 0.42, w: 1.8, h: 0.84 }, item, index === 0 ? "#DBEAFE" : "#FFFFFF", accent, nextOrder, { badge: `${index + 1}` }));
+    });
+    return elements;
+  }
+
+  if (kind === "correlation") {
+    const center = items[0] ?? diagram.title;
+    const leaves = items.slice(1, 7);
+    const cx = area.x + area.w / 2;
+    const cy = area.y + area.h / 2;
+    elements.push(...nativeSchematicCard(`${idPrefix}-center`, { x: cx - 1.25, y: cy - 0.48, w: 2.5, h: 0.96 }, center, "#DBEAFE", accent, nextOrder));
+    leaves.forEach((item, index) => {
+      const angle = -Math.PI / 2 + (Math.PI * 2 * index) / Math.max(leaves.length, 1);
+      const x = cx + Math.cos(angle) * Math.min(3.8, area.w * 0.32);
+      const y = cy + Math.sin(angle) * Math.min(1.75, area.h * 0.32);
+      elements.push(...nativeSchematicArrow(`${idPrefix}-rel-${index}`, { x: cx, y: cy }, { x, y }, nextOrder, true));
+      elements.push(...nativeSchematicCard(`${idPrefix}-leaf-${index}`, { x: x - 0.85, y: y - 0.38, w: 1.7, h: 0.76 }, item, "#FFFFFF", accent, nextOrder, { sublabel: secondary[index] }));
+    });
+    return elements;
+  }
+
+  if (kind === "set") {
+    const groups = items.slice(0, 3);
+    const gap = 0.32;
+    const groupW = (area.w - gap * (groups.length - 1)) / Math.max(groups.length, 1);
+    groups.forEach((group, index) => {
+      const x = area.x + index * (groupW + gap);
+      const rect = { x, y: area.y + 0.15, w: groupW, h: area.h - 0.3 };
+      elements.push(nativeShape(`${idPrefix}-set-${index}`, "roundRect", rect, { fill: index === 0 ? "#EAF2FF" : "#FFFFFF", line: { color: "#CBD5E1", width: 1 }, radius: 0.14, decorative: true, readingOrder: nextOrder() }));
+      elements.push(nativeSchematicText(`${idPrefix}-set-title-${index}`, group, { x: x + 0.2, y: rect.y + 0.22, w: groupW - 0.4, h: 0.3 }, index === 0 ? "#EAF2FF" : "#FFFFFF", nextOrder, { size: 13, lines: 1 }));
+      secondary.filter((_, itemIndex) => itemIndex % groups.length === index).slice(0, 3).forEach((member, row) => {
+        elements.push(...nativeSchematicCard(`${idPrefix}-member-${index}-${row}`, { x: x + 0.28, y: rect.y + 0.78 + row * 0.56, w: groupW - 0.56, h: 0.42 }, member, "#F8FAFC", accent, nextOrder));
+      });
+    });
+    return elements;
+  }
+
+  if (kind === "scale-contrast") {
+    const values = items.slice(0, 4).map((item, index) => Math.max(8, Math.abs(parseSchematicValue(secondary[index] ?? item, 20 + index * 15))));
+    const max = Math.max(...values);
+    const count = values.length;
+    values.forEach((value, index) => {
+      const radius = 0.35 + (value / max) * 0.75;
+      const cx = area.x + ((index + 0.7) * area.w) / count;
+      const cy = area.y + area.h / 2;
+      elements.push(nativeShape(`${idPrefix}-bubble-${index}`, "ellipse", { x: cx - radius, y: cy - radius, w: radius * 2, h: radius * 2 }, { fill: index === 0 ? "#DBEAFE" : "#FFFFFF", fillOpacity: 0.82, line: { color: accent, width: 1.2 }, decorative: true, readingOrder: nextOrder() }));
+      elements.push(nativeSchematicText(`${idPrefix}-bubble-label-${index}`, items[index], { x: cx - radius * 0.8, y: cy - 0.16, w: radius * 1.6, h: 0.3 }, index === 0 ? "#DBEAFE" : "#FFFFFF", nextOrder, { size: 11, lines: 2 }));
+    });
+    return elements;
+  }
+
+  if (kind === "grow") {
+    const rings = items.slice(0, 3);
+    const cx = area.x + area.w / 2;
+    const cy = area.y + area.h / 2;
+    const radii = [2.05, 1.45, 0.88];
+    rings.forEach((ring, index) => {
+      const r = radii[index] ?? 0.7;
+      elements.push(nativeShape(`${idPrefix}-ring-${index}`, "ellipse", { x: cx - r, y: cy - r * 0.75, w: r * 2, h: r * 1.5 }, { fill: ["#DBEAFE", "#E0F2FE", "#ECFDF5"][index] ?? "#FFFFFF", fillOpacity: 0.78, line: { color: accent, width: 1 }, decorative: true, readingOrder: nextOrder() }));
+      elements.push(nativeSchematicText(`${idPrefix}-ring-label-${index}`, ring, { x: cx - r * 0.7, y: cy - 0.08 + index * 0.3, w: r * 1.4, h: 0.26 }, "#FFFFFF", nextOrder, { size: 12, lines: 1 }));
+    });
+    return elements;
+  }
+
+  if (kind === "gantt") {
+    const tasks = items.slice(0, 5);
+    const periods = secondary.length ? secondary.slice(0, 4) : ["W1", "W2", "W3", "W4"];
+    const labelW = 2.0;
+    const colW = (area.w - labelW) / periods.length;
+    elements.push(nativeShape(`${idPrefix}-gantt-bg`, "roundRect", area, { fill, line: { color: "#CBD5E1", width: 1 }, radius: 0.1, decorative: true, readingOrder: nextOrder() }));
+    periods.forEach((period, index) => elements.push(nativeSchematicText(`${idPrefix}-period-${index}`, period, { x: area.x + labelW + index * colW, y: area.y + 0.15, w: colW, h: 0.24 }, fill, nextOrder, { size: 10, lines: 1 })));
+    tasks.forEach((task, index) => {
+      const y = area.y + 0.62 + index * 0.54;
+      elements.push(nativeSchematicText(`${idPrefix}-task-${index}`, task, { x: area.x + 0.12, y, w: labelW - 0.2, h: 0.28 }, fill, nextOrder, { size: 10.5, lines: 1, align: "left" }));
+      const start = index % periods.length;
+      const span = Math.min(periods.length - start, 1 + (index % 2));
+      elements.push(nativeShape(`${idPrefix}-bar-${index}`, "roundRect", { x: area.x + labelW + start * colW + 0.08, y: y + 0.04, w: colW * span - 0.16, h: 0.22 }, { fill: index === 0 ? accent : "#93C5FD", line: { color: accent, width: 0.8 }, radius: 0.08, decorative: true, readingOrder: nextOrder() }));
+    });
+    return elements;
+  }
+
+  if (kind === "ranking") {
+    const ranked = items.slice(0, 6);
+    ranked.forEach((item, index) => {
+      const y = area.y + index * 0.62;
+      const value = Math.max(18, Math.min(100, parseSchematicValue(secondary[index] ?? item, 90 - index * 12)));
+      elements.push(nativeShape(`${idPrefix}-rank-bg-${index}`, "roundRect", { x: area.x + 0.55, y, w: area.w - 1.1, h: 0.42 }, { fill: index % 2 === 0 ? "#FFFFFF" : fill, line: { color: "#E2E8F0", width: 0.8 }, radius: 0.08, decorative: true, readingOrder: nextOrder() }));
+      elements.push(nativeShape(`${idPrefix}-rank-badge-${index}`, "ellipse", { x: area.x + 0.72, y: y + 0.08, w: 0.26, h: 0.26 }, { fill: accent, line: { color: accent, width: 0.1 }, decorative: true, readingOrder: nextOrder() }));
+      elements.push(nativeSchematicText(`${idPrefix}-rank-num-${index}`, `${index + 1}`, { x: area.x + 0.72, y: y + 0.115, w: 0.26, h: 0.1 }, accent, nextOrder, { size: 8, min: 8, lines: 1, color: "#FFFFFF" }));
+      elements.push(nativeSchematicText(`${idPrefix}-rank-label-${index}`, item, { x: area.x + 1.1, y: y + 0.08, w: 3.4, h: 0.26 }, index % 2 === 0 ? "#FFFFFF" : fill, nextOrder, { size: 10.5, lines: 1, align: "left" }));
+      elements.push(nativeShape(`${idPrefix}-rank-bar-${index}`, "roundRect", { x: area.x + 4.8, y: y + 0.13, w: (area.w - 5.5) * (value / 100), h: 0.16 }, { fill: accent, line: { color: accent, width: 0.1 }, radius: 0.06, decorative: true, readingOrder: nextOrder() }));
+    });
+    return elements;
+  }
+
+  if (kind === "mockup") {
+    const win = { x: area.x + 1.2, y: area.y + 0.25, w: area.w - 2.4, h: area.h - 0.5 };
+    elements.push(nativeShape(`${idPrefix}-window`, "roundRect", win, { fill: "#FFFFFF", line: { color: "#CBD5E1", width: 1 }, radius: 0.14, decorative: true, readingOrder: nextOrder() }));
+    elements.push(nativeShape(`${idPrefix}-chrome`, "roundRect", { x: win.x, y: win.y, w: win.w, h: 0.52 }, { fill: "#F1F5F9", line: { color: "#CBD5E1", width: 0.8 }, radius: 0.14, decorative: true, readingOrder: nextOrder() }));
+    ["#EF4444", "#F59E0B", "#10B981"].forEach((color, index) => elements.push(nativeShape(`${idPrefix}-dot-${index}`, "ellipse", { x: win.x + 0.24 + index * 0.22, y: win.y + 0.2, w: 0.1, h: 0.1 }, { fill: color, line: { color, width: 0.1 }, decorative: true, readingOrder: nextOrder() })));
+    elements.push(nativeShape(`${idPrefix}-chat`, "roundRect", { x: win.x + 0.45, y: win.y + 0.9, w: win.w * 0.48, h: 0.86 }, { fill: "#DBEAFE", line: { color: accent, width: 1 }, radius: 0.1, decorative: true, readingOrder: nextOrder() }));
+    elements.push(nativeSchematicText(`${idPrefix}-chat-text`, items[1] ?? items[0] ?? "Copilot Chat", { x: win.x + 0.62, y: win.y + 1.1, w: win.w * 0.42, h: 0.3 }, "#DBEAFE", nextOrder, { size: 11, lines: 2, align: "left" }));
+    items.slice(0, 4).forEach((item, index) => {
+      const y = win.y + 2.05 + index * 0.38;
+      elements.push(nativeShape(`${idPrefix}-mock-row-${index}`, "roundRect", { x: win.x + 0.52, y, w: win.w - 1.04 - index * 0.22, h: 0.16 }, { fill: index === 0 ? accent : "#CBD5E1", line: { color: index === 0 ? accent : "#CBD5E1", width: 0.1 }, radius: 0.06, decorative: true, readingOrder: nextOrder() }));
+    });
+    return elements;
+  }
+
+  if (kind === "cross") {
+    const inputs = items.slice(0, 3);
+    const result = secondary[0] ?? items[items.length - 1] ?? "Result";
+    const cardW = 1.72;
+    const y = area.y + area.h / 2 - 0.55;
+    const startX = area.x + 0.55;
+    inputs.forEach((item, index) => {
+      const x = startX + index * (cardW + 0.62);
+      elements.push(...nativeSchematicCard(`${idPrefix}-eq-in-${index}`, { x, y, w: cardW, h: 1.1 }, item, index === 0 ? "#EAF2FF" : "#FFFFFF", accent, nextOrder, { badge: `${index + 1}` }));
+      if (index < inputs.length - 1) {
+        elements.push(nativeSchematicText(`${idPrefix}-plus-${index}`, "+", { x: x + cardW + 0.18, y: y + 0.42, w: 0.22, h: 0.24 }, "#FFFFFF", nextOrder, { size: 18, min: 16, lines: 1, color: accent }));
+      }
+    });
+    const eqX = startX + inputs.length * (cardW + 0.62) - 0.2;
+    elements.push(nativeSchematicText(`${idPrefix}-equals`, "=", { x: eqX, y: y + 0.42, w: 0.28, h: 0.24 }, "#FFFFFF", nextOrder, { size: 18, min: 16, lines: 1, color: accent }));
+    elements.push(...nativeSchematicCard(`${idPrefix}-result`, { x: eqX + 0.5, y, w: Math.max(1.8, area.x + area.w - eqX - 0.7), h: 1.1 }, result, "#DBEAFE", accent, nextOrder));
+    return elements;
+  }
+
+  if (kind === "step") {
+    const steps = items.slice(0, 5);
+    const stepW = Math.min(2.15, area.w / Math.max(steps.length, 1) - 0.1);
+    const stepH = 0.72;
+    const baseY = area.y + area.h - 0.55;
+    steps.forEach((item, index) => {
+      const x = area.x + 0.35 + index * (stepW + 0.16);
+      const y = baseY - index * 0.48;
+      elements.push(...nativeSchematicCard(`${idPrefix}-step-${index}`, { x, y, w: stepW, h: stepH }, item, index === steps.length - 1 ? "#DBEAFE" : "#FFFFFF", accent, nextOrder, { badge: `${index + 1}` }));
+      if (index < steps.length - 1) {
+        elements.push(...nativeSchematicArrow(`${idPrefix}-step-arrow-${index}`, { x: x + stepW + 0.04, y: y + stepH / 2 }, { x: x + stepW + 0.16, y: y - 0.28 }, nextOrder));
+      }
+    });
+    return elements;
+  }
+
+  if (kind === "layer") {
+    const layers = items.slice(0, 5);
+    const layerH = Math.min(0.72, area.h / Math.max(layers.length, 1) - 0.08);
+    const maxInset = 1.0;
+    layers.forEach((item, index) => {
+      const inset = (maxInset * index) / Math.max(layers.length - 1, 1);
+      const y = area.y + index * (layerH + 0.1);
+      const layerFill = ["#DBEAFE", "#E0F2FE", "#ECFDF5", "#FEF3C7", "#F8FAFC"][index] ?? "#FFFFFF";
+      elements.push(nativeShape(`${idPrefix}-layer-${index}`, "roundRect", { x: area.x + inset, y, w: area.w - inset * 2, h: layerH }, { fill: layerFill, line: { color: "#CBD5E1", width: 1 }, radius: 0.08, decorative: true, readingOrder: nextOrder() }));
+      elements.push(nativeSchematicText(`${idPrefix}-layer-label-${index}`, item, { x: area.x + inset + 0.25, y: y + 0.14, w: area.w - inset * 2 - 0.5, h: layerH - 0.22 }, layerFill, nextOrder, { size: 12, lines: 1 }));
+      if (secondary[index]) {
+        elements.push(nativeSchematicText(`${idPrefix}-layer-note-${index}`, secondary[index], { x: area.x + area.w - 2.6, y: y + 0.16, w: 2.0, h: layerH - 0.24 }, layerFill, nextOrder, { size: 9.5, min: 8, lines: 1, bold: false, color: "#475569" }));
+      }
+    });
+    return elements;
+  }
+
   const flowKinds = new Set<SchematicKind>(["flow", "step", "gantt", "ranking", "list-horizontal", "cross"]);
   if (flowKinds.has(kind)) {
     const count = Math.min(items.length, kind === "list-horizontal" ? 4 : 5);
@@ -2643,12 +2909,12 @@ function renderNativeSchematicCards(
     return elements;
   }
 
-  if (kind === "vertical-flow" || kind === "list" || kind === "list-enumeration" || kind === "layer") {
-    const count = Math.min(items.length, kind === "layer" ? 5 : 6);
+  if (kind === "vertical-flow" || kind === "list" || kind === "list-enumeration") {
+    const count = Math.min(items.length, 6);
     const rowH = Math.min(0.58, area.h / Math.max(count, 1) - 0.08);
     items.slice(0, count).forEach((item, index) => {
       const y = area.y + index * (rowH + 0.1);
-      const fillColor = kind === "layer" ? ["#DBEAFE", "#E0F2FE", "#ECFDF5", "#FEF3C7", "#F8FAFC"][index] ?? "#FFFFFF" : index % 2 === 0 ? "#FFFFFF" : fill;
+      const fillColor = index % 2 === 0 ? "#FFFFFF" : fill;
       elements.push(...nativeSchematicCard(`${idPrefix}-row-${index}`, { x: area.x + 0.9, y, w: area.w - 1.8, h: rowH }, item, fillColor, accent, nextOrder, { badge: kind === "list" ? undefined : `${index + 1}` }));
       if (kind === "vertical-flow" && index < count - 1) {
         elements.push(...nativeSchematicArrow(`${idPrefix}-varrow-${index}`, { x: area.x + area.w / 2, y: y + rowH + 0.02 }, { x: area.x + area.w / 2, y: y + rowH + 0.08 }, nextOrder));

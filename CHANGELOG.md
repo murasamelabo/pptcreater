@@ -2,10 +2,15 @@
 
 ## Unreleased
 
+## v0.5.7 - 2026-06-22
+
+- **Restored the semantic shape of all 25 native schematic kinds.** The first native schematic implementation made all presets editable, but several kinds collapsed into generic card lists. Native schematics now preserve their intended visual grammar: tree hierarchy, cyclic loop, map pins and legend, honeycomb/puzzle clusters, hub-and-spoke correlation, set groups, bubble scale comparison, concentric growth rings, Gantt bars, ranking bars, mockup window, equation/cross, stair steps, stacked layers, and other kind-specific structures.
+- Native schematic connectors that would otherwise be diagonal are routed as orthogonal horizontal/vertical segments so PowerPoint rendering cannot mirror their direction. Added regression coverage for safe orthogonal schematic connector segments; full suite now includes 265 tests.
+
 ## v0.5.6 - 2026-06-22
 
 - **Structured schematic diagrams (`generate_schematic`) now return editable native PowerPoint shape/text elements.** The previous schematic path returned only SVG, so table/tree/flow/list/mockup and the other 25 schematic presets became flattened images in PowerPoint. `generate_schematic` now returns `elements` for direct insertion into DeckSpec slides while keeping the SVG output as a backward-compatible fallback.
-- Added `renderNativeSchematicDiagram` covering all 25 schematic kinds (`table` through `mockup`) with native `shape`/`text` elements. The GitHub Copilot diagram catalog was regenerated as `generated/copilot-diagram-catalog-native.pptx`, and slides 01-25 now contain no image/SVG/diagram elements.
+- Added `renderNativeSchematicDiagram` covering all 25 schematic kinds (`table` through `mockup`) with native `shape`/`text` elements. The native renderer preserves the original visual grammar where possible — tree hierarchy, process flows, cycles, before/after panels, map pins, honeycomb/puzzle grouping, hub-and-spoke correlation, matrix quadrants, Venn overlap, equation/cross, set groups, bubble scale comparison, concentric growth rings, stacked layers, pyramid, stair steps, Gantt bars, rankings, lists, and UI mockup — instead of collapsing them into plain card lists. The GitHub Copilot diagram catalog was regenerated as `generated/copilot-diagram-catalog-semantic.pptx`, and slides 01-25 now contain no image/SVG/diagram elements.
 - Added regression coverage that every schematic kind can render as editable native elements, including optional table cells without invalid empty text; full suite now includes 264 tests.
 
 ## v0.5.5 - 2026-06-22
