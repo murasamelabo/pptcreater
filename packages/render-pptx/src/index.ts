@@ -814,6 +814,11 @@ function themeSlotColor(themeXml: string, slot: string): string | undefined {
   return themeColor(themeXml, aliases[slot] ?? slot);
 }
 
+function backgroundThemeSlotColor(themeXml: string, slot: string): string | undefined {
+  const aliases: Record<string, string> = { bg1: "lt1", tx1: "dk1", bg2: "dk2", tx2: "lt2" };
+  return themeColor(themeXml, aliases[slot] ?? slot) ?? themeSlotColor(themeXml, slot);
+}
+
 function solidFillColor(xml: string, themeXml: string): string | undefined {
   const solid = /<a:solidFill\b[^>]*>([\s\S]*?)<\/a:solidFill>/i.exec(xml)?.[1] ?? xml;
   const srgb = normalizeHexColor(/<a:srgbClr\b[^>]*\bval="([0-9a-fA-F]{6})"/i.exec(solid)?.[1]);
@@ -826,7 +831,15 @@ function solidFillColor(xml: string, themeXml: string): string | undefined {
 
 function backgroundColorFromXml(xml: string, themeXml: string): string | undefined {
   const bg = /<p:bg\b[\s\S]*?<\/p:bg>/i.exec(xml)?.[0];
-  return bg ? solidFillColor(bg, themeXml) : undefined;
+  if (!bg) {
+    return undefined;
+  }
+  const bgRef = /<p:bgRef\b[\s\S]*?<\/p:bgRef>/i.exec(bg)?.[0];
+  const bgRefScheme = bgRef ? /<a:schemeClr\b[^>]*\bval="([^"]+)"/i.exec(bgRef)?.[1] : undefined;
+  if (bgRefScheme) {
+    return backgroundThemeSlotColor(themeXml, bgRefScheme);
+  }
+  return solidFillColor(bg, themeXml);
 }
 
 function largestSolidShapeColor(xml: string, themeXml: string): string | undefined {

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.5.4 - 2026-06-22
+
+- **Fixed contrast repair for `.potx` masters that define dark backgrounds through `p:bgRef`.** Some PowerPoint templates, including Microsoft Security 2602, define the slide background as `<p:bgRef idx="1001"><a:schemeClr val="bg2"/></p:bgRef>` rather than a solid fill shape. Rendering now resolves that background reference through the slide master's referenced theme and treats `bg2` as the dark theme background for master-background contrast repair, so titles and lead text no longer remain black on the dark master.
+- Extended the imported `.potx` render regression fixture to use an unused `theme1.xml` plus a master-referenced `theme2.xml` with a `bgRef` dark background, covering the same class of multi-theme/theme-reference bug during render.
+
 ## v0.5.3 - 2026-06-22
 
 - **Improved readability when real `.potx` slide masters use dark backgrounds.** Rendering now infers the imported template's master/layout background (using the theme referenced by the slide master, not the first theme by zip order) and repairs free-standing slide text to a readable black/white color before writing PowerPoint XML, while preserving dark text inside explicit light cards/panels. This prevents title, lead, and generated reference text from remaining black on a dark master background.
