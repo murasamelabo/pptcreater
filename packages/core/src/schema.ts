@@ -97,6 +97,16 @@ export type ScaffoldTextBox = z.infer<typeof ScaffoldTextBoxSchema>;
 export type ScaffoldImage = z.infer<typeof ScaffoldImageSchema>;
 export type TemplateScaffoldSlide = z.infer<typeof TemplateScaffoldSlideSchema>;
 
+export const PowerPointTemplatePackageSchema = z.object({
+  extension: z.enum([".pptx", ".potx", ".pptm", ".potm"]),
+  dataUri: z.string().min(1),
+  titleLayoutPath: z.string().min(1).optional(),
+  contentLayoutPath: z.string().min(1).optional(),
+  closingLayoutPath: z.string().min(1).optional()
+});
+
+export type PowerPointTemplatePackage = z.infer<typeof PowerPointTemplatePackageSchema>;
+
 export const AccessibilityMetadataSchema = z.object({
   title: z.string().min(1),
   language: LocaleSchema,

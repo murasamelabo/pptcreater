@@ -12,6 +12,7 @@ import {
   DesignTokensSchema,
   HeaderFooterSchema,
   LocaleSchema,
+  PowerPointTemplatePackageSchema,
   SlideSizeSchema,
   TemplateScaffoldSlideSchema,
   type ContentMode,
@@ -51,6 +52,7 @@ export const TemplateManifestSchema = z.object({
   titleSlide: TemplateScaffoldSlideSchema.optional(),
   closingSlide: TemplateScaffoldSlideSchema.optional(),
   contentSlide: TemplateScaffoldSlideSchema.optional(),
+  powerPointTemplate: PowerPointTemplatePackageSchema.optional(),
   tags: z.array(z.string()).default([])
 });
 

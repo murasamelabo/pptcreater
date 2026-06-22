@@ -9,6 +9,7 @@ import {
   type DesignTokens,
   type HeaderFooter,
   type Locale,
+  type PowerPointTemplatePackage,
   type ScaffoldImage,
   type ScaffoldTextBox,
   type SlideBackground,
@@ -31,6 +32,23 @@ type ZipArchive = {
 const JSZip = require("jszip") as { loadAsync(data: Buffer): Promise<ZipArchive> };
 
 const EMU_PER_INCH = 914400;
+
+function powerPointMimeType(extension: string): string {
+  switch (extension) {
+    case ".potx":
+      return "application/vnd.openxmlformats-officedocument.presentationml.template";
+    case ".pptm":
+      return "application/vnd.ms-powerpoint.presentation.macroEnabled.12";
+    case ".potm":
+      return "application/vnd.ms-powerpoint.template.macroEnabled.12";
+    default:
+      return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+  }
+}
+
+function powerPointPackageDataUri(extension: string, data: Buffer): string {
+  return `data:${powerPointMimeType(extension)};base64,${data.toString("base64")}`;
+}
 
 /** Inner XML of the first `<prefix:tag ...>...</prefix:tag>` element (prefix optional). */
 function innerXml(xml: string, tag: string): string | undefined {
@@ -881,6 +899,7 @@ export type ImportTemplateOptions = {
   name?: string;
   locale?: Locale;
   tags?: string[];
+  sourcePowerPoint?: Pick<PowerPointTemplatePackage, "extension" | "dataUri">;
 };
 
 /** Extract a reusable TemplateManifest from raw .pptx bytes. */
@@ -943,7 +962,7 @@ export async function extractTemplateManifestFromPptx(data: Buffer, options: Imp
   // Resolve each slide to its layout so we can read the real title slide's background, logos, and
   // placeholder geometry — not just the abstract theme tokens.
   const slideNames = names.filter((name) => /^ppt\/slides\/slide\d+\.xml$/i.test(name)).sort(naturalSlideSort);
-  const slideAssets: { assets: SlideAssets; layoutXml?: string }[] = [];
+  const slideAssets: { assets: SlideAssets; layoutXml?: string; layoutPath?: string }[] = [];
   for (const name of slideNames) {
     const xml = (await zip.file(name)?.async("string")) ?? "";
     const relsPath = name.replace(/slides\/([^/]+)$/i, "slides/_rels/$1.rels");
@@ -961,7 +980,8 @@ export async function extractTemplateManifestFromPptx(data: Buffer, options: Imp
     }
     slideAssets.push({
       assets: { xml, rels, baseDir: "ppt/slides", layoutXml, layoutRels, layoutBaseDir },
-      layoutXml
+      layoutXml,
+      layoutPath
     });
   }
 
@@ -1038,6 +1058,28 @@ export async function extractTemplateManifestFromPptx(data: Buffer, options: Imp
 
   const reusesTitleVisual = Boolean(titleSlide && (titleSlide.background || (titleSlide.logos?.length ?? 0) > 0 || titleSlide.titleBox));
   const reusesContentVisual = Boolean(contentSlide && (contentSlide.background || (contentSlide.logos?.length ?? 0) > 0));
+  const inferredTitleLayoutPath =
+    titleSlideAsset?.layoutPath ??
+    layoutNames.find((path, index) => {
+      const entry = layoutEntries[index];
+      const xml = layoutByPath.get(path) ?? "";
+      return /title/i.test(entry?.name ?? "") || entry?.type === "title" || hasPlaceholder(xml, "ctrTitle");
+    });
+  const inferredClosingLayoutPath =
+    closingSlideAsset?.layoutPath ??
+    layoutNames.find((path, index) => {
+      const entry = layoutEntries[index];
+      const xml = layoutByPath.get(path) ?? "";
+      return CLOSING_PATTERN.test(entry?.name ?? "") || CLOSING_PATTERN.test(runText(xml) ?? "");
+    });
+  const powerPointTemplate = options.sourcePowerPoint
+    ? {
+        ...options.sourcePowerPoint,
+        ...(inferredTitleLayoutPath ? { titleLayoutPath: inferredTitleLayoutPath } : {}),
+        ...(contentLayoutPath ? { contentLayoutPath } : {}),
+        ...(inferredClosingLayoutPath ? { closingLayoutPath: inferredClosingLayoutPath } : {})
+      }
+    : undefined;
   const manifest: TemplateManifest = {
     id,
     name: baseName,
@@ -1057,6 +1099,7 @@ export async function extractTemplateManifestFromPptx(data: Buffer, options: Imp
     ...(titleSlide ? { titleSlide } : {}),
     ...(closingSlide ? { closingSlide } : {}),
     ...(contentSlide ? { contentSlide } : {}),
+    ...(powerPointTemplate ? { powerPointTemplate } : {}),
     tags
   };
 
@@ -1085,7 +1128,11 @@ export async function importTemplateFromPptx(
   const template = await extractTemplateManifestFromPptx(data, {
     ...options,
     id: options.id ?? fallbackName,
-    name: options.name ?? fallbackName
+    name: options.name ?? fallbackName,
+    sourcePowerPoint: {
+      extension: ext as ".pptx" | ".potx" | ".pptm" | ".potm",
+      dataUri: powerPointPackageDataUri(ext, data)
+    }
   });
 
   if (options.register) {

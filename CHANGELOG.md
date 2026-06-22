@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.5.2 - 2026-06-22
+
+- **Imported `.potx` / PowerPoint templates now preserve and apply the real PowerPoint slide master.** Previously, pptcreater extracted colors, fonts, backgrounds, and representative content branding, then recreated the look in a fresh `pptxgenjs` presentation. That was still a visual approximation: the output PPTX did not inherit the original `.potx` `slideMaster`, `slideLayout`, or `theme` parts. Imported templates now store the source PowerPoint package in the registered manifest and, during render, transplant its `ppt/slideMasters`, `ppt/slideLayouts`, `ppt/theme`, and related media into the generated deck.
+- Rendering a deck whose `template` points to an imported PowerPoint template now rewrites each slide's `slideLayout` relationship to the imported template's title/content/closing layouts and removes generated solid slide backgrounds so the template master/layout background can show through. Image-backed custom slide backgrounds are preserved.
+- Added regression coverage proving `.potx` imports store the source package + layout paths and rendered decks reference the imported `.potx` slide layouts (`title-slide`, `title-content`, `closing-slide`); full suite now at 259 tests.
+
 ## v0.5.1 - 2026-06-21
 
 - **`template import` now warns when an imported template is not saved.** The importer only persists a template when `--register` (registry) or `-o <path>` (manifest file) is supplied; without one of those the import previously succeeded silently and the result was discarded, so the template never appeared in `template list` and could not be used by `template apply` / `template scaffold`. The CLI now prints the destination on success (`registered in …` / `manifest written to …`) and emits a clear warning to stderr when neither was given. The `import_template` MCP tool returns a `warning` field in the same situation (set `register=true` to persist).

@@ -8,19 +8,32 @@ import {
   defaultTokens,
   ensureSourceReferenceSlide,
   lintDeckSpec,
+  listAllTemplates,
   normalizeDeckLayout,
   normalizeReadingOrder,
   parseDeckSpec,
   POLISH_FIXABLE_LINT_CODES,
   type DeckSpec,
   type DesignTokens,
+  type PowerPointTemplatePackage,
   type SlideElement
 } from "@pptcreater/core";
 
 export * from "./templateImport.js";
 
 const require = createRequire(import.meta.url);
-const JSZip = require("jszip") as { loadAsync(data: Buffer): Promise<{ file(name: string): { async(type: "string"): Promise<string> } | null; file(name: string, data: string): void; remove(name: string): void; generateAsync(options: { type: "nodebuffer" }): Promise<Buffer> }> };
+type ZipEntry = {
+  async(type: "string"): Promise<string>;
+  async(type: "nodebuffer"): Promise<Buffer>;
+};
+type ZipArchive = {
+  files: Record<string, unknown>;
+  file(name: string): ZipEntry | null;
+  file(name: string, data: string | Buffer): void;
+  remove(name: string): void;
+  generateAsync(options: { type: "nodebuffer" }): Promise<Buffer>;
+};
+const JSZip = require("jszip") as { loadAsync(data: Buffer): Promise<ZipArchive> };
 type PptxSlide = {
   background: { color?: string; data?: string };
   slideNumber?: Record<string, unknown>;
@@ -532,6 +545,314 @@ async function markShapeAccessibility(pptxPath: string, deck: DeckSpec): Promise
   await writeFile(pptxPath, await zip.generateAsync({ type: "nodebuffer" }));
 }
 
+type Relationship = {
+  id: string;
+  type: string;
+  target: string;
+  targetMode?: string;
+};
+
+const REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships";
+const OFFICE_REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+const POWERPOINT_TEMPLATE_PART_PREFIXES = ["ppt/slideMasters/", "ppt/slideLayouts/", "ppt/theme/"] as const;
+
+function decodePowerPointPackageDataUri(dataUri: string): Buffer {
+  const match = /^data:[^;]+;base64,([a-zA-Z0-9+/=\s]+)$/i.exec(dataUri);
+  if (!match) {
+    throw new Error("Imported PowerPoint template package must be a base64 data URI.");
+  }
+  return Buffer.from(match[1].replace(/\s+/g, ""), "base64");
+}
+
+function zipNames(zip: ZipArchive): string[] {
+  return Object.keys(zip.files).sort();
+}
+
+async function readZipXml(zip: ZipArchive, name: string): Promise<string> {
+  return (await zip.file(name)?.async("string")) ?? "";
+}
+
+function relationshipAttr(xml: string, name: string): string | undefined {
+  return new RegExp(`\\b${name}="([^"]*)"`, "i").exec(xml)?.[1];
+}
+
+function parseRelationships(xml: string): Relationship[] {
+  return [...xml.matchAll(/<Relationship\b[^>]*\/>/gi)].map((match) => {
+    const tag = match[0];
+    return {
+      id: relationshipAttr(tag, "Id") ?? "",
+      type: relationshipAttr(tag, "Type") ?? "",
+      target: relationshipAttr(tag, "Target") ?? "",
+      targetMode: relationshipAttr(tag, "TargetMode")
+    };
+  }).filter((rel) => rel.id && rel.type && rel.target);
+}
+
+function serializeRelationships(rels: Relationship[]): string {
+  const body = rels
+    .map((rel) => {
+      const mode = rel.targetMode ? ` TargetMode="${rel.targetMode}"` : "";
+      return `<Relationship Id="${escapeXmlAttribute(rel.id)}" Type="${escapeXmlAttribute(rel.type)}" Target="${escapeXmlAttribute(rel.target)}"${mode}/>`;
+    })
+    .join("");
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${REL_NS}">${body}</Relationships>`;
+}
+
+function nextRelationshipId(rels: Relationship[]): string {
+  const max = rels.reduce((highest, rel) => {
+    const value = /^rId(\d+)$/i.exec(rel.id)?.[1];
+    return value ? Math.max(highest, Number(value)) : highest;
+  }, 0);
+  return `rId${max + 1}`;
+}
+
+function isTemplatePart(name: string): boolean {
+  return POWERPOINT_TEMPLATE_PART_PREFIXES.some((prefix) => name.startsWith(prefix));
+}
+
+function isTemplateContentTypePart(name: string): boolean {
+  return (
+    /^ppt\/slideMasters\/slideMaster\d+\.xml$/i.test(name) ||
+    /^ppt\/slideLayouts\/slideLayout\d+\.xml$/i.test(name) ||
+    /^ppt\/theme\/theme\d+\.xml$/i.test(name)
+  );
+}
+
+function isRealZipFile(zip: ZipArchive, name: string): boolean {
+  return Boolean(zip.file(name));
+}
+
+function ensurePowerPointTemplateContentTypes(targetXml: string, sourceXml: string, sourceNames: string[]): string {
+  let xml = targetXml;
+  xml = xml.replace(/<Override\b[^>]*PartName="\/ppt\/(?:slideMasters|slideLayouts|theme)\/[^"]+"[^>]*\/>/gi, "");
+
+  const hasDefault = (extension: string) => new RegExp(`<Default\\b[^>]*Extension="${extension}"`, "i").test(xml);
+  const addDefault = (extension: string, contentType: string) => {
+    if (hasDefault(extension)) {
+      return;
+    }
+    xml = xml.replace("</Types>", `<Default Extension="${extension}" ContentType="${contentType}"/></Types>`);
+  };
+  for (const match of sourceXml.matchAll(/<Default\b[^>]*\/>/gi)) {
+    const tag = match[0];
+    const ext = relationshipAttr(tag, "Extension");
+    const type = relationshipAttr(tag, "ContentType");
+    if (ext && type && sourceNames.some((name) => name.toLowerCase().endsWith(`.${ext.toLowerCase()}`))) {
+      addDefault(ext, type);
+    }
+  }
+
+  const hasOverride = (partName: string) => new RegExp(`<Override\\b[^>]*PartName="${partName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`, "i").test(xml);
+  const addOverride = (partName: string, contentType: string) => {
+    if (hasOverride(partName)) {
+      return;
+    }
+    xml = xml.replace("</Types>", `<Override PartName="${partName}" ContentType="${contentType}"/></Types>`);
+  };
+
+  const sourceOverrides = [...sourceXml.matchAll(/<Override\b[^>]*\/>/gi)].map((match) => {
+    const tag = match[0];
+    return { partName: relationshipAttr(tag, "PartName"), contentType: relationshipAttr(tag, "ContentType") };
+  });
+  for (const name of sourceNames.filter(isTemplateContentTypePart)) {
+    const partName = `/${name}`;
+    const source = sourceOverrides.find((entry) => entry.partName === partName);
+    const fallback = name.includes("/slideMasters/")
+      ? "application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"
+      : name.includes("/slideLayouts/")
+        ? "application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"
+        : "application/vnd.openxmlformats-officedocument.theme+xml";
+    addOverride(partName, source?.contentType ?? fallback);
+  }
+
+  return xml;
+}
+
+function prefixedTemplateMediaName(name: string): string {
+  return name.replace(/^ppt\/media\//i, "ppt/media/pptcreater-template-");
+}
+
+function rewriteTemplateMediaTargets(xml: string, mediaMap: Map<string, string>): string {
+  return xml.replace(/\bTarget="([^"]*media\/([^"]+))"/gi, (match, target: string, fileName: string) => {
+    const mapped = mediaMap.get(`ppt/media/${fileName}`);
+    if (!mapped) {
+      return match;
+    }
+    return `Target="${target.replace(/media\/[^"]+$/i, `media/${mapped.split("/").pop()}`)}"`;
+  });
+}
+
+async function copyPowerPointTemplateParts(targetZip: ZipArchive, sourceZip: ZipArchive): Promise<void> {
+  const targetNames = zipNames(targetZip);
+  for (const name of targetNames) {
+    if (isTemplatePart(name)) {
+      targetZip.remove(name);
+    }
+  }
+
+  const sourceNames = zipNames(sourceZip);
+  const mediaMap = new Map<string, string>();
+  for (const name of sourceNames.filter((item) => item.startsWith("ppt/media/"))) {
+    mediaMap.set(name, prefixedTemplateMediaName(name));
+  }
+
+  for (const name of sourceNames) {
+    if (isTemplatePart(name) || name.startsWith("ppt/media/")) {
+      const file = sourceZip.file(name);
+      if (!file) {
+        continue;
+      }
+      const targetName = mediaMap.get(name) ?? name;
+      const data = name.endsWith(".xml") || name.endsWith(".rels")
+        ? rewriteTemplateMediaTargets(await file.async("string"), mediaMap)
+        : await file.async("nodebuffer");
+      targetZip.file(targetName, data);
+    }
+  }
+
+  const targetContentTypes = await readZipXml(targetZip, "[Content_Types].xml");
+  const sourceContentTypes = await readZipXml(sourceZip, "[Content_Types].xml");
+  if (targetContentTypes) {
+    targetZip.file("[Content_Types].xml", ensurePowerPointTemplateContentTypes(targetContentTypes, sourceContentTypes, sourceNames));
+  }
+}
+
+function layoutKindForSlide(slide: DeckSpec["slides"][number], slideIndex: number): "title" | "content" | "closing" {
+  const layout = (slide.layout ?? "").toLowerCase();
+  if (slideIndex === 0 || layout === "title" || layout === "title-slide" || layout === "cover") {
+    return "title";
+  }
+  if (layout.includes("closing") || layout.includes("thank") || slide.id === "closing") {
+    return "closing";
+  }
+  return "content";
+}
+
+function slideLayoutTarget(layoutPath: string): string {
+  return `../${layoutPath.replace(/^ppt\//, "")}`;
+}
+
+async function updateSlideLayoutRelationship(
+  targetZip: ZipArchive,
+  slideNumber: number,
+  layoutPath: string,
+  removeSolidBackground: boolean
+): Promise<void> {
+  const relsPath = `ppt/slides/_rels/slide${slideNumber}.xml.rels`;
+  const rels = parseRelationships(await readZipXml(targetZip, relsPath));
+  const nextRels = rels.filter((rel) => !/\/slideLayout$/i.test(rel.type));
+  nextRels.push({
+    id: nextRelationshipId(nextRels),
+    type: `${OFFICE_REL_NS}/slideLayout`,
+    target: slideLayoutTarget(layoutPath)
+  });
+  targetZip.file(relsPath, serializeRelationships(nextRels));
+
+  if (removeSolidBackground) {
+    const slidePath = `ppt/slides/slide${slideNumber}.xml`;
+    const slideXml = await readZipXml(targetZip, slidePath);
+    const withoutBackground = slideXml.replace(/<p:bg>[\s\S]*?<\/p:bg>/, "");
+    if (withoutBackground !== slideXml) {
+      targetZip.file(slidePath, withoutBackground);
+    }
+  }
+}
+
+function layoutName(xml: string): string {
+  return /<p:cSld\b[^>]*\bname="([^"]*)"/i.exec(xml)?.[1] ?? "";
+}
+
+function hasPlaceholder(xml: string, placeholder: string): boolean {
+  return new RegExp(`<p:ph\\b[^>]*\\btype="${placeholder}"`, "i").test(xml);
+}
+
+async function chooseTemplateLayouts(
+  sourceZip: ZipArchive,
+  template: PowerPointTemplatePackage
+): Promise<{ title: string; content: string; closing: string }> {
+  const paths = zipNames(sourceZip).filter((name) => /^ppt\/slideLayouts\/slideLayout\d+\.xml$/i.test(name));
+  const entries = await Promise.all(
+    paths.map(async (path) => {
+      const xml = await readZipXml(sourceZip, path);
+      return { path, xml, name: layoutName(xml).toLowerCase() };
+    })
+  );
+  const explicit = (path: string | undefined) => (path && isRealZipFile(sourceZip, path) ? path : undefined);
+  const title =
+    explicit(template.titleLayoutPath) ??
+    entries.find((entry) => /title/i.test(entry.name) || hasPlaceholder(entry.xml, "ctrTitle"))?.path ??
+    entries[0]?.path;
+  const closing =
+    explicit(template.closingLayoutPath) ??
+    entries.find((entry) => /(thank|closing|end|qa|q&a)/i.test(entry.name))?.path ??
+    title;
+  const content =
+    explicit(template.contentLayoutPath) ??
+    entries.find((entry) => ![title, closing].includes(entry.path) && /(content|text|blank|header)/i.test(entry.name))?.path ??
+    entries.find((entry) => ![title, closing].includes(entry.path))?.path ??
+    title;
+  if (!title || !content || !closing) {
+    throw new Error("PowerPoint template package does not contain usable slide layouts.");
+  }
+  return { title, content, closing };
+}
+
+function sourceSlideMasterRelationships(sourcePresentationRels: string): Relationship[] {
+  return parseRelationships(sourcePresentationRels).filter((rel) => /\/slideMaster$/i.test(rel.type));
+}
+
+async function updatePresentationMasters(targetZip: ZipArchive, sourceZip: ZipArchive): Promise<void> {
+  const sourcePresentation = await readZipXml(sourceZip, "ppt/presentation.xml");
+  const sourceMasterList = /<p:sldMasterIdLst\b[\s\S]*?<\/p:sldMasterIdLst>/i.exec(sourcePresentation)?.[0];
+  if (!sourceMasterList) {
+    return;
+  }
+
+  const sourceMasterRels = sourceSlideMasterRelationships(await readZipXml(sourceZip, "ppt/_rels/presentation.xml.rels"));
+  if (sourceMasterRels.length === 0) {
+    return;
+  }
+
+  const targetRelsPath = "ppt/_rels/presentation.xml.rels";
+  const targetRels = parseRelationships(await readZipXml(targetZip, targetRelsPath)).filter((rel) => !/\/slideMaster$/i.test(rel.type));
+  const relIdMap = new Map<string, string>();
+  for (const sourceRel of sourceMasterRels) {
+    const id = nextRelationshipId(targetRels);
+    relIdMap.set(sourceRel.id, id);
+    targetRels.push({ ...sourceRel, id });
+  }
+  targetZip.file(targetRelsPath, serializeRelationships(targetRels));
+
+  const targetPresentationPath = "ppt/presentation.xml";
+  const targetPresentation = await readZipXml(targetZip, targetPresentationPath);
+  const mappedMasterList = sourceMasterList.replace(/r:id="([^"]+)"/g, (match, id: string) => `r:id="${relIdMap.get(id) ?? id}"`);
+  const patched = /<p:sldMasterIdLst\b[\s\S]*?<\/p:sldMasterIdLst>/i.test(targetPresentation)
+    ? targetPresentation.replace(/<p:sldMasterIdLst\b[\s\S]*?<\/p:sldMasterIdLst>/i, mappedMasterList)
+    : targetPresentation.replace(/(<p:presentation\b[^>]*>)/i, `$1${mappedMasterList}`);
+  targetZip.file(targetPresentationPath, patched);
+}
+
+async function resolvePowerPointTemplate(deck: DeckSpec): Promise<PowerPointTemplatePackage | undefined> {
+  const template = (await listAllTemplates()).find((item) => item.id === deck.template);
+  return template?.powerPointTemplate;
+}
+
+async function applyPowerPointTemplatePackage(pptxPath: string, deck: DeckSpec, template: PowerPointTemplatePackage): Promise<void> {
+  const sourceZip = await JSZip.loadAsync(decodePowerPointPackageDataUri(template.dataUri));
+  const targetZip = await JSZip.loadAsync(await readFile(pptxPath));
+  await copyPowerPointTemplateParts(targetZip, sourceZip);
+  await updatePresentationMasters(targetZip, sourceZip);
+
+  const layouts = await chooseTemplateLayouts(sourceZip, template);
+  for (const [index, slide] of deck.slides.entries()) {
+    const kind = layoutKindForSlide(slide, index);
+    const layoutPath = kind === "title" ? layouts.title : kind === "closing" ? layouts.closing : layouts.content;
+    await updateSlideLayoutRelationship(targetZip, index + 1, layoutPath, !slide.background?.imageDataUri);
+  }
+
+  await writeFile(pptxPath, await targetZip.generateAsync({ type: "nodebuffer" }));
+}
+
 function collectSlideAccessibilityNotes(deck: DeckSpec, deckSlide: DeckSpec["slides"][number], slideIndex: number): string[] {
   const notes = [`Slide ${slideIndex + 1}: ${deckSlide.title}`];
   const sourcesById = new Map(deck.metadata.sources.map((source) => [source.id, source]));
@@ -595,6 +916,7 @@ export async function renderDeckToPptx(input: unknown, outputPath: string, optio
     );
   }
   const tokens = deck.tokens ?? defaultTokens(deck.locale);
+  const powerPointTemplate = await resolvePowerPointTemplate(deck);
   const pptx = new PptxGenJSConstructor();
 
   if (deck.slideSize) {
@@ -617,13 +939,15 @@ export async function renderDeckToPptx(input: unknown, outputPath: string, optio
 
   for (const [slideIndex, deckSlide] of deck.slides.entries()) {
     const slide = pptx.addSlide();
-    slide.background = await resolveSlideBackground(deckSlide, tokens);
+    if (!powerPointTemplate || deckSlide.background?.imageDataUri) {
+      slide.background = await resolveSlideBackground(deckSlide, tokens);
+    }
     const safeSlide = normalizeReadingOrder(deckSlide);
     for (const element of sortedElements(safeSlide.elements)) {
       await addElement(slide, element, deck, slideIndex);
     }
 
-    if (deck.headerFooter) {
+    if (deck.headerFooter && !powerPointTemplate) {
       addHeaderFooter(slide, deck, tokens);
     }
 
@@ -637,5 +961,8 @@ export async function renderDeckToPptx(input: unknown, outputPath: string, optio
 
   await pptx.writeFile({ fileName: outputPath });
   await markShapeAccessibility(outputPath, deck);
+  if (powerPointTemplate) {
+    await applyPowerPointTemplatePackage(outputPath, deck, powerPointTemplate);
+  }
   return { outputPath, warnings };
 }

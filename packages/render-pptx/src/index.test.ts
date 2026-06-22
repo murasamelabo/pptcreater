@@ -4,11 +4,96 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { createSampleDeck } from "@pptcreater/core";
-import { renderDeckToPptx } from "./index.js";
+import { importTemplateFromPptx, renderDeckToPptx } from "./index.js";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const JSZip = require("jszip") as { loadAsync(data: Buffer): Promise<{ file(name: string): { async(type: "string"): Promise<string>; async(type: "nodebuffer"): Promise<Buffer> } | null; files: Record<string, unknown> }> };
+const JSZip = require("jszip") as {
+  new (): {
+    file(name: string, data: string | Buffer): void;
+    generateAsync(options: { type: "nodebuffer" }): Promise<Buffer>;
+  };
+  loadAsync(data: Buffer): Promise<{ file(name: string): { async(type: "string"): Promise<string>; async(type: "nodebuffer"): Promise<Buffer> } | null; files: Record<string, unknown> }>;
+};
+
+const TEMPLATE_CONTENT_TYPES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.template.main+xml"/>
+  <Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
+  <Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
+  <Override PartName="/ppt/slideLayouts/slideLayout2.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
+  <Override PartName="/ppt/slideLayouts/slideLayout3.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
+  <Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
+</Types>`;
+
+const TEMPLATE_PRESENTATION_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>
+  <p:sldSz cx="12192000" cy="6858000" type="screen16x9"/>
+  <p:notesSz cx="6858000" cy="9144000"/>
+</p:presentation>`;
+
+const TEMPLATE_PRESENTATION_RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>
+</Relationships>`;
+
+const TEMPLATE_THEME_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <a:themeElements>
+    <a:clrScheme name="Template"><a:dk1><a:srgbClr val="000000"/></a:dk1><a:lt1><a:srgbClr val="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="00222E"/></a:dk2><a:lt2><a:srgbClr val="F2F2F2"/></a:lt2><a:accent1><a:srgbClr val="1860C5"/></a:accent1><a:accent2><a:srgbClr val="B91C1C"/></a:accent2><a:accent3><a:srgbClr val="85E89F"/></a:accent3><a:accent4><a:srgbClr val="8064A2"/></a:accent4><a:accent5><a:srgbClr val="4BACC6"/></a:accent5><a:accent6><a:srgbClr val="F79646"/></a:accent6><a:hlink><a:srgbClr val="0563C1"/></a:hlink><a:folHlink><a:srgbClr val="954F72"/></a:folHlink></a:clrScheme>
+    <a:fontScheme name="Template"><a:majorFont><a:latin typeface="Segoe UI"/></a:majorFont><a:minorFont><a:latin typeface="Segoe UI"/></a:minorFont></a:fontScheme>
+  </a:themeElements>
+</a:theme>`;
+
+const TEMPLATE_MASTER_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldMaster xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <p:cSld name="Office Theme"><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>
+    <p:sp><p:nvSpPr><p:cNvPr id="2" name="TEMPLATE_MASTER_MARK"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:solidFill><a:srgbClr val="1860C5"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>TEMPLATE_MASTER_MARK</a:t></a:r></a:p></p:txBody></p:sp>
+  </p:spTree></p:cSld>
+  <p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/><p:sldLayoutId id="2147483650" r:id="rId2"/><p:sldLayoutId id="2147483651" r:id="rId3"/></p:sldLayoutIdLst>
+</p:sldMaster>`;
+
+const TEMPLATE_MASTER_RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout2.xml"/>
+  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout3.xml"/>
+  <Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>
+</Relationships>`;
+
+function templateLayoutXml(name: string, type: string, placeholder: string): string {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldLayout xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" type="${type}">
+  <p:cSld name="${name}"><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>
+    <p:sp><p:nvSpPr><p:cNvPr id="2" name="${name} Placeholder"/><p:cNvSpPr/><p:nvPr><p:ph type="${placeholder}"/></p:nvPr></p:nvSpPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>${name}</a:t></a:r></a:p></p:txBody></p:sp>
+  </p:spTree></p:cSld>
+</p:sldLayout>`;
+}
+
+const TEMPLATE_LAYOUT_RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/>
+</Relationships>`;
+
+async function buildTemplatePotx(): Promise<Buffer> {
+  const zip = new JSZip();
+  zip.file("[Content_Types].xml", TEMPLATE_CONTENT_TYPES);
+  zip.file("ppt/presentation.xml", TEMPLATE_PRESENTATION_XML);
+  zip.file("ppt/_rels/presentation.xml.rels", TEMPLATE_PRESENTATION_RELS);
+  zip.file("ppt/theme/theme1.xml", TEMPLATE_THEME_XML);
+  zip.file("ppt/slideMasters/slideMaster1.xml", TEMPLATE_MASTER_XML);
+  zip.file("ppt/slideMasters/_rels/slideMaster1.xml.rels", TEMPLATE_MASTER_RELS);
+  zip.file("ppt/slideLayouts/slideLayout1.xml", templateLayoutXml("Title Layout", "title", "ctrTitle"));
+  zip.file("ppt/slideLayouts/slideLayout2.xml", templateLayoutXml("Content Layout", "obj", "body"));
+  zip.file("ppt/slideLayouts/slideLayout3.xml", templateLayoutXml("Thank You", "secHead", "title"));
+  zip.file("ppt/slideLayouts/_rels/slideLayout1.xml.rels", TEMPLATE_LAYOUT_RELS);
+  zip.file("ppt/slideLayouts/_rels/slideLayout2.xml.rels", TEMPLATE_LAYOUT_RELS);
+  zip.file("ppt/slideLayouts/_rels/slideLayout3.xml.rels", TEMPLATE_LAYOUT_RELS);
+  return zip.generateAsync({ type: "nodebuffer" });
+}
 
 function pngDimensions(png: Buffer): { width: number; height: number } {
   return {
@@ -478,5 +563,67 @@ describe("PPTX renderer", () => {
     expect(notesSlideRels).not.toContain("notesMaster");
     expect(contentTypes).not.toContain("notesMasters");
     expect(Object.keys(zip.files).some((name) => name.startsWith("ppt/notesMasters/"))).toBe(false);
+  });
+
+  it("applies an imported .potx slide master and layouts when rendering a deck with that template id", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-render-template-"));
+    const registryPath = join(outputDir, "registry.json");
+    const potxPath = join(outputDir, "brand.potx");
+    await writeFile(potxPath, await buildTemplatePotx());
+
+    const imported = await importTemplateFromPptx(potxPath, {
+      id: "brand-potx",
+      name: "Brand POTX",
+      register: true,
+      registryPath
+    });
+    expect(imported.template.powerPointTemplate?.extension).toBe(".potx");
+    expect(imported.template.powerPointTemplate?.titleLayoutPath).toBe("ppt/slideLayouts/slideLayout1.xml");
+    expect(imported.template.powerPointTemplate?.contentLayoutPath).toBe("ppt/slideLayouts/slideLayout2.xml");
+    expect(imported.template.powerPointTemplate?.closingLayoutPath).toBe("ppt/slideLayouts/slideLayout3.xml");
+
+    const deck = createSampleDeck("en-US", { slideCount: 3 });
+    deck.template = "brand-potx";
+    deck.slides[0].layout = "title-slide";
+    deck.slides[1].layout = "title-content";
+    deck.slides[2].layout = "closing-slide";
+    deck.slides.forEach((slide) => {
+      slide.background = { color: "#ffffff" };
+    });
+
+    const outputPath = join(outputDir, "brand-output.pptx");
+    const previousRegistryPath = process.env.PPTCREATER_TEMPLATE_REGISTRY_PATH;
+    process.env.PPTCREATER_TEMPLATE_REGISTRY_PATH = registryPath;
+    try {
+      await renderDeckToPptx(deck, outputPath);
+    } finally {
+      if (previousRegistryPath === undefined) {
+        delete process.env.PPTCREATER_TEMPLATE_REGISTRY_PATH;
+      } else {
+        process.env.PPTCREATER_TEMPLATE_REGISTRY_PATH = previousRegistryPath;
+      }
+    }
+
+    const zip = await JSZip.loadAsync(await readFile(outputPath));
+    const master = (await zip.file("ppt/slideMasters/slideMaster1.xml")?.async("string")) ?? "";
+    const presentation = (await zip.file("ppt/presentation.xml")?.async("string")) ?? "";
+    const presentationRels = (await zip.file("ppt/_rels/presentation.xml.rels")?.async("string")) ?? "";
+    const titleRels = (await zip.file("ppt/slides/_rels/slide1.xml.rels")?.async("string")) ?? "";
+    const contentRels = (await zip.file("ppt/slides/_rels/slide2.xml.rels")?.async("string")) ?? "";
+    const closingRels = (await zip.file("ppt/slides/_rels/slide3.xml.rels")?.async("string")) ?? "";
+    const contentSlide = (await zip.file("ppt/slides/slide2.xml")?.async("string")) ?? "";
+    const contentTypes = (await zip.file("[Content_Types].xml")?.async("string")) ?? "";
+
+    expect(master).toContain("TEMPLATE_MASTER_MARK");
+    expect(presentation).toContain("sldMasterIdLst");
+    expect(presentationRels).toContain("/slideMaster");
+    expect(titleRels).toContain("Target=\"../slideLayouts/slideLayout1.xml\"");
+    expect(contentRels).toContain("Target=\"../slideLayouts/slideLayout2.xml\"");
+    expect(closingRels).toContain("Target=\"../slideLayouts/slideLayout3.xml\"");
+    expect(contentSlide).not.toContain("<p:bg>");
+    expect(contentTypes).toContain('PartName="/ppt/slideMasters/slideMaster1.xml"');
+    expect(contentTypes).toContain('PartName="/ppt/slideLayouts/slideLayout2.xml"');
+    expect(contentTypes).not.toContain('PartName="/ppt/slideMasters/_rels/');
+    expect(contentTypes).not.toContain('PartName="/ppt/slideLayouts/_rels/');
   });
 });

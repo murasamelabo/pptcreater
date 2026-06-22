@@ -474,6 +474,8 @@ describe("importTemplateFromPptx accepts PowerPoint template extensions", () => 
     const result = await importTemplateFromPptx(potxPath);
     expect(result.template.id).toBe("demo");
     expect(result.template.tokens.colors.background).toBe("#ffffff");
+    expect(result.template.powerPointTemplate?.extension).toBe(".potx");
+    expect(result.template.powerPointTemplate?.dataUri).toMatch(/^data:application\/vnd\.openxmlformats-officedocument\.presentationml\.template;base64,/);
 
     await expect(importTemplateFromPptx(join(dir, "demo.key"))).rejects.toThrow(/PowerPoint file/);
   });
@@ -516,4 +518,3 @@ describe("import persistence helpers", () => {
     expect(importNotPersistedWarning(state)).toBeUndefined();
   });
 });
-
