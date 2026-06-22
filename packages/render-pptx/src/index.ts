@@ -464,6 +464,23 @@ function removeNotesMasterReference(xml: string): string {
   return xml.replace(/<p:notesMasterIdLst\b[\s\S]*?<\/p:notesMasterIdLst>/, "");
 }
 
+function convertLineShapesToConnectors(xml: string): string {
+  return xml.replace(/<p:sp>([\s\S]*?)<\/p:sp>/g, (match, body: string) => {
+    if (!/<a:prstGeom\b[^>]*\bprst="line"/i.test(body)) {
+      return match;
+    }
+    const converted = body
+      .replace("<p:nvSpPr>", "<p:nvCxnSpPr>")
+      .replace("</p:nvSpPr>", "</p:nvCxnSpPr>")
+      .replace("<p:cNvSpPr/>", "<p:cNvCxnSpPr/>")
+      .replace("<p:cNvSpPr></p:cNvSpPr>", "<p:cNvCxnSpPr/>");
+    if (converted === body) {
+      return match;
+    }
+    return `<p:cxnSp>${converted}</p:cxnSp>`;
+  });
+}
+
 async function markShapeAccessibility(pptxPath: string, deck: DeckSpec): Promise<void> {
   const descriptionsBySlide = shapeDescriptions(deck);
   const zip = await JSZip.loadAsync(await readFile(pptxPath));
@@ -479,7 +496,7 @@ async function markShapeAccessibility(pptxPath: string, deck: DeckSpec): Promise
       const slideIndex = Number(name.match(/slide(\d+)\.xml$/)?.[1] ?? "1") - 1;
       const descriptions = descriptionsBySlide.get(slideIndex) ?? new Map<string, string>();
       const xml = await file.async("string");
-      const patched = xml.replace(/<p:cNvPr\b([^>]*\/?)>/g, (match, attrs: string) => {
+      const accessible = xml.replace(/<p:cNvPr\b([^>]*\/?)>/g, (match, attrs: string) => {
         const nameMatch = attrs.match(/\bname="([^"]+)"/);
         if (!nameMatch) {
           return match;
@@ -492,7 +509,7 @@ async function markShapeAccessibility(pptxPath: string, deck: DeckSpec): Promise
 
         return decorateCnvPr(attrs, description, /\/\s*$/.test(attrs));
       });
-      zip.file(name, patched);
+      zip.file(name, convertLineShapesToConnectors(accessible));
     })
   );
 

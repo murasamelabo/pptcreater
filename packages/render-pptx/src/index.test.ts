@@ -551,6 +551,18 @@ describe("PPTX renderer", () => {
       fill: "#ffffff",
       decorative: true,
       readingOrder: 200
+    }, {
+      id: "editable-connector",
+      type: "shape",
+      shape: "line",
+      x: 1,
+      y: 5,
+      w: 2,
+      h: 0,
+      fill: "none",
+      line: { color: "#1d4ed8", width: 1.5, endArrowType: "triangle" },
+      decorative: true,
+      readingOrder: 201
     });
 
     const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-render-"));
@@ -563,6 +575,9 @@ describe("PPTX renderer", () => {
     // file as corrupt. Decorative intent must live in the extLst extension instead.
     expect(slide1).not.toMatch(/<p:cNvPr[^>]*\sdecorative=/);
     expect(slide1).toContain("adec:decorative");
+    expect(slide1).toContain("<p:cxnSp>");
+    expect(slide1).toContain("<p:cNvCxnSpPr/>");
+    expect([...slide1.matchAll(/<p:sp>[\s\S]*?<\/p:sp>/g)].some((shape) => shape[0].includes('prst="line"'))).toBe(false);
 
     const presentation = (await zip.file("ppt/presentation.xml")?.async("string")) ?? "";
     const presentationRels = (await zip.file("ppt/_rels/presentation.xml.rels")?.async("string")) ?? "";

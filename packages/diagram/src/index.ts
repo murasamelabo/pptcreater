@@ -1828,18 +1828,28 @@ function connectorRoute(from: PlacedNode, to: PlacedNode, options: ConnectorOpti
     const ex = dx >= 0 ? to.x : to.x + to.w;
     start = { x: sx, y: a.y };
     end = { x: ex, y: b.y };
-    const midX = (sx + ex) / 2;
-    points = [start, { x: midX, y: start.y }, { x: midX, y: end.y }, end];
-    endDir = { x: Math.sign(ex - midX) || (dx >= 0 ? 1 : -1), y: 0 };
+    if (Math.abs(start.y - end.y) < 0.5) {
+      points = [start, end];
+      endDir = { x: dx >= 0 ? 1 : -1, y: 0 };
+    } else {
+      const midX = (sx + ex) / 2;
+      points = [start, { x: midX, y: start.y }, { x: midX, y: end.y }, end];
+      endDir = { x: Math.sign(ex - midX) || (dx >= 0 ? 1 : -1), y: 0 };
+    }
     startDir = { x: dx >= 0 ? -1 : 1, y: 0 };
   } else if (options.orthogonal) {
     const sy = dy >= 0 ? from.y + from.h : from.y;
     const ey = dy >= 0 ? to.y : to.y + to.h;
     start = { x: a.x, y: sy };
     end = { x: b.x, y: ey };
-    const midY = (sy + ey) / 2;
-    points = [start, { x: start.x, y: midY }, { x: end.x, y: midY }, end];
-    endDir = { x: 0, y: Math.sign(ey - midY) || (dy >= 0 ? 1 : -1) };
+    if (Math.abs(start.x - end.x) < 0.5) {
+      points = [start, end];
+      endDir = { x: 0, y: dy >= 0 ? 1 : -1 };
+    } else {
+      const midY = (sy + ey) / 2;
+      points = [start, { x: start.x, y: midY }, { x: end.x, y: midY }, end];
+      endDir = { x: 0, y: Math.sign(ey - midY) || (dy >= 0 ? 1 : -1) };
+    }
     startDir = { x: 0, y: dy >= 0 ? -1 : 1 };
   } else {
     start = edgePoint(from, b.x, b.y);
@@ -1951,11 +1961,11 @@ function ponchiNode(node: PlacedNode): string {
 // graphs. This removes the need for agents to compute coordinates by hand (the
 // source of dangling/penetrating arrows when a layout is not a simple row).
 // ---------------------------------------------------------------------------
-const AUTO_NODE_W = 176;
-const AUTO_NODE_H = 92;
-const AUTO_COL_GAP = 104;
+const AUTO_NODE_W = 220;
+const AUTO_NODE_H = 106;
+const AUTO_COL_GAP = 72;
 const AUTO_ROW_GAP = 46;
-const AUTO_MARGIN = 60;
+const AUTO_MARGIN = 52;
 
 // Longest-path layering from the arrow graph: sources sit at rank 0 and every target is pushed at
 // least one rank past its deepest source. Cycles are bounded by the node count so this terminates.
@@ -2485,23 +2495,48 @@ function nativeNodeElements(node: PlacedNode, nodeIndex: number, rect: NativeRec
   const safeNodeId = nativeIdPart(node.id, nodeIndex);
   const padding = Math.min(0.18, rect.w * 0.08);
   const contentWidth = Math.max(0.2, rect.w - padding * 2);
-  const label = nativeTextFit(node.label, contentWidth, {
-    preferredSize: rect.w >= 1.9 ? 13 : 12,
-    minimumSize: 10,
-    maxLines: node.sublabel ? 2 : 3
-  });
-  const sublabel = node.sublabel
-    ? nativeTextFit(node.sublabel, contentWidth, {
-        preferredSize: 10.5,
-        minimumSize: 8.5,
-        maxLines: 2
-      })
-    : undefined;
-  const labelHeight = nativeTextHeight(label.lineCount, label.size);
-  const sublabelHeight = sublabel ? nativeTextHeight(sublabel.lineCount, sublabel.size) : 0;
-  const gap = sublabel ? 0.03 : 0;
-  const totalTextHeight = labelHeight + gap + sublabelHeight;
-  const textTop = rect.y + Math.max(0.08, (rect.h - totalTextHeight) / 2 + 0.03);
+  const topReservedForAccentAndMarker = Math.min(0.34, Math.max(0.22, rect.h * 0.28));
+  const bottomPadding = Math.min(0.12, Math.max(0.06, rect.h * 0.08));
+  const fitTextBlock = () => {
+    const attempts = node.sublabel
+      ? [
+          { labelSize: rect.w >= 1.9 ? 13 : 12, labelMin: 10, labelLines: 2, subSize: 10.5, subMin: 8.5, subLines: 2 },
+          { labelSize: 12, labelMin: 9.5, labelLines: 2, subSize: 9.5, subMin: 8, subLines: 1 },
+          { labelSize: 11, labelMin: 9, labelLines: 1, subSize: 8.5, subMin: 8, subLines: 1 }
+        ]
+      : [
+          { labelSize: rect.w >= 1.9 ? 13 : 12, labelMin: 10, labelLines: 3, subSize: 0, subMin: 0, subLines: 0 },
+          { labelSize: 12, labelMin: 9.5, labelLines: 2, subSize: 0, subMin: 0, subLines: 0 },
+          { labelSize: 11, labelMin: 9, labelLines: 1, subSize: 0, subMin: 0, subLines: 0 }
+        ];
+
+    for (const attempt of attempts) {
+      const labelFit = nativeTextFit(node.label, contentWidth, {
+        preferredSize: attempt.labelSize,
+        minimumSize: attempt.labelMin,
+        maxLines: attempt.labelLines
+      });
+      const sublabelFit = node.sublabel
+        ? nativeTextFit(node.sublabel, contentWidth, {
+            preferredSize: attempt.subSize,
+            minimumSize: attempt.subMin,
+            maxLines: attempt.subLines
+          })
+        : undefined;
+      const labelHeight = nativeTextHeight(labelFit.lineCount, labelFit.size);
+      const sublabelHeight = sublabelFit ? nativeTextHeight(sublabelFit.lineCount, sublabelFit.size) : 0;
+      const gap = sublabelFit ? 0.03 : 0;
+      const totalTextHeight = labelHeight + gap + sublabelHeight;
+      if (topReservedForAccentAndMarker + totalTextHeight + bottomPadding <= rect.h || attempt === attempts.at(-1)) {
+        return { label: labelFit, sublabel: sublabelFit, labelHeight, sublabelHeight, gap, totalTextHeight };
+      }
+    }
+
+    throw new Error("Unreachable native node text fitting branch.");
+  };
+  const { label, sublabel, labelHeight, sublabelHeight, gap, totalTextHeight } = fitTextBlock();
+  const preferredTextTop = rect.y + Math.max(topReservedForAccentAndMarker, (rect.h - totalTextHeight) / 2 + 0.03);
+  const textTop = Math.min(preferredTextTop, rect.y + rect.h - bottomPadding - totalTextHeight);
   const kindDotSize = Math.min(0.14, Math.max(0.08, rect.h * 0.12));
 
   const elements: NativeDiagramElement[] = [

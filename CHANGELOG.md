@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.5.5 - 2026-06-22
+
+- **Improved native ponchi-e readability and editability.** Auto-laid-out native diagrams now use wider cards, slightly smaller gaps, and a reserved top band so labels do not collide with accent bars or kind markers. Directly aligned adjacent nodes now use a single border-to-border connector segment instead of split half-lines.
+- **Rendered line elements are now emitted as PowerPoint connector shapes (`p:cxnSp`).** This keeps native ponchi-e arrows editable as connectors in PowerPoint rather than ordinary line shapes. Regression tests verify connector XML output and that no `prst="line"` ordinary shape remains for generated connector lines.
+- Added regression coverage for non-overlapping native node labels, multi-line node text staying inside the node bottom, and single-segment adjacent connectors; full suite now includes 262 tests.
+
 ## v0.5.4 - 2026-06-22
 
 - **Fixed contrast repair for `.potx` masters that define dark backgrounds through `p:bgRef`.** Some PowerPoint templates, including Microsoft Security 2602, define the slide background as `<p:bgRef idx="1001"><a:schemeClr val="bg2"/></p:bgRef>` rather than a solid fill shape. Rendering now resolves that background reference through the slide master's referenced theme and treats `bg2` as the dark theme background for master-background contrast repair, so titles and lead text no longer remain black on the dark master.

@@ -280,6 +280,89 @@ describe("native ponchi diagram rendering", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  it("keeps native node labels below the accent/marker band", () => {
+    const rendered = renderNativePonchiDiagram({
+      title: "Readable node labels",
+      summary: "Readable labels",
+      longDescription: "Verifies that native node labels do not overlap the top accent band or kind marker.",
+      nodes: [
+        { id: "touch", label: "利用接点 IDE / GitHub / CLI", kind: "actor" },
+        { id: "context", label: "コンテキスト・コード・Issue・Docs", kind: "data" }
+      ],
+      arrows: [{ from: "touch", to: "context" }]
+    });
+    const node = rendered.elements.find((element) => element.type === "shape" && element.id === "native-diagram-node-touch-0");
+    const label = rendered.elements.find((element) => element.type === "text" && element.id === "native-diagram-label-touch-0");
+
+    expect(node?.type).toBe("shape");
+    expect(label?.type).toBe("text");
+    if (node?.type === "shape" && label?.type === "text") {
+      expect(label.y).toBeGreaterThanOrEqual(node.y + 0.28);
+    }
+  });
+
+  it("keeps multi-line native node text inside the node bottom", () => {
+    const rendered = renderNativePonchiDiagram({
+      title: "Dense node labels",
+      summary: "Dense labels",
+      longDescription: "Verifies that reserving space above native labels does not push multi-line label and sublabel text below the node.",
+      nodes: [
+        { id: "a", label: "Very long primary label for a compact node", sublabel: "Long secondary detail that also wraps", kind: "system" },
+        { id: "b", label: "Another long primary label for compact layout", sublabel: "Another long secondary detail", kind: "process" },
+        { id: "c", label: "Third long primary label for compact layout", sublabel: "Third secondary detail", kind: "data" },
+        { id: "d", label: "Fourth long primary label for compact layout", sublabel: "Fourth secondary detail", kind: "note" }
+      ],
+      arrows: [
+        { from: "a", to: "b" },
+        { from: "b", to: "c" },
+        { from: "c", to: "d" }
+      ]
+    });
+
+    for (let index = 0; index < 4; index += 1) {
+      const nodeId = ["a", "b", "c", "d"][index];
+      const node = rendered.elements.find((element) => element.type === "shape" && element.id === `native-diagram-node-${nodeId}-${index}`);
+      const texts = rendered.elements.filter(
+        (element) =>
+          element.type === "text" &&
+          (element.id === `native-diagram-label-${nodeId}-${index}` || element.id === `native-diagram-sublabel-${nodeId}-${index}`)
+      );
+      expect(node?.type).toBe("shape");
+      if (node?.type === "shape") {
+        for (const text of texts) {
+          if (text.type === "text") {
+            expect(text.y + text.h).toBeLessThanOrEqual(node.y + node.h + 0.001);
+          }
+        }
+      }
+    }
+  });
+
+  it("uses a single border-to-border native connector for aligned adjacent nodes", () => {
+    const rendered = renderNativePonchiDiagram({
+      title: "Aligned connector",
+      summary: "Single connector",
+      longDescription: "Verifies that adjacent nodes on the same lane are connected by one line segment from border to border.",
+      nodes: [
+        { id: "a", label: "A", kind: "system" },
+        { id: "b", label: "B", kind: "system" }
+      ],
+      arrows: [{ from: "a", to: "b" }]
+    });
+    const source = rendered.elements.find((element) => element.type === "shape" && element.id === "native-diagram-node-a-0");
+    const target = rendered.elements.find((element) => element.type === "shape" && element.id === "native-diagram-node-b-1");
+    const connectorSegments = rendered.elements.filter(
+      (element) => element.type === "shape" && element.shape === "line" && element.id.startsWith("native-diagram-connector-")
+    );
+
+    expect(connectorSegments).toHaveLength(1);
+    if (source?.type === "shape" && target?.type === "shape" && connectorSegments[0]?.type === "shape") {
+      expect(connectorSegments[0].x).toBeCloseTo(source.x + source.w, 2);
+      expect(connectorSegments[0].x + connectorSegments[0].w).toBeCloseTo(target.x, 2);
+      expect(connectorSegments[0].h).toBe(0);
+    }
+  });
+
   it("routes straight native connectors as orthogonal segments to avoid diagonal flips", () => {
     const rendered = renderNativePonchiDiagram({
       title: "Straight connector",
