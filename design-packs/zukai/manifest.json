@@ -1,0 +1,1005 @@
+{
+  "id": "zukai",
+  "name": "図解デザイン大全",
+  "description": "Curated editable PowerPoint schematic slide components covering 14 figure types (flow, cycle, matrix, venn, comparison, step, gantt, list, and more), each with multiple human-designed variations.",
+  "version": "0.1.0",
+  "sourcePptx": "zukai-patterns-full.pptx",
+  "components": [
+    {
+      "id": "flow-horizontal-p1",
+      "kind": "flow-horizontal",
+      "name": "フロー（横型） P1：番号ステップ ＋ 矢印（基本形）",
+      "sourceSlideIndex": 4,
+      "bestFor": [
+        "フロー（横型）",
+        "工程・手順を左から右へ"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "flow-horizontal-p2",
+      "kind": "flow-horizontal",
+      "name": "フロー（横型） P2：チェブロン・リボン",
+      "sourceSlideIndex": 5,
+      "bestFor": [
+        "フロー（横型）",
+        "工程・手順を左から右へ"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "flow-horizontal-p3",
+      "kind": "flow-horizontal",
+      "name": "フロー（横型） P3：円ノードのタイムライン",
+      "sourceSlideIndex": 6,
+      "bestFor": [
+        "フロー（横型）",
+        "工程・手順を左から右へ"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "flow-horizontal-p4",
+      "kind": "flow-horizontal",
+      "name": "フロー（横型） P4：矢印ブロック（連結）",
+      "sourceSlideIndex": 7,
+      "bestFor": [
+        "フロー（横型）",
+        "工程・手順を左から右へ"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "flow-horizontal-p5",
+      "kind": "flow-horizontal",
+      "name": "フロー（横型） P5：上下交互フロー",
+      "sourceSlideIndex": 8,
+      "bestFor": [
+        "フロー（横型）",
+        "工程・手順を左から右へ"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "flow-horizontal-p6",
+      "kind": "flow-horizontal",
+      "name": "フロー（横型） P6：セグメントバー",
+      "sourceSlideIndex": 9,
+      "bestFor": [
+        "フロー（横型）",
+        "工程・手順を左から右へ"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "flow-vertical-p1",
+      "kind": "flow-vertical",
+      "name": "フロー（縦型） P1：番号サークル ＋ 縦線タイムライン",
+      "sourceSlideIndex": 11,
+      "bestFor": [
+        "フロー（縦型）",
+        "プロセスを上から下へ"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "flow-vertical-p2",
+      "kind": "flow-vertical",
+      "name": "フロー（縦型） P2：中央縦軸・左右交互（ジグザグ）",
+      "sourceSlideIndex": 12,
+      "bestFor": [
+        "フロー（縦型）",
+        "プロセスを上から下へ"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "flow-vertical-p3",
+      "kind": "flow-vertical",
+      "name": "フロー（縦型） P3：下向き矢印ブロック",
+      "sourceSlideIndex": 13,
+      "bestFor": [
+        "フロー（縦型）",
+        "プロセスを上から下へ"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "flow-vertical-p4",
+      "kind": "flow-vertical",
+      "name": "フロー（縦型） P4：縦チェブロン",
+      "sourceSlideIndex": 14,
+      "bestFor": [
+        "フロー（縦型）",
+        "プロセスを上から下へ"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "flow-vertical-p5",
+      "kind": "flow-vertical",
+      "name": "フロー（縦型） P5：左番号列 ＋ カード積み",
+      "sourceSlideIndex": 15,
+      "bestFor": [
+        "フロー（縦型）",
+        "プロセスを上から下へ"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "flow-vertical-p6",
+      "kind": "flow-vertical",
+      "name": "フロー（縦型） P6：シンプル縦ステップ（接続線）",
+      "sourceSlideIndex": 16,
+      "bestFor": [
+        "フロー（縦型）",
+        "プロセスを上から下へ"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "cycle-p1",
+      "kind": "cycle",
+      "name": "サイクル P1：4ステップ円環（回転矢印）",
+      "sourceSlideIndex": 18,
+      "bestFor": [
+        "サイクル",
+        "繰り返す循環・PDCA"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "cycle-p2",
+      "kind": "cycle",
+      "name": "サイクル P2：3ステップ循環",
+      "sourceSlideIndex": 19,
+      "bestFor": [
+        "サイクル",
+        "繰り返す循環・PDCA"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "cycle-p3",
+      "kind": "cycle",
+      "name": "サイクル P3：5ステップ円環",
+      "sourceSlideIndex": 20,
+      "bestFor": [
+        "サイクル",
+        "繰り返す循環・PDCA"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "cycle-p4",
+      "kind": "cycle",
+      "name": "サイクル P4：中央ハブ＋周回ノード",
+      "sourceSlideIndex": 21,
+      "bestFor": [
+        "サイクル",
+        "繰り返す循環・PDCA"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "cycle-p5",
+      "kind": "cycle",
+      "name": "サイクル P5：横展開ループ（→→↺）",
+      "sourceSlideIndex": 22,
+      "bestFor": [
+        "サイクル",
+        "繰り返す循環・PDCA"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "before-after-p1",
+      "kind": "before-after",
+      "name": "ビフォーアフター P1：2パネル ＋ 中央矢印",
+      "sourceSlideIndex": 24,
+      "bestFor": [
+        "ビフォーアフター",
+        "改善前後の対比"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "before-after-p2",
+      "kind": "before-after",
+      "name": "ビフォーアフター P2：上下対比（Before↓After）",
+      "sourceSlideIndex": 25,
+      "bestFor": [
+        "ビフォーアフター",
+        "改善前後の対比"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "before-after-p3",
+      "kind": "before-after",
+      "name": "ビフォーアフター P3：3コマ（現状 → 取り組み → 成果）",
+      "sourceSlideIndex": 26,
+      "bestFor": [
+        "ビフォーアフター",
+        "改善前後の対比"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "before-after-p4",
+      "kind": "before-after",
+      "name": "ビフォーアフター P4：数値ビフォーアフター",
+      "sourceSlideIndex": 27,
+      "bestFor": [
+        "ビフォーアフター",
+        "改善前後の対比"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "before-after-p5",
+      "kind": "before-after",
+      "name": "ビフォーアフター P5：左右リスト（✕課題 / ○解決）",
+      "sourceSlideIndex": 28,
+      "bestFor": [
+        "ビフォーアフター",
+        "改善前後の対比"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "before-after-p6",
+      "kind": "before-after",
+      "name": "ビフォーアフター P6：分割バー（スライダー）",
+      "sourceSlideIndex": 29,
+      "bestFor": [
+        "ビフォーアフター",
+        "改善前後の対比"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "matrix-p1",
+      "kind": "matrix",
+      "name": "マトリクス P1：2×2 ＋ 軸ラベル（基本形）",
+      "sourceSlideIndex": 31,
+      "bestFor": [
+        "マトリクス",
+        "2軸で分類する"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "matrix-p2",
+      "kind": "matrix",
+      "name": "マトリクス P2：2×2 具体例プロット",
+      "sourceSlideIndex": 32,
+      "bestFor": [
+        "マトリクス",
+        "2軸で分類する"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "matrix-p3",
+      "kind": "matrix",
+      "name": "マトリクス P3：2×3（6セル）優先度マトリクス",
+      "sourceSlideIndex": 33,
+      "bestFor": [
+        "マトリクス",
+        "2軸で分類する"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "matrix-p4",
+      "kind": "matrix",
+      "name": "マトリクス P4：3×3（9セル・濃淡スコア）",
+      "sourceSlideIndex": 34,
+      "bestFor": [
+        "マトリクス",
+        "2軸で分類する"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "matrix-p5",
+      "kind": "matrix",
+      "name": "マトリクス P5：ポジショニングマップ（散布）",
+      "sourceSlideIndex": 35,
+      "bestFor": [
+        "マトリクス",
+        "2軸で分類する"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "matrix-p6",
+      "kind": "matrix",
+      "name": "マトリクス P6：2×2 推奨ハイライト",
+      "sourceSlideIndex": 36,
+      "bestFor": [
+        "マトリクス",
+        "2軸で分類する"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "venn-p1",
+      "kind": "venn",
+      "name": "ベン図 P1：3円重なり ＋ 凡例",
+      "sourceSlideIndex": 38,
+      "bestFor": [
+        "ベン図",
+        "重なり・共通点"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "venn-p2",
+      "kind": "venn",
+      "name": "ベン図 P2：2円重なり（共通部分の強調）",
+      "sourceSlideIndex": 39,
+      "bestFor": [
+        "ベン図",
+        "重なり・共通点"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "venn-p3",
+      "kind": "venn",
+      "name": "ベン図 P3：4円クラスタ（共有の中心）",
+      "sourceSlideIndex": 40,
+      "bestFor": [
+        "ベン図",
+        "重なり・共通点"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "venn-p4",
+      "kind": "venn",
+      "name": "ベン図 P4：入れ子・同心円（包含関係）",
+      "sourceSlideIndex": 41,
+      "bestFor": [
+        "ベン図",
+        "重なり・共通点"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "venn-p5",
+      "kind": "venn",
+      "name": "ベン図 P5：2円 ＋ 共通点リスト",
+      "sourceSlideIndex": 42,
+      "bestFor": [
+        "ベン図",
+        "重なり・共通点"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "venn-p6",
+      "kind": "venn",
+      "name": "ベン図 P6：3円 ＋ 各重なりラベル",
+      "sourceSlideIndex": 43,
+      "bestFor": [
+        "ベン図",
+        "重なり・共通点"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "formula-p1",
+      "kind": "formula",
+      "name": "数式（クロス） P1：A × B ＝ C（掛け算で成果）",
+      "sourceSlideIndex": 45,
+      "bestFor": [
+        "数式（クロス）",
+        "要素のかけ合わせ＝成果"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "formula-p2",
+      "kind": "formula",
+      "name": "数式（クロス） P2：A ＋ B ＝ C（足し算でシナジー）",
+      "sourceSlideIndex": 46,
+      "bestFor": [
+        "数式（クロス）",
+        "要素のかけ合わせ＝成果"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "formula-p3",
+      "kind": "formula",
+      "name": "数式（クロス） P3：3要素の合成（A＋B＋C＝結果）",
+      "sourceSlideIndex": 47,
+      "bestFor": [
+        "数式（クロス）",
+        "要素のかけ合わせ＝成果"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "formula-p4",
+      "kind": "formula",
+      "name": "数式（クロス） P4：円のクロス（2円の重なり ＝ 結果）",
+      "sourceSlideIndex": 48,
+      "bestFor": [
+        "数式（クロス）",
+        "要素のかけ合わせ＝成果"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "formula-p5",
+      "kind": "formula",
+      "name": "数式（クロス） P5：方程式風（左辺の条件群 ＝ 右辺の成果）",
+      "sourceSlideIndex": 49,
+      "bestFor": [
+        "数式（クロス）",
+        "要素のかけ合わせ＝成果"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "formula-p6",
+      "kind": "formula",
+      "name": "数式（クロス） P6：比率・配分（構成比の合算 ＝ 成果100%）",
+      "sourceSlideIndex": 50,
+      "bestFor": [
+        "数式（クロス）",
+        "要素のかけ合わせ＝成果"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "comparison-p1",
+      "kind": "comparison",
+      "name": "項目比較図 P1：表形式（項目行 × 2案）",
+      "sourceSlideIndex": 52,
+      "bestFor": [
+        "項目比較図",
+        "複数案を項目で比較"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "comparison-p2",
+      "kind": "comparison",
+      "name": "項目比較図 P2：2カラムカード ○×",
+      "sourceSlideIndex": 53,
+      "bestFor": [
+        "項目比較図",
+        "複数案を項目で比較"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "comparison-p3",
+      "kind": "comparison",
+      "name": "項目比較図 P3：3案比較（松・竹・梅／3列）",
+      "sourceSlideIndex": 54,
+      "bestFor": [
+        "項目比較図",
+        "複数案を項目で比較"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "comparison-p4",
+      "kind": "comparison",
+      "name": "項目比較図 P4：メリット / デメリット",
+      "sourceSlideIndex": 55,
+      "bestFor": [
+        "項目比較図",
+        "複数案を項目で比較"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "comparison-p5",
+      "kind": "comparison",
+      "name": "項目比較図 P5：機能チェックリスト（行 × 列の ○）",
+      "sourceSlideIndex": 56,
+      "bestFor": [
+        "項目比較図",
+        "複数案を項目で比較"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "comparison-p6",
+      "kind": "comparison",
+      "name": "項目比較図 P6：スコア比較（バー／レーティング）",
+      "sourceSlideIndex": 57,
+      "bestFor": [
+        "項目比較図",
+        "複数案を項目で比較"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "scale-p1",
+      "kind": "scale",
+      "name": "規模比較図 P1：円サイズ比較（基本形）",
+      "sourceSlideIndex": 59,
+      "bestFor": [
+        "規模比較図",
+        "大きさ・量の対比"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "scale-p2",
+      "kind": "scale",
+      "name": "規模比較図 P2：横棒の長さ比較",
+      "sourceSlideIndex": 60,
+      "bestFor": [
+        "規模比較図",
+        "大きさ・量の対比"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "scale-p3",
+      "kind": "scale",
+      "name": "規模比較図 P3：縦棒（成長グラフ風）",
+      "sourceSlideIndex": 61,
+      "bestFor": [
+        "規模比較図",
+        "大きさ・量の対比"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "scale-p4",
+      "kind": "scale",
+      "name": "規模比較図 P4：同心円（入れ子スケール）",
+      "sourceSlideIndex": 62,
+      "bestFor": [
+        "規模比較図",
+        "大きさ・量の対比"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "scale-p5",
+      "kind": "scale",
+      "name": "規模比較図 P5：ユニット積み上げ（1マス＝100億）",
+      "sourceSlideIndex": 63,
+      "bestFor": [
+        "規模比較図",
+        "大きさ・量の対比"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "scale-p6",
+      "kind": "scale",
+      "name": "規模比較図 P6：アイコン反復（量の比較）",
+      "sourceSlideIndex": 64,
+      "bestFor": [
+        "規模比較図",
+        "大きさ・量の対比"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "step-p1",
+      "kind": "step",
+      "name": "階段・ステップ P1：上り階段ブロック",
+      "sourceSlideIndex": 66,
+      "bestFor": [
+        "階段・ステップ",
+        "段階的な成長・到達"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "step-p2",
+      "kind": "step",
+      "name": "階段・ステップ P2：番号ステップ ＋ 上昇矢印",
+      "sourceSlideIndex": 67,
+      "bestFor": [
+        "階段・ステップ",
+        "段階的な成長・到達"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "step-p3",
+      "kind": "step",
+      "name": "階段・ステップ P3：山型（頂点ゴール／旗）",
+      "sourceSlideIndex": 68,
+      "bestFor": [
+        "階段・ステップ",
+        "段階的な成長・到達"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "step-p4",
+      "kind": "step",
+      "name": "階段・ステップ P4：横並びステップ ＋ 達成度バー",
+      "sourceSlideIndex": 69,
+      "bestFor": [
+        "階段・ステップ",
+        "段階的な成長・到達"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "step-p5",
+      "kind": "step",
+      "name": "階段・ステップ P5：立体段（影付き）",
+      "sourceSlideIndex": 70,
+      "bestFor": [
+        "階段・ステップ",
+        "段階的な成長・到達"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "step-p6",
+      "kind": "step",
+      "name": "階段・ステップ P6：上昇する円ノード（斜めタイムライン）",
+      "sourceSlideIndex": 71,
+      "bestFor": [
+        "階段・ステップ",
+        "段階的な成長・到達"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "gantt-p1",
+      "kind": "gantt",
+      "name": "ガントチャート P1：月次バー（M1–M6）",
+      "sourceSlideIndex": 73,
+      "bestFor": [
+        "ガントチャート",
+        "タスクと期間の計画"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "gantt-p2",
+      "kind": "gantt",
+      "name": "ガントチャート P2：四半期（Q1–Q4）粗め",
+      "sourceSlideIndex": 74,
+      "bestFor": [
+        "ガントチャート",
+        "タスクと期間の計画"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "gantt-p3",
+      "kind": "gantt",
+      "name": "ガントチャート P3：フェーズ色分け ＋ マイルストン",
+      "sourceSlideIndex": 75,
+      "bestFor": [
+        "ガントチャート",
+        "タスクと期間の計画"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "gantt-p4",
+      "kind": "gantt",
+      "name": "ガントチャート P4：進捗％付きバー",
+      "sourceSlideIndex": 76,
+      "bestFor": [
+        "ガントチャート",
+        "タスクと期間の計画"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "gantt-p5",
+      "kind": "gantt",
+      "name": "ガントチャート P5：週次（W1–W8）細かめ",
+      "sourceSlideIndex": 77,
+      "bestFor": [
+        "ガントチャート",
+        "タスクと期間の計画"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "gantt-p6",
+      "kind": "gantt",
+      "name": "ガントチャート P6：シンプル（3タスク × 3期）",
+      "sourceSlideIndex": 78,
+      "bestFor": [
+        "ガントチャート",
+        "タスクと期間の計画"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "list-vertical-p1",
+      "kind": "list-vertical",
+      "name": "箇条書き（縦並び） P1：番号カード縦積み",
+      "sourceSlideIndex": 80,
+      "bestFor": [
+        "箇条書き（縦並び）",
+        "要点を縦に整理"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "list-vertical-p2",
+      "kind": "list-vertical",
+      "name": "箇条書き（縦並び） P2：アイコン円 ＋ 見出し ＋ 説明",
+      "sourceSlideIndex": 81,
+      "bestFor": [
+        "箇条書き（縦並び）",
+        "要点を縦に整理"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "list-vertical-p3",
+      "kind": "list-vertical",
+      "name": "箇条書き（縦並び） P3：チェックリスト（✓）",
+      "sourceSlideIndex": 82,
+      "bestFor": [
+        "箇条書き（縦並び）",
+        "要点を縦に整理"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "list-vertical-p4",
+      "kind": "list-vertical",
+      "name": "箇条書き（縦並び） P4：左ライン・タイムライン風",
+      "sourceSlideIndex": 83,
+      "bestFor": [
+        "箇条書き（縦並び）",
+        "要点を縦に整理"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "list-vertical-p5",
+      "kind": "list-vertical",
+      "name": "箇条書き（縦並び） P5：大番号 ＋ 2カラム説明",
+      "sourceSlideIndex": 84,
+      "bestFor": [
+        "箇条書き（縦並び）",
+        "要点を縦に整理"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "list-vertical-p6",
+      "kind": "list-vertical",
+      "name": "箇条書き（縦並び） P6：交互配置の行リスト",
+      "sourceSlideIndex": 85,
+      "bestFor": [
+        "箇条書き（縦並び）",
+        "要点を縦に整理"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "list-horizontal-p1",
+      "kind": "list-horizontal",
+      "name": "箇条書き（横並び） P1：4カラムカード",
+      "sourceSlideIndex": 87,
+      "bestFor": [
+        "箇条書き（横並び）",
+        "並列の要素を横に"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "list-horizontal-p2",
+      "kind": "list-horizontal",
+      "name": "箇条書き（横並び） P2：3カラム（アイコン円・大きめ）",
+      "sourceSlideIndex": 88,
+      "bestFor": [
+        "箇条書き（横並び）",
+        "並列の要素を横に"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "list-horizontal-p3",
+      "kind": "list-horizontal",
+      "name": "箇条書き（横並び） P3：5カラム（細め）",
+      "sourceSlideIndex": 89,
+      "bestFor": [
+        "箇条書き（横並び）",
+        "並列の要素を横に"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "list-horizontal-p4",
+      "kind": "list-horizontal",
+      "name": "箇条書き（横並び） P4：上アイコン＋下テキスト（ミニマル）",
+      "sourceSlideIndex": 90,
+      "bestFor": [
+        "箇条書き（横並び）",
+        "並列の要素を横に"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "list-horizontal-p5",
+      "kind": "list-horizontal",
+      "name": "箇条書き（横並び） P5：番号ヘッダーカラム（色帯上部）",
+      "sourceSlideIndex": 91,
+      "bestFor": [
+        "箇条書き（横並び）",
+        "並列の要素を横に"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "list-horizontal-p6",
+      "kind": "list-horizontal",
+      "name": "箇条書き（横並び） P6：ピル横並び（2段）",
+      "sourceSlideIndex": 92,
+      "bestFor": [
+        "箇条書き（横並び）",
+        "並列の要素を横に"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "list-enumeration-p1",
+      "kind": "list-enumeration",
+      "name": "箇条書き（羅列） P1：タグ 4×3 グリッド",
+      "sourceSlideIndex": 94,
+      "bestFor": [
+        "箇条書き（羅列）",
+        "多数の項目を一覧"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "list-enumeration-p2",
+      "kind": "list-enumeration",
+      "name": "箇条書き（羅列） P2：アイコングリッド 3×3",
+      "sourceSlideIndex": 95,
+      "bestFor": [
+        "箇条書き（羅列）",
+        "多数の項目を一覧"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "list-enumeration-p3",
+      "kind": "list-enumeration",
+      "name": "箇条書き（羅列） P3：2列チェックリスト",
+      "sourceSlideIndex": 96,
+      "bestFor": [
+        "箇条書き（羅列）",
+        "多数の項目を一覧"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "list-enumeration-p4",
+      "kind": "list-enumeration",
+      "name": "箇条書き（羅列） P4：ピル（丸タグ）配置",
+      "sourceSlideIndex": 97,
+      "bestFor": [
+        "箇条書き（羅列）",
+        "多数の項目を一覧"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "list-enumeration-p5",
+      "kind": "list-enumeration",
+      "name": "箇条書き（羅列） P5：キーワード大小（強弱）",
+      "sourceSlideIndex": 98,
+      "bestFor": [
+        "箇条書き（羅列）",
+        "多数の項目を一覧"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    },
+    {
+      "id": "list-enumeration-p6",
+      "kind": "list-enumeration",
+      "name": "箇条書き（羅列） P6：番号付きグリッド（2×3 大きめ）",
+      "sourceSlideIndex": 99,
+      "bestFor": [
+        "箇条書き（羅列）",
+        "多数の項目を一覧"
+      ],
+      "constraints": {},
+      "editableGroups": []
+    }
+  ]
+}

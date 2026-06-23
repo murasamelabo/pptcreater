@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.5.12 - 2026-06-24
+
+- **Added the `zukai` design pack: 14 figure types × 83 curated schematic components.** Alongside the `tree` pack, pptcreater now ships a curated "図解デザイン大全" pack covering horizontal/vertical flow, cycle, before/after, matrix, venn, formula (cross), comparison, scale, step, gantt, and three list styles (vertical, horizontal, enumeration). Each figure type is a `kind` with 5-6 human-designed variations, all transplantable as fully editable PowerPoint shapes/text via `pptxSlide` (no flattened images).
+- **Generalized design-pack discovery to any number of packs.** `listDesignComponents` now scans every `<root>/<pack>/manifest.json` (previously only `tree`), so packs compose without code changes. `kind` filtering spans all packs; component ids stay unique per pack (`flow-horizontal-p1`, `matrix-p1`, …). The CLI `design list [kind]` / `design render`, and MCP `list_design_components` / `render_design_component`, transparently surface the new components.
+- Added `scripts/build-deck-map.mjs` + `scripts/build-zukai-manifest.mjs` (pack-authoring helpers that derive the manifest from a source deck) and `scripts/generate-zukai-gallery.mjs` (`npm run sample:zukai-design`) which renders all 83 components for visual QA. All 83 transplanted slides verified as single-`spTree`, editable, and visually intact via PowerPoint PNG export.
+- Added regression coverage for multi-pack discovery and kind filtering. Full suite now includes 278 tests.
+
 ## v0.5.11 - 2026-06-23
 
 - **Added structural node add/remove to the `pptxSlide` element via `nodeGroups` + `nodeOperations`.** Curated tree components can now have nodes added or removed, not just relabelled. Each design component declares `editableGroups` (a sibling set with an axis and member texts); `nodeOperations` then issues `{ op: "remove", target }` or `{ op: "add", group, label, cloneFrom? }`. The engine re-lays-out the affected sibling group **within its original footprint**, preserving the curated gap:box ratio so boxes and gaps shrink/grow together — nothing collides with neighboring groups or dangles. Removing down to a single child drops the connector bus and re-centers the box under its parent; removing all children removes the group's connectors too.

@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { z } from "zod";
 import { defaultTokens } from "./color.js";
@@ -62,11 +62,23 @@ async function readDesignPack(manifestPath: string): Promise<DesignComponent[]> 
   }));
 }
 
+async function discoverManifestPaths(root: string): Promise<string[]> {
+  let entries: Array<{ name: string; isDirectory: () => boolean }>; 
+  try {
+    entries = await readdir(root, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  return entries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => resolve(root, entry.name, "manifest.json"))
+    .filter((path) => existsSync(path));
+}
+
 export async function listDesignComponents(options: { kind?: string; roots?: string[] } = {}): Promise<DesignComponent[]> {
   const roots = options.roots ?? defaultDesignPackRoots();
-  const manifests = roots
-    .map((root) => resolve(root, "tree", "manifest.json"))
-    .filter((path) => existsSync(path));
+  const manifestLists = await Promise.all(roots.map((root) => discoverManifestPaths(root)));
+  const manifests = manifestLists.flat();
   const components = (await Promise.all(manifests.map((manifest) => readDesignPack(manifest)))).flat();
   return options.kind ? components.filter((component) => component.kind === options.kind) : components;
 }

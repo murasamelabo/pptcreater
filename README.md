@@ -178,16 +178,21 @@ For true PowerPoint SmartArt experiments, DeckSpec also supports a `smartart` el
 
 When a visual is better served by a human-designed slide than by generated geometry, pptcreater can transplant a curated PowerPoint slide component into a generated deck. The `pptxSlide` DeckSpec element copies the editable shapes and text (`<p:spTree>` children) of a source slide into the target slide, renumbering shape ids and copying relationships so everything stays editable in PowerPoint — no flattened images.
 
-Curated components live under `design-packs/<pack>/`, each with a `manifest.json` describing its components (id, `kind`, `name`, `sourceSlideIndex`, `bestFor`, and authoring `constraints`) and a source `.pptx`. The first shipped pack, `design-packs/tree`, provides seven tree-diagram components: vertical org, horizontal, logic, indented, decision, radial/mind-map, and pyramid.
+Curated components live under `design-packs/<pack>/`, each with a `manifest.json` describing its components (id, `kind`, `name`, `sourceSlideIndex`, `bestFor`, authoring `constraints`, and optional `editableGroups`) and a source `.pptx`. Discovery scans every `design-packs/<pack>/manifest.json`, so packs compose without code changes. Two packs ship today:
+
+- **`tree`** — seven tree-diagram components: vertical org, horizontal, logic, indented, decision, radial/mind-map, and pyramid.
+- **`zukai`** ("図解デザイン大全") — 83 schematic components across 14 figure types (`kind`s): `flow-horizontal`, `flow-vertical`, `cycle`, `before-after`, `matrix`, `venn`, `formula`, `comparison`, `scale`, `step`, `gantt`, `list-vertical`, `list-horizontal`, and `list-enumeration`, each with 5-6 human-designed variations (`<kind>-p1` … `<kind>-p6`).
 
 CLI usage:
 
 ```powershell
-pptcreater design list                 # list all curated components
-pptcreater design list tree            # filter by kind
-pptcreater design render tree-logic --output generated\tree-logic.deck.json
-pptcreater render generated\tree-logic.deck.json --output generated\tree-logic.pptx
+pptcreater design list                 # list all curated components (both packs)
+pptcreater design list cycle           # filter by kind (e.g. a zukai figure type)
+pptcreater design render matrix-p1 --output generated\matrix.deck.json
+pptcreater render generated\matrix.deck.json --output generated\matrix.pptx
 ```
+
+Render the full galleries with `npm run sample:tree-design` and `npm run sample:zukai-design`.
 
 MCP tools `list_design_components` and `render_design_component` expose the same discovery and DeckSpec generation to agents. Source slides are loaded from an in-workspace `templatePath` or an inline `templateDataUri`; external files must be passed as a data URI.
 
