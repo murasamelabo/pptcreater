@@ -425,6 +425,11 @@ async function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpe
     // the normal PPTX has been written.
     return;
   }
+
+  if (element.type === "pptxSlide") {
+    // A curated slide component is transplanted as OpenXML after the normal PPTX has been written.
+    return;
+  }
 }
 
 function escapeXmlAttribute(value: string): string {
@@ -900,6 +905,227 @@ async function applySmartArtElements(pptxPath: string, deck: DeckSpec): Promise<
   const zip = await JSZip.loadAsync(await readFile(pptxPath));
   for (const item of smartArtItems) {
     await transplantSmartArtElement(zip, item.slideIndex, item.element);
+  }
+  await writeFile(pptxPath, await zip.generateAsync({ type: "nodebuffer" }));
+}
+
+async function pptxSlideTemplateBuffer(element: Extract<SlideElement, { type: "pptxSlide" }>, workspaceRoot = process.cwd()): Promise<Buffer> {
+  if (element.templateDataUri) {
+    return decodePowerPointPackageDataUri(element.templateDataUri);
+  }
+  if (!element.templatePath) {
+    throw new Error(`pptxSlide element "${element.id}" requires templatePath or templateDataUri.`);
+  }
+  if (element.templatePath.includes("\0")) {
+    throw new Error("pptxSlide.templatePath cannot contain null bytes.");
+  }
+  const extension = extname(element.templatePath).toLowerCase();
+  if (![".pptx", ".potx", ".pptm", ".potm"].includes(extension)) {
+    throw new Error("pptxSlide.templatePath must point to a .pptx, .potx, .pptm, or .potm file.");
+  }
+  const root = await realpath(workspaceRoot);
+  const resolvedPath = resolve(workspaceRoot, element.templatePath);
+  await assertNoSymlinkPathComponents(resolve(workspaceRoot), resolvedPath);
+  const realPath = await realpath(resolvedPath);
+  if (!isPathInside(realPath, root)) {
+    throw new Error("pptxSlide.templatePath must stay inside the current workspace. Use pptxSlide.templateDataUri for external files.");
+  }
+  const stats = await lstat(realPath);
+  if (!stats.isFile()) {
+    throw new Error("pptxSlide.templatePath must reference a regular non-symlink file.");
+  }
+  if (stats.size > MAX_LOCAL_IMAGE_BYTES) {
+    throw new Error(`pptxSlide.templatePath file is too large. Maximum size is ${MAX_LOCAL_IMAGE_BYTES} bytes.`);
+  }
+  return readFile(realPath);
+}
+
+function slideSpTreeChildren(slideXml: string): string {
+  const spTree = /<p:spTree\b[\s\S]*?<\/p:spTree>/i.exec(slideXml)?.[0];
+  if (!spTree) {
+    throw new Error("PPTX slide template does not contain a shape tree.");
+  }
+  return spTree
+    .replace(/^<p:spTree\b[^>]*>/i, "")
+    .replace(/<\/p:spTree>$/i, "")
+    .replace(/<p:nvGrpSpPr\b[\s\S]*?<\/p:nvGrpSpPr>/i, "")
+    .replace(/<p:grpSpPr\b[\s\S]*?<\/p:grpSpPr>/i, "")
+    .trim();
+}
+
+function rewriteRelationshipIds(xml: string, relIdMap: Map<string, string>): string {
+  if (relIdMap.size === 0) {
+    return xml;
+  }
+  return xml.replace(/\br:(embed|link|id)="([^"]+)"/g, (match, attr: string, id: string) => {
+    const mapped = relIdMap.get(id);
+    return mapped ? `r:${attr}="${mapped}"` : match;
+  });
+}
+
+function renumberShapeIds(xml: string, firstId: number): string {
+  let nextId = firstId;
+  return xml.replace(/<p:cNvPr\b([^>]*)>/g, (_match, attrs: string) => {
+    const nextAttrs = /\bid="/i.test(attrs)
+      ? attrs.replace(/\bid="[^"]*"/i, `id="${nextId++}"`)
+      : ` id="${nextId++}"${attrs}`;
+    return `<p:cNvPr${nextAttrs}>`;
+  });
+}
+
+function localRelationshipTarget(target: string): string | undefined {
+  if (/^[a-z]+:/iu.test(target) || target.startsWith("#")) {
+    return undefined;
+  }
+  return target;
+}
+
+const FALLBACK_MEDIA_CONTENT_TYPES: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  bmp: "image/bmp",
+  tif: "image/tiff",
+  tiff: "image/tiff",
+  svg: "image/svg+xml",
+  emf: "image/x-emf",
+  wmf: "image/x-wmf",
+  webp: "image/webp"
+};
+
+function sourceDefaultContentType(sourceContentTypesXml: string, extension: string): string | undefined {
+  const escaped = extension.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const tag = new RegExp(`<Default\\b[^>]*Extension="${escaped}"[^>]*/>`, "i").exec(sourceContentTypesXml)?.[0];
+  return tag ? relationshipAttr(tag, "ContentType") : undefined;
+}
+
+function ensureDefaultContentTypes(xml: string, parts: { extension: string; contentType: string }[]): string {
+  let next = xml;
+  const seen = new Set<string>();
+  for (const part of parts) {
+    const extension = part.extension.toLowerCase();
+    if (!extension || seen.has(extension)) {
+      continue;
+    }
+    seen.add(extension);
+    const escaped = extension.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (new RegExp(`<Default\\b[^>]*Extension="${escaped}"`, "i").test(next)) {
+      continue;
+    }
+    next = next.replace("</Types>", `<Default Extension="${extension}" ContentType="${part.contentType}"/></Types>`);
+  }
+  return next;
+}
+
+interface CopiedRelationshipResult {
+  relIdMap: Map<string, string>;
+  copiedParts: { extension: string; contentType: string }[];
+}
+
+async function copySlideRelationships(
+  sourceZip: ZipArchive,
+  targetZip: ZipArchive,
+  sourceRels: Relationship[],
+  targetRels: Relationship[],
+  sourceContentTypesXml: string
+): Promise<CopiedRelationshipResult> {
+  const relIdMap = new Map<string, string>();
+  const copiedParts: { extension: string; contentType: string }[] = [];
+  // Dedupe parts shared by multiple relationships within the same source slide.
+  const partNameMap = new Map<string, string>();
+  for (const rel of sourceRels) {
+    if (/\/(slideLayout|notesSlide|tags)$/i.test(rel.type)) {
+      continue;
+    }
+    const localTarget = localRelationshipTarget(rel.target);
+    const newId = nextRelationshipId(targetRels);
+    relIdMap.set(rel.id, newId);
+    if (!localTarget || rel.targetMode === "External") {
+      targetRels.push({ ...rel, id: newId });
+      continue;
+    }
+    const sourcePart = resolvePackageRelTarget(localTarget, "ppt/slides");
+    if (!sourcePart || !sourceZip.file(sourcePart)) {
+      targetRels.push({ ...rel, id: newId });
+      continue;
+    }
+    let targetPart = partNameMap.get(sourcePart);
+    if (!targetPart) {
+      const bytes = await sourceZip.file(sourcePart)!.async("nodebuffer");
+      // Reuse the existing name only if the bytes are identical; otherwise allocate a fresh,
+      // non-colliding part name so we never point at an unrelated media file already in the deck.
+      const existing = targetZip.file(sourcePart);
+      const sameBytes = existing ? Buffer.compare(await existing.async("nodebuffer"), bytes) === 0 : false;
+      if (existing && !sameBytes) {
+        const lastSlash = sourcePart.lastIndexOf("/");
+        const dir = lastSlash >= 0 ? sourcePart.slice(0, lastSlash + 1) : "";
+        const file = sourcePart.slice(lastSlash + 1);
+        const dotIndex = file.lastIndexOf(".");
+        const baseName = dotIndex > 0 ? file.slice(0, dotIndex).replace(/\d+$/, "") : file;
+        const extension = dotIndex > 0 ? file.slice(dotIndex) : "";
+        targetPart = nextPartName(targetZip, `${dir}${baseName}`, extension);
+      } else {
+        targetPart = sourcePart;
+      }
+      if (!existing || !sameBytes) {
+        targetZip.file(targetPart, bytes);
+      }
+      partNameMap.set(sourcePart, targetPart);
+      const extension = targetPart.includes(".") ? targetPart.slice(targetPart.lastIndexOf(".") + 1).toLowerCase() : "";
+      if (extension) {
+        const contentType = sourceDefaultContentType(sourceContentTypesXml, extension) ?? FALLBACK_MEDIA_CONTENT_TYPES[extension];
+        if (contentType) {
+          copiedParts.push({ extension, contentType });
+        }
+      }
+    }
+    targetRels.push({
+      id: newId,
+      type: rel.type,
+      target: `../${targetPart.replace(/^ppt\//, "")}`
+    });
+  }
+  return { relIdMap, copiedParts };
+}
+
+async function transplantPptxSlideElement(
+  targetZip: ZipArchive,
+  targetSlideIndex: number,
+  element: Extract<SlideElement, { type: "pptxSlide" }>
+): Promise<void> {
+  const sourceZip = await JSZip.loadAsync(await pptxSlideTemplateBuffer(element));
+  const sourceSlideXml = await readZipXml(sourceZip, sourceSlidePath(element.sourceSlideIndex));
+  const sourceRels = parseRelationships(await readZipXml(sourceZip, sourceSlideRelsPath(element.sourceSlideIndex)));
+  const sourceContentTypesXml = await readZipXml(sourceZip, "[Content_Types].xml");
+  const targetSlidePath = `ppt/slides/slide${targetSlideIndex + 1}.xml`;
+  const targetRelsPath = `ppt/slides/_rels/slide${targetSlideIndex + 1}.xml.rels`;
+  const targetSlideXml = await readZipXml(targetZip, targetSlidePath);
+  const targetRels = parseRelationships(await readZipXml(targetZip, targetRelsPath));
+  const { relIdMap, copiedParts } = await copySlideRelationships(sourceZip, targetZip, sourceRels, targetRels, sourceContentTypesXml);
+  const rawChildren = slideSpTreeChildren(sourceSlideXml);
+  const copiedChildren = renumberShapeIds(rewriteRelationshipIds(rawChildren, relIdMap), maxShapeId(targetSlideXml) + 1);
+  const patched = targetSlideXml.replace("</p:spTree>", `${copiedChildren}</p:spTree>`);
+  if (copiedParts.length > 0) {
+    const contentTypesXml = await readZipXml(targetZip, "[Content_Types].xml");
+    targetZip.file("[Content_Types].xml", ensureDefaultContentTypes(contentTypesXml, copiedParts));
+  }
+  targetZip.file(targetRelsPath, serializeRelationships(targetRels));
+  targetZip.file(targetSlidePath, patched);
+}
+
+async function applyPptxSlideElements(pptxPath: string, deck: DeckSpec): Promise<void> {
+  const items = deck.slides.flatMap((slide, slideIndex) =>
+    slide.elements
+      .filter((element): element is Extract<SlideElement, { type: "pptxSlide" }> => element.type === "pptxSlide")
+      .map((element) => ({ slideIndex, element }))
+  );
+  if (items.length === 0) {
+    return;
+  }
+  const zip = await JSZip.loadAsync(await readFile(pptxPath));
+  for (const item of items) {
+    await transplantPptxSlideElement(zip, item.slideIndex, item.element);
   }
   await writeFile(pptxPath, await zip.generateAsync({ type: "nodebuffer" }));
 }
@@ -1384,6 +1610,10 @@ function collectSlideAccessibilityNotes(deck: DeckSpec, deckSlide: DeckSpec["sli
       notes.push(`${element.id} SmartArt description: ${element.longDescription}`);
     }
 
+    if (element.type === "pptxSlide") {
+      notes.push(`${element.id} PPTX slide component description: ${element.longDescription}`);
+    }
+
     if (element.sourceId) {
       const source = sourcesById.get(element.sourceId);
       notes.push(
@@ -1489,5 +1719,6 @@ export async function renderDeckToPptx(input: unknown, outputPath: string, optio
     await applyPowerPointTemplatePackage(outputPath, renderDeck, powerPointTemplate.templatePackage);
   }
   await applySmartArtElements(outputPath, renderDeck);
+  await applyPptxSlideElements(outputPath, renderDeck);
   return { outputPath, warnings };
 }

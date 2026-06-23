@@ -13,4 +13,5 @@ export * from "./skillPacks.js";
 export * from "./sourceReferences.js";
 export * from "./sourceVisuals.js";
 export * from "./templates.js";
+export * from "./designPacks.js";
 export * from "./typography.js";

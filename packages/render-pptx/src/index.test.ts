@@ -133,6 +133,48 @@ async function buildSmartArtTemplatePptx(): Promise<Buffer> {
   return zip.generateAsync({ type: "nodebuffer" });
 }
 
+async function buildPptxSlideTemplate(): Promise<Buffer> {
+  const zip = new JSZip();
+  zip.file(
+    "ppt/slides/slide1.xml",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>
+    <p:sp><p:nvSpPr><p:cNvPr id="2" name="Template Box"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="914400" y="914400"/><a:ext cx="5486400" cy="914400"/></a:xfrm><a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="EAF2FF"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr sz="2400" b="1"><a:solidFill><a:srgbClr val="111827"/></a:solidFill></a:rPr><a:t>CURATED TREE COMPONENT</a:t></a:r></a:p></p:txBody></p:sp>
+  </p:spTree></p:cSld>
+</p:sld>`
+  );
+  zip.file("ppt/slides/_rels/slide1.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>`);
+  return zip.generateAsync({ type: "nodebuffer" });
+}
+
+async function buildPptxSlideTemplateWithMedia(): Promise<Buffer> {
+  const zip = new JSZip();
+  zip.file(
+    "ppt/slides/slide1.xml",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>
+    <p:pic><p:nvPicPr><p:cNvPr id="2" name="Pic A"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="rId1"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="457200" y="457200"/><a:ext cx="914400" cy="914400"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>
+    <p:pic><p:nvPicPr><p:cNvPr id="3" name="Pic B"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="rId2"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="1828800" y="457200"/><a:ext cx="914400" cy="914400"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>
+    <p:pic><p:nvPicPr><p:cNvPr id="4" name="Pic C"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="rId3"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="3200400" y="457200"/><a:ext cx="914400" cy="914400"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>
+  </p:spTree></p:cSld>
+</p:sld>`
+  );
+  zip.file(
+    "ppt/slides/_rels/slide1.xml.rels",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.png"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image2.png"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image3.svg"/></Relationships>`
+  );
+  zip.file("ppt/media/image1.png", Buffer.from("CURATED_IMAGE_A"));
+  zip.file("ppt/media/image2.png", Buffer.from("CURATED_IMAGE_B"));
+  zip.file("ppt/media/image3.svg", Buffer.from("<svg>CURATED_IMAGE_C</svg>"));
+  zip.file(
+    "[Content_Types].xml",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Default Extension="svg" ContentType="image/svg+xml"/></Types>`
+  );
+  return zip.generateAsync({ type: "nodebuffer" });
+}
+
 function pngDimensions(png: Buffer): { width: number; height: number } {
   return {
     width: png.readUInt32BE(16),
@@ -666,6 +708,106 @@ describe("PPTX renderer", () => {
     expect(names.filter((name) => /^ppt\/diagrams\/[^/]+\.xml$/.test(name)).length).toBe(5);
     expect(contentTypes).toContain("diagramData+xml");
     expect(contentTypes).toContain("diagramDrawing+xml");
+  });
+
+  it("transplants curated PPTX slide components as editable slide XML", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-pptx-slide-"));
+    const sourceDataUri = `data:application/vnd.openxmlformats-officedocument.presentationml.presentation;base64,${(await buildPptxSlideTemplate()).toString("base64")}`;
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "tree-component",
+      type: "pptxSlide",
+      templateDataUri: sourceDataUri,
+      sourceSlideIndex: 1,
+      x: 0,
+      y: 0,
+      w: 13.333,
+      h: 7.5,
+      summary: "Curated tree component",
+      longDescription: "A curated PowerPoint slide component transplanted as editable shape and text XML.",
+      altText: "Curated tree component",
+      decorative: false,
+      readingOrder: 20
+    });
+    const outputPath = join(outputDir, "component-output.pptx");
+
+    await renderDeckToPptx(deck, outputPath);
+
+    const zip = await JSZip.loadAsync(await readFile(outputPath));
+    const slide = (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
+    expect(slide).toContain("CURATED TREE COMPONENT");
+    expect(slide).toContain('name="Template Box"');
+    expect(slide.match(/<\/p:spTree>/g) ?? []).toHaveLength(1);
+    expect(slide.match(/<p:bg>/g) ?? []).toHaveLength(1);
+  });
+
+  it("rewrites pptxSlide media relationships without collapsing or overwriting deck media", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-pptx-slide-media-"));
+    const sourceDataUri = `data:application/vnd.openxmlformats-officedocument.presentationml.presentation;base64,${(await buildPptxSlideTemplateWithMedia()).toString("base64")}`;
+    // The sample deck already rasterizes its hero SVG to ppt/media/image1.png, so the curated
+    // source slide's own image1.png collides with an unrelated deck image — the exact scenario
+    // that previously corrupted relationship ids and overwrote media.
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "media-component",
+      type: "pptxSlide",
+      templateDataUri: sourceDataUri,
+      sourceSlideIndex: 1,
+      x: 0,
+      y: 0,
+      w: 13.333,
+      h: 7.5,
+      summary: "Curated media component",
+      longDescription: "A curated PowerPoint slide component carrying three distinct embedded images.",
+      altText: "Curated media component",
+      decorative: false,
+      readingOrder: 20
+    });
+    const outputPath = join(outputDir, "media-output.pptx");
+
+    await renderDeckToPptx(deck, outputPath);
+
+    const zip = await JSZip.loadAsync(await readFile(outputPath));
+    const slide = (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
+    const embeds = [...slide.matchAll(/r:embed="([^"]+)"/g)].map((match) => match[1]);
+    // No relationship id may collapse onto another (the previous bug merged shapes onto one rId).
+    expect(new Set(embeds).size).toBe(embeds.length);
+
+    const rels = (await zip.file("ppt/slides/_rels/slide1.xml.rels")?.async("string")) ?? "";
+    const targetById = new Map(
+      [...rels.matchAll(/<Relationship\b[^>]*Id="([^"]+)"[^>]*Target="([^"]+)"/g)].map((match) => [match[1], match[2]])
+    );
+
+    const resolveMediaPart = (target: string | undefined): string | undefined => {
+      if (!target) return undefined;
+      return `ppt/${target.replace(/^\.\.\//, "")}`;
+    };
+    const partBytes = new Map<string, string>();
+    for (const name of Object.keys(zip.files).filter((entry) => /^ppt\/media\/.+/.test(entry) && !entry.endsWith("/"))) {
+      const part = zip.file(name);
+      if (!part) continue;
+      partBytes.set(name, (await part.async("nodebuffer")).toString("utf8"));
+    }
+
+    const curatedTargets = new Map<string, string>();
+    for (const embed of embeds) {
+      const part = resolveMediaPart(targetById.get(embed));
+      const bytes = part ? partBytes.get(part) : undefined;
+      if (bytes && /CURATED_IMAGE_[ABC]/.test(bytes)) {
+        curatedTargets.set(bytes.match(/CURATED_IMAGE_[ABC]/)![0], targetById.get(embed)!);
+      }
+    }
+    // All three curated images survived, each mapped to a distinct media part.
+    expect([...curatedTargets.keys()].sort()).toEqual(["CURATED_IMAGE_A", "CURATED_IMAGE_B", "CURATED_IMAGE_C"]);
+    expect(new Set(curatedTargets.values()).size).toBe(3);
+
+    const mediaText = [...partBytes.values()];
+    expect(mediaText).toContain("CURATED_IMAGE_A");
+    expect(mediaText).toContain("CURATED_IMAGE_B");
+    expect(mediaText.some((text) => text.includes("CURATED_IMAGE_C"))).toBe(true);
+
+    const contentTypes = (await zip.file("[Content_Types].xml")?.async("string")) ?? "";
+    expect(contentTypes).toMatch(/Extension="svg"/i);
   });
 
   it("applies an imported .potx slide master and layouts when rendering a deck with that template id", async () => {

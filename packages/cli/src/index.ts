@@ -16,6 +16,7 @@ import {
   createVisualScaffold,
   deleteTemplateManifest,
   ensureSourceReferenceSlide,
+  listDesignComponents,
   getBusinessDeckGuidance,
   getContentGuidance,
   getDefaultTemplateRegistryPath,
@@ -30,6 +31,7 @@ import {
   registerTemplateManifest,
   reviewBusinessDeck,
   reviewDeckContent,
+  renderDesignComponentDeck,
   scaffoldDeckFromTemplate,
   searchTemplateEntries,
   STYLE_PROFILES,
@@ -526,6 +528,42 @@ program
 const templateCommand = program
   .command("template")
   .description("Template operations.");
+
+const designCommand = program
+  .command("design")
+  .description("Design asset pack operations.");
+
+designCommand
+  .command("list")
+  .description("List curated design components.")
+  .argument("[kind]", "Optional component kind, e.g. tree")
+  .option("--json", "Emit JSON", false)
+  .action(commandAction(async (kind: string | undefined, options: { json: boolean }) => {
+    const components = await listDesignComponents({ kind });
+    if (options.json) {
+      console.log(JSON.stringify(components, null, 2));
+      return;
+    }
+    if (components.length === 0) {
+      console.log("No design components found.");
+      return;
+    }
+    console.log(["id", "kind", "name", "bestFor"].join("\t"));
+    console.log(components.map((component) => [component.id, component.kind, component.name, component.bestFor.join(", ")].join("\t")).join("\n"));
+  }));
+
+designCommand
+  .command("render")
+  .description("Create a DeckSpec that uses a curated design component.")
+  .argument("<componentId>", "Design component id")
+  .option("--title <title>", "Slide/deck title")
+  .option("-o, --output <path>", "Write the component DeckSpec JSON", "generated/design-component.deck.json")
+  .option("--json", "Emit JSON", false)
+  .action(commandAction(async (componentId: string, options: { title?: string; output: string; json: boolean }) => {
+    const deck = await renderDesignComponentDeck(componentId, { title: options.title });
+    await writeJson(options.output, deck);
+    console.log(options.json ? JSON.stringify({ output: options.output, deck }, null, 2) : `Rendered design component ${componentId} to ${options.output}`);
+  }));
 
 templateCommand
   .command("list")

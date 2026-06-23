@@ -22,6 +22,7 @@ import {
   getContentGuidance,
   getDefaultTemplateRegistryPath,
   getSlideCreationRules,
+  listDesignComponents,
   listAllTemplates,
   listSkillPacks,
   lintDeckSpec,
@@ -33,6 +34,7 @@ import {
   planBusinessDeck,
   recommendTemplateForContentMode,
   registerTemplateManifest,
+  renderDesignComponentDeck,
   reviewBusinessDeck,
   reviewDeckContent,
   scaffoldDeckFromTemplate,
@@ -971,6 +973,31 @@ export function createPptcreaterMcpServer(): McpServer {
         )
       );
     }
+  );
+
+  server.registerTool(
+    "list_design_components",
+    {
+      title: "List design asset components",
+      description: "List curated design components from local design-packs, such as approved tree diagram slide templates.",
+      inputSchema: {
+        kind: z.string().optional()
+      }
+    },
+    async ({ kind }) => jsonText({ components: await listDesignComponents({ kind }) })
+  );
+
+  server.registerTool(
+    "render_design_component",
+    {
+      title: "Render design component DeckSpec",
+      description: "Create a DeckSpec that uses a curated design component from a design-pack. Render it with render_pptx/finalize_deck to transplant the source PowerPoint slide component.",
+      inputSchema: {
+        componentId: z.string().min(1),
+        title: z.string().optional()
+      }
+    },
+    async ({ componentId, title }) => jsonText(await renderDesignComponentDeck(componentId, { title }))
   );
 
   server.registerTool(

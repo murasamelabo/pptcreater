@@ -1,0 +1,65 @@
+{
+  "id": "tree",
+  "name": "Tree Diagram Design Pack",
+  "description": "Curated editable PowerPoint tree diagram slide components based on a human-designed OpenXML slide deck.",
+  "version": "0.1.0",
+  "sourcePptx": "tree-diagrams_Oxml.pptx",
+  "components": [
+    {
+      "id": "tree-vertical-org",
+      "kind": "tree",
+      "name": "縦型 組織図ツリー",
+      "sourceSlideIndex": 3,
+      "bestFor": ["上下階層", "組織図", "レポートライン"],
+      "constraints": { "minItems": 3, "maxItems": 9, "maxLabelChars": 18 }
+    },
+    {
+      "id": "tree-horizontal",
+      "kind": "tree",
+      "name": "横型ツリー",
+      "sourceSlideIndex": 4,
+      "bestFor": ["左から右への展開", "分類", "項目が多い構造"],
+      "constraints": { "minItems": 3, "maxItems": 10, "maxLabelChars": 18 }
+    },
+    {
+      "id": "tree-logic",
+      "kind": "tree",
+      "name": "ロジックツリー",
+      "sourceSlideIndex": 5,
+      "bestFor": ["課題分解", "MECE", "打ち手整理"],
+      "constraints": { "minItems": 3, "maxItems": 10, "maxLabelChars": 18 }
+    },
+    {
+      "id": "tree-indented",
+      "kind": "tree",
+      "name": "インデント型ツリー",
+      "sourceSlideIndex": 6,
+      "bestFor": ["多階層", "省スペース", "テキスト中心の階層"],
+      "constraints": { "minItems": 4, "maxItems": 14, "maxLabelChars": 24 }
+    },
+    {
+      "id": "tree-decision",
+      "kind": "tree",
+      "name": "意思決定ツリー",
+      "sourceSlideIndex": 7,
+      "bestFor": ["条件分岐", "判断フロー", "YES/NO分岐"],
+      "constraints": { "minItems": 4, "maxItems": 9, "maxLabelChars": 16 }
+    },
+    {
+      "id": "tree-radial",
+      "kind": "tree",
+      "name": "マインドマップ型",
+      "sourceSlideIndex": 8,
+      "bestFor": ["中心概念", "周辺要素", "発想整理"],
+      "constraints": { "minItems": 3, "maxItems": 8, "maxLabelChars": 16 }
+    },
+    {
+      "id": "tree-pyramid",
+      "kind": "tree",
+      "name": "ピラミッド階層ツリー",
+      "sourceSlideIndex": 9,
+      "bestFor": ["抽象度", "優先順位", "上位概念から実行への落とし込み"],
+      "constraints": { "minItems": 3, "maxItems": 5, "maxLabelChars": 18 }
+    }
+  ]
+}

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## v0.5.9 - 2026-06-23
+
+- **Added curated Design Asset Packs and a `pptxSlide` DeckSpec element.** A deck can now transplant a fully human-designed PowerPoint slide component (the `<p:spTree>` shapes and text of a curated source slide) into a generated slide, keeping every object editable in PowerPoint instead of flattening it to an image or approximating it with generated geometry. Source slides are loaded from a local in-workspace `templatePath` or an inline `templateDataUri`; relationships are copied and shape ids are renumbered to avoid collisions.
+- **Shipped the first design pack: `design-packs/tree`.** Seven curated tree-diagram components (vertical org, horizontal, logic, indented, decision, radial/mind-map, pyramid) sourced from a human-designed OpenXML deck, each described with `bestFor` hints and authoring constraints in `design-packs/tree/manifest.json`.
+- **Exposed design packs through the CLI and MCP server.** New CLI commands `design list [kind]` and `design render <componentId>`, plus MCP tools `list_design_components` and `render_design_component`, let agents discover curated components and emit a ready-to-render DeckSpec that uses them.
+- `pptxSlide` now counts toward slide visual richness in the linter, and the renderer adds the component's long description to speaker notes for accessibility.
+- **Hardened the relationship and media copy path for `pptxSlide` transplants.** Relationship ids are rewritten in a single pass so distinct source references can no longer collapse onto one id, and embedded media (images, SVGs, etc.) are copied under fresh non-colliding part names — reusing an existing deck part only when the bytes are identical — with their content types registered in `[Content_Types].xml`. This prevents future packs that contain images or charts from corrupting deck media.
+- Added regression coverage for design-pack loading/DeckSpec generation, for curated slide transplant (inline `spTree` insertion with no nested shape trees), and for the media relationship rewrite (distinct embeds and media survive a part-name collision with existing deck media); full suite now includes 270 tests.
+
 ## v0.5.8 - 2026-06-23
 
 - **Raised the quality bar for the first five high-value native schematics (`cycle`, `tree`, `correlation`, `matrix`, `gantt`).** These kinds now have SmartArt-style, kind-specific native layouts instead of simple card approximations: tree uses a root/bus/child hierarchy, cycle uses a ring with numbered circular nodes and a central loop label, correlation uses a hub-and-spoke layout, matrix uses true 2x2 quadrants with axes, and Gantt uses a header/grid plus timeline bars.

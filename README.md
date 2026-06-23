@@ -174,6 +174,23 @@ Each schematic supports `tone`: `minimal`, `cool`, `luxury`, or `report`. The pr
 
 For true PowerPoint SmartArt experiments, DeckSpec also supports a `smartart` element that transplants an existing SmartArt `graphicFrame` and its `ppt/diagrams/*` OpenXML parts from a template `.pptx`/`.potx` into the generated deck. Use this when you intentionally want PowerPoint-native SmartArt behavior and have a curated SmartArt template deck; otherwise prefer `generate_schematic` / `generate_native_diagram` for deterministic cross-platform generation.
 
+## Design Asset Packs (curated slide components)
+
+When a visual is better served by a human-designed slide than by generated geometry, pptcreater can transplant a curated PowerPoint slide component into a generated deck. The `pptxSlide` DeckSpec element copies the editable shapes and text (`<p:spTree>` children) of a source slide into the target slide, renumbering shape ids and copying relationships so everything stays editable in PowerPoint — no flattened images.
+
+Curated components live under `design-packs/<pack>/`, each with a `manifest.json` describing its components (id, `kind`, `name`, `sourceSlideIndex`, `bestFor`, and authoring `constraints`) and a source `.pptx`. The first shipped pack, `design-packs/tree`, provides seven tree-diagram components: vertical org, horizontal, logic, indented, decision, radial/mind-map, and pyramid.
+
+CLI usage:
+
+```powershell
+pptcreater design list                 # list all curated components
+pptcreater design list tree            # filter by kind
+pptcreater design render tree-logic --output generated\tree-logic.deck.json
+pptcreater render generated\tree-logic.deck.json --output generated\tree-logic.pptx
+```
+
+MCP tools `list_design_components` and `render_design_component` expose the same discovery and DeckSpec generation to agents. Source slides are loaded from an in-workspace `templatePath` or an inline `templateDataUri`; external files must be passed as a data URI.
+
 CLI usage:
 
 ```powershell

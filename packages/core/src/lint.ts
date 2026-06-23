@@ -185,7 +185,7 @@ function isContentSlide(slide: Slide, deck: DeckSpec, slideIndex: number): boole
 
 function visualRichnessLevel(slide: Slide): number {
   return slide.elements.reduce((score, element) => {
-    if (element.type === "diagram" || element.type === "smartart") {
+    if (element.type === "diagram" || element.type === "smartart" || element.type === "pptxSlide") {
       return score + 4;
     }
 
