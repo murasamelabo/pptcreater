@@ -21,6 +21,7 @@ import {
   type SlideElement
 } from "@pptcreater/core";
 import { themeColor } from "./templateImport.js";
+import { applyPptxSlideNodeOperations } from "./pptxSlideNodes.js";
 
 export * from "./templateImport.js";
 
@@ -1155,7 +1156,8 @@ async function transplantPptxSlideElement(
   const targetRels = parseRelationships(await readZipXml(targetZip, targetRelsPath));
   const { relIdMap, copiedParts } = await copySlideRelationships(sourceZip, targetZip, sourceRels, targetRels, sourceContentTypesXml);
   const rawChildren = slideSpTreeChildren(sourceSlideXml);
-  const renumbered = renumberShapeIds(rewriteRelationshipIds(rawChildren, relIdMap), maxShapeId(targetSlideXml) + 1);
+  const structuredChildren = applyPptxSlideNodeOperations(rawChildren, element.nodeGroups, element.nodeOperations);
+  const renumbered = renumberShapeIds(rewriteRelationshipIds(structuredChildren, relIdMap), maxShapeId(targetSlideXml) + 1);
   const copiedChildren = applyPptxSlideTextReplacements(renumbered, element.textReplacements);
   const patched = targetSlideXml.replace("</p:spTree>", `${copiedChildren}</p:spTree>`);
   if (copiedParts.length > 0) {

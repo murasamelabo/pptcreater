@@ -11,7 +11,12 @@
       "name": "縦型 組織図ツリー",
       "sourceSlideIndex": 3,
       "bestFor": ["上下階層", "組織図", "レポートライン"],
-      "constraints": { "minItems": 3, "maxItems": 9, "maxLabelChars": 18 }
+      "constraints": { "minItems": 3, "maxItems": 9, "maxLabelChars": 18 },
+      "editableGroups": [
+        { "id": "eigyo", "axis": "x", "parentText": "営業本部", "members": ["第一営業部", "第二営業部"] },
+        { "id": "kaihatsu", "axis": "x", "parentText": "開発本部", "members": ["プロダクト開発", "技術基盤"] },
+        { "id": "kanri", "axis": "x", "parentText": "管理本部", "members": ["経営企画", "人事総務"] }
+      ]
     },
     {
       "id": "tree-horizontal",
@@ -19,7 +24,12 @@
       "name": "横型ツリー",
       "sourceSlideIndex": 4,
       "bestFor": ["左から右への展開", "分類", "項目が多い構造"],
-      "constraints": { "minItems": 3, "maxItems": 10, "maxLabelChars": 18 }
+      "constraints": { "minItems": 3, "maxItems": 10, "maxLabelChars": 18 },
+      "editableGroups": [
+        { "id": "cloud", "axis": "y", "parentText": "クラウド", "members": ["IaaS / PaaS", "SaaS 基盤"] },
+        { "id": "dataai", "axis": "y", "parentText": "データ & AI", "members": ["分析基盤", "生成AI活用"] },
+        { "id": "security", "axis": "y", "parentText": "セキュリティ", "members": ["ゼロトラスト", "運用監視"] }
+      ]
     },
     {
       "id": "tree-logic",
@@ -27,7 +37,11 @@
       "name": "ロジックツリー",
       "sourceSlideIndex": 5,
       "bestFor": ["課題分解", "MECE", "打ち手整理"],
-      "constraints": { "minItems": 3, "maxItems": 10, "maxLabelChars": 18 }
+      "constraints": { "minItems": 3, "maxItems": 10, "maxLabelChars": 18 },
+      "editableGroups": [
+        { "id": "kyakusu", "axis": "y", "parentText": "客数を増やす", "members": ["新規獲得を強化", "解約率を下げる"] },
+        { "id": "kyakutanka", "axis": "y", "parentText": "客単価を上げる", "members": ["上位プラン訴求", "クロスセル拡大"] }
+      ]
     },
     {
       "id": "tree-indented",

@@ -991,13 +991,36 @@ export function createPptcreaterMcpServer(): McpServer {
     "render_design_component",
     {
       title: "Render design component DeckSpec",
-      description: "Create a DeckSpec that uses a curated design component from a design-pack. Render it with render_pptx/finalize_deck to transplant the source PowerPoint slide component.",
+      description: "Create a DeckSpec that uses a curated design component from a design-pack. Render it with render_pptx/finalize_deck to transplant the source PowerPoint slide component. Use textReplacements to substitute the curated placeholder data, and nodeOperations to add/remove nodes in the component's editableGroups (the layout re-fits within the original footprint).",
       inputSchema: {
         componentId: z.string().min(1),
-        title: z.string().optional()
+        title: z.string().optional(),
+        textReplacements: z
+          .array(
+            z.union([
+              z.object({ match: z.string().min(1), to: z.string() }),
+              z.object({ at: z.number().int().min(0), to: z.string() })
+            ])
+          )
+          .optional(),
+        nodeOperations: z
+          .array(
+            z.union([
+              z.object({ op: z.literal("remove"), target: z.string().min(1) }),
+              z.object({
+                op: z.literal("add"),
+                group: z.string().min(1),
+                label: z.string().min(1),
+                cloneFrom: z.string().min(1).optional(),
+                at: z.number().int().min(0).optional()
+              })
+            ])
+          )
+          .optional()
       }
     },
-    async ({ componentId, title }) => jsonText(await renderDesignComponentDeck(componentId, { title }))
+    async ({ componentId, title, textReplacements, nodeOperations }) =>
+      jsonText(await renderDesignComponentDeck(componentId, { title, textReplacements, nodeOperations }))
   );
 
   server.registerTool(

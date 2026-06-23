@@ -211,6 +211,29 @@ A curated component ships with placeholder data. To reuse the same human-designe
 
 The visible number of boxes is fixed by the curated geometry (the shapes are human-designed); `textReplacements` changes the labels/data inside those boxes. `npm run sample:tree-design` renders the as-shipped gallery, and `node scripts/generate-tree-varied-gallery.mjs` renders the same seven trees with substituted, domain-specific data.
 
+### Adding and removing nodes (`nodeOperations`)
+
+To change the *number* of nodes (not just their text), a component can declare `editableGroups` — sibling sets that support structural edits. The shipped `tree` pack declares editable groups for the vertical-org, horizontal, and logic trees. Issue operations on the `pptxSlide` element (or pass `nodeOperations` to `renderDesignComponentDeck` / the MCP `render_design_component` tool):
+
+```jsonc
+{
+  "type": "pptxSlide",
+  "templatePath": "design-packs/tree/tree-diagrams_Oxml.pptx",
+  "sourceSlideIndex": 3,
+  "nodeGroups": [
+    { "id": "eigyo", "axis": "x", "parentText": "営業本部", "members": ["第一営業部", "第二営業部"] }
+  ],
+  "nodeOperations": [
+    { "op": "add", "group": "eigyo", "cloneFrom": "第一営業部", "label": "第三営業部" },
+    { "op": "remove", "target": "人事総務" }
+  ],
+  "summary": "組織図（ノード編集）",
+  "longDescription": "Curated org tree with an added 営業部 and a removed 人事総務."
+}
+```
+
+The engine re-lays-out each edited sibling group **within its original footprint**, preserving the curated gap-to-box ratio so boxes and gaps scale together — added nodes never collide with neighboring groups, and removed nodes never leave a dangling connector. Removing down to one child drops the connector bus and re-centers the remaining box under its parent. Added nodes clone a sibling's box/label/connector so styling stays consistent. Use `node scripts/generate-tree-nodes-gallery.mjs` to render an add/remove demo across all three editable trees. `list_design_components` reports each component's `editableGroups` (and their `axis`/`members`) so agents know which nodes are editable.
+
 CLI usage:
 
 ```powershell

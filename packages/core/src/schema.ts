@@ -216,6 +216,28 @@ export const PptxSlideTextReplacementSchema = z.union([
   })
 ]);
 
+export const PptxSlideNodeGroupSchema = z.object({
+  id: z.string().min(1),
+  axis: z.enum(["x", "y"]),
+  parentText: z.string().optional(),
+  members: z.array(z.string().min(1)).min(1),
+  minBoxEmu: z.number().int().positive().optional()
+});
+
+export const PptxSlideNodeOperationSchema = z.union([
+  z.object({
+    op: z.literal("remove"),
+    target: z.string().min(1)
+  }),
+  z.object({
+    op: z.literal("add"),
+    group: z.string().min(1),
+    label: z.string().min(1),
+    cloneFrom: z.string().min(1).optional(),
+    at: z.number().int().min(0).optional()
+  })
+]);
+
 export const PptxSlideElementSchema = ElementBaseSchema.extend({
   type: z.literal("pptxSlide"),
   h: z.number().positive(),
@@ -223,6 +245,8 @@ export const PptxSlideElementSchema = ElementBaseSchema.extend({
   templateDataUri: z.string().min(1).optional(),
   sourceSlideIndex: z.number().int().positive().default(1),
   textReplacements: z.array(PptxSlideTextReplacementSchema).optional(),
+  nodeGroups: z.array(PptxSlideNodeGroupSchema).optional(),
+  nodeOperations: z.array(PptxSlideNodeOperationSchema).optional(),
   summary: z.string().min(1),
   longDescription: z.string().min(1)
 }).refine((value) => value.templatePath || value.templateDataUri, {
@@ -292,6 +316,8 @@ export type DiagramElement = z.infer<typeof DiagramElementSchema>;
 export type SmartArtElement = z.infer<typeof SmartArtElementSchema>;
 export type PptxSlideElement = z.infer<typeof PptxSlideElementSchema>;
 export type PptxSlideTextReplacement = z.infer<typeof PptxSlideTextReplacementSchema>;
+export type PptxSlideNodeGroup = z.infer<typeof PptxSlideNodeGroupSchema>;
+export type PptxSlideNodeOperation = z.infer<typeof PptxSlideNodeOperationSchema>;
 export type Slide = z.infer<typeof SlideSchema>;
 export type DeckSpec = z.infer<typeof DeckSpecSchema>;
 

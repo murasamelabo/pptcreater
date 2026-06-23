@@ -3,12 +3,20 @@ import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { z } from "zod";
 import { defaultTokens } from "./color.js";
-import { DeckSpecSchema, type DeckSpec, type PptxSlideTextReplacement } from "./schema.js";
+import { DeckSpecSchema, type DeckSpec, type PptxSlideTextReplacement, type PptxSlideNodeOperation } from "./schema.js";
 
 export const DesignComponentConstraintsSchema = z.object({
   minItems: z.number().int().min(0).optional(),
   maxItems: z.number().int().min(1).optional(),
   maxLabelChars: z.number().int().min(1).optional()
+});
+
+export const DesignComponentEditableGroupSchema = z.object({
+  id: z.string().min(1),
+  axis: z.enum(["x", "y"]),
+  parentText: z.string().optional(),
+  members: z.array(z.string().min(1)).min(1),
+  minBoxEmu: z.number().int().positive().optional()
 });
 
 export const DesignComponentSchema = z.object({
@@ -17,7 +25,8 @@ export const DesignComponentSchema = z.object({
   name: z.string().min(1),
   sourceSlideIndex: z.number().int().positive(),
   bestFor: z.array(z.string().min(1)).default([]),
-  constraints: DesignComponentConstraintsSchema.default({})
+  constraints: DesignComponentConstraintsSchema.default({}),
+  editableGroups: z.array(DesignComponentEditableGroupSchema).default([])
 });
 
 export const DesignAssetPackSchema = z.object({
@@ -68,7 +77,12 @@ export async function getDesignComponent(componentId: string, options: { roots?:
 
 export async function renderDesignComponentDeck(
   componentId: string,
-  options: { title?: string; roots?: string[]; textReplacements?: PptxSlideTextReplacement[] } = {}
+  options: {
+    title?: string;
+    roots?: string[];
+    textReplacements?: PptxSlideTextReplacement[];
+    nodeOperations?: PptxSlideNodeOperation[];
+  } = {}
 ): Promise<DeckSpec> {
   const component = await getDesignComponent(componentId, { roots: options.roots });
   if (!component) {
@@ -107,6 +121,10 @@ export async function renderDesignComponentDeck(
             sourceSlideIndex: component.sourceSlideIndex,
             ...(options.textReplacements && options.textReplacements.length > 0
               ? { textReplacements: options.textReplacements }
+              : {}),
+            ...(component.editableGroups.length > 0 ? { nodeGroups: component.editableGroups } : {}),
+            ...(options.nodeOperations && options.nodeOperations.length > 0
+              ? { nodeOperations: options.nodeOperations }
               : {}),
             x: 0,
             y: 0,

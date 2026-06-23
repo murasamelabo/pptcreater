@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.5.11 - 2026-06-23
+
+- **Added structural node add/remove to the `pptxSlide` element via `nodeGroups` + `nodeOperations`.** Curated tree components can now have nodes added or removed, not just relabelled. Each design component declares `editableGroups` (a sibling set with an axis and member texts); `nodeOperations` then issues `{ op: "remove", target }` or `{ op: "add", group, label, cloneFrom? }`. The engine re-lays-out the affected sibling group **within its original footprint**, preserving the curated gap:box ratio so boxes and gaps shrink/grow together — nothing collides with neighboring groups or dangles. Removing down to a single child drops the connector bus and re-centers the box under its parent; removing all children removes the group's connectors too.
+- The relayout repositions each sibling's drop connector and resizes the parent bus automatically, and added nodes clone a sibling's box/label (and drop connector) so styling stays consistent. Operations run before shape-id renumbering and relationship rewriting, so media/relationship handling is unaffected; structures containing group shapes are left untouched as a safety guard.
+- `design-packs/tree` now declares `editableGroups` for the vertical-org, horizontal, and logic trees (the leaf sibling groups with room to re-fit). `renderDesignComponentDeck(componentId, { nodeOperations })` and the MCP `render_design_component` tool accept `nodeOperations` (and `textReplacements`); `list_design_components` surfaces each component's `editableGroups`.
+- Added `scripts/generate-tree-nodes-gallery.mjs` demonstrating add+remove on all three editable trees, and a `pptxSlideNodes` unit test suite covering remove/add/footprint-fit, group-shape safety, and unknown-target no-ops. Full suite now includes 277 tests.
+
 ## v0.5.10 - 2026-06-23
 
 - **Added `textReplacements` to the `pptxSlide` element for reusing curated design components with custom data.** A transplanted slide component previously copied the source slide's placeholder text verbatim. You can now substitute the text of individual runs either by 0-based run index (`at`) or by exact original text (`match`); replacements are XML-escaped automatically and applied after shape-id renumbering and relationship rewriting, so existing media/relationship handling is unaffected. `renderDesignComponentDeck` accepts an optional `textReplacements` array to pass the same data through the core/CLI/MCP surfaces.
