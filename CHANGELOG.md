@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.5.14 - 2026-06-24
+
+- **Added a multi-agent slide-authoring framework with a deterministic review gate.** A new `director` core module defines a six-role pipeline — Director (orchestrator), Story Architect, Content Strategist, Designer, Copywriter, and Reviewer — each with an explicit hand-off contract (what it consumes/produces) and the pptcreater tools it uses, surfaced via `describeAgentPipeline` / `AGENT_ROLES`.
+- **`reviewDeck` is the deterministic Reviewer / stop condition.** It runs the existing lint, content, and business reviews in one pass, classifies every finding as blocking / polish-fixable / advisory, scores the deck (accessibility / content / structure / overall, 0–100), and routes each issue to the agent role that owns the fix (`ownerForCode` with prefix fallbacks). The deck is "done" when there are no blocking issues; polish-fixable items are resolved automatically by `finalize_deck`.
+- Exposed the framework through the CLI (`pptcreater agents`, `pptcreater review <deck> [--no-business] [--json]`) and MCP (`list_agent_roles`, `review_deck`).
+- Documented the roles, contracts, pipeline, routing table, and iteration loop in `docs/AGENTS.md`, with a README pointer. Added director unit tests (pipeline shape, aggregated gate pass/fail, owner routing, business-review toggle). Full suite now includes 287 tests.
+
 ## v0.5.13 - 2026-06-24
 
 - **Generalized node add/remove (`nodeGroups`/`nodeOperations`) to non-tree figures via a cluster engine.** The `pptxSlide` element now supports four `layout`s in addition to `tree`: `linear-x`, `linear-y`, `staircase-x`, and `radial`. A "cluster" is a node's full visual unit (card/panel/bar frame + its title, number badge, accent bar, etc.), detected by band-partitioning the slide; clusters are repositioned along an axis within the original footprint, "between" connectors (arrows/chevrons) are regenerated per gap, spanning buses (timeline spines) are resized, optional `renumber` rewrites numeric badges, and `radial` rings re-distribute nodes by angle (auto-excluding a centroid hub such as a PDCA badge). New group fields: `layout`, `connectorBetween`, `renumber`.

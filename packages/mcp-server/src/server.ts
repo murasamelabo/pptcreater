@@ -36,7 +36,9 @@ import {
   registerTemplateManifest,
   renderDesignComponentDeck,
   reviewBusinessDeck,
+  reviewDeck,
   reviewDeckContent,
+  describeAgentPipeline,
   scaffoldDeckFromTemplate,
   searchTemplateEntries,
   searchTemplates,
@@ -494,6 +496,44 @@ export function createPptcreaterMcpServer(): McpServer {
       const parsedDeck = parseDeckSpec(deck);
       return jsonText(reviewBusinessDeck(parsedDeck, { locale: locale ?? parsedDeck.locale, styleMode, customerFacing, importantMeeting }));
     }
+  );
+
+  server.registerTool(
+    "review_deck",
+    {
+      title: "Aggregated multi-agent review gate",
+      description:
+        "Run the Director's aggregated quality gate: lint + content + business reviews in one pass, with every finding classified (blocking / polish-fixable / advisory), scored (accessibility/content/structure/overall), and routed to the owning agent role (designer/copywriter/story-architect/content-strategist). Use this as the Reviewer step and the loop's stop condition: when ok=true, finalize_deck then render_pptx; otherwise dispatch each blocking issue to its owner role and re-run.",
+      inputSchema: {
+        deck: DeckSpecSchema,
+        locale: LocaleSchema.optional(),
+        contentMode: ContentModeSchema.optional(),
+        styleMode: z.enum(BUSINESS_STYLE_MODES).optional(),
+        includeBusinessReview: z.boolean().default(true)
+      }
+    },
+    async ({ deck, locale, contentMode, styleMode, includeBusinessReview }) => {
+      const parsedDeck = parseDeckSpec(deck);
+      return jsonText(
+        reviewDeck(parsedDeck, {
+          locale: locale ?? parsedDeck.locale,
+          contentMode: contentMode ?? parsedDeck.metadata.contentMode ?? "presentation",
+          styleMode,
+          includeBusinessReview
+        })
+      );
+    }
+  );
+
+  server.registerTool(
+    "list_agent_roles",
+    {
+      title: "List slide-authoring agent roles",
+      description:
+        "Return the six-role slide-authoring pipeline (director, story-architect, content-strategist, designer, copywriter, reviewer) with each role's responsibility, the hand-off contract it consumes/produces, and the pptcreater tools it should use. Use this to orchestrate a multi-agent workflow where the Director owns the shared DeckSpec and review_deck is the stop condition.",
+      inputSchema: {}
+    },
+    async () => jsonText({ pipeline: describeAgentPipeline() })
   );
 
   server.registerTool(

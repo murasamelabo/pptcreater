@@ -574,6 +574,25 @@ When using source visuals, prefer recreation as editable PowerPoint shapes when 
 
 When a deck uses external websites as references, record each source in `metadata.sources` with its actual `url`. `render_pptx`, `render_studio`, and `polish_deck_layout` automatically add or update the final references slide (`参考URL・出典` / `References and sources`) so the deck ends with a consolidated list of reference URLs. Per-slide citations are optional for URL-backed sources as long as the final references slide contains the actual URLs.
 
+## Multi-agent slide authoring
+
+For larger or higher-stakes decks, pptcreater supports a six-role agent workflow — Director,
+Story Architect, Content Strategist, Designer, Copywriter, and Reviewer — coordinated around one
+shared `DeckSpec`. The Reviewer step is deterministic: `reviewDeck` runs lint + content + business
+reviews in one pass, classifies every finding (blocking / polish-fixable / advisory), scores the
+deck (accessibility / content / structure / overall), and routes each issue to the agent role that
+owns the fix, so the iteration loop stops on objective criteria.
+
+```powershell
+pptcreater agents                 # print the role pipeline + hand-off contracts
+pptcreater review deck.json       # aggregated, routed, scored review gate
+pptcreater review deck.json --json --no-business
+```
+
+From MCP, use `list_agent_roles` to discover the pipeline and `review_deck` as the Reviewer/stop
+condition (then `finalize_deck` + `render_pptx` when `ok` is true). See
+[`docs/AGENTS.md`](docs/AGENTS.md) for the roles, contracts, routing table, and loop.
+
 ## Design principles
 
 - One slide, one message

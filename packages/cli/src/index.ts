@@ -31,6 +31,8 @@ import {
   registerTemplateManifest,
   reviewBusinessDeck,
   reviewDeckContent,
+  reviewDeck,
+  describeAgentPipeline,
   renderDesignComponentDeck,
   scaffoldDeckFromTemplate,
   searchTemplateEntries,
@@ -411,6 +413,62 @@ program
     if (!report.ok) {
       process.exitCode = 1;
     }
+  }));
+
+program
+  .command("review")
+  .description("Aggregated multi-agent review gate: lint + content + business, classified, scored, and routed to owning agent roles.")
+  .argument("<deck>", "DeckSpec JSON path")
+  .option("--locale <locale>", "Review locale; defaults to the deck locale")
+  .option("--no-business", "Skip the business storyline review")
+  .option("--json", "Emit JSON", false)
+  .action(commandAction(async (deckPath: string, options: { locale?: string; business: boolean; json: boolean }) => {
+    const deck = parseDeckSpec(await readJson(deckPath));
+    const locale = options.locale ? asLocale(options.locale) : deck.locale;
+    const report = reviewDeck(deck, { locale, includeBusinessReview: options.business });
+
+    if (options.json) {
+      console.log(JSON.stringify(report, null, 2));
+      if (!report.ok) process.exitCode = 1;
+      return;
+    }
+
+    console.log(
+      `Scores  overall=${report.scores.overall} a11y=${report.scores.accessibility} content=${report.scores.content} structure=${report.scores.structure}`
+    );
+    console.log(report.summary);
+    if (report.blocking.length > 0) {
+      console.log("\nBlocking (route to owner role):");
+      report.blocking.forEach((i) => console.log(`  [${i.owner}] ${i.code} ${i.path}: ${i.message}`));
+    }
+    if (report.polishFixable.length > 0) {
+      console.log(`\nPolish-fixable (auto-resolved by finalize): ${report.polishFixable.length}`);
+    }
+    if (report.advisory.length > 0) {
+      console.log(`Advisory: ${report.advisory.length}`);
+    }
+    if (!report.ok) {
+      process.exitCode = 1;
+    }
+  }));
+
+program
+  .command("agents")
+  .description("List the six-role slide-authoring agent pipeline with hand-off contracts and tools.")
+  .option("--json", "Emit JSON", false)
+  .action(commandAction(async (options: { json: boolean }) => {
+    const pipeline = describeAgentPipeline();
+    if (options.json) {
+      console.log(JSON.stringify({ pipeline }, null, 2));
+      return;
+    }
+    pipeline.forEach((role, index) => {
+      console.log(`${index + 1}. ${role.title} (${role.id})`);
+      console.log(`   responsibility: ${role.responsibility}`);
+      console.log(`   consumes: ${role.consumes}`);
+      console.log(`   produces: ${role.produces}`);
+      console.log(`   tools: ${role.tools.join(", ")}`);
+    });
   }));
 
 program
