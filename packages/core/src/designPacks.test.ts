@@ -103,4 +103,53 @@ describe("design asset packs", () => {
       expect(element.templatePath).toBe(join(zukaiDir, "zukai.pptx"));
     }
   });
+
+  it("passes editableGroups (with layout) into the pptxSlide nodeGroups and merges nodeOperations", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pptcreater-design-groups-"));
+    const packDir = join(root, "zukai");
+    await mkdir(packDir, { recursive: true });
+    await writeFile(join(packDir, "zukai.pptx"), "placeholder");
+    await writeFile(
+      join(packDir, "manifest.json"),
+      JSON.stringify({
+        id: "zukai",
+        name: "Zukai pack",
+        description: "Zukai components.",
+        version: "0.1.0",
+        sourcePptx: "zukai.pptx",
+        components: [
+          {
+            id: "flow-horizontal-p1",
+            kind: "flow-horizontal",
+            name: "Flow H P1",
+            sourceSlideIndex: 4,
+            editableGroups: [
+              {
+                id: "items",
+                axis: "x",
+                layout: "linear-x",
+                connectorBetween: true,
+                renumber: true,
+                members: ["A", "B", "C"]
+              }
+            ]
+          }
+        ]
+      }),
+      "utf8"
+    );
+
+    const deck = await renderDesignComponentDeck("flow-horizontal-p1", {
+      roots: [root],
+      nodeOperations: [{ op: "add", group: "items", label: "D", cloneFrom: "B" }]
+    });
+    const element = deck.slides[0]?.elements[0];
+    expect(element?.type).toBe("pptxSlide");
+    if (element?.type === "pptxSlide") {
+      expect(element.nodeGroups).toHaveLength(1);
+      expect(element.nodeGroups?.[0]?.layout).toBe("linear-x");
+      expect(element.nodeGroups?.[0]?.members).toEqual(["A", "B", "C"]);
+      expect(element.nodeOperations).toEqual([{ op: "add", group: "items", label: "D", cloneFrom: "B" }]);
+    }
+  });
 });

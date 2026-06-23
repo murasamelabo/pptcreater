@@ -100,3 +100,93 @@ describe("applyPptxSlideNodeOperations", () => {
     ).toBe(xml);
   });
 });
+
+// ── Generic cluster engine (linear-x) ──────────────────────────────────────
+// Each node is a card cluster: a roundRect frame + a title label + a numeric badge,
+// all sharing the frame's band. A rightArrow sits in the gap between cards.
+// Coordinates are realistic EMU (millions) so the engine's positional tolerance
+// (a few thousand EMU) does not blur small synthetic geometry.
+function card(baseId: number, x: number, title: string, badge: string): string {
+  return [
+    box(baseId, x, 3000000, 2000000, 1500000, "roundRect"), // frame
+    label(baseId + 1, x + 200000, 3500000, 1600000, 400000, title), // title (anchor)
+    label(baseId + 2, x + 100000, 3100000, 400000, 400000, badge) // numeric badge
+  ].join("");
+}
+
+function buildClusterRow(): string {
+  return [
+    card(2, 1000000, "A", "1"),
+    card(5, 4000000, "B", "2"),
+    // arrow in the gap between A (ends 3000000) and B (starts 4000000), center x=3500000.
+    box(8, 3200000, 3600000, 600000, 400000, "rightArrow")
+  ].join("");
+}
+
+const clusterGroup: PptxSlideNodeGroup = {
+  id: "c",
+  axis: "x",
+  layout: "linear-x",
+  connectorBetween: true,
+  renumber: true,
+  members: ["A", "B"],
+  minBoxEmu: 100
+};
+
+function frames(xml: string): Array<{ x: number; cx: number }> {
+  return boxes(xml);
+}
+function badges(xml: string): string[] {
+  // badge labels are the numeric <a:t> values
+  return [...xml.matchAll(/<a:t>(\d{1,2})<\/a:t>/g)].map((m) => m[1]);
+}
+function arrowCount(xml: string): number {
+  return (xml.match(/prst="rightArrow"/g) ?? []).length;
+}
+
+describe("applyPptxSlideNodeOperations (cluster engine)", () => {
+  it("adds a cloned cluster, fits all within the footprint, renumbers, and regenerates arrows", () => {
+    const xml = buildClusterRow();
+    const out = applyPptxSlideNodeOperations(xml, [clusterGroup], [
+      { op: "add", group: "c", cloneFrom: "A", label: "C", at: 2 }
+    ]);
+    expect(out).toContain("<a:t>A</a:t>");
+    expect(out).toContain("<a:t>B</a:t>");
+    expect(out).toContain("<a:t>C</a:t>");
+    const f = frames(out);
+    expect(f).toHaveLength(3);
+    // All frames stay inside the original footprint [1000000, 6000000].
+    for (const b of f) {
+      expect(b.x).toBeGreaterThanOrEqual(1000000 - 2000);
+      expect(b.x + b.cx).toBeLessThanOrEqual(6000000 + 2000);
+    }
+    // Badges renumbered 1,2,3 in visual order.
+    expect(badges(out).sort()).toEqual(["1", "2", "3"]);
+    // Two gaps → two regenerated arrows.
+    expect(arrowCount(out)).toBe(2);
+  });
+
+  it("removes a cluster (all its shapes) and regenerates a single-card layout", () => {
+    const xml = buildClusterRow();
+    const out = applyPptxSlideNodeOperations(xml, [clusterGroup], [{ op: "remove", target: "B" }]);
+    expect(out).toContain("<a:t>A</a:t>");
+    expect(out).not.toContain("<a:t>B</a:t>");
+    expect(frames(out)).toHaveLength(1);
+    // Single card → no between arrows.
+    expect(arrowCount(out)).toBe(0);
+    // Remaining badge keeps "1".
+    expect(badges(out)).toEqual(["1"]);
+  });
+
+  it("clones the full cluster (frame + title + badge), not just the title", () => {
+    const xml = buildClusterRow();
+    const out = applyPptxSlideNodeOperations(xml, [clusterGroup], [
+      { op: "add", group: "c", cloneFrom: "A", label: "C" }
+    ]);
+    // 3 frames (cards), 3 titles, 3 badges after the clone.
+    expect(frames(out)).toHaveLength(3);
+    expect((out.match(/<a:t>[A-C]<\/a:t>/g) ?? []).length).toBe(3);
+    expect(badges(out)).toHaveLength(3);
+  });
+});
+

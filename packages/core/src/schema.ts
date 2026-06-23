@@ -219,8 +219,11 @@ export const PptxSlideTextReplacementSchema = z.union([
 export const PptxSlideNodeGroupSchema = z.object({
   id: z.string().min(1),
   axis: z.enum(["x", "y"]),
+  layout: z.enum(["tree", "linear-x", "linear-y", "staircase-x", "radial"]).optional(),
   parentText: z.string().optional(),
   members: z.array(z.string().min(1)).min(1),
+  connectorBetween: z.boolean().optional(),
+  renumber: z.boolean().optional(),
   minBoxEmu: z.number().int().positive().optional()
 });
 

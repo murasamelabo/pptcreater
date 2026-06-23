@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.5.13 - 2026-06-24
+
+- **Generalized node add/remove (`nodeGroups`/`nodeOperations`) to non-tree figures via a cluster engine.** The `pptxSlide` element now supports four `layout`s in addition to `tree`: `linear-x`, `linear-y`, `staircase-x`, and `radial`. A "cluster" is a node's full visual unit (card/panel/bar frame + its title, number badge, accent bar, etc.), detected by band-partitioning the slide; clusters are repositioned along an axis within the original footprint, "between" connectors (arrows/chevrons) are regenerated per gap, spanning buses (timeline spines) are resized, optional `renumber` rewrites numeric badges, and `radial` rings re-distribute nodes by angle (auto-excluding a centroid hub such as a PDCA badge). New group fields: `layout`, `connectorBetween`, `renumber`.
+- **Enabled node add/remove on 33 `zukai` components across 7 figure kinds** — flow (horizontal/vertical), cycle, step, gantt, and lists (vertical/horizontal) — each verified by rendering an add+remove gallery to PNG via PowerPoint. Decorative/special-geometry patterns (diagonal lines, triangles, dotted rings, alternating central-bus) and fixed-geometry/multi-axis figures (matrix, venn, formula, scale, comparison, before-after, list-enumeration) intentionally remain text-edit-only, so every shipped editable group is visually verified not to break.
+- Design components can declare `editableGroups` with the new fields; `renderDesignComponentDeck` and the MCP `render_design_component` tool pass them through to `pptxSlide.nodeGroups` and merge caller `nodeOperations`.
+- Added cluster-engine unit tests (linear-x add/remove/footprint-fit/renumber/connector regeneration, full-cluster clone) and a design-pack layout-passthrough test. Full suite now includes 281 tests.
+
 ## v0.5.12 - 2026-06-24
 
 - **Added the `zukai` design pack: 14 figure types × 83 curated schematic components.** Alongside the `tree` pack, pptcreater now ships a curated "図解デザイン大全" pack covering horizontal/vertical flow, cycle, before/after, matrix, venn, formula (cross), comparison, scale, step, gantt, and three list styles (vertical, horizontal, enumeration). Each figure type is a `kind` with 5-6 human-designed variations, all transplantable as fully editable PowerPoint shapes/text via `pptxSlide` (no flattened images).

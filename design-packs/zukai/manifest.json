@@ -15,7 +15,22 @@
         "工程・手順を左から右へ"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "x",
+          "layout": "linear-x",
+          "members": [
+            "要件定義",
+            "設計",
+            "開発",
+            "テスト",
+            "リリース"
+          ],
+          "connectorBetween": true,
+          "renumber": true
+        }
+      ]
     },
     {
       "id": "flow-horizontal-p2",
@@ -27,7 +42,22 @@
         "工程・手順を左から右へ"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "x",
+          "layout": "linear-x",
+          "members": [
+            "1. 要件定義",
+            "2. 設計",
+            "3. 開発",
+            "4. テスト",
+            "5. リリース"
+          ],
+          "connectorBetween": true,
+          "renumber": true
+        }
+      ]
     },
     {
       "id": "flow-horizontal-p3",
@@ -39,7 +69,22 @@
         "工程・手順を左から右へ"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "x",
+          "layout": "linear-x",
+          "members": [
+            "要件定義",
+            "設計",
+            "開発",
+            "テスト",
+            "リリース"
+          ],
+          "connectorBetween": true,
+          "renumber": true
+        }
+      ]
     },
     {
       "id": "flow-horizontal-p4",
@@ -51,7 +96,22 @@
         "工程・手順を左から右へ"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "x",
+          "layout": "linear-x",
+          "members": [
+            "要件定義",
+            "設計",
+            "開発",
+            "テスト",
+            "リリース"
+          ],
+          "connectorBetween": true,
+          "renumber": true
+        }
+      ]
     },
     {
       "id": "flow-horizontal-p5",
@@ -75,7 +135,22 @@
         "工程・手順を左から右へ"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "x",
+          "layout": "linear-x",
+          "members": [
+            "要件定義",
+            "設計",
+            "開発",
+            "テスト",
+            "リリース"
+          ],
+          "connectorBetween": true,
+          "renumber": true
+        }
+      ]
     },
     {
       "id": "flow-vertical-p1",
@@ -87,7 +162,20 @@
         "プロセスを上から下へ"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "y",
+          "layout": "linear-y",
+          "members": [
+            "課題の発見",
+            "仮説の立案",
+            "検証・実行",
+            "改善・定着"
+          ],
+          "renumber": true
+        }
+      ]
     },
     {
       "id": "flow-vertical-p2",
@@ -99,7 +187,20 @@
         "プロセスを上から下へ"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "y",
+          "layout": "linear-y",
+          "members": [
+            "1. 課題の発見",
+            "2. 仮説の立案",
+            "3. 検証・実行",
+            "4. 改善・定着"
+          ],
+          "renumber": true
+        }
+      ]
     },
     {
       "id": "flow-vertical-p3",
@@ -111,7 +212,20 @@
         "プロセスを上から下へ"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "y",
+          "layout": "linear-y",
+          "members": [
+            "課題の発見",
+            "仮説の立案",
+            "検証・実行",
+            "改善・定着"
+          ],
+          "renumber": true
+        }
+      ]
     },
     {
       "id": "flow-vertical-p4",
@@ -135,7 +249,20 @@
         "プロセスを上から下へ"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "y",
+          "layout": "linear-y",
+          "members": [
+            "課題の発見",
+            "仮説の立案",
+            "検証・実行",
+            "改善・定着"
+          ],
+          "renumber": true
+        }
+      ]
     },
     {
       "id": "flow-vertical-p6",
@@ -147,7 +274,20 @@
         "プロセスを上から下へ"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "y",
+          "layout": "linear-y",
+          "members": [
+            "課題の発見",
+            "仮説の立案",
+            "検証・実行",
+            "改善・定着"
+          ],
+          "renumber": true
+        }
+      ]
     },
     {
       "id": "cycle-p1",
@@ -159,7 +299,20 @@
         "繰り返す循環・PDCA"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "x",
+          "layout": "radial",
+          "members": [
+            "P  計画",
+            "D  実行",
+            "C  評価",
+            "A  改善"
+          ],
+          "connectorBetween": true
+        }
+      ]
     },
     {
       "id": "cycle-p2",
@@ -171,7 +324,20 @@
         "繰り返す循環・PDCA"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "x",
+          "layout": "radial",
+          "members": [
+            "改善サイクル",
+            "計画",
+            "実行",
+            "振り返り"
+          ],
+          "connectorBetween": true
+        }
+      ]
     },
     {
       "id": "cycle-p3",
@@ -207,7 +373,19 @@
         "繰り返す循環・PDCA"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "x",
+          "layout": "linear-x",
+          "members": [
+            "計画",
+            "実行",
+            "評価",
+            "改善"
+          ]
+        }
+      ]
     },
     {
       "id": "before-after-p1",
@@ -651,7 +829,19 @@
         "段階的な成長・到達"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "x",
+          "layout": "staircase-x",
+          "members": [
+            "認知",
+            "検討",
+            "導入",
+            "定着・拡大"
+          ]
+        }
+      ]
     },
     {
       "id": "step-p2",
@@ -687,7 +877,19 @@
         "段階的な成長・到達"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "x",
+          "layout": "staircase-x",
+          "members": [
+            "認知",
+            "検討",
+            "導入",
+            "定着・拡大"
+          ]
+        }
+      ]
     },
     {
       "id": "step-p5",
@@ -723,7 +925,20 @@
         "タスクと期間の計画"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "y",
+          "layout": "linear-y",
+          "members": [
+            "要件定義",
+            "設計",
+            "開発",
+            "テスト",
+            "リリース準備"
+          ]
+        }
+      ]
     },
     {
       "id": "gantt-p2",
@@ -735,7 +950,20 @@
         "タスクと期間の計画"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "y",
+          "layout": "linear-y",
+          "members": [
+            "要件定義",
+            "設計",
+            "開発",
+            "テスト",
+            "リリース準備"
+          ]
+        }
+      ]
     },
     {
       "id": "gantt-p3",
@@ -747,7 +975,20 @@
         "タスクと期間の計画"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "y",
+          "layout": "linear-y",
+          "members": [
+            "要件定義",
+            "設計",
+            "開発",
+            "テスト",
+            "リリース準備"
+          ]
+        }
+      ]
     },
     {
       "id": "gantt-p4",
@@ -759,7 +1000,24 @@
         "タスクと期間の計画"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "y",
+          "layout": "linear-y",
+          "members": [
+            "要件定義",
+            "100%",
+            "設計",
+            "開発",
+            "60%",
+            "テスト",
+            "20%",
+            "リリース準備",
+            "0%"
+          ]
+        }
+      ]
     },
     {
       "id": "gantt-p5",
@@ -771,7 +1029,20 @@
         "タスクと期間の計画"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "y",
+          "layout": "linear-y",
+          "members": [
+            "要件定義",
+            "設計",
+            "開発",
+            "テスト",
+            "リリース準備"
+          ]
+        }
+      ]
     },
     {
       "id": "gantt-p6",
@@ -783,7 +1054,18 @@
         "タスクと期間の計画"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "y",
+          "layout": "linear-y",
+          "members": [
+            "計画",
+            "開発",
+            "評価"
+          ]
+        }
+      ]
     },
     {
       "id": "list-vertical-p1",
@@ -795,7 +1077,20 @@
         "要点を縦に整理"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "y",
+          "layout": "linear-y",
+          "members": [
+            "一貫した品質",
+            "スピード対応",
+            "柔軟な拡張性",
+            "手厚いサポート"
+          ],
+          "renumber": true
+        }
+      ]
     },
     {
       "id": "list-vertical-p2",
@@ -807,7 +1102,20 @@
         "要点を縦に整理"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "y",
+          "layout": "linear-y",
+          "members": [
+            "一貫した品質",
+            "スピード対応",
+            "柔軟な拡張性",
+            "手厚いサポート"
+          ],
+          "renumber": true
+        }
+      ]
     },
     {
       "id": "list-vertical-p3",
@@ -819,7 +1127,22 @@
         "要点を縦に整理"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "y",
+          "layout": "linear-y",
+          "members": [
+            "✓",
+            "一貫した品質",
+            "スピード対応",
+            "柔軟な拡張性",
+            "手厚いサポート",
+            "確かな実績"
+          ],
+          "renumber": true
+        }
+      ]
     },
     {
       "id": "list-vertical-p4",
@@ -831,7 +1154,21 @@
         "要点を縦に整理"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "y",
+          "layout": "linear-y",
+          "members": [
+            "一貫した品質",
+            "スピード対応",
+            "柔軟な拡張性",
+            "手厚いサポート",
+            "確かな実績"
+          ],
+          "renumber": true
+        }
+      ]
     },
     {
       "id": "list-vertical-p5",
@@ -843,7 +1180,20 @@
         "要点を縦に整理"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "y",
+          "layout": "linear-y",
+          "members": [
+            "一貫した品質",
+            "スピード対応",
+            "柔軟な拡張性",
+            "手厚いサポート"
+          ],
+          "renumber": true
+        }
+      ]
     },
     {
       "id": "list-vertical-p6",
@@ -855,7 +1205,21 @@
         "要点を縦に整理"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "y",
+          "layout": "linear-y",
+          "members": [
+            "一貫した品質",
+            "スピード対応",
+            "柔軟な拡張性",
+            "手厚いサポート",
+            "確かな実績"
+          ],
+          "renumber": true
+        }
+      ]
     },
     {
       "id": "list-horizontal-p1",
@@ -867,7 +1231,19 @@
         "並列の要素を横に"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "x",
+          "layout": "linear-x",
+          "members": [
+            "品質",
+            "速度",
+            "拡張",
+            "支援"
+          ]
+        }
+      ]
     },
     {
       "id": "list-horizontal-p2",
@@ -879,7 +1255,18 @@
         "並列の要素を横に"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "x",
+          "layout": "linear-x",
+          "members": [
+            "高品質",
+            "高速対応",
+            "柔軟拡張"
+          ]
+        }
+      ]
     },
     {
       "id": "list-horizontal-p3",
@@ -891,7 +1278,20 @@
         "並列の要素を横に"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "x",
+          "layout": "linear-x",
+          "members": [
+            "品質",
+            "速度",
+            "拡張",
+            "安心",
+            "支援"
+          ]
+        }
+      ]
     },
     {
       "id": "list-horizontal-p4",
@@ -903,7 +1303,19 @@
         "並列の要素を横に"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "x",
+          "layout": "linear-x",
+          "members": [
+            "品質",
+            "速度",
+            "拡張",
+            "支援"
+          ]
+        }
+      ]
     },
     {
       "id": "list-horizontal-p5",
@@ -915,7 +1327,19 @@
         "並列の要素を横に"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "x",
+          "layout": "linear-x",
+          "members": [
+            "品質",
+            "速度",
+            "拡張",
+            "支援"
+          ]
+        }
+      ]
     },
     {
       "id": "list-horizontal-p6",
@@ -927,7 +1351,23 @@
         "並列の要素を横に"
       ],
       "constraints": {},
-      "editableGroups": []
+      "editableGroups": [
+        {
+          "id": "items",
+          "axis": "x",
+          "layout": "linear-x",
+          "members": [
+            "品質",
+            "速度",
+            "拡張性",
+            "安全性",
+            "操作性",
+            "保守性",
+            "信頼性",
+            "連携"
+          ]
+        }
+      ]
     },
     {
       "id": "list-enumeration-p1",

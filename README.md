@@ -239,6 +239,15 @@ To change the *number* of nodes (not just their text), a component can declare `
 
 The engine re-lays-out each edited sibling group **within its original footprint**, preserving the curated gap-to-box ratio so boxes and gaps scale together — added nodes never collide with neighboring groups, and removed nodes never leave a dangling connector. Removing down to one child drops the connector bus and re-centers the remaining box under its parent. Added nodes clone a sibling's box/label/connector so styling stays consistent. Use `node scripts/generate-tree-nodes-gallery.mjs` to render an add/remove demo across all three editable trees. `list_design_components` reports each component's `editableGroups` (and their `axis`/`members`) so agents know which nodes are editable.
 
+Node add/remove also works on **non-tree figures** through a generic cluster engine. A group's `layout` selects the relayout strategy:
+
+- `tree` — hierarchical sibling rows/columns under a parent (the tree pack).
+- `linear-x` / `linear-y` — a row/column of card clusters (flow, lists, gantt rows); `connectorBetween: true` regenerates the arrow/chevron in each gap; `renumber: true` rewrites numeric step badges.
+- `staircase-x` — ascending step blocks sharing a baseline (their heights ramp automatically).
+- `radial` — a ring of nodes around an optional centroid hub (cycles); the hub is auto-detected and preserved while the ring re-distributes by angle.
+
+A "cluster" is a node's full visual unit (frame card/panel/bar + its title, badge, accent bar, …), so the whole node moves, scales, clones, and deletes together. In the `zukai` pack, 33 components across 7 kinds (flow horizontal/vertical, cycle, step, gantt, list vertical/horizontal) ship with `editableGroups`; fixed-geometry and decorative-layout patterns (matrix, venn, formula, scale, comparison, before-after, list-enumeration, and a few special variants) remain text-edit-only. Render `node scripts/generate-zukai-node-gallery.mjs` for an add+remove demo across every enabled component.
+
 CLI usage:
 
 ```powershell
