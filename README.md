@@ -170,7 +170,9 @@ For structured visuals, prefer MCP `generate_schematic` instead of freehand SVG.
 - `list`, `list-horizontal`, `list-enumeration`: clean bullet/list layouts
 - `mockup`: UI/mockup-style visual block
 
-Each schematic supports `tone`: `minimal`, `cool`, `luxury`, or `report`. The presets use low-chroma palettes, aligned grids, readable labels, and safe SVG elements, reducing renderer failures such as unsupported filters, styles, or complex patterns.
+Each schematic supports `tone`: `minimal`, `cool`, `luxury`, or `report`. The presets use low-chroma palettes, aligned grids, and readable editable labels, reducing renderer failures from flattened or overly complex custom SVGs.
+
+For true PowerPoint SmartArt experiments, DeckSpec also supports a `smartart` element that transplants an existing SmartArt `graphicFrame` and its `ppt/diagrams/*` OpenXML parts from a template `.pptx`/`.potx` into the generated deck. Use this when you intentionally want PowerPoint-native SmartArt behavior and have a curated SmartArt template deck; otherwise prefer `generate_schematic` / `generate_native_diagram` for deterministic cross-platform generation.
 
 CLI usage:
 

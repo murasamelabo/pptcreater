@@ -193,12 +193,25 @@ export const DiagramElementSchema = ElementBaseSchema.extend({
   longDescription: z.string().min(1)
 });
 
+export const SmartArtElementSchema = ElementBaseSchema.extend({
+  type: z.literal("smartart"),
+  h: z.number().positive(),
+  templatePath: z.string().min(1).optional(),
+  templateDataUri: z.string().min(1).optional(),
+  sourceSlideIndex: z.number().int().positive().default(1),
+  summary: z.string().min(1),
+  longDescription: z.string().min(1)
+}).refine((value) => value.templatePath || value.templateDataUri, {
+  message: "SmartArt elements require templatePath or templateDataUri"
+});
+
 export const SlideElementSchema = z.discriminatedUnion("type", [
   TextElementSchema,
   ShapeElementSchema,
   SvgElementSchema,
   ImageElementSchema,
-  DiagramElementSchema
+  DiagramElementSchema,
+  SmartArtElementSchema
 ]);
 
 export const SlideSchema = z.object({
@@ -251,6 +264,7 @@ export type ShapeElement = z.infer<typeof ShapeElementSchema>;
 export type SvgElement = z.infer<typeof SvgElementSchema>;
 export type ImageElement = z.infer<typeof ImageElementSchema>;
 export type DiagramElement = z.infer<typeof DiagramElementSchema>;
+export type SmartArtElement = z.infer<typeof SmartArtElementSchema>;
 export type Slide = z.infer<typeof SlideSchema>;
 export type DeckSpec = z.infer<typeof DeckSpecSchema>;
 

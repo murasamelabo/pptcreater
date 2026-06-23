@@ -674,6 +674,52 @@ describe("schematic diagram rendering", () => {
     }
   });
 
+  it("uses kind-specific SmartArt-like native layouts for the five core schematics", () => {
+    const base = {
+      title: "Core schematic",
+      summary: "Core schematic",
+      longDescription: "This native schematic verifies a kind-specific SmartArt-like visual contract.",
+      items: ["Root", "A", "B", "C", "D", "E"],
+      secondaryItems: ["Q1", "Q2", "Q3", "Q4"],
+      axisX: "Effort",
+      axisY: "Impact",
+      tone: "minimal" as const
+    };
+    const render = (kind: "tree" | "cycle" | "correlation" | "matrix" | "gantt") =>
+      renderNativeSchematicDiagram({ ...base, kind }, { frame: { x: 0.5, y: 1.5, w: 12.2, h: 5.7 }, idPrefix: `core-${kind}` });
+
+    const tree = render("tree").elements;
+    const treeRoot = tree.find((element) => element.type === "shape" && element.id === "core-tree-root-shape");
+    const treeBus = tree.find((element) => element.type === "shape" && element.id === "core-tree-tree-bus");
+    const treeChildren = tree.filter((element) => element.type === "shape" && /core-tree-child-\d-shape/.test(element.id));
+    expect(treeRoot?.type).toBe("shape");
+    expect(treeBus?.type).toBe("shape");
+    expect(treeChildren.length).toBeGreaterThan(1);
+    if (treeRoot?.type === "shape") {
+      expect(treeChildren.every((child) => child.type === "shape" && child.y > treeRoot.y + treeRoot.h)).toBe(true);
+    }
+
+    const cycle = render("cycle").elements;
+    expect(cycle.some((element) => element.type === "shape" && element.id === "core-cycle-cycle-ring")).toBe(true);
+    expect(cycle.some((element) => element.type === "shape" && element.id === "core-cycle-cycle-core")).toBe(true);
+    expect(cycle.filter((element) => element.type === "shape" && /core-cycle-cycle-node-\d/.test(element.id))).toHaveLength(6);
+    expect(cycle.some((element) => element.type === "shape" && /core-cycle-cycle-\d-card/.test(element.id))).toBe(false);
+
+    const correlation = render("correlation").elements;
+    expect(correlation.some((element) => element.type === "shape" && element.id === "core-correlation-hub")).toBe(true);
+    expect(correlation.filter((element) => element.type === "shape" && /core-correlation-leaf-\d-shape/.test(element.id)).length).toBeGreaterThan(2);
+
+    const matrix = render("matrix").elements;
+    expect(matrix.filter((element) => element.type === "shape" && /core-matrix-matrix-/.test(element.id))).toHaveLength(4);
+    expect(matrix.some((element) => element.type === "shape" && element.id === "core-matrix-axis-x-line")).toBe(true);
+    expect(matrix.some((element) => element.type === "shape" && element.id === "core-matrix-axis-y-line")).toBe(true);
+
+    const gantt = render("gantt").elements;
+    expect(gantt.some((element) => element.type === "shape" && element.id === "core-gantt-gantt-head")).toBe(true);
+    expect(gantt.filter((element) => element.type === "shape" && /core-gantt-bar-\d/.test(element.id)).length).toBeGreaterThan(2);
+    expect(gantt.filter((element) => element.type === "shape" && /core-gantt-gantt-v-/.test(element.id)).length).toBeGreaterThan(2);
+  });
+
   it("provides complete mode-aware schematic preset sets", () => {
     for (const [styleProfile, preset] of Object.entries(SCHEMATIC_STYLE_PRESETS)) {
       expect(schematicToneForStyleProfile(styleProfile)).toBe(preset.tone);

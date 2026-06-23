@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## v0.5.8 - 2026-06-23
+
+- **Raised the quality bar for the first five high-value native schematics (`cycle`, `tree`, `correlation`, `matrix`, `gantt`).** These kinds now have SmartArt-style, kind-specific native layouts instead of simple card approximations: tree uses a root/bus/child hierarchy, cycle uses a ring with numbered circular nodes and a central loop label, correlation uses a hub-and-spoke layout, matrix uses true 2x2 quadrants with axes, and Gantt uses a header/grid plus timeline bars.
+- **Added SmartArt OpenXML transplant support.** DeckSpec can now include `smartart` elements that copy a real SmartArt `graphicFrame` plus its `ppt/diagrams/data|layout|quickStyle|colors|drawing` parts from a template PPTX/POTX into the generated deck. This enables true PowerPoint SmartArt PoCs without relying on flattened images.
+- Added layout contract tests for the five core schematics and a SmartArt transplant regression test. Full suite now includes 267 tests.
+- Regenerated the GitHub Copilot schematic QA deck as `generated/copilot-diagram-catalog-v058.pptx`.
+- Validated the SmartArt transplant path with a local PoC deck containing hierarchy, org chart, horizontal hierarchy, and radial SmartArt examples.
+
 ## v0.5.7 - 2026-06-22
 
 - **Restored the semantic shape of all 25 native schematic kinds.** The first native schematic implementation made all presets editable, but several kinds collapsed into generic card lists. Native schematics now preserve their intended visual grammar: tree hierarchy, cyclic loop, map pins and legend, honeycomb/puzzle clusters, hub-and-spoke correlation, set groups, bubble scale comparison, concentric growth rings, Gantt bars, ranking bars, mockup window, equation/cross, stair steps, stacked layers, and other kind-specific structures.

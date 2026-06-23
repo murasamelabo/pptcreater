@@ -2533,6 +2533,65 @@ function nativeSchematicPanel(frame: NativeRect, idPrefix: string, nextOrder: ()
   });
 }
 
+function nativeSmartPill(
+  id: string,
+  rect: NativeRect,
+  label: string,
+  fill: string,
+  stroke: string,
+  nextOrder: () => number,
+  options: { badge?: string; sublabel?: string; textColor?: string; bold?: boolean; size?: number; maxLines?: number } = {}
+): NativeDiagramElement[] {
+  const elements: NativeDiagramElement[] = [
+    nativeShape(`${id}-shape`, "roundRect", rect, {
+      fill,
+      line: { color: stroke, width: 1.2 },
+      radius: 0.14,
+      decorative: true,
+      readingOrder: nextOrder()
+    })
+  ];
+  const textX = rect.x + (options.badge ? 0.58 : 0.2);
+  const textW = rect.w - (options.badge ? 0.76 : 0.4);
+  if (options.badge) {
+    elements.push(
+      nativeShape(`${id}-badge`, "ellipse", { x: rect.x + 0.18, y: rect.y + rect.h / 2 - 0.16, w: 0.32, h: 0.32 }, {
+        fill: stroke,
+        line: { color: stroke, width: 0.1 },
+        decorative: true,
+        readingOrder: nextOrder()
+      }),
+      nativeSchematicText(`${id}-badge-text`, options.badge, { x: rect.x + 0.18, y: rect.y + rect.h / 2 - 0.055, w: 0.32, h: 0.11 }, stroke, nextOrder, {
+        size: 8.5,
+        min: 8,
+        lines: 1,
+        color: "#FFFFFF"
+      })
+    );
+  }
+  elements.push(
+    nativeSchematicText(`${id}-label`, label, { x: textX, y: rect.y + 0.12, w: textW, h: rect.h - 0.22 }, fill, nextOrder, {
+      size: options.size ?? 12,
+      min: 8.5,
+      lines: options.sublabel ? 1 : options.maxLines ?? 2,
+      color: options.textColor ?? "#0F172A",
+      bold: options.bold ?? true
+    })
+  );
+  if (options.sublabel) {
+    elements.push(
+      nativeSchematicText(`${id}-sublabel`, options.sublabel, { x: rect.x + 0.2, y: rect.y + rect.h * 0.58, w: rect.w - 0.4, h: rect.h * 0.24 }, fill, nextOrder, {
+        size: 8.5,
+        min: 8,
+        lines: 1,
+        color: "#475569",
+        bold: false
+      })
+    );
+  }
+  return elements;
+}
+
 function renderNativeSchematicCards(
   diagram: SchematicDiagram,
   frame: NativeRect,
@@ -2572,22 +2631,25 @@ function renderNativeSchematicCards(
   }
 
   if (kind === "matrix") {
-    const midX = area.x + area.w / 2;
-    const midY = area.y + area.h / 2;
+    const plot = { x: area.x + 0.62, y: area.y + 0.34, w: area.w - 1.24, h: area.h - 0.9 };
+    const midX = plot.x + plot.w / 2;
+    const midY = plot.y + plot.h / 2;
     const labels = items.slice(0, 4);
+    const fills = ["#FFFFFF", "#DBEAFE", "#F8FAFC", "#EAF2FF"];
     const rects = [
-      { x: area.x, y: area.y, w: area.w / 2, h: area.h / 2 },
-      { x: midX, y: area.y, w: area.w / 2, h: area.h / 2 },
-      { x: area.x, y: midY, w: area.w / 2, h: area.h / 2 },
-      { x: midX, y: midY, w: area.w / 2, h: area.h / 2 }
+      { id: "low-high", x: plot.x, y: plot.y, w: plot.w / 2, h: plot.h / 2 },
+      { id: "high-high", x: midX, y: plot.y, w: plot.w / 2, h: plot.h / 2 },
+      { id: "low-low", x: plot.x, y: midY, w: plot.w / 2, h: plot.h / 2 },
+      { id: "high-low", x: midX, y: midY, w: plot.w / 2, h: plot.h / 2 }
     ];
     rects.forEach((rect, index) => {
-      const cellFill = index === 1 ? "#DBEAFE" : index === 2 ? "#F1F5F9" : "#FFFFFF";
-      elements.push(nativeShape(`${idPrefix}-matrix-${index}`, "rect", rect, { fill: cellFill, line: { color: "#CBD5E1", width: 1 }, decorative: true, readingOrder: nextOrder() }));
-      elements.push(nativeSchematicText(`${idPrefix}-matrix-label-${index}`, labels[index] ?? `Q${index + 1}`, { x: rect.x + 0.18, y: rect.y + rect.h / 2 - 0.18, w: rect.w - 0.36, h: 0.36 }, cellFill, nextOrder, { size: 13, lines: 2 }));
+      elements.push(nativeShape(`${idPrefix}-matrix-${rect.id}`, "rect", rect, { fill: fills[index], line: { color: "#CBD5E1", width: 1 }, decorative: true, readingOrder: nextOrder() }));
+      elements.push(nativeSchematicText(`${idPrefix}-matrix-label-${index}`, labels[index] ?? `Q${index + 1}`, { x: rect.x + 0.25, y: rect.y + rect.h / 2 - 0.2, w: rect.w - 0.5, h: 0.38 }, fills[index], nextOrder, { size: 13, lines: 2 }));
     });
-    elements.push(nativeSchematicText(`${idPrefix}-axis-x`, diagram.axisX ?? "X", { x: area.x + area.w / 2 - 1.2, y: area.y + area.h + 0.05, w: 2.4, h: 0.24 }, "#FFFFFF", nextOrder, { size: 10, lines: 1, color: "#475569" }));
-    elements.push(nativeSchematicText(`${idPrefix}-axis-y`, diagram.axisY ?? "Y", { x: area.x - 0.05, y: area.y - 0.28, w: 2.2, h: 0.24 }, "#FFFFFF", nextOrder, { size: 10, lines: 1, color: "#475569", align: "left" }));
+    elements.push(nativeShape(`${idPrefix}-axis-x-line`, "line", { x: plot.x, y: plot.y + plot.h + 0.12, w: plot.w, h: 0 }, { fill: "none", line: { color: accent, width: 1.6, endArrowType: "triangle" }, decorative: true, readingOrder: nextOrder() }));
+    elements.push(nativeShape(`${idPrefix}-axis-y-line`, "line", { x: plot.x - 0.16, y: plot.y, w: 0.001, h: plot.h }, { fill: "none", line: { color: accent, width: 1.6, beginArrowType: "triangle" }, decorative: true, readingOrder: nextOrder() }));
+    elements.push(nativeSchematicText(`${idPrefix}-axis-x`, diagram.axisX ?? "Maturity", { x: plot.x + plot.w / 2 - 1.25, y: plot.y + plot.h + 0.25, w: 2.5, h: 0.22 }, "#FFFFFF", nextOrder, { size: 10.5, lines: 1, color: "#475569" }));
+    elements.push(nativeSchematicText(`${idPrefix}-axis-y`, diagram.axisY ?? "Impact", { x: plot.x - 0.42, y: plot.y - 0.28, w: 2.0, h: 0.22 }, "#FFFFFF", nextOrder, { size: 10.5, lines: 1, color: "#475569", align: "left" }));
     return elements;
   }
 
@@ -2642,21 +2704,25 @@ function renderNativeSchematicCards(
   if (kind === "tree") {
     const root = items[0] ?? diagram.title;
     const children = items.slice(1, 6);
-    const rootRect = { x: area.x + area.w / 2 - 1.25, y: area.y + 0.15, w: 2.5, h: 0.78 };
-    elements.push(...nativeSchematicCard(`${idPrefix}-root`, rootRect, root, "#DBEAFE", accent, nextOrder));
+    const rootRect = { x: area.x + area.w / 2 - 1.35, y: area.y + 0.18, w: 2.7, h: 0.68 };
+    elements.push(...nativeSmartPill(`${idPrefix}-root`, rootRect, root, "#DBEAFE", accent, nextOrder, { size: 13, maxLines: 1 }));
     const count = Math.max(1, children.length);
-    const gap = 0.2;
-    const cardW = Math.min(2.1, (area.w - gap * (count - 1)) / count);
+    const gap = 0.32;
+    const cardW = Math.min(1.85, (area.w - gap * (count - 1)) / count);
     const startX = area.x + (area.w - (cardW * count + gap * (count - 1))) / 2;
-    const childY = area.y + area.h - 1.35;
-    const junction = { x: rootRect.x + rootRect.w / 2, y: area.y + 1.62 };
-    elements.push(...nativeSchematicArrow(`${idPrefix}-root-stem`, { x: rootRect.x + rootRect.w / 2, y: rootRect.y + rootRect.h }, junction, nextOrder, false));
+    const childY = area.y + area.h - 1.15;
+    const busY = area.y + 1.72;
+    const rootCenterX = rootRect.x + rootRect.w / 2;
+    elements.push(...nativeSchematicArrow(`${idPrefix}-root-stem`, { x: rootCenterX, y: rootRect.y + rootRect.h }, { x: rootCenterX, y: busY }, nextOrder, false));
+    const firstCenter = startX + cardW / 2;
+    const lastCenter = startX + (count - 1) * (cardW + gap) + cardW / 2;
+    elements.push(...nativeSchematicLine(`${idPrefix}-tree-bus`, { x: firstCenter, y: busY }, { x: lastCenter, y: busY }, nextOrder, false, false));
     children.forEach((child, index) => {
       const x = startX + index * (cardW + gap);
-      const rect = { x, y: childY, w: cardW, h: 0.92 };
-      const top = { x: x + cardW / 2, y: childY };
-      elements.push(...nativeSchematicArrow(`${idPrefix}-branch-${index}`, junction, top, nextOrder, false));
-      elements.push(...nativeSchematicCard(`${idPrefix}-child-${index}`, rect, child, index === 0 ? fillAlt : "#FFFFFF", accent, nextOrder));
+      const rect = { x, y: childY, w: cardW, h: 0.78 };
+      const centerX = x + cardW / 2;
+      elements.push(...nativeSchematicArrow(`${idPrefix}-branch-${index}`, { x: centerX, y: busY }, { x: centerX, y: childY }, nextOrder, false));
+      elements.push(...nativeSmartPill(`${idPrefix}-child-${index}`, rect, child, index === 0 ? fillAlt : "#FFFFFF", "#CBD5E1", nextOrder, { size: 11.5, maxLines: 2 }));
     });
     return elements;
   }
@@ -2665,10 +2731,13 @@ function renderNativeSchematicCards(
     const cycleItems = items.slice(0, 6);
     const cx = area.x + area.w / 2;
     const cy = area.y + area.h / 2 + 0.12;
-    const rx = Math.min(area.w * 0.32, 3.1);
-    const ry = Math.min(area.h * 0.32, 1.55);
-    const nodeW = cycleItems.length <= 4 ? 1.72 : 1.48;
-    const nodeH = 0.74;
+    const rx = Math.min(area.w * 0.31, 3.0);
+    const ry = Math.min(area.h * 0.31, 1.45);
+    const nodeW = cycleItems.length <= 4 ? 1.35 : 1.2;
+    const nodeH = 0.72;
+    elements.push(nativeShape(`${idPrefix}-cycle-ring`, "ellipse", { x: cx - rx, y: cy - ry, w: rx * 2, h: ry * 2 }, { fill: "none", line: { color: "#C7D2FE", width: 2 }, decorative: true, readingOrder: nextOrder() }));
+    elements.push(nativeShape(`${idPrefix}-cycle-core`, "ellipse", { x: cx - 0.82, y: cy - 0.48, w: 1.64, h: 0.96 }, { fill: "#EEF6FF", line: { color: "#93C5FD", width: 1 }, decorative: true, readingOrder: nextOrder() }));
+    elements.push(nativeSchematicText(`${idPrefix}-cycle-core-text`, "改善\nループ", { x: cx - 0.55, y: cy - 0.22, w: 1.1, h: 0.42 }, "#EEF6FF", nextOrder, { size: 12, min: 9, lines: 2 }));
     const centers = cycleItems.map((_, index) => {
       const angle = -Math.PI / 2 + (Math.PI * 2 * index) / cycleItems.length;
       return { x: cx + Math.cos(angle) * rx, y: cy + Math.sin(angle) * ry };
@@ -2682,7 +2751,11 @@ function renderNativeSchematicCards(
     });
     cycleItems.forEach((item, index) => {
       const center = centers[index];
-      elements.push(...nativeSchematicCard(`${idPrefix}-cycle-${index}`, { x: center.x - nodeW / 2, y: center.y - nodeH / 2, w: nodeW, h: nodeH }, item, index === 0 ? "#DBEAFE" : "#FFFFFF", accent, nextOrder, { badge: `${index + 1}` }));
+      const nodeFill = index === 0 ? "#DBEAFE" : "#FFFFFF";
+      elements.push(nativeShape(`${idPrefix}-cycle-node-${index}`, "ellipse", { x: center.x - nodeW / 2, y: center.y - nodeH / 2, w: nodeW, h: nodeH }, { fill: nodeFill, line: { color: index === 0 ? accent : "#CBD5E1", width: 1.2 }, decorative: true, readingOrder: nextOrder() }));
+      elements.push(nativeShape(`${idPrefix}-cycle-badge-${index}`, "ellipse", { x: center.x - nodeW / 2 + 0.1, y: center.y - nodeH / 2 + 0.08, w: 0.28, h: 0.28 }, { fill: accent, line: { color: accent, width: 0.1 }, decorative: true, readingOrder: nextOrder() }));
+      elements.push(nativeSchematicText(`${idPrefix}-cycle-badge-text-${index}`, `${index + 1}`, { x: center.x - nodeW / 2 + 0.1, y: center.y - nodeH / 2 + 0.17, w: 0.28, h: 0.1 }, accent, nextOrder, { size: 8, min: 8, lines: 1, color: "#FFFFFF" }));
+      elements.push(nativeSchematicText(`${idPrefix}-cycle-label-${index}`, item, { x: center.x - nodeW / 2 + 0.26, y: center.y - 0.14, w: nodeW - 0.34, h: 0.28 }, nodeFill, nextOrder, { size: 10.5, min: 8.5, lines: 2 }));
     });
     return elements;
   }
@@ -2741,13 +2814,23 @@ function renderNativeSchematicCards(
     const leaves = items.slice(1, 7);
     const cx = area.x + area.w / 2;
     const cy = area.y + area.h / 2;
-    elements.push(...nativeSchematicCard(`${idPrefix}-center`, { x: cx - 1.25, y: cy - 0.48, w: 2.5, h: 0.96 }, center, "#DBEAFE", accent, nextOrder));
+    elements.push(nativeShape(`${idPrefix}-hub`, "ellipse", { x: cx - 1.05, y: cy - 0.72, w: 2.1, h: 1.44 }, { fill: "#DBEAFE", line: { color: accent, width: 1.4 }, decorative: true, readingOrder: nextOrder() }));
+    elements.push(nativeSchematicText(`${idPrefix}-hub-label`, center, { x: cx - 0.78, y: cy - 0.18, w: 1.56, h: 0.36 }, "#DBEAFE", nextOrder, { size: 12.5, min: 9, lines: 2 }));
     leaves.forEach((item, index) => {
       const angle = -Math.PI / 2 + (Math.PI * 2 * index) / Math.max(leaves.length, 1);
       const x = cx + Math.cos(angle) * Math.min(3.8, area.w * 0.32);
       const y = cy + Math.sin(angle) * Math.min(1.75, area.h * 0.32);
-      elements.push(...nativeSchematicArrow(`${idPrefix}-rel-${index}`, { x: cx, y: cy }, { x, y }, nextOrder, true));
-      elements.push(...nativeSchematicCard(`${idPrefix}-leaf-${index}`, { x: x - 0.85, y: y - 0.38, w: 1.7, h: 0.76 }, item, "#FFFFFF", accent, nextOrder, { sublabel: secondary[index] }));
+      const leaf = { x: x - 0.95, y: y - 0.34, w: 1.9, h: 0.68 };
+      const hubEdge = {
+        x: cx + Math.sign(x - cx) * 1.05,
+        y: cy + Math.sign(y - cy) * 0.55
+      };
+      const leafEdge = {
+        x: x - Math.sign(x - cx) * 0.95,
+        y
+      };
+      elements.push(...nativeSchematicArrow(`${idPrefix}-rel-${index}`, hubEdge, leafEdge, nextOrder, true));
+      elements.push(...nativeSmartPill(`${idPrefix}-leaf-${index}`, leaf, item, "#FFFFFF", "#CBD5E1", nextOrder, { sublabel: secondary[index], size: 10.8, maxLines: 2 }));
     });
     return elements;
   }
@@ -2798,16 +2881,26 @@ function renderNativeSchematicCards(
   if (kind === "gantt") {
     const tasks = items.slice(0, 5);
     const periods = secondary.length ? secondary.slice(0, 4) : ["W1", "W2", "W3", "W4"];
-    const labelW = 2.0;
+    const labelW = 2.15;
     const colW = (area.w - labelW) / periods.length;
-    elements.push(nativeShape(`${idPrefix}-gantt-bg`, "roundRect", area, { fill, line: { color: "#CBD5E1", width: 1 }, radius: 0.1, decorative: true, readingOrder: nextOrder() }));
-    periods.forEach((period, index) => elements.push(nativeSchematicText(`${idPrefix}-period-${index}`, period, { x: area.x + labelW + index * colW, y: area.y + 0.15, w: colW, h: 0.24 }, fill, nextOrder, { size: 10, lines: 1 })));
+    const headerH = 0.52;
+    const rowH = Math.min(0.58, (area.h - headerH - 0.2) / Math.max(tasks.length, 1));
+    elements.push(nativeShape(`${idPrefix}-gantt-bg`, "roundRect", area, { fill: "#FFFFFF", line: { color: "#CBD5E1", width: 1 }, radius: 0.1, decorative: true, readingOrder: nextOrder() }));
+    elements.push(nativeShape(`${idPrefix}-gantt-head`, "rect", { x: area.x, y: area.y, w: area.w, h: headerH }, { fill: "#DBEAFE", line: { color: "#93C5FD", width: 1 }, decorative: true, readingOrder: nextOrder() }));
+    periods.forEach((period, index) => {
+      const x = area.x + labelW + index * colW;
+      elements.push(nativeSchematicText(`${idPrefix}-period-${index}`, period, { x, y: area.y + 0.16, w: colW, h: 0.22 }, "#DBEAFE", nextOrder, { size: 10.5, lines: 1 }));
+      elements.push(nativeShape(`${idPrefix}-gantt-v-${index}`, "line", { x, y: area.y, w: 0.001, h: headerH + rowH * tasks.length }, { fill: "none", line: { color: "#E2E8F0", width: 0.8 }, decorative: true, readingOrder: nextOrder() }));
+    });
+    elements.push(nativeShape(`${idPrefix}-gantt-v-end`, "line", { x: area.x + labelW + periods.length * colW, y: area.y, w: 0.001, h: headerH + rowH * tasks.length }, { fill: "none", line: { color: "#E2E8F0", width: 0.8 }, decorative: true, readingOrder: nextOrder() }));
     tasks.forEach((task, index) => {
-      const y = area.y + 0.62 + index * 0.54;
-      elements.push(nativeSchematicText(`${idPrefix}-task-${index}`, task, { x: area.x + 0.12, y, w: labelW - 0.2, h: 0.28 }, fill, nextOrder, { size: 10.5, lines: 1, align: "left" }));
+      const y = area.y + headerH + index * rowH;
+      const rowFill = index % 2 === 0 ? "#FFFFFF" : "#F8FAFC";
+      elements.push(nativeShape(`${idPrefix}-gantt-row-${index}`, "rect", { x: area.x, y, w: area.w, h: rowH }, { fill: rowFill, line: { color: "#E2E8F0", width: 0.6 }, decorative: true, readingOrder: nextOrder() }));
+      elements.push(nativeSchematicText(`${idPrefix}-task-${index}`, task, { x: area.x + 0.14, y: y + 0.15, w: labelW - 0.28, h: 0.22 }, rowFill, nextOrder, { size: 10, lines: 1, align: "left" }));
       const start = index % periods.length;
       const span = Math.min(periods.length - start, 1 + (index % 2));
-      elements.push(nativeShape(`${idPrefix}-bar-${index}`, "roundRect", { x: area.x + labelW + start * colW + 0.08, y: y + 0.04, w: colW * span - 0.16, h: 0.22 }, { fill: index === 0 ? accent : "#93C5FD", line: { color: accent, width: 0.8 }, radius: 0.08, decorative: true, readingOrder: nextOrder() }));
+      elements.push(nativeShape(`${idPrefix}-bar-${index}`, "roundRect", { x: area.x + labelW + start * colW + 0.12, y: y + rowH * 0.32, w: colW * span - 0.24, h: Math.min(0.22, rowH * 0.36) }, { fill: index === 0 ? accent : "#93C5FD", line: { color: accent, width: 0.8 }, radius: 0.08, decorative: true, readingOrder: nextOrder() }));
     });
     return elements;
   }

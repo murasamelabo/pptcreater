@@ -417,6 +417,13 @@ async function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpe
     } else if (element.path) {
       slide.addImage({ path: element.path, altText: element.decorative ? "" : element.altText, ...position });
     }
+    return;
+  }
+
+  if (element.type === "smartart") {
+    // SmartArt cannot be emitted through pptxgenjs. It is transplanted as OpenXML after
+    // the normal PPTX has been written.
+    return;
   }
 }
 
@@ -624,6 +631,277 @@ function nextRelationshipId(rels: Relationship[]): string {
     return value ? Math.max(highest, Number(value)) : highest;
   }, 0);
   return `rId${max + 1}`;
+}
+
+function emu(valueInches: number): number {
+  return Math.round(valueInches * 914400);
+}
+
+function nextPartName(zip: ZipArchive, prefix: string, extension = ".xml"): string {
+  const used = new Set(zipNames(zip));
+  for (let index = 1; index < 10_000; index += 1) {
+    const candidate = `${prefix}${index}${extension}`;
+    if (!used.has(candidate)) {
+      return candidate;
+    }
+  }
+  throw new Error(`Could not allocate a new OpenXML part for ${prefix}.`);
+}
+
+function diagramContentType(name: string): string {
+  if (/\/data\d+\.xml$/i.test(name)) {
+    return "application/vnd.openxmlformats-officedocument.drawingml.diagramData+xml";
+  }
+  if (/\/layout\d+\.xml$/i.test(name)) {
+    return "application/vnd.openxmlformats-officedocument.drawingml.diagramLayout+xml";
+  }
+  if (/\/quickStyle\d+\.xml$/i.test(name)) {
+    return "application/vnd.openxmlformats-officedocument.drawingml.diagramStyle+xml";
+  }
+  if (/\/colors\d+\.xml$/i.test(name)) {
+    return "application/vnd.openxmlformats-officedocument.drawingml.diagramColors+xml";
+  }
+  if (/\/drawing\d+\.xml$/i.test(name)) {
+    return "application/vnd.ms-office.drawingml.diagramDrawing+xml";
+  }
+  throw new Error(`Unsupported SmartArt diagram part: ${name}`);
+}
+
+function ensureContentTypeOverrides(xml: string, partNames: string[]): string {
+  let next = xml;
+  for (const name of partNames) {
+    const partName = `/${name}`;
+    const escaped = partName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (new RegExp(`<Override\\b[^>]*PartName="${escaped}"`, "i").test(next)) {
+      continue;
+    }
+    next = next.replace("</Types>", `<Override PartName="${partName}" ContentType="${diagramContentType(name)}"/></Types>`);
+  }
+  return next;
+}
+
+function sourceSlidePath(sourceSlideIndex: number): string {
+  return `ppt/slides/slide${sourceSlideIndex}.xml`;
+}
+
+function sourceSlideRelsPath(sourceSlideIndex: number): string {
+  return `ppt/slides/_rels/slide${sourceSlideIndex}.xml.rels`;
+}
+
+function relationshipById(rels: Relationship[], id: string | undefined): Relationship | undefined {
+  return id ? rels.find((rel) => rel.id === id) : undefined;
+}
+
+function relIdAttr(xml: string, attr: "dm" | "lo" | "qs" | "cs"): string | undefined {
+  return new RegExp(`\\br:${attr}="([^"]+)"`, "i").exec(xml)?.[1];
+}
+
+function diagramPartPrefixForRel(type: string): string | undefined {
+  if (/\/diagramData$/i.test(type)) {
+    return "ppt/diagrams/data";
+  }
+  if (/\/diagramLayout$/i.test(type)) {
+    return "ppt/diagrams/layout";
+  }
+  if (/\/diagramQuickStyle$/i.test(type)) {
+    return "ppt/diagrams/quickStyle";
+  }
+  if (/\/diagramColors$/i.test(type)) {
+    return "ppt/diagrams/colors";
+  }
+  if (/\/diagramDrawing$/i.test(type)) {
+    return "ppt/diagrams/drawing";
+  }
+  return undefined;
+}
+
+function slideGraphicFrameXml(sourceSlideXml: string): string {
+  const match = /<p:graphicFrame\b[\s\S]*?<dgm:relIds\b[\s\S]*?<\/p:graphicFrame>/i.exec(sourceSlideXml);
+  if (!match) {
+    throw new Error("SmartArt template slide does not contain a SmartArt graphicFrame.");
+  }
+  return match[0];
+}
+
+function ensureSmartArtNamespaces(graphicFrameXml: string): string {
+  return graphicFrameXml.replace(/<p:graphicFrame\b([^>]*)>/i, (_match, attrs: string) => {
+    const dgm = /\bxmlns:dgm=/.test(attrs) ? "" : ' xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram"';
+    const rel = /\bxmlns:r=/.test(attrs) ? "" : ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+    return `<p:graphicFrame${attrs}${dgm}${rel}>`;
+  });
+}
+
+function replaceGraphicFramePosition(xml: string, element: Extract<SlideElement, { type: "smartart" }>, objectId: number): string {
+  const xfrm = `<p:xfrm><a:off x="${emu(element.x)}" y="${emu(element.y)}"/><a:ext cx="${emu(element.w)}" cy="${emu(element.h)}"/></p:xfrm>`;
+  const rewriteCnvPrAttrs = (attrs: string): string =>
+    attrs
+      .replace(/\s*\/\s*$/u, "")
+      .replace(/\bid="[^"]*"/i, `id="${objectId}"`)
+      .replace(/\bname="[^"]*"/i, `name="${escapeXmlAttribute(element.id)}"`)
+      .replace(/\bdescr="[^"]*"/i, "")
+      .trimEnd();
+  return xml
+    .replace(/<p:cNvPr\b([^>]*)\/>/i, (_match, attrs: string) => `<p:cNvPr ${rewriteCnvPrAttrs(attrs)} descr="${escapeXmlAttribute(element.altText ?? element.summary)}"/>`)
+    .replace(/<p:cNvPr\b([^/>]*)>/i, (_match, attrs: string) => `<p:cNvPr ${rewriteCnvPrAttrs(attrs)} descr="${escapeXmlAttribute(element.altText ?? element.summary)}">`)
+    .replace(/<p:xfrm>[\s\S]*?<\/p:xfrm>/i, xfrm);
+}
+
+function replaceSmartArtRelIds(xml: string, ids: { dm: string; lo: string; qs: string; cs: string }): string {
+  return xml
+    .replace(/\br:dm="[^"]+"/i, `r:dm="${ids.dm}"`)
+    .replace(/\br:lo="[^"]+"/i, `r:lo="${ids.lo}"`)
+    .replace(/\br:qs="[^"]+"/i, `r:qs="${ids.qs}"`)
+    .replace(/\br:cs="[^"]+"/i, `r:cs="${ids.cs}"`);
+}
+
+function rewriteSmartArtPartRelationshipIds(xml: string, relIdMap: Map<string, string>): string {
+  let next = xml;
+  for (const [oldId, newId] of relIdMap) {
+    const escaped = oldId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    next = next.replace(new RegExp(`\\brelId="${escaped}"`, "g"), `relId="${newId}"`);
+  }
+  return next;
+}
+
+function maxShapeId(slideXml: string): number {
+  return [...slideXml.matchAll(/<p:cNvPr\b[^>]*\bid="(\d+)"/gi)].reduce((max, match) => Math.max(max, Number(match[1])), 0);
+}
+
+async function smartArtTemplateBuffer(element: Extract<SlideElement, { type: "smartart" }>, workspaceRoot = process.cwd()): Promise<Buffer> {
+  if (element.templateDataUri) {
+    return decodePowerPointPackageDataUri(element.templateDataUri);
+  }
+  if (!element.templatePath) {
+    throw new Error(`SmartArt element "${element.id}" requires templatePath or templateDataUri.`);
+  }
+  if (element.templatePath.includes("\0")) {
+    throw new Error("smartart.templatePath cannot contain null bytes.");
+  }
+  const extension = extname(element.templatePath).toLowerCase();
+  if (![".pptx", ".potx", ".pptm", ".potm"].includes(extension)) {
+    throw new Error("smartart.templatePath must point to a .pptx, .potx, .pptm, or .potm file.");
+  }
+  const root = await realpath(workspaceRoot);
+  const resolvedPath = resolve(workspaceRoot, element.templatePath);
+  await assertNoSymlinkPathComponents(resolve(workspaceRoot), resolvedPath);
+  const realPath = await realpath(resolvedPath);
+  if (!isPathInside(realPath, root)) {
+    throw new Error("smartart.templatePath must stay inside the current workspace. Use smartart.templateDataUri for external files.");
+  }
+  const stats = await lstat(realPath);
+  if (!stats.isFile()) {
+    throw new Error("smartart.templatePath must reference a regular non-symlink file.");
+  }
+  if (stats.size > MAX_LOCAL_IMAGE_BYTES) {
+    throw new Error(`smartart.templatePath file is too large. Maximum size is ${MAX_LOCAL_IMAGE_BYTES} bytes.`);
+  }
+  return readFile(realPath);
+}
+
+async function transplantSmartArtElement(
+  targetZip: ZipArchive,
+  targetSlideIndex: number,
+  element: Extract<SlideElement, { type: "smartart" }>
+): Promise<void> {
+  const sourceZip = await JSZip.loadAsync(await smartArtTemplateBuffer(element));
+  const sourceSlideXml = await readZipXml(sourceZip, sourceSlidePath(element.sourceSlideIndex));
+  const sourceRels = parseRelationships(await readZipXml(sourceZip, sourceSlideRelsPath(element.sourceSlideIndex)));
+  const graphicFrame = slideGraphicFrameXml(sourceSlideXml);
+  const relIds = {
+    dm: relIdAttr(graphicFrame, "dm"),
+    lo: relIdAttr(graphicFrame, "lo"),
+    qs: relIdAttr(graphicFrame, "qs"),
+    cs: relIdAttr(graphicFrame, "cs")
+  };
+  const sourceDiagramRels = [
+    relationshipById(sourceRels, relIds.dm),
+    relationshipById(sourceRels, relIds.lo),
+    relationshipById(sourceRels, relIds.qs),
+    relationshipById(sourceRels, relIds.cs),
+    sourceRels.find((rel) => /\/diagramDrawing$/i.test(rel.type))
+  ].filter((rel): rel is Relationship => Boolean(rel));
+  if (sourceDiagramRels.length < 4) {
+    throw new Error("SmartArt template slide is missing required diagram relationships.");
+  }
+
+  const targetRelsPath = `ppt/slides/_rels/slide${targetSlideIndex + 1}.xml.rels`;
+  const targetSlidePath = `ppt/slides/slide${targetSlideIndex + 1}.xml`;
+  const targetRels = parseRelationships(await readZipXml(targetZip, targetRelsPath));
+  const newRelIds: Partial<Record<"dm" | "lo" | "qs" | "cs", string>> = {};
+  const newPartNames: string[] = [];
+  const relIdMap = new Map<string, string>();
+  const pendingCopies: Array<{ sourcePart: string; targetPart: string }> = [];
+
+  for (const sourceRel of sourceDiagramRels) {
+    const prefix = diagramPartPrefixForRel(sourceRel.type);
+    if (!prefix) {
+      continue;
+    }
+    const sourcePart = resolvePackageRelTarget(sourceRel.target, "ppt/slides");
+    if (!sourcePart || !sourceZip.file(sourcePart)) {
+      throw new Error(`SmartArt template is missing related part: ${sourceRel.target}`);
+    }
+    const targetPart = nextPartName(targetZip, prefix, ".xml");
+    pendingCopies.push({ sourcePart, targetPart });
+    newPartNames.push(targetPart);
+    const relId = nextRelationshipId(targetRels);
+    relIdMap.set(sourceRel.id, relId);
+    targetRels.push({
+      id: relId,
+      type: sourceRel.type,
+      target: `../${targetPart.replace(/^ppt\//, "")}`
+    });
+    if (/\/diagramData$/i.test(sourceRel.type)) {
+      newRelIds.dm = relId;
+    } else if (/\/diagramLayout$/i.test(sourceRel.type)) {
+      newRelIds.lo = relId;
+    } else if (/\/diagramQuickStyle$/i.test(sourceRel.type)) {
+      newRelIds.qs = relId;
+    } else if (/\/diagramColors$/i.test(sourceRel.type)) {
+      newRelIds.cs = relId;
+    }
+  }
+
+  for (const { sourcePart, targetPart } of pendingCopies) {
+    const sourceFile = sourceZip.file(sourcePart);
+    if (!sourceFile) {
+      throw new Error(`SmartArt template part was not found: ${sourcePart}`);
+    }
+    targetZip.file(targetPart, rewriteSmartArtPartRelationshipIds(await sourceFile.async("string"), relIdMap));
+  }
+
+  if (!newRelIds.dm || !newRelIds.lo || !newRelIds.qs || !newRelIds.cs) {
+    throw new Error("SmartArt transplant failed to create required relationship ids.");
+  }
+
+  targetZip.file(targetRelsPath, serializeRelationships(targetRels));
+  const targetSlideXml = await readZipXml(targetZip, targetSlidePath);
+  const nextObjectId = maxShapeId(targetSlideXml) + 1;
+  const positionedFrame = replaceSmartArtRelIds(
+    replaceGraphicFramePosition(ensureSmartArtNamespaces(graphicFrame), element, nextObjectId),
+    newRelIds as { dm: string; lo: string; qs: string; cs: string }
+  );
+  const patchedSlide = targetSlideXml.replace("</p:spTree>", `${positionedFrame}</p:spTree>`);
+  targetZip.file(targetSlidePath, patchedSlide);
+
+  const contentTypesXml = await readZipXml(targetZip, "[Content_Types].xml");
+  targetZip.file("[Content_Types].xml", ensureContentTypeOverrides(contentTypesXml, newPartNames));
+}
+
+async function applySmartArtElements(pptxPath: string, deck: DeckSpec): Promise<void> {
+  const smartArtItems = deck.slides.flatMap((slide, slideIndex) =>
+    slide.elements
+      .filter((element): element is Extract<SlideElement, { type: "smartart" }> => element.type === "smartart")
+      .map((element) => ({ slideIndex, element }))
+  );
+  if (smartArtItems.length === 0) {
+    return;
+  }
+  const zip = await JSZip.loadAsync(await readFile(pptxPath));
+  for (const item of smartArtItems) {
+    await transplantSmartArtElement(zip, item.slideIndex, item.element);
+  }
+  await writeFile(pptxPath, await zip.generateAsync({ type: "nodebuffer" }));
 }
 
 function isTemplatePart(name: string): boolean {
@@ -1102,6 +1380,10 @@ function collectSlideAccessibilityNotes(deck: DeckSpec, deckSlide: DeckSpec["sli
       notes.push(`${element.id} long description: ${element.longDescription}`);
     }
 
+    if (element.type === "smartart") {
+      notes.push(`${element.id} SmartArt description: ${element.longDescription}`);
+    }
+
     if (element.sourceId) {
       const source = sourcesById.get(element.sourceId);
       notes.push(
@@ -1206,5 +1488,6 @@ export async function renderDeckToPptx(input: unknown, outputPath: string, optio
   if (powerPointTemplate) {
     await applyPowerPointTemplatePackage(outputPath, renderDeck, powerPointTemplate.templatePackage);
   }
+  await applySmartArtElements(outputPath, renderDeck);
   return { outputPath, warnings };
 }

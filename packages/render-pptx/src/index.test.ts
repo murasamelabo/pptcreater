@@ -105,6 +105,34 @@ async function buildTemplatePotx(): Promise<Buffer> {
   return zip.generateAsync({ type: "nodebuffer" });
 }
 
+const SMARTART_SOURCE_SLIDE_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>
+    <p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="2" name="SmartArt Template"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr><p:xfrm><a:off x="914400" y="914400"/><a:ext cx="5486400" cy="2743200"/></p:xfrm><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/diagram"><dgm:relIds r:dm="rId1" r:lo="rId2" r:qs="rId3" r:cs="rId4"/></a:graphicData></a:graphic></p:graphicFrame>
+  </p:spTree></p:cSld>
+</p:sld>`;
+
+const SMARTART_SOURCE_RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagramData" Target="../diagrams/data1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagramLayout" Target="../diagrams/layout1.xml"/>
+  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagramQuickStyle" Target="../diagrams/quickStyle1.xml"/>
+  <Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagramColors" Target="../diagrams/colors1.xml"/>
+  <Relationship Id="rId5" Type="http://schemas.microsoft.com/office/2007/relationships/diagramDrawing" Target="../diagrams/drawing1.xml"/>
+</Relationships>`;
+
+async function buildSmartArtTemplatePptx(): Promise<Buffer> {
+  const zip = new JSZip();
+  zip.file("ppt/slides/slide1.xml", SMARTART_SOURCE_SLIDE_XML);
+  zip.file("ppt/slides/_rels/slide1.xml.rels", SMARTART_SOURCE_RELS);
+  zip.file("ppt/diagrams/data1.xml", '<dgm:dataModel xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram"><dgm:ptLst/><dgm:cxnLst/><dgm:extLst><dgm:ext uri="{test}"><test:drawing xmlns:test="urn:test" relId="rId5"/></dgm:ext></dgm:extLst></dgm:dataModel>');
+  zip.file("ppt/diagrams/layout1.xml", '<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" uniqueId="urn:test:layout"><dgm:title val="Test"/></dgm:layoutDef>');
+  zip.file("ppt/diagrams/quickStyle1.xml", '<dgm:styleDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" uniqueId="urn:test:style"><dgm:title val="Test"/></dgm:styleDef>');
+  zip.file("ppt/diagrams/colors1.xml", '<dgm:colorsDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" uniqueId="urn:test:colors"><dgm:title val="Test"/></dgm:colorsDef>');
+  zip.file("ppt/diagrams/drawing1.xml", '<dsp:drawing xmlns:dsp="http://schemas.microsoft.com/office/drawing/2008/diagram"/>');
+  return zip.generateAsync({ type: "nodebuffer" });
+}
+
 function pngDimensions(png: Buffer): { width: number; height: number } {
   return {
     width: png.readUInt32BE(16),
@@ -588,6 +616,56 @@ describe("PPTX renderer", () => {
     expect(notesSlideRels).not.toContain("notesMaster");
     expect(contentTypes).not.toContain("notesMasters");
     expect(Object.keys(zip.files).some((name) => name.startsWith("ppt/notesMasters/"))).toBe(false);
+  });
+
+  it("transplants SmartArt graphicFrames and diagram parts from a template PPTX", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-smartart-"));
+    const sourceDataUri = `data:application/vnd.openxmlformats-officedocument.presentationml.presentation;base64,${(await buildSmartArtTemplatePptx()).toString("base64")}`;
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "smartart-tree",
+      type: "smartart",
+      templateDataUri: sourceDataUri,
+      sourceSlideIndex: 1,
+      x: 1,
+      y: 2,
+      w: 10,
+      h: 4,
+      summary: "SmartArt hierarchy",
+      longDescription: "A transplanted SmartArt hierarchy diagram from a template PPTX.",
+      altText: "SmartArt hierarchy",
+      decorative: false,
+      readingOrder: 20
+    });
+    const outputPath = join(outputDir, "smartart.pptx");
+
+    await renderDeckToPptx(deck, outputPath);
+
+    const zip = await JSZip.loadAsync(await readFile(outputPath));
+    const names = Object.keys(zip.files);
+    const slide = (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
+    const rels = (await zip.file("ppt/slides/_rels/slide1.xml.rels")?.async("string")) ?? "";
+    const contentTypes = (await zip.file("[Content_Types].xml")?.async("string")) ?? "";
+    const dataPartName = names.find((name) => /^ppt\/diagrams\/data\d+\.xml$/.test(name));
+    const dataPart = dataPartName ? ((await zip.file(dataPartName)?.async("string")) ?? "") : "";
+    const drawingRelId = /<Relationship\b[^>]*\bId="([^"]+)"[^>]*\bType="[^"]*\/diagramDrawing"/.exec(rels)?.[1];
+
+    expect(slide).toContain("<p:graphicFrame");
+    expect(slide).toContain("dgm:relIds");
+    expect(slide).toContain("xmlns:dgm=");
+    expect(slide).toContain("xmlns:r=");
+    expect(slide).toContain('descr="SmartArt hierarchy"');
+    expect(rels).toContain("/diagramData");
+    expect(rels).toContain("/diagramLayout");
+    expect(rels).toContain("/diagramQuickStyle");
+    expect(rels).toContain("/diagramColors");
+    expect(rels).toContain("diagramDrawing");
+    expect(drawingRelId).toBeDefined();
+    expect(dataPart).toContain(`relId="${drawingRelId}"`);
+    expect(dataPart).not.toContain('relId="rId5"');
+    expect(names.filter((name) => /^ppt\/diagrams\/[^/]+\.xml$/.test(name)).length).toBe(5);
+    expect(contentTypes).toContain("diagramData+xml");
+    expect(contentTypes).toContain("diagramDrawing+xml");
   });
 
   it("applies an imported .potx slide master and layouts when rendering a deck with that template id", async () => {
