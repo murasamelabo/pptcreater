@@ -963,6 +963,57 @@ function rewriteRelationshipIds(xml: string, relIdMap: Map<string, string>): str
   });
 }
 
+function escapeXmlText(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function decodeXmlText(value: string): string {
+  return value
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&");
+}
+
+type PptxSlideTextReplacementEntry = { match: string; to: string } | { at: number; to: string };
+
+function applyPptxSlideTextReplacements(
+  xml: string,
+  replacements: ReadonlyArray<PptxSlideTextReplacementEntry> | undefined
+): string {
+  if (!replacements || replacements.length === 0) {
+    return xml;
+  }
+  const byIndex = new Map<number, string>();
+  const byMatch = new Map<string, string>();
+  for (const replacement of replacements) {
+    if ("at" in replacement) {
+      byIndex.set(replacement.at, replacement.to);
+    } else {
+      byMatch.set(replacement.match, replacement.to);
+    }
+  }
+  let runIndex = -1;
+  return xml.replace(/(<a:t>)([\s\S]*?)(<\/a:t>)/g, (full, open: string, inner: string, close: string) => {
+    runIndex += 1;
+    let next: string | undefined;
+    if (byIndex.has(runIndex)) {
+      next = byIndex.get(runIndex);
+    } else {
+      const decoded = decodeXmlText(inner);
+      if (byMatch.has(decoded)) {
+        next = byMatch.get(decoded);
+      }
+    }
+    if (next === undefined) {
+      return full;
+    }
+    return `${open}${escapeXmlText(next)}${close}`;
+  });
+}
+
 function renumberShapeIds(xml: string, firstId: number): string {
   let nextId = firstId;
   return xml.replace(/<p:cNvPr\b([^>]*)>/g, (_match, attrs: string) => {
@@ -1104,7 +1155,8 @@ async function transplantPptxSlideElement(
   const targetRels = parseRelationships(await readZipXml(targetZip, targetRelsPath));
   const { relIdMap, copiedParts } = await copySlideRelationships(sourceZip, targetZip, sourceRels, targetRels, sourceContentTypesXml);
   const rawChildren = slideSpTreeChildren(sourceSlideXml);
-  const copiedChildren = renumberShapeIds(rewriteRelationshipIds(rawChildren, relIdMap), maxShapeId(targetSlideXml) + 1);
+  const renumbered = renumberShapeIds(rewriteRelationshipIds(rawChildren, relIdMap), maxShapeId(targetSlideXml) + 1);
+  const copiedChildren = applyPptxSlideTextReplacements(renumbered, element.textReplacements);
   const patched = targetSlideXml.replace("</p:spTree>", `${copiedChildren}</p:spTree>`);
   if (copiedParts.length > 0) {
     const contentTypesXml = await readZipXml(targetZip, "[Content_Types].xml");

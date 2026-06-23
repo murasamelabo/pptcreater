@@ -191,6 +191,26 @@ pptcreater render generated\tree-logic.deck.json --output generated\tree-logic.p
 
 MCP tools `list_design_components` and `render_design_component` expose the same discovery and DeckSpec generation to agents. Source slides are loaded from an in-workspace `templatePath` or an inline `templateDataUri`; external files must be passed as a data URI.
 
+### Substituting curated data (`textReplacements`)
+
+A curated component ships with placeholder data. To reuse the same human-designed layout with your own content, add `textReplacements` to the `pptxSlide` element (or pass it to `renderDesignComponentDeck`). Each entry replaces the text of a run either by 0-based run index (`at`) or by exact original text (`match`); the new text is XML-escaped automatically:
+
+```jsonc
+{
+  "type": "pptxSlide",
+  "templatePath": "design-packs/tree/tree-diagrams_Oxml.pptx",
+  "sourceSlideIndex": 5,
+  "textReplacements": [
+    { "at": 3, "to": "コストを下げる" },
+    { "match": "客数を増やす", "to": "固定費を削る" }
+  ],
+  "summary": "ロジックツリー（データ差し替え）",
+  "longDescription": "Curated logic tree reused with custom MECE cost-reduction data."
+}
+```
+
+The visible number of boxes is fixed by the curated geometry (the shapes are human-designed); `textReplacements` changes the labels/data inside those boxes. `npm run sample:tree-design` renders the as-shipped gallery, and `node scripts/generate-tree-varied-gallery.mjs` renders the same seven trees with substituted, domain-specific data.
+
 CLI usage:
 
 ```powershell

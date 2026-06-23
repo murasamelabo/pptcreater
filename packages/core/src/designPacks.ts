@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { z } from "zod";
 import { defaultTokens } from "./color.js";
-import { DeckSpecSchema, type DeckSpec } from "./schema.js";
+import { DeckSpecSchema, type DeckSpec, type PptxSlideTextReplacement } from "./schema.js";
 
 export const DesignComponentConstraintsSchema = z.object({
   minItems: z.number().int().min(0).optional(),
@@ -68,7 +68,7 @@ export async function getDesignComponent(componentId: string, options: { roots?:
 
 export async function renderDesignComponentDeck(
   componentId: string,
-  options: { title?: string; roots?: string[] } = {}
+  options: { title?: string; roots?: string[]; textReplacements?: PptxSlideTextReplacement[] } = {}
 ): Promise<DeckSpec> {
   const component = await getDesignComponent(componentId, { roots: options.roots });
   if (!component) {
@@ -105,6 +105,9 @@ export async function renderDesignComponentDeck(
             type: "pptxSlide",
             templatePath: component.sourcePptxPath,
             sourceSlideIndex: component.sourceSlideIndex,
+            ...(options.textReplacements && options.textReplacements.length > 0
+              ? { textReplacements: options.textReplacements }
+              : {}),
             x: 0,
             y: 0,
             w: 13.333,

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.5.10 - 2026-06-23
+
+- **Added `textReplacements` to the `pptxSlide` element for reusing curated design components with custom data.** A transplanted slide component previously copied the source slide's placeholder text verbatim. You can now substitute the text of individual runs either by 0-based run index (`at`) or by exact original text (`match`); replacements are XML-escaped automatically and applied after shape-id renumbering and relationship rewriting, so existing media/relationship handling is unaffected. `renderDesignComponentDeck` accepts an optional `textReplacements` array to pass the same data through the core/CLI/MCP surfaces.
+- Added `scripts/generate-tree-varied-gallery.mjs` (and the `npm run sample:tree-design` script for the as-shipped gallery) that renders the seven curated tree components with substituted, domain-specific data (EC org chart, document taxonomy, MECE cost tree, launch WBS, support-triage decision flow, hiring mind-map, product-strategy pyramid). The visible box count is fixed by each curated component's geometry; `textReplacements` changes the labels inside those boxes.
+- Documented `textReplacements` in the README Design Asset Packs section. Added regression coverage for index- and match-based text substitution (including XML escaping); full suite now includes 272 tests.
+
 ## v0.5.9 - 2026-06-23
 
 - **Added curated Design Asset Packs and a `pptxSlide` DeckSpec element.** A deck can now transplant a fully human-designed PowerPoint slide component (the `<p:spTree>` shapes and text of a curated source slide) into a generated slide, keeping every object editable in PowerPoint instead of flattening it to an image or approximating it with generated geometry. Source slides are loaded from a local in-workspace `templatePath` or an inline `templateDataUri`; relationships are copied and shape ids are renumbered to avoid collisions.

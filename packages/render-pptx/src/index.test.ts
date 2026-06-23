@@ -741,6 +741,72 @@ describe("PPTX renderer", () => {
     expect(slide.match(/<p:bg>/g) ?? []).toHaveLength(1);
   });
 
+  it("substitutes pptxSlide text via index and match replacements", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-pptx-slide-text-"));
+    const sourceDataUri = `data:application/vnd.openxmlformats-officedocument.presentationml.presentation;base64,${(await buildPptxSlideTemplate()).toString("base64")}`;
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "tree-component",
+      type: "pptxSlide",
+      templateDataUri: sourceDataUri,
+      sourceSlideIndex: 1,
+      textReplacements: [
+        { at: 0, to: "差し替え後の見出し" },
+        { match: "CURATED TREE COMPONENT", to: "テキストは変わらない" }
+      ],
+      x: 0,
+      y: 0,
+      w: 13.333,
+      h: 7.5,
+      summary: "Curated tree component",
+      longDescription: "A curated PowerPoint slide component transplanted as editable shape and text XML.",
+      altText: "Curated tree component",
+      decorative: false,
+      readingOrder: 20
+    });
+    const outputPath = join(outputDir, "component-text-output.pptx");
+
+    await renderDeckToPptx(deck, outputPath);
+
+    const zip = await JSZip.loadAsync(await readFile(outputPath));
+    const slide = (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
+    // The single source run is index 0, so the index replacement wins and the match entry
+    // (which targeted the original text) does not also fire on the already-replaced run.
+    expect(slide).toContain("差し替え後の見出し");
+    expect(slide).not.toContain("CURATED TREE COMPONENT");
+    expect(slide.match(/<\/p:spTree>/g) ?? []).toHaveLength(1);
+  });
+
+  it("substitutes pptxSlide text by matching the original run text", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-pptx-slide-match-"));
+    const sourceDataUri = `data:application/vnd.openxmlformats-officedocument.presentationml.presentation;base64,${(await buildPptxSlideTemplate()).toString("base64")}`;
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "tree-component",
+      type: "pptxSlide",
+      templateDataUri: sourceDataUri,
+      sourceSlideIndex: 1,
+      textReplacements: [{ match: "CURATED TREE COMPONENT", to: "新しいラベル & 記号<>" }],
+      x: 0,
+      y: 0,
+      w: 13.333,
+      h: 7.5,
+      summary: "Curated tree component",
+      longDescription: "A curated PowerPoint slide component transplanted as editable shape and text XML.",
+      altText: "Curated tree component",
+      decorative: false,
+      readingOrder: 20
+    });
+    const outputPath = join(outputDir, "component-match-output.pptx");
+
+    await renderDeckToPptx(deck, outputPath);
+
+    const zip = await JSZip.loadAsync(await readFile(outputPath));
+    const slide = (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
+    expect(slide).toContain("新しいラベル &amp; 記号&lt;&gt;");
+    expect(slide).not.toContain("CURATED TREE COMPONENT");
+  });
+
   it("rewrites pptxSlide media relationships without collapsing or overwriting deck media", async () => {
     const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-pptx-slide-media-"));
     const sourceDataUri = `data:application/vnd.openxmlformats-officedocument.presentationml.presentation;base64,${(await buildPptxSlideTemplateWithMedia()).toString("base64")}`;
