@@ -593,7 +593,9 @@ pptcreater review deck.json --json --no-business
 From MCP, use `list_agent_roles` to discover the pipeline, `recommend_figure` to pick a figure per
 slide (curated design-pack component vs. generated schematic, with item-count validation), and
 `review_deck` as the Reviewer/stop condition (then `finalize_deck` + `render_pptx` when `ok` is
-true). See [`docs/AGENTS.md`](docs/AGENTS.md) for the roles, contracts, routing table, and loop.
+true). Ready-made Copilot CLI / VS Code custom agents for all six roles live in
+[`.github/agents/`](.github/agents) (`deck-director` and five specialists). See
+[`docs/AGENTS.md`](docs/AGENTS.md) for the roles, contracts, routing table, and loop.
 
 ## Design principles
 

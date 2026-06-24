@@ -8,6 +8,21 @@ iteration loop, and how each role maps onto the existing pptcreater tools.
 Run `pptcreater agents` (or the MCP tool `list_agent_roles`) to print the live role definitions, and
 `pptcreater review <deck.json>` (or the MCP tool `review_deck`) to run the aggregated quality gate.
 
+## Custom agents (`.github/agents/`)
+
+Ready-to-use Copilot CLI / VS Code custom agents implement the six roles — install or invoke them
+directly:
+
+- `deck-director` — orchestrator; drives the whole loop and finalizes/renders.
+- `deck-story-architect` — narrative + chapter structure (`DeckOutline`).
+- `deck-content-strategist` — per-slide message + figure choice (`SlidePlan[]`).
+- `deck-designer` — layout, figures, colour, icons, placement.
+- `deck-copywriter` — concise titles, labels, captions, alt text.
+- `deck-reviewer` — runs `review_deck`, routes issues, holds the stop condition.
+
+Each agent uses the **pptcreater** MCP server. Start with `deck-director` and let it sequence the
+others; or invoke a specialist directly when you only need that slice.
+
 ## Roles
 
 | # | Role | Owns | Consumes → Produces |
@@ -114,8 +129,10 @@ items are resolved automatically by `finalize_deck`; advisory notes are optional
 - **Phase 2 (done):** deterministic figure selection (`selectFigure` / `pptcreater figure` /
   `recommend_figure`) mapping per-slide intent to a curated design-pack component or a generated
   schematic, with item-count validation — the Content Strategist → Designer bridge.
-- **Phase 3 (next):** wrap the loop as Copilot CLI custom agents (one per role), with the Director
-  dispatching via the Task tool and using `review_deck` as the stop condition.
+- **Phase 3 (done):** Copilot CLI / VS Code custom agents in `.github/agents/` (one per role) —
+  `deck-director`, `deck-story-architect`, `deck-content-strategist`, `deck-designer`,
+  `deck-copywriter`, `deck-reviewer`. The Director drives the loop and uses `review_deck` as the
+  stop condition; each agent uses the pptcreater MCP server.
 
 ## How to drive it today
 

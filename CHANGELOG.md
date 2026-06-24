@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.5.16 - 2026-06-24
+
+- **Shipped Copilot CLI / VS Code custom agents for the six-role pipeline (multi-agent Phase 3).** `.github/agents/` now contains ready-to-use `*.agent.md` definitions: `deck-director` (orchestrator), `deck-story-architect`, `deck-content-strategist`, `deck-designer`, `deck-copywriter`, and `deck-reviewer`. Each agent uses the pptcreater MCP server, follows the hand-off contracts (DeckBrief → DeckOutline → SlidePlan[] → DeckSpec → DeckReviewReport), and the Director drives the loop with `review_deck` as the deterministic stop condition.
+- Documented the custom agents in `docs/AGENTS.md` (usage + Phase 3 status) and the README multi-agent section. No code changes; tooling and tests are unchanged (297 tests).
+
 ## v0.5.15 - 2026-06-24
 
 - **Added deterministic figure selection (multi-agent Phase 2): the Content Strategist → Designer bridge.** `selectFigure` maps a slide's one-sentence message — or an explicit `figureKind` — to a concrete renderer choice: a curated, fully-editable design-pack component (`render_design_component`) when a matching kind exists, otherwise a generated native schematic (`generate_schematic`). It returns the renderer, the concrete kind, the expected item-count range (with an out-of-range warning so slides get split/simplified), a rationale, and ranked alternatives. The matcher is keyword-driven across 21 figure intents with Japanese + English cues and prefers curated components to keep decks editable.
