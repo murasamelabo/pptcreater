@@ -1064,4 +1064,53 @@ describe("PPTX renderer", () => {
     const result = await withRegistry(registryPath, () => renderDeckToPptx(deck, join(outputDir, "out.pptx")));
     expect(result.warnings.filter((warning) => warning.includes("template.cover-overdrawn"))).toHaveLength(0);
   });
+
+  it("warns that a content slide's full-bleed background overdraws an embedded template's content layout", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-template-content-overdraw-"));
+    const registryPath = join(outputDir, "registry.json");
+    const potxPath = join(outputDir, "brand.potx");
+    await writeFile(potxPath, await buildTemplatePotx());
+    await importTemplateFromPptx(potxPath, { id: "brand-content", name: "Brand", register: true, registryPath });
+
+    // createSampleDeck puts a full-canvas atmosphere SVG background on every slide, including the
+    // content slides, which hides the template's content background.
+    const deck = createSampleDeck("ja-JP", { slideCount: 6 });
+    deck.template = "brand-content";
+
+    const result = await withRegistry(registryPath, () => renderDeckToPptx(deck, join(outputDir, "out.pptx")));
+    const contentOverdrawn = result.warnings.filter((warning) => warning.includes("template.content-overdrawn"));
+    expect(contentOverdrawn.length).toBeGreaterThan(0);
+    // Middle content slides (not the title at index 0 or the closing) carry the warning.
+    expect(contentOverdrawn.some((warning) => warning.includes("slides.1"))).toBe(true);
+    expect(contentOverdrawn.every((warning) => !warning.includes("slides.0"))).toBe(true);
+  });
+
+  it("does not flag a content slide that draws cards on the template without a full-bleed background", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-template-content-clean-"));
+    const registryPath = join(outputDir, "registry.json");
+    const potxPath = join(outputDir, "brand.potx");
+    await writeFile(potxPath, await buildTemplatePotx());
+    const imported = await importTemplateFromPptx(potxPath, { id: "brand-content-clean", name: "Brand", register: true, registryPath });
+
+    const deck = scaffoldDeckFromTemplate(imported.template, { title: "表紙", subtitle: "サブ" });
+    // A legitimate content slide: cards + text on top of the template's content layout, with NO
+    // full-canvas background. This is the intended way to fill a template and must NOT warn.
+    deck.slides.splice(1, 0, {
+      id: "content-cards",
+      title: "比較",
+      layout: "title-content",
+      elements: [
+        { id: "cc-h", type: "text", role: "title", bold: true, text: "比較", x: 0.7, y: 0.6, w: 8, h: 0.9, readingOrder: 1, decorative: false },
+        { id: "cc-card1", type: "shape", shape: "roundRect", x: 0.7, y: 1.8, w: 3.5, h: 2.5, fill: "#e8eef9", decorative: true, readingOrder: 2 },
+        { id: "cc-card2", type: "shape", shape: "roundRect", x: 4.5, y: 1.8, w: 3.5, h: 2.5, fill: "#e8eef9", decorative: true, readingOrder: 3 },
+        { id: "cc-t1", type: "text", role: "body", bold: false, text: "項目A", x: 0.9, y: 2.0, w: 3, h: 0.6, readingOrder: 4, decorative: false },
+        { id: "cc-t2", type: "text", role: "body", bold: false, text: "項目B", x: 4.7, y: 2.0, w: 3, h: 0.6, readingOrder: 5, decorative: false }
+      ]
+    });
+
+    const result = await withRegistry(registryPath, () =>
+      renderDeckToPptx(deck, join(outputDir, "out.pptx"), { allowLintErrors: true })
+    );
+    expect(result.warnings.filter((warning) => warning.includes("template.content-overdrawn"))).toHaveLength(0);
+  });
 });

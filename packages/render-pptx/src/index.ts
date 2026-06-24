@@ -1563,48 +1563,60 @@ async function resolvePowerPointTemplate(templateMatch: TemplateManifest | undef
 const BUILTIN_TEMPLATE_IDS = new Set(listTemplates().map((template) => template.id));
 
 /**
- * Fraction of the slide canvas covered by an element, used to detect a generated full-bleed
- * backdrop that would hide an imported template's own cover design.
+ * True when a generated `svg`/`shape` element is effectively a full-canvas background: anchored near
+ * the top-left corner and spanning almost the whole slide. This is how pptcreater emits its
+ * full-bleed atmosphere background, which — drawn over an embedded template — hides the template's
+ * own background/branding. Inset content visuals (a centered diagram, a card grid) are NOT full
+ * canvas, so they are not mistaken for an overdraw. Captured raster covers (`image`) are excluded so
+ * a faithful scaffold cover does not warn.
  */
-function elementAreaFraction(
-  element: SlideElement,
-  canvasWidth: number,
-  canvasHeight: number
-): number {
-  const area = Math.max(0, element.w) * Math.max(0, element.h);
-  const canvas = canvasWidth * canvasHeight;
-  return canvas > 0 ? area / canvas : 0;
+function isFullCanvasBackground(element: SlideElement, canvasWidth: number, canvasHeight: number): boolean {
+  if (element.type !== "svg" && element.type !== "shape") {
+    return false;
+  }
+  const nearOrigin = element.x <= canvasWidth * 0.04 && element.y <= canvasHeight * 0.04;
+  const spansWidth = element.w >= canvasWidth * 0.92;
+  const spansHeight = element.h >= canvasHeight * 0.92;
+  return nearOrigin && spansWidth && spansHeight;
 }
 
 /**
- * Cover/closing slides that draw a generated hero (accent bars, chips, side panels, full-bleed
- * backdrop) over an embedded template smother the template's own cover layout. Surface a warning so
- * the author either builds the cover from the template (scaffold_from_template / template scaffold)
- * or drops the custom hero and lets the template's title placeholder carry the title.
+ * Detect slides that smother an embedded template's own design with pptcreater-generated visuals:
+ *
+ * - Cover/closing slides: a generated hero (>= 3 decorative shapes, e.g. accent bars/chips/panels)
+ *   or a full-canvas generated backdrop hides the template's COVER layout. Fix by building the slide
+ *   from the template (scaffold_from_template) or dropping the custom hero.
+ * - Content (middle) slides: drawing cards/diagrams on top of the template's content layout is the
+ *   intended way to fill a template, so shape COUNT is never flagged. Only a full-canvas generated
+ *   background is flagged, because it hides the template's content background/branding. Fix by
+ *   removing the full-bleed background (let the template show) or re-skinning with
+ *   apply_template_design, which injects the template's own content background instead.
+ *
+ * A captured cover image or an intentional full-bleed photo (`image`) is never flagged, so a faithful
+ * scaffold cover stays clean.
  */
-function coverOverdrawWarnings(deck: DeckSpec): string[] {
+function templateOverdrawWarnings(deck: DeckSpec): string[] {
   const canvasWidth = deck.slideSize?.widthInches ?? 13.333;
   const canvasHeight = deck.slideSize?.heightInches ?? 7.5;
   const warnings: string[] = [];
   deck.slides.forEach((slide, index) => {
     const kind = layoutKindForSlide(slide, index);
-    if (kind !== "title" && kind !== "closing") {
+    const fullCanvasBackground = slide.elements.some((element) => isFullCanvasBackground(element, canvasWidth, canvasHeight));
+    if (kind === "title" || kind === "closing") {
+      const shapeCount = slide.elements.filter((element) => element.type === "shape").length;
+      if (shapeCount >= 3 || fullCanvasBackground) {
+        const detail = shapeCount >= 3 ? `${shapeCount} generated shape(s)` : "a full-bleed generated backdrop";
+        warnings.push(
+          `warning:template.cover-overdrawn:slides.${index}:The ${kind} slide draws ${detail} over the imported template's own cover layout, so the template design is hidden rather than used. ` +
+            "To leverage the template cover, build this slide from the template (MCP scaffold_from_template / CLI template scaffold) or remove the custom hero/backdrop and let the template's title placeholder carry the title."
+        );
+      }
       return;
     }
-    // A generated hero is identified by multiple decorative shapes (accent bars, chips, panels) or a
-    // full-bleed generated backdrop (svg/shape). A captured template cover image or an intentional
-    // full-bleed photo is NOT treated as overdraw, so the faithful scaffold cover does not warn.
-    const shapeCount = slide.elements.filter((element) => element.type === "shape").length;
-    const fullBleedGenerated = slide.elements.some(
-      (element) =>
-        (element.type === "shape" || element.type === "svg") &&
-        elementAreaFraction(element, canvasWidth, canvasHeight) >= 0.55
-    );
-    if (shapeCount >= 3 || fullBleedGenerated) {
-      const detail = shapeCount >= 3 ? `${shapeCount} generated shape(s)` : "a full-bleed generated backdrop";
+    if (fullCanvasBackground) {
       warnings.push(
-        `warning:template.cover-overdrawn:slides.${index}:The ${kind} slide draws ${detail} over the imported template's own cover layout, so the template design is hidden rather than used. ` +
-          "To leverage the template cover, build this slide from the template (MCP scaffold_from_template / CLI template scaffold) or remove the custom hero/backdrop and let the template's title placeholder carry the title."
+        `warning:template.content-overdrawn:slides.${index}:The content slide draws a full-bleed generated background over the imported template's own content layout, so the template's background/branding is hidden. ` +
+          "Drawing cards/diagrams on the template is expected, but remove the full-bleed background so the template shows through, or re-skin the deck with apply_template_design (it injects the template's own content background instead)."
       );
     }
   });
@@ -1616,7 +1628,8 @@ function coverOverdrawWarnings(deck: DeckSpec): string[] {
  * `template` id that is not a built-in style and does not resolve to a registered template carrying
  * an embedded PowerPoint package, the render silently falls back to the default master plus generated
  * shapes/backgrounds — i.e. it only *mimics* the template. These warnings tell the author the master
- * was not embedded and exactly how to fix it, and (when it was embedded) flag a cover drawn over it.
+ * was not embedded and exactly how to fix it, and (when it was embedded) flag any slide — cover or
+ * content — whose generated visuals hide the template.
  */
 function templateUsageWarnings(
   deck: DeckSpec,
@@ -1639,7 +1652,7 @@ function templateUsageWarnings(
         "Re-import the source .pptx/.potx (import captures and embeds the master) and reference that template id."
     ];
   }
-  return coverOverdrawWarnings(deck);
+  return templateOverdrawWarnings(deck);
 }
 
 async function applyPowerPointTemplatePackage(pptxPath: string, deck: DeckSpec, template: PowerPointTemplatePackage): Promise<void> {

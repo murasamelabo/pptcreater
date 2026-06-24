@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.5.21 - 2026-06-24
+
+- **Extended template-overdraw detection to content (middle) slides.** v0.5.20 only flagged a generated hero over an embedded template's cover/closing slide. But `create_pptx`/`createSampleDeck` (and authored decks) can also put a full-bleed atmosphere background on **content** slides, which hides the template's content layout/branding the same way. Render now emits `template.content-overdrawn` for any content slide that draws a full-canvas generated `svg`/`shape` background over an embedded template. Detection is precise: it uses a full-canvas predicate (anchored near the origin and spanning ≥92% of the canvas in both axes), so drawing cards/diagrams on the template's content layout — the intended way to fill a template — is **not** flagged, and a centered/inset visual is not mistaken for a background. The fix guidance points to removing the full-bleed background or re-skinning with `apply_template_design`.
+- Tightened the cover (`template.cover-overdrawn`) full-bleed check to the same full-canvas predicate so a captured cover image or an inset visual is not mis-flagged; the ≥3-generated-shapes heuristic for cover heroes is unchanged.
+- Updated the `templateFlow` MCP guidance, the installed skills "Using a provided PowerPoint template" section, and the README to document `template.content-overdrawn` and clarify that content shapes on the template are expected.
+- Added two render regression tests (content full-bleed background warns; content cards without a full-bleed background do not). Full suite now at 308 tests.
+
 ## v0.5.20 - 2026-06-24
 
 - **Made imported PowerPoint templates reliably and faithfully used, with explicit warnings when they are not.** Two failure modes were previously silent: (1) a deck that referenced a template id which was not registered (or registered without the embedded `.pptx`/`.potx` package) rendered with the default master plus generated shapes/backgrounds — only *mimicking* the template; (2) a deck that referenced a real embedded template but drew its own generated hero/cover (accent bars, chips, side panels, full-bleed backdrop) over the template's own cover, hiding it. `render_pptx` / `create_pptx` / `finalize` now surface these as render warnings:
