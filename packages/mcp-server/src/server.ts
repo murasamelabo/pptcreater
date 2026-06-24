@@ -39,6 +39,8 @@ import {
   reviewDeck,
   reviewDeckContent,
   describeAgentPipeline,
+  selectFigure,
+  listFigureIntents,
   scaffoldDeckFromTemplate,
   searchTemplateEntries,
   searchTemplates,
@@ -534,6 +536,29 @@ export function createPptcreaterMcpServer(): McpServer {
       inputSchema: {}
     },
     async () => jsonText({ pipeline: describeAgentPipeline() })
+  );
+
+  server.registerTool(
+    "recommend_figure",
+    {
+      title: "Recommend a figure for a slide",
+      description:
+        "Content Strategist → Designer bridge: given a slide's one-sentence message (and/or an explicit figure kind), recommend whether to use a curated editable design-pack component (render_design_component) or a generated schematic (generate_schematic), the concrete kind, the expected item-count range, a rationale, and alternatives. Pass `list: true` to enumerate every supported figure intent.",
+      inputSchema: {
+        message: z.string().optional(),
+        figureKind: z.string().optional(),
+        hint: z.string().optional(),
+        itemCount: z.number().int().min(0).optional(),
+        locale: LocaleSchema.optional(),
+        list: z.boolean().default(false)
+      }
+    },
+    async ({ message, figureKind, hint, itemCount, locale, list }) => {
+      if (list) {
+        return jsonText({ intents: listFigureIntents() });
+      }
+      return jsonText(selectFigure({ message, figureKind, hint, itemCount, locale }));
+    }
   );
 
   server.registerTool(

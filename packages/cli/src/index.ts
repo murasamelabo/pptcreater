@@ -33,6 +33,8 @@ import {
   reviewDeckContent,
   reviewDeck,
   describeAgentPipeline,
+  selectFigure,
+  listFigureIntents,
   renderDesignComponentDeck,
   scaffoldDeckFromTemplate,
   searchTemplateEntries,
@@ -469,6 +471,39 @@ program
       console.log(`   produces: ${role.produces}`);
       console.log(`   tools: ${role.tools.join(", ")}`);
     });
+  }));
+
+program
+  .command("figure")
+  .description("Recommend a figure (design-pack component or schematic) for a slide message or explicit figure kind.")
+  .option("--message <text>", "The slide's one-sentence message")
+  .option("--kind <kind>", "Explicit figure intent / design-pack kind / schematic kind")
+  .option("--hint <text>", "Extra hint (role, evidence, data description)")
+  .option("--items <n>", "Number of data points the slide carries", (v) => Number.parseInt(v, 10))
+  .option("--list", "List every figure intent instead of recommending one", false)
+  .option("--json", "Emit JSON", false)
+  .action(commandAction(async (options: { message?: string; kind?: string; hint?: string; items?: number; list: boolean; json: boolean }) => {
+    if (options.list) {
+      const intents = listFigureIntents();
+      if (options.json) {
+        console.log(JSON.stringify({ intents }, null, 2));
+        return;
+      }
+      intents.forEach((i) =>
+        console.log(`${i.intent.padEnd(20)} ${i.renderer.padEnd(12)} ${i.kind.padEnd(18)} ${i.labelEn} (${i.itemRange.min}-${i.itemRange.max})`)
+      );
+      return;
+    }
+    const rec = selectFigure({ figureKind: options.kind, message: options.message, hint: options.hint, itemCount: options.items });
+    if (options.json) {
+      console.log(JSON.stringify(rec, null, 2));
+      return;
+    }
+    console.log(`intent:    ${rec.intent} (${rec.labelEn} / ${rec.labelJa})`);
+    console.log(`renderer:  ${rec.renderer}  kind: ${rec.kind}  schematic: ${rec.schematicKind}`);
+    console.log(`items:     ${rec.itemRange.min}-${rec.itemRange.max}`);
+    console.log(`rationale: ${rec.rationale}`);
+    console.log(`alternatives: ${rec.alternatives.join(", ")}`);
   }));
 
 program

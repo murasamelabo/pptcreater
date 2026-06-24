@@ -585,13 +585,15 @@ owns the fix, so the iteration loop stops on objective criteria.
 
 ```powershell
 pptcreater agents                 # print the role pipeline + hand-off contracts
+pptcreater figure --message "導入の手順を5つの工程で示す"   # recommend a figure (design-pack vs schematic)
 pptcreater review deck.json       # aggregated, routed, scored review gate
 pptcreater review deck.json --json --no-business
 ```
 
-From MCP, use `list_agent_roles` to discover the pipeline and `review_deck` as the Reviewer/stop
-condition (then `finalize_deck` + `render_pptx` when `ok` is true). See
-[`docs/AGENTS.md`](docs/AGENTS.md) for the roles, contracts, routing table, and loop.
+From MCP, use `list_agent_roles` to discover the pipeline, `recommend_figure` to pick a figure per
+slide (curated design-pack component vs. generated schematic, with item-count validation), and
+`review_deck` as the Reviewer/stop condition (then `finalize_deck` + `render_pptx` when `ok` is
+true). See [`docs/AGENTS.md`](docs/AGENTS.md) for the roles, contracts, routing table, and loop.
 
 ## Design principles
 

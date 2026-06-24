@@ -70,7 +70,7 @@ export const AGENT_ROLES: Record<AgentRoleId, AgentRole> = {
       "Decides, per slide, the single message, the information to include, the recommended figure kind, and the data — the bridge from chapter-level structure to slide-level intent.",
     consumes: "DeckOutline",
     produces: "SlidePlan[] (one message + evidence + figureKind + data per slide)",
-    tools: ["recommend_template", "list_design_components", "list_schematic_presets"]
+    tools: ["recommend_figure", "recommend_template", "list_design_components", "list_schematic_presets"]
   },
   designer: {
     id: "designer",
@@ -80,6 +80,7 @@ export const AGENT_ROLES: Record<AgentRoleId, AgentRole> = {
     consumes: "SlidePlan",
     produces: "DeckSpec slide elements (shapes/diagrams/scaffolds)",
     tools: [
+      "recommend_figure",
       "render_design_component",
       "generate_schematic",
       "generate_native_diagram",

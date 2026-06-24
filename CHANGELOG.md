@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.5.15 - 2026-06-24
+
+- **Added deterministic figure selection (multi-agent Phase 2): the Content Strategist → Designer bridge.** `selectFigure` maps a slide's one-sentence message — or an explicit `figureKind` — to a concrete renderer choice: a curated, fully-editable design-pack component (`render_design_component`) when a matching kind exists, otherwise a generated native schematic (`generate_schematic`). It returns the renderer, the concrete kind, the expected item-count range (with an out-of-range warning so slides get split/simplified), a rationale, and ranked alternatives. The matcher is keyword-driven across 21 figure intents with Japanese + English cues and prefers curated components to keep decks editable.
+- Exposed figure selection through the CLI (`pptcreater figure --message "…"`, `--kind`, `--items`, `--list`) and MCP (`recommend_figure`). Added `recommend_figure` to the Designer and Content Strategist role tool lists.
+- Documented figure selection in `docs/AGENTS.md` and the README multi-agent section. Added figure-selector unit tests (JA/EN intent matching, explicit kind + alias resolution, item-range warnings, full intent catalog). Full suite now includes 297 tests.
+
 ## v0.5.14 - 2026-06-24
 
 - **Added a multi-agent slide-authoring framework with a deterministic review gate.** A new `director` core module defines a six-role pipeline — Director (orchestrator), Story Architect, Content Strategist, Designer, Copywriter, and Reviewer — each with an explicit hand-off contract (what it consumes/produces) and the pptcreater tools it uses, surfaced via `describeAgentPipeline` / `AGENT_ROLES`.

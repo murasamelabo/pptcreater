@@ -15,4 +15,5 @@ export * from "./sourceVisuals.js";
 export * from "./templates.js";
 export * from "./designPacks.js";
 export * from "./director.js";
+export * from "./figureSelector.js";
 export * from "./typography.js";
