@@ -189,6 +189,41 @@ describe("DeckSpec linting", () => {
     expect(native?.message).toMatch(/generate_native_diagram/);
   });
 
+  it("escalates a complex hand-built connected diagram (4+ connectors) to a blocking error", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    // Five node-like cards in a fan-out flow with five hand-placed arrow connectors: at this
+    // complexity hand-routing reliably dangles/pierces, so it must block and force the generator.
+    deck.slides[0].elements.push(
+      { id: "n-a", type: "shape", shape: "roundRect", fill: "#e2e8f0", x: 0.8, y: 2.0, w: 2.2, h: 1.0, decorative: true, readingOrder: 300 },
+      { id: "n-b", type: "shape", shape: "roundRect", fill: "#e2e8f0", x: 0.8, y: 3.6, w: 2.2, h: 1.0, decorative: true, readingOrder: 301 },
+      { id: "n-hub", type: "shape", shape: "roundRect", fill: "#dbeafe", x: 5.2, y: 2.6, w: 2.9, h: 1.2, decorative: true, readingOrder: 302 },
+      { id: "n-c", type: "shape", shape: "roundRect", fill: "#e2e8f0", x: 10.0, y: 1.6, w: 2.4, h: 1.0, decorative: true, readingOrder: 303 },
+      { id: "n-d", type: "shape", shape: "roundRect", fill: "#e2e8f0", x: 10.0, y: 3.4, w: 2.4, h: 1.0, decorative: true, readingOrder: 304 }
+    );
+    for (let i = 0; i < 5; i += 1) {
+      deck.slides[0].elements.push({
+        id: `cnx-${i}`,
+        type: "shape",
+        shape: "line",
+        fill: "none",
+        x: 3.2,
+        y: 2.5 + i * 0.2,
+        w: 1.8,
+        h: 0,
+        decorative: true,
+        readingOrder: 310 + i,
+        line: { color: "#475569", endArrowType: "triangle" }
+      });
+    }
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const native = report.issues.find((issue) => issue.code === "diagram.native-connectors");
+
+    expect(native?.severity).toBe("error");
+    expect(native?.message).toMatch(/generate_native_diagram/);
+    expect(report.ok).toBe(false);
+  });
+
   it("does not flag native diagram generator connectors as hand-placed arrows", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     deck.slides[0].elements.push(

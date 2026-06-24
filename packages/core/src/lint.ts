@@ -816,11 +816,19 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
   const hasGeneratedNativeDiagram =
     connectorShapes.length > 0 && connectorShapes.every(isGeneratedNativeDiagramConnector) && nodeLikeShapes.some(isGeneratedNativeDiagramNode);
   if (!hasEngineDiagram && !hasGeneratedNativeDiagram && (connectorShapes.length >= 2 || (connectorShapes.length >= 1 && nodeLikeShapes.length >= 4))) {
+    // A handful of hand-placed connectors can line up by luck, so a small flow is only a warning.
+    // Once the flow is complex (4+ hand-placed connectors), routing every arrow to the right border
+    // by hand reliably fails — arrows dangle, pierce nodes, or leave gaps (exactly the defects the
+    // diagram engine exists to prevent), so it is escalated to a render-blocking error that forces
+    // adoption of generate_native_diagram.
+    const complex = connectorShapes.length >= 4;
     issues.push(
       issue(
-        "warning",
+        complex ? "error" : "warning",
         "diagram.native-connectors",
-        "This slide draws a connected diagram from hand-placed arrow shapes, which can dangle, pierce nodes, or become uneven unless the layout is a simple row. Build it with generate_native_diagram so connectors, boxes, and labels remain editable PowerPoint objects with automatic spacing; use generate_diagram SVG only when you need a single fixed illustration.",
+        complex
+          ? "This slide hand-places several connectors for a connected diagram, which reliably produces arrows that dangle, pierce nodes, or leave gaps to the boxes. Rebuild it with generate_native_diagram (call recommend_figure first if unsure) so connectors route border-to-border, nodes auto-space, and labels stay editable; nudging coordinates will not make hand-routed arrows reliable."
+          : "This slide draws a connected diagram from hand-placed arrow shapes, which can dangle, pierce nodes, or become uneven unless the layout is a simple row. Build it with generate_native_diagram (call recommend_figure first if unsure) so connectors, boxes, and labels remain editable PowerPoint objects with automatic spacing; use generate_diagram SVG only when you need a single fixed illustration.",
         `slides.${slideIndex}`,
         { connectors: connectorShapes.length, nodes: nodeLikeShapes.length }
       )
