@@ -18,7 +18,12 @@ describe("installGuidance", () => {
     expect(result.filesChanged.length).toBeGreaterThan(0);
     expect(existingSkills).toContain("Keep this.");
     expect(skills).toContain("AI agents creating PowerPoint decks");
+    expect(skills).toContain("Multi-agent orchestration");
+    expect(skills).toContain("deck-director");
     expect(instructions).toContain("Read .github/pptcreater-skills.md");
+    // The instruction block routes non-trivial decks to the Director agent.
+    expect(instructions).toContain("Deck Director");
+    expect(instructions).toContain(".github/agents");
   });
 
   it("installs Claude Code guidance", async () => {
@@ -28,6 +33,8 @@ describe("installGuidance", () => {
     const claude = await readFile(join(targetDir, "CLAUDE.md"), "utf8");
 
     expect(claude).toContain("Use the pptcreater MCP");
+    expect(claude).toContain("Deck Director");
+    expect(claude).toContain(".github/agents");
   });
 
   it("is idempotent on repeated installs", async () => {

@@ -207,6 +207,31 @@ Before creating a DeckSpec, clarify these points when they are not already speci
 - \`technical\`: ponchi-e, architecture, concept, boundary, and flow diagrams.
 - \`decision\`: options, risks, recommendation, and next action.
 - \`handout\`: self-contained notes and context for asynchronous reading.
+
+## Multi-agent orchestration (use the deck team for non-trivial decks)
+
+For anything beyond a quick one-off slide — multi-slide decks, important/executive/customer-facing
+presentations, or when quality matters — delegate to the deck-building agents installed in
+\`.github/agents/\` instead of doing everything in a single pass:
+
+- \`deck-director\` (orchestrator) — start here. It owns the shared DeckSpec, sequences the
+  specialists, runs the review gate, and finalizes/renders.
+- \`deck-story-architect\` — narrative + chapter structure (DeckOutline).
+- \`deck-content-strategist\` — per-slide message + figure choice (SlidePlan[]); calls \`recommend_figure\`.
+- \`deck-designer\` — layout, figures, colour, icons, placement.
+- \`deck-copywriter\` — concise titles, labels, captions, alt text.
+- \`deck-reviewer\` — runs \`review_deck\` and routes each finding to the owning role.
+
+How routing works:
+
+1. Hand non-trivial deck requests to \`deck-director\`; for a single slice you may invoke a specialist
+   directly. Use \`list_agent_roles\` for each role's responsibility, hand-off contract, and tools.
+2. The flow is DeckBrief -> DeckOutline -> SlidePlan[] -> DeckSpec -> DeckReviewReport.
+3. \`review_deck\` is the deterministic stop condition: it runs lint + content + business reviews,
+   classifies each finding (blocking / polish-fixable / advisory), scores the deck, and routes each
+   blocking issue to its owner role (\`layout.*\`/\`visual.*\`/\`diagram.*\` -> Designer;
+   \`text.*\`/\`content.*\` -> Copywriter; \`slide.*\`/most \`business.*\` -> Story Architect;
+   \`source.*\` -> Content Strategist). Fix blocking issues, re-run, and only finalize when \`ok\` is true.
 ${SKILLS_BLOCK_END}
 `;
 }
@@ -215,9 +240,11 @@ function copilotInstructionBlock(skillsPathForInstruction: string): string {
   return `${COPILOT_BLOCK_START}
 Read ${skillsPathForInstruction} before creating PowerPoint presentations or slide decks.
 
+For multi-slide, important, executive, or customer-facing decks, delegate to the deck-building custom agents in .github/agents: hand the request to the "Deck Director" agent, which sequences the Story Architect, Content Strategist, Designer, Copywriter, and Reviewer and uses review_deck as the stop condition. You may invoke a single specialist agent directly for a one-off slice. For a quick single slide you can work directly.
+
 When creating slides, use the pptcreater MCP. If purpose, audience, delivery format, slide count, or source assets are unclear, ask a short briefing before creating the DeckSpec.
 
-After the brief is clear, create a visual DeckSpec with editable PowerPoint objects where possible. Use generate_intent_diagram when the intended concept composition/granularity is known, use generate_native_diagram for general architecture/security/ponchi-e diagrams instead of flattening them into SVG images, run review_content and lint_deck, optionally run polish_deck_layout, then render_pptx/render_powerpoint or render_studio. If MCP render tools are unavailable, run CLI: pptcreater render <deck.json> --output <deck.pptx> --polish. Never use PowerPoint COM or ad-hoc PPTX scripts for normal output.
+After the brief is clear, create a visual DeckSpec with editable PowerPoint objects where possible. Use generate_intent_diagram when the intended concept composition/granularity is known, use generate_native_diagram for general architecture/security/ponchi-e diagrams instead of flattening them into SVG images, run review_content and lint_deck (or review_deck for the aggregated, routed gate), optionally run polish_deck_layout, then render_pptx/render_powerpoint or render_studio. If MCP render tools are unavailable, run CLI: pptcreater render <deck.json> --output <deck.pptx> --polish. Never use PowerPoint COM or ad-hoc PPTX scripts for normal output.
 ${COPILOT_BLOCK_END}`;
 }
 
@@ -225,7 +252,9 @@ function claudeInstructionBlock(skillsPathForInstruction: string): string {
   return `${CLAUDE_BLOCK_START}
 Before creating PowerPoint presentations or slide decks, read ${skillsPathForInstruction}.
 
-Use the pptcreater MCP for slide work. Start by clarifying purpose, audience, delivery mode, volume, and available source assets when they are unclear. Prefer editable PowerPoint shapes/text over flattened images. Use generate_intent_diagram when the intended concept composition/granularity is known, and use generate_native_diagram for general architecture/security/ponchi-e diagrams. Run review_content and lint_deck before rendering, and use polish_deck_layout only when needed. Render with render_pptx/render_powerpoint, or CLI \`pptcreater render <deck.json> --output <deck.pptx> --polish\` if MCP render tools are not visible. Never use PowerPoint COM or ad-hoc PPTX scripts for normal output.
+For multi-slide, important, executive, or customer-facing decks, delegate to the deck-building custom agents in .github/agents: start with the "Deck Director" agent, which sequences the Story Architect, Content Strategist, Designer, Copywriter, and Reviewer and uses review_deck as the stop condition. Invoke a single specialist directly for a one-off slice; for a quick single slide you can work directly.
+
+Use the pptcreater MCP for slide work. Start by clarifying purpose, audience, delivery mode, volume, and available source assets when they are unclear. Prefer editable PowerPoint shapes/text over flattened images. Use generate_intent_diagram when the intended concept composition/granularity is known, and use generate_native_diagram for general architecture/security/ponchi-e diagrams. Run review_content and lint_deck (or review_deck for the aggregated, routed gate) before rendering, and use polish_deck_layout only when needed. Render with render_pptx/render_powerpoint, or CLI \`pptcreater render <deck.json> --output <deck.pptx> --polish\` if MCP render tools are not visible. Never use PowerPoint COM or ad-hoc PPTX scripts for normal output.
 ${CLAUDE_BLOCK_END}`;
 }
 

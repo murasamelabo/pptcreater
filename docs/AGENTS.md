@@ -23,6 +23,23 @@ directly:
 Each agent uses the **pptcreater** MCP server. Start with `deck-director` and let it sequence the
 others; or invoke a specialist directly when you only need that slice.
 
+## Two layers of routing
+
+"Routing" happens at two distinct layers — it helps to keep them separate:
+
+1. **Entry routing (which agent runs).** Deciding *when to hand a request to the deck team* is done
+   by the host (VS Code Copilot / Copilot CLI), guided by two things the installer writes:
+   - the agent `description` frontmatter (the host matches user intent against it), and
+   - the installed instruction block (`.github/copilot-instructions.md` / `CLAUDE.md`), which now
+     explicitly tells the base assistant to **delegate multi-slide / important / customer-facing
+     decks to the `deck-director` agent** (and lets it handle a quick single slide directly).
+     `pptcreater install-copilot` / `install-claude-code` install both the agents and this routing
+     instruction, so the entry point exists out of the box.
+   Note: the Director sequences the specialists by following its own playbook; sub-agent dispatch
+   depends on the host's agent capabilities.
+2. **Issue routing (which role fixes a finding).** This is deterministic and lives in the code:
+   `reviewDeck` → `ownerForCode` (see the routing table below), surfaced by the `review_deck` tool.
+
 ## Roles
 
 | # | Role | Owns | Consumes → Produces |

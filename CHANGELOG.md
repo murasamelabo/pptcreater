@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.5.18 - 2026-06-24
+
+- **Wired the entry-point routing that hands deck requests to the agent team.** Installing custom agents alone did not make them get used — nothing told the base assistant when to delegate. The installed instruction block (`.github/copilot-instructions.md` / `CLAUDE.md`) now explicitly routes multi-slide, important, executive, or customer-facing decks to the `deck-director` agent (which sequences the specialists and uses `review_deck` as the stop condition), while still allowing a quick single slide to be handled directly. The `pptcreater-skills.md` file gained a "Multi-agent orchestration" section describing the six agents, the hand-off contracts, and how `review_deck` routes each finding to its owner role.
+- Clarified in `docs/AGENTS.md` that routing has two layers: entry routing (host + installed instruction block selecting the Director) and deterministic issue routing (`reviewDeck`/`ownerForCode` → `review_deck`).
+- Added regression assertions that the installed instruction block and skills file reference the Deck Director and `.github/agents`. Full suite stays at 300 tests.
+
 ## v0.5.17 - 2026-06-24
 
 - **`install-copilot` / `install-claude-code` now install the deck-building custom agents.** Both commands copy the six `*.agent.md` definitions (`deck-director` plus the five specialists) into the target project's `.github/agents/`, so the multi-agent workflow is available immediately after install — not just the skills file and instruction block. The agents are embedded in the CLI so this works from a published npm package. Existing agent files are preserved unless `--overwrite` is passed; use `--no-agents` to skip them. The commands remain idempotent.
