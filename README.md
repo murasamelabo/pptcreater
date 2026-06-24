@@ -390,6 +390,7 @@ pptcreater install-copilot --target C:\path\to\your-project
 This creates or updates:
 
 - `.github\pptcreater-skills.md`
+- `.github\agents\*.agent.md` — the six deck-building custom agents (`deck-director` and five specialists)
 - `.github\copilot-instructions.md`
 
 For Claude Code:
@@ -401,9 +402,10 @@ pptcreater install-claude-code --target C:\path\to\your-project
 This creates or updates:
 
 - `.github\pptcreater-skills.md`
+- `.github\agents\*.agent.md` — the six deck-building custom agents
 - `CLAUDE.md`
 
-Both commands are idempotent. Existing instruction files are updated inside a managed `pptcreater` block. Existing root-level `SKILLS.md` files are not modified. Pass `--no-instructions` if you only want to install `.github\pptcreater-skills.md` without updating `.github\copilot-instructions.md` or `CLAUDE.md`.
+Both commands are idempotent. Existing instruction files are updated inside a managed `pptcreater` block. Existing root-level `SKILLS.md` files are not modified. The custom agents (see [`docs/AGENTS.md`](docs/AGENTS.md)) are installed into `.github\agents` so the Director and its specialists are available in your project; existing agent files are not overwritten unless you pass `--overwrite`. Pass `--no-instructions` to skip the instruction file, or `--no-agents` to skip installing the custom agents.
 
 ## Add PowerPoint templates
 

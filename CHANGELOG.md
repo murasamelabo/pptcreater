@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.5.17 - 2026-06-24
+
+- **`install-copilot` / `install-claude-code` now install the deck-building custom agents.** Both commands copy the six `*.agent.md` definitions (`deck-director` plus the five specialists) into the target project's `.github/agents/`, so the multi-agent workflow is available immediately after install — not just the skills file and instruction block. The agents are embedded in the CLI so this works from a published npm package. Existing agent files are preserved unless `--overwrite` is passed; use `--no-agents` to skip them. The commands remain idempotent.
+- Added `installAgents` to the install API and `agentPaths` to its result. Added regression tests covering agent installation and the `--no-agents` skip. Documented in the README install section. Full suite now includes 299 tests.
+
 ## v0.5.16 - 2026-06-24
 
 - **Shipped Copilot CLI / VS Code custom agents for the six-role pipeline (multi-agent Phase 3).** `.github/agents/` now contains ready-to-use `*.agent.md` definitions: `deck-director` (orchestrator), `deck-story-architect`, `deck-content-strategist`, `deck-designer`, `deck-copywriter`, and `deck-reviewer`. Each agent uses the pptcreater MCP server, follows the hand-off contracts (DeckBrief → DeckOutline → SlidePlan[] → DeckSpec → DeckReviewReport), and the Director drives the loop with `review_deck` as the deterministic stop condition.
