@@ -89,8 +89,8 @@ function outputLocale(fallback: Locale = "en-US"): Locale {
 
 function parseSlideCount(value: string): number {
   const count = Number(value);
-  if (!Number.isInteger(count) || count < 1 || count > 4) {
-    throw new InvalidArgumentError("Slide count must be an integer from 1 to 4.");
+  if (!Number.isInteger(count) || count < 1 || count > 40) {
+    throw new InvalidArgumentError("Slide count must be an integer from 1 to 40.");
   }
 
   return count;
@@ -220,7 +220,7 @@ program
   .option("--locale <locale>", "Deck locale", "ja-JP")
   .option("--purpose <purpose>", "Purpose or desired audience outcome")
   .option("--audience <audience>", "Primary audience")
-  .option("--slides <count>", "Target slide count from 1 to 4", parseSlideCount)
+  .option("--slides <count>", "Target slide count from 1 to 40", parseSlideCount)
   .addOption(new Option("--slide-count <count>", "Alias for --slides (matches the MCP slideCount field)").argParser(parseSlideCount).hideHelp())
   .option("--content-mode <mode>", "presentation, report, technical, handout, or decision", parseContentMode)
   .option("--style <profile>", "Force a style: minimal, stylish, report, presentation, technical", parseStyleProfile)

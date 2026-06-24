@@ -422,7 +422,8 @@ export function createSampleDeck(locale: Locale, options: CreateSampleDeckOption
     }
   };
   const theme = buildTheme(tokens);
-  const targetSlideCount = Number.isInteger(options.slideCount) ? Math.max(1, Math.min(options.slideCount ?? 4, 4)) : 4;
+  const requestedSlideCount = Number.isInteger(options.slideCount) ? (options.slideCount as number) : 4;
+  const targetSlideCount = Math.max(1, Math.min(requestedSlideCount, 40));
 
   const deckTitle = isJapanese ? "デザイン品質を備えたAIスライド作成" : "AI slide creation with design quality";
 
@@ -523,7 +524,7 @@ export function createSampleDeck(locale: Locale, options: CreateSampleDeckOption
       };
     })(),
     {
-      id: "slide-4",
+      id: "slide-closing",
       title: isJapanese ? "用途別スタイル選定" : "Choose the style for the purpose",
       layout: "closing",
       speakerNotes: isJapanese ? "presentation / report / technical で見た目が切り替わります。" : "presentation, report, and technical change the look automatically.",
@@ -538,6 +539,63 @@ export function createSampleDeck(locale: Locale, options: CreateSampleDeckOption
     }
   ];
 
+  // The base deck is four slides: three intro/content slides and a closing slide. For a small
+  // request, slice the base. For larger decks, keep the three intro slides, insert as many extra
+  // content slides as needed (alternating card/step layouts with distinct section titles so they
+  // stay lint-clean and visually rich), then keep the closing slide last.
+  const introSlides = slides.slice(0, 3);
+  const closing = slides[3];
+
+  function extraContentSlide(sectionIndex: number): (typeof slides)[number] {
+    const useJapaneseTopicTitles = isJapanese && (contentMode === "report" || contentMode === "technical" || contentMode === "handout");
+    const number = sectionIndex + 1;
+    if (sectionIndex % 2 === 0) {
+      const title = isJapanese
+        ? useJapaneseTopicTitles
+          ? `補足セクション ${number}：要点カード`
+          : `セクション ${number}：要点を3枚のカードで整理する`
+        : `Section ${number}: Organize the key points as three cards`;
+      return {
+        id: `slide-section-${number}`,
+        title,
+        layout: "cards",
+        speakerNotes: isJapanese
+          ? `セクション${number}: 要点を3つに絞り、カードで対比します。`
+          : `Section ${number}: focus on three points and contrast them as cards.`,
+        elements: cardSlide(theme, isJapanese, title, qualityCards)
+      };
+    }
+    const title = isJapanese
+      ? useJapaneseTopicTitles
+        ? `補足セクション ${number}：進め方`
+        : `セクション ${number}：進め方をステップで示す`
+      : `Section ${number}: Show the approach as steps`;
+    return {
+      id: `slide-section-${number}`,
+      title,
+      layout: "steps",
+      speakerNotes: isJapanese
+        ? `セクション${number}: 手順を順に追えるよう並べます。`
+        : `Section ${number}: lay out the steps in order.`,
+      elements: stepSlide(
+        theme,
+        isJapanese,
+        title,
+        steps,
+        isJapanese ? "各ステップは1メッセージに絞ると伝わりやすくなります。" : "Keep each step to a single message for clarity."
+      )
+    };
+  }
+
+  let finalSlides: typeof slides;
+  if (targetSlideCount <= slides.length) {
+    finalSlides = slides.slice(0, targetSlideCount);
+  } else {
+    const extraCount = targetSlideCount - slides.length;
+    const extras = Array.from({ length: extraCount }, (_, index) => extraContentSlide(index));
+    finalSlides = [...introSlides, ...extras, closing];
+  }
+
   return {
     version: "0.1",
     title: deckTitle,
@@ -550,7 +608,7 @@ export function createSampleDeck(locale: Locale, options: CreateSampleDeckOption
       contentMode,
       sources: []
     },
-    slides: slides.slice(0, targetSlideCount)
+    slides: finalSlides
   };
 }
 

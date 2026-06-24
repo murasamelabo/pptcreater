@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.5.19 - 2026-06-24
+
+- **Raised the sample/quick-deck slide-count limit from 4 to 40.** `create_pptx`, `create_powerpoint`, and `create_deck` (and the underlying `createSampleDeck`) previously capped at 4 slides; requesting more silently returned 4. They now generate up to 40 slides: the three intro/content slides are kept, the closing slide stays last, and the requested number of extra content slides are inserted in between as alternating card/step sections with distinct, section-numbered titles (JA/EN) so they stay lint-clean, visually rich, and accessible. The CLI `pptcreater new --slides` parser and the MCP `create_pptx` / `create_powerpoint` / `create_deck` schemas now accept `1..40` (matching `plan_business_deck`).
+- Added a regression test that a 12-slide sample deck has unique slide ids and titles, keeps the closing slide last, and lints clean in both locales. Full suite now at 301 tests.
+
 ## v0.5.18 - 2026-06-24
 
 - **Wired the entry-point routing that hands deck requests to the agent team.** Installing custom agents alone did not make them get used — nothing told the base assistant when to delegate. The installed instruction block (`.github/copilot-instructions.md` / `CLAUDE.md`) now explicitly routes multi-slide, important, executive, or customer-facing decks to the `deck-director` agent (which sequences the specialists and uses `review_deck` as the stop condition), while still allowing a quick single slide to be handled directly. The `pptcreater-skills.md` file gained a "Multi-agent orchestration" section describing the six agents, the hand-off contracts, and how `review_deck` routes each finding to its owner role.

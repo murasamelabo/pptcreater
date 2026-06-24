@@ -280,7 +280,7 @@ export function createPptcreaterMcpServer(): McpServer {
     locale: z.enum(["ja-JP", "en-US"]).default("ja-JP"),
     purpose: z.string().optional(),
     audience: z.string().optional(),
-    slideCount: z.number().int().min(1).max(4).optional(),
+    slideCount: z.number().int().min(1).max(40).optional(),
     contentMode: z.enum(["presentation", "report", "technical", "handout", "decision"]).optional(),
     styleProfile: z.enum(STYLE_PROFILES).optional(),
     outputPath: z.string().min(1),
@@ -363,7 +363,7 @@ export function createPptcreaterMcpServer(): McpServer {
         locale: z.enum(["ja-JP", "en-US"]).default("ja-JP"),
         purpose: z.string().optional(),
         audience: z.string().optional(),
-        slideCount: z.number().int().min(1).max(4).optional(),
+        slideCount: z.number().int().min(1).max(40).optional(),
         contentMode: z.enum(["presentation", "report", "technical", "handout", "decision"]).optional(),
         styleProfile: z.enum(STYLE_PROFILES).optional()
       }

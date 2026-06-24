@@ -59,7 +59,7 @@ pptcreater new --output examples\deck.json --locale ja-JP --content-mode present
 
 Available styles: `minimal`, `stylish`, `report`, `presentation`, `technical`. From MCP, use `recommend_template` to get the template and style for a content mode, or pass `styleProfile` to `create_deck`. Built-in styled templates (`modern-simple`, `stylish-editorial`, `report-formal`, `presentation-bold`, `technical-architecture`) are listed by `pptcreater template list` and MCP `search_templates`.
 
-From MCP, use `create_pptx` when the user simply asks for a `.pptx`. It creates a styled DeckSpec, lints it, polishes layout, and renders the PowerPoint in one call. Use the lower-level `create_deck` -> `review_content` -> `lint_deck` -> `render_pptx` workflow only when you need to manually edit the DeckSpec.
+From MCP, use `create_pptx` when the user simply asks for a `.pptx`. It creates a styled DeckSpec, lints it, polishes layout, and renders the PowerPoint in one call. `create_pptx`, `create_powerpoint`, and `create_deck` accept `slideCount` from 1 to 40 (the CLI `pptcreater new --slides` uses the same range); when more than the four built-in slides are requested, extra section-numbered card/step content slides are inserted before the closing slide. Use the lower-level `create_deck` -> `review_content` -> `lint_deck` -> `render_pptx` workflow only when you need to manually edit the DeckSpec.
 
 `review_content` / `pptcreater content-review` provides the content-writing guardrail that prevents AI-generated decks from reading like long documents. It switches rules by locale and `contentMode`:
 

@@ -14,6 +14,26 @@ describe("sample deck generation", () => {
     expect(deck.slides.every((slide) => slide.elements.some((element) => element.type === "shape"))).toBe(true);
   });
 
+  it("scales beyond four slides with unique, lint-clean content slides", () => {
+    for (const locale of ["ja-JP", "en-US"] as const) {
+      const deck = parseDeckSpec(createSampleDeck(locale, { slideCount: 12 }));
+
+      expect(deck.slides).toHaveLength(12);
+
+      const ids = deck.slides.map((slide) => slide.id);
+      expect(new Set(ids).size, `${locale} slide ids should be unique`).toBe(ids.length);
+
+      const titles = deck.slides.map((slide) => slide.title);
+      expect(new Set(titles).size, `${locale} slide titles should be unique`).toBe(titles.length);
+
+      expect(deck.slides[deck.slides.length - 1].layout, `${locale} closing slide should be last`).toBe("closing");
+
+      const report = lintDeckSpec(deck);
+      expect(report.ok, `${locale} 12-slide deck should have no errors`).toBe(true);
+      expect(report.issues, `${locale} 12-slide deck should have no issues`).toHaveLength(0);
+    }
+  });
+
   it("produces lint-clean decks for every content mode", () => {
     for (const contentMode of CONTENT_MODES) {
       const deck = parseDeckSpec(createSampleDeck("ja-JP", { contentMode }));
