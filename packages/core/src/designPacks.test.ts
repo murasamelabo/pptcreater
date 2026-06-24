@@ -38,7 +38,7 @@ describe("design asset packs", () => {
 
     const components = await listDesignComponents({ kind: "tree", roots: [root] });
     const deck = await renderDesignComponentDeck("tree-test", { roots: [root] });
-    const element = deck.slides[0]?.elements[0];
+    const element = deck.slides[0]?.elements.find((el) => el.type === "pptxSlide");
 
     expect(components).toHaveLength(1);
     expect(components[0]?.sourcePptxPath).toBe(join(treeDir, "tree.pptx"));
@@ -96,7 +96,7 @@ describe("design asset packs", () => {
     expect(cycleOnly[0]?.packId).toBe("zukai");
 
     const deck = await renderDesignComponentDeck("matrix-p1", { roots: [root] });
-    const element = deck.slides[0]?.elements[0];
+    const element = deck.slides[0]?.elements.find((el) => el.type === "pptxSlide");
     expect(element?.type).toBe("pptxSlide");
     if (element?.type === "pptxSlide") {
       expect(element.sourceSlideIndex).toBe(31);
@@ -143,13 +143,52 @@ describe("design asset packs", () => {
       roots: [root],
       nodeOperations: [{ op: "add", group: "items", label: "D", cloneFrom: "B" }]
     });
-    const element = deck.slides[0]?.elements[0];
+    const element = deck.slides[0]?.elements.find((el) => el.type === "pptxSlide");
     expect(element?.type).toBe("pptxSlide");
     if (element?.type === "pptxSlide") {
       expect(element.nodeGroups).toHaveLength(1);
       expect(element.nodeGroups?.[0]?.layout).toBe("linear-x");
       expect(element.nodeGroups?.[0]?.members).toEqual(["A", "B", "C"]);
       expect(element.nodeOperations).toEqual([{ op: "add", group: "items", label: "D", cloneFrom: "B" }]);
+    }
+  });
+
+  it("re-tones a design component figure for a dark deck (backdrop + title recolor)", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pptcreater-design-tone-"));
+    const packDir = join(root, "zukai");
+    await mkdir(packDir, { recursive: true });
+    await writeFile(join(packDir, "zukai.pptx"), "placeholder");
+    await writeFile(
+      join(packDir, "manifest.json"),
+      JSON.stringify({
+        id: "zukai",
+        name: "Zukai pack",
+        description: "Zukai components.",
+        version: "0.1.0",
+        sourcePptx: "zukai.pptx",
+        components: [{ id: "flow-horizontal-p1", kind: "flow-horizontal", name: "Flow H P1", sourceSlideIndex: 4, editableGroups: [] }]
+      }),
+      "utf8"
+    );
+
+    const dark = await renderDesignComponentDeck("flow-horizontal-p1", { roots: [root], tone: "dark" });
+    const backdrop = dark.slides[0]?.elements.find((el) => el.id.endsWith("-backdrop"));
+    expect(backdrop?.type).toBe("shape");
+    if (backdrop?.type === "shape") {
+      expect(backdrop.fill).toBe("#0E2233");
+      expect(backdrop.readingOrder).toBe(0);
+    }
+    const darkFigure = dark.slides[0]?.elements.find((el) => el.type === "pptxSlide");
+    if (darkFigure?.type === "pptxSlide") {
+      expect(darkFigure.recolor?.some((r) => r.from.toLowerCase() === "#16243b")).toBe(true);
+    }
+
+    // background: "none" inherits the deck/template — no backdrop element, but the recolor still applies.
+    const inherit = await renderDesignComponentDeck("flow-horizontal-p1", { roots: [root], tone: "dark", background: "none" });
+    expect(inherit.slides[0]?.elements.some((el) => el.id.endsWith("-backdrop"))).toBe(false);
+    const inheritFigure = inherit.slides[0]?.elements.find((el) => el.type === "pptxSlide");
+    if (inheritFigure?.type === "pptxSlide") {
+      expect(inheritFigure.recolor?.some((r) => r.from.toLowerCase() === "#16243b")).toBe(true);
     }
   });
 });

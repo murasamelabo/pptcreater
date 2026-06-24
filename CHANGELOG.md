@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## v0.5.25 - 2026-06-24
+
+- **Added color-tone support to `render_design_component` so curated figures fit any deck (light or dark).** A curated design-pack figure is authored on a light slide background that is NOT carried when the figure is transplanted into another deck, so dropping a zukai figure into a dark-template deck previously lost its backdrop and rendered its dark catalog title dark-on-dark. `render_design_component` / `renderDesignComponentDeck` now accept:
+  - `tone` (`light` default | `dark`): emits a full-bleed backdrop (`#F4F7FC` for light, a dark navy for dark) so the figure is self-contained and readable in any deck; the dark tone also lightens the figure's dark catalog title.
+  - `background`: overrides the backdrop color, or `"none"` to inherit the deck/template (so a figure integrates into an existing dark master without an extra full-bleed layer).
+  - `recolor`: an explicit list of `{ from, to, scope }` remaps (`scope`: `text` | `fill` | `all`) applied to the transplanted figure. An explicit `recolor` **replaces** the tone default — pass `recolor: []` to disable re-coloring entirely. This matters for figures like `comparison` where the catalog title hue is also used for card-body text on white cards (which must stay dark).
+- **New `pptxSlide.recolor` DeckSpec field** with scoped (`text`/`fill`/`all`) `srgbClr` remapping in the transplant, so any transplanted PowerPoint figure can be re-toned without editing the source file.
+- Added render + core regression tests (scoped recolor rewrites only text/fill colors; dark tone emits a backdrop + title recolor; `background: "none"` inherits without a backdrop). Full suite now at 312 tests.
+
 ## v0.5.24 - 2026-06-24
 
 - **Steered figure guidance to the curated zukai design pack first.** `recommend_figure` already recommends a curated `design-pack` component (via `render_design_component`) for most figure kinds and only falls back to a generated `schematic` when no curated component exists — but the prose guidance added in v0.5.22 (`figureAdoption`) over-emphasized the generated tools (`generate_schematic` / `generate_native_diagram`) and barely mentioned `render_design_component`, so an agent would skip the professionally designed zukai figures. Rewrote the `figureAdoption` MCP guidance, the installed skills workflow step + design rule, and the README to make the flow explicit: follow `recommend_figure`'s `renderer` — when it returns `design-pack`, **prefer `render_design_component`** with a component of the recommended `kind` from the zukai pack (the 14 figure kinds flow-horizontal/flow-vertical/cycle/before-after/matrix/venn/formula/comparison/scale/step/gantt/list-vertical/list-horizontal/list-enumeration, plus tree), filling every catalog placeholder with `textReplacements` and matching the node count with `nodeOperations`; only fall back to the generators when `renderer` is `schematic`. Also documented that `○/△/✕` comparison marks are colored icon shapes and must not be changed via text replacement.

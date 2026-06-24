@@ -241,6 +241,19 @@ export const PptxSlideNodeOperationSchema = z.union([
   })
 ]);
 
+/**
+ * Remap a baked color inside a transplanted PowerPoint slide so a curated figure can be re-toned to
+ * fit the deck (e.g. lighten a dark catalog title for a dark deck). `scope` limits where the remap
+ * applies: `text` only recolors run/paragraph text colors, `fill` only recolors shape fills, and
+ * `all` (default) recolors every matching color. Use `text`/`fill` to avoid collisions when the same
+ * hex is used both as a fill and as text on a contrasting surface.
+ */
+export const PptxSlideColorReplacementSchema = z.object({
+  from: z.string().regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/),
+  to: z.string().regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/),
+  scope: z.enum(["all", "text", "fill"]).default("all")
+});
+
 export const PptxSlideElementSchema = ElementBaseSchema.extend({
   type: z.literal("pptxSlide"),
   h: z.number().positive(),
@@ -250,6 +263,7 @@ export const PptxSlideElementSchema = ElementBaseSchema.extend({
   textReplacements: z.array(PptxSlideTextReplacementSchema).optional(),
   nodeGroups: z.array(PptxSlideNodeGroupSchema).optional(),
   nodeOperations: z.array(PptxSlideNodeOperationSchema).optional(),
+  recolor: z.array(PptxSlideColorReplacementSchema).optional(),
   summary: z.string().min(1),
   longDescription: z.string().min(1)
 }).refine((value) => value.templatePath || value.templateDataUri, {
@@ -321,6 +335,7 @@ export type PptxSlideElement = z.infer<typeof PptxSlideElementSchema>;
 export type PptxSlideTextReplacement = z.infer<typeof PptxSlideTextReplacementSchema>;
 export type PptxSlideNodeGroup = z.infer<typeof PptxSlideNodeGroupSchema>;
 export type PptxSlideNodeOperation = z.infer<typeof PptxSlideNodeOperationSchema>;
+export type PptxSlideColorReplacement = z.infer<typeof PptxSlideColorReplacementSchema>;
 export type Slide = z.infer<typeof SlideSchema>;
 export type DeckSpec = z.infer<typeof DeckSpecSchema>;
 

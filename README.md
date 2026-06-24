@@ -218,6 +218,17 @@ A curated component ships with placeholder data. To reuse the same human-designe
 
 The visible number of boxes is fixed by the curated geometry (the shapes are human-designed); `textReplacements` changes the labels/data inside those boxes. `npm run sample:tree-design` renders the as-shipped gallery, and `node scripts/generate-tree-varied-gallery.mjs` renders the same seven trees with substituted, domain-specific data.
 
+### Re-toning for light or dark decks (`tone` / `background` / `recolor`)
+
+Curated figures are authored on a light slide background, and that background is **not** carried when the figure is transplanted into another deck — so a curated figure dropped into a dark-template deck would lose its backdrop and its dark catalog title would read dark-on-dark. `render_design_component` / `renderDesignComponentDeck` accept a `tone` so the figure carries the right colors:
+
+- `tone: "light"` (default) emits a full-bleed light (`#F4F7FC`) backdrop so the figure is self-contained and readable in any deck.
+- `tone: "dark"` emits a dark backdrop and lightens the figure's dark catalog title so it reads on dark.
+- `background` overrides the backdrop color, or `"none"` inherits the deck/template (use this when the deck already has a dark master so the figure integrates without an extra full-bleed layer).
+- `recolor` is an explicit list of `{ from, to, scope }` color remaps applied to the transplanted figure; `scope` is `text` (run text only), `fill` (shape fills only), or `all` (default). An explicit `recolor` **replaces** the tone's default remap — pass `recolor: []` to disable re-coloring entirely (important for figures like `comparison` where the catalog title hue is also used for card-body text, which must stay dark on its white card).
+
+For a deck that already uses a dark template, a clean pattern is `tone: "dark"`, `background: "none"`, `recolor: []` (so card text is untouched), blank the figure's catalog eyebrow/title via `textReplacements`, and add your own deck-native title text element on top — the figure body and caption then sit on the dark master exactly like your other slides.
+
 ### Adding and removing nodes (`nodeOperations`)
 
 To change the *number* of nodes (not just their text), a component can declare `editableGroups` — sibling sets that support structural edits. The shipped `tree` pack declares editable groups for the vertical-org, horizontal, and logic trees. Issue operations on the `pptxSlide` element (or pass `nodeOperations` to `renderDesignComponentDeck` / the MCP `render_design_component` tool):

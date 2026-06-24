@@ -807,6 +807,43 @@ describe("PPTX renderer", () => {
     expect(slide).not.toContain("CURATED TREE COMPONENT");
   });
 
+  it("re-tones a transplanted pptxSlide figure with scoped color remaps", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-pptx-recolor-"));
+    const sourceDataUri = `data:application/vnd.openxmlformats-officedocument.presentationml.presentation;base64,${(await buildPptxSlideTemplate()).toString("base64")}`;
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "tree-component",
+      type: "pptxSlide",
+      templateDataUri: sourceDataUri,
+      sourceSlideIndex: 1,
+      // The template box fill is #EAF2FF and its text color is #111827. A text-scoped remap must
+      // lighten only the text, and a fill-scoped remap must darken only the fill.
+      recolor: [
+        { from: "#111827", to: "#F8FAFC", scope: "text" },
+        { from: "#EAF2FF", to: "#0E2233", scope: "fill" }
+      ],
+      x: 0,
+      y: 0,
+      w: 13.333,
+      h: 7.5,
+      summary: "Curated tree component",
+      longDescription: "A curated PowerPoint slide component transplanted as editable shape and text XML.",
+      altText: "Curated tree component",
+      decorative: false,
+      readingOrder: 20
+    });
+    const outputPath = join(outputDir, "component-recolor-output.pptx");
+
+    await renderDeckToPptx(deck, outputPath);
+
+    const zip = await JSZip.loadAsync(await readFile(outputPath));
+    const slide = (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
+    expect(slide).toContain('val="F8FAFC"');
+    expect(slide).toContain('val="0E2233"');
+    expect(slide).not.toContain('val="111827"');
+    expect(slide).not.toContain('val="EAF2FF"');
+  });
+
   it("rewrites pptxSlide media relationships without collapsing or overwriting deck media", async () => {
     const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-pptx-slide-media-"));
     const sourceDataUri = `data:application/vnd.openxmlformats-officedocument.presentationml.presentation;base64,${(await buildPptxSlideTemplateWithMedia()).toString("base64")}`;

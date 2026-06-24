@@ -1056,10 +1056,21 @@ export function createPptcreaterMcpServer(): McpServer {
     "render_design_component",
     {
       title: "Render design component DeckSpec",
-      description: "Create a DeckSpec that uses a curated design component from a design-pack. Render it with render_pptx/finalize_deck to transplant the source PowerPoint slide component. Use textReplacements to substitute the curated placeholder data, and nodeOperations to add/remove nodes in the component's editableGroups (the layout re-fits within the original footprint).",
+      description: "Create a DeckSpec that uses a curated design component from a design-pack (e.g. the zukai 14-figure pack). Render it with render_pptx/finalize_deck to transplant the source PowerPoint slide component. Use textReplacements to substitute the curated placeholder data (replace every catalog placeholder), and nodeOperations to add/remove nodes in the component's editableGroups (the layout re-fits within the original footprint). Use tone ('light' default, or 'dark') so a curated light-background figure carries its own backdrop and reads correctly when dropped into a dark deck; pass background to force a specific full-bleed backdrop color (or 'none' to inherit the deck/template), and recolor for extra color remaps. NOTE: ○/△/✕ comparison marks are colored icon shapes — do not change them via textReplacements; keep the source mark pattern and map your columns onto it.",
       inputSchema: {
         componentId: z.string().min(1),
         title: z.string().optional(),
+        tone: z.enum(["light", "dark"]).optional(),
+        background: z.string().optional(),
+        recolor: z
+          .array(
+            z.object({
+              from: z.string().regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/),
+              to: z.string().regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/),
+              scope: z.enum(["all", "text", "fill"]).optional()
+            })
+          )
+          .optional(),
         textReplacements: z
           .array(
             z.union([
@@ -1084,8 +1095,8 @@ export function createPptcreaterMcpServer(): McpServer {
           .optional()
       }
     },
-    async ({ componentId, title, textReplacements, nodeOperations }) =>
-      jsonText(await renderDesignComponentDeck(componentId, { title, textReplacements, nodeOperations }))
+    async ({ componentId, title, tone, background, recolor, textReplacements, nodeOperations }) =>
+      jsonText(await renderDesignComponentDeck(componentId, { title, tone, background, recolor, textReplacements, nodeOperations }))
   );
 
   server.registerTool(

@@ -1016,6 +1016,40 @@ function applyPptxSlideTextReplacements(
   });
 }
 
+type PptxSlideColorReplacementEntry = { from: string; to: string; scope?: "all" | "text" | "fill" };
+
+/**
+ * Re-tone a transplanted PowerPoint figure by remapping baked `srgbClr` colors. `scope` controls
+ * where each remap applies: `text` only touches run/paragraph text colors (`a:rPr`/`a:defRPr`/
+ * `a:endParaRPr` blocks), `fill` only touches shape fills (`p:spPr` blocks), and `all` (default)
+ * touches every match. This lets a curated light-background figure be lightened for a dark deck
+ * without recoloring fills that share the same hex.
+ */
+function applyPptxSlideRecolor(
+  xml: string,
+  recolor: ReadonlyArray<PptxSlideColorReplacementEntry> | undefined
+): string {
+  if (!recolor || recolor.length === 0) {
+    return xml;
+  }
+  const remapWithin = (source: string, fromHex: string, toHex: string): string =>
+    source.replace(new RegExp(`(<a:srgbClr\\b[^>]*\\bval=")${fromHex}(")`, "gi"), `$1${toHex}$2`);
+  let out = xml;
+  for (const entry of recolor) {
+    const fromHex = entry.from.replace(/^#/, "").toUpperCase();
+    const toHex = entry.to.replace(/^#/, "").toUpperCase();
+    const scope = entry.scope ?? "all";
+    if (scope === "all") {
+      out = remapWithin(out, fromHex, toHex);
+    } else if (scope === "text") {
+      out = out.replace(/<a:(rPr|defRPr|endParaRPr)\b[\s\S]*?<\/a:\1>/gi, (block) => remapWithin(block, fromHex, toHex));
+    } else {
+      out = out.replace(/<p:spPr\b[\s\S]*?<\/p:spPr>/gi, (block) => remapWithin(block, fromHex, toHex));
+    }
+  }
+  return out;
+}
+
 function renumberShapeIds(xml: string, firstId: number): string {
   let nextId = firstId;
   return xml.replace(/<p:cNvPr\b([^>]*)>/g, (_match, attrs: string) => {
@@ -1159,7 +1193,7 @@ async function transplantPptxSlideElement(
   const rawChildren = slideSpTreeChildren(sourceSlideXml);
   const structuredChildren = applyPptxSlideNodeOperations(rawChildren, element.nodeGroups, element.nodeOperations);
   const renumbered = renumberShapeIds(rewriteRelationshipIds(structuredChildren, relIdMap), maxShapeId(targetSlideXml) + 1);
-  const copiedChildren = applyPptxSlideTextReplacements(renumbered, element.textReplacements);
+  const copiedChildren = applyPptxSlideRecolor(applyPptxSlideTextReplacements(renumbered, element.textReplacements), element.recolor);
   const patched = targetSlideXml.replace("</p:spTree>", `${copiedChildren}</p:spTree>`);
   if (copiedParts.length > 0) {
     const contentTypesXml = await readZipXml(targetZip, "[Content_Types].xml");

@@ -3,7 +3,31 @@ import { readFile, readdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { z } from "zod";
 import { defaultTokens } from "./color.js";
-import { DeckSpecSchema, type DeckSpec, type PptxSlideTextReplacement, type PptxSlideNodeOperation } from "./schema.js";
+import { DeckSpecSchema, type DeckSpec, type PptxSlideTextReplacement, type PptxSlideNodeOperation, type PptxSlideColorReplacement } from "./schema.js";
+
+/** Built-in color tones for design-component figures so a curated light figure can fit a dark deck. */
+export type DesignComponentTone = "light" | "dark";
+
+/**
+ * Per-tone backdrop + recolor defaults. Curated design-pack figures are authored on a light
+ * (`#F4F7FC`) slide background that is NOT carried when the figure is transplanted into another
+ * deck, so the figure must bring its own backdrop to stay readable. The `dark` tone supplies a dark
+ * backdrop and lightens the figure's dark catalog title/heading text (a collision-free hue in the
+ * zukai/tree packs) so it reads on dark.
+ */
+const DESIGN_COMPONENT_TONES: Record<DesignComponentTone, { background: string; recolor: PptxSlideColorReplacement[] }> = {
+  light: { background: "#F4F7FC", recolor: [] },
+  dark: {
+    background: "#0E2233",
+    recolor: [
+      { from: "#16243B", to: "#EAF1F8", scope: "all" },
+      { from: "#1A1A1A", to: "#EAF1F8", scope: "text" },
+      { from: "#111827", to: "#EAF1F8", scope: "text" },
+      { from: "#000000", to: "#EAF1F8", scope: "text" }
+    ]
+  }
+};
+
 
 export const DesignComponentConstraintsSchema = z.object({
   minItems: z.number().int().min(0).optional(),
@@ -97,6 +121,12 @@ export async function renderDesignComponentDeck(
     roots?: string[];
     textReplacements?: PptxSlideTextReplacement[];
     nodeOperations?: PptxSlideNodeOperation[];
+    /** Color tone for the figure backdrop + text re-tone. Defaults to "light". */
+    tone?: DesignComponentTone;
+    /** Explicit full-bleed backdrop color, or "none" to skip it (inherit the deck/template). Overrides the tone backdrop. */
+    background?: string;
+    /** Extra color remaps applied to the transplanted figure, merged after the tone defaults. */
+    recolor?: Array<{ from: string; to: string; scope?: "all" | "text" | "fill" }>;
   } = {}
 ): Promise<DeckSpec> {
   const component = await getDesignComponent(componentId, { roots: options.roots });
@@ -104,6 +134,35 @@ export async function renderDesignComponentDeck(
     throw new Error(`Design component "${componentId}" was not found.`);
   }
   const tokens = defaultTokens("ja-JP");
+  const tone = options.tone ?? "light";
+  const toneDefaults = DESIGN_COMPONENT_TONES[tone];
+  // The backdrop the figure sits on: an explicit `background` wins; "none" inherits the deck/template;
+  // otherwise the tone backdrop. The figure's own slide background is not transplanted, so without a
+  // backdrop element a light figure would render on whatever the deck template provides.
+  const backdropColor =
+    options.background === "none" ? undefined : (options.background ?? toneDefaults.background);
+  // An explicitly provided `recolor` REPLACES the tone defaults (pass [] to disable re-coloring the
+  // figure entirely, e.g. when the catalog title hue is also used for card-body text); when omitted,
+  // the tone's default recolor is used.
+  const recolor = options.recolor !== undefined ? options.recolor : toneDefaults.recolor;
+  const isDark = tone === "dark";
+  const slideTextColor = isDark ? "#f8fafc" : "#111827";
+  const backdropElement = backdropColor
+    ? [
+        {
+          id: `${component.id}-backdrop`,
+          type: "shape" as const,
+          shape: "rect" as const,
+          x: 0,
+          y: 0,
+          w: 13.333,
+          h: 7.5,
+          fill: backdropColor,
+          decorative: true,
+          readingOrder: 0
+        }
+      ]
+    : [];
   return DeckSpecSchema.parse({
     version: "0.1",
     title: options.title ?? component.name,
@@ -113,10 +172,10 @@ export async function renderDesignComponentDeck(
       ...tokens,
       colors: {
         ...tokens.colors,
-        background: "#ffffff",
-        surface: "#f8fafc",
-        text: "#111827",
-        mutedText: "#334155",
+        background: backdropColor ?? "#ffffff",
+        surface: isDark ? "#13314a" : "#f8fafc",
+        text: slideTextColor,
+        mutedText: isDark ? "#c6d4e4" : "#334155",
         accent: "#2563eb"
       }
     },
@@ -126,9 +185,10 @@ export async function renderDesignComponentDeck(
         id: component.id,
         title: options.title ?? component.name,
         layout: "design-component",
-        background: { color: "#ffffff" },
+        ...(backdropColor ? { background: { color: backdropColor } } : {}),
         speakerNotes: `${component.name}: ${component.bestFor.join(" / ")}`,
         elements: [
+          ...backdropElement,
           {
             id: `${component.id}-slide`,
             type: "pptxSlide",
@@ -141,6 +201,7 @@ export async function renderDesignComponentDeck(
             ...(options.nodeOperations && options.nodeOperations.length > 0
               ? { nodeOperations: options.nodeOperations }
               : {}),
+            ...(recolor.length > 0 ? { recolor } : {}),
             x: 0,
             y: 0,
             w: 13.333,
