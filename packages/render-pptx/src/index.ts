@@ -10,6 +10,7 @@ import {
   contrastRatio,
   lintDeckSpec,
   listAllTemplates,
+  listTemplates,
   normalizeDeckLayout,
   normalizeReadingOrder,
   parseDeckSpec,
@@ -1546,17 +1547,99 @@ async function updatePresentationMasters(targetZip: ZipArchive, sourceZip: ZipAr
   targetZip.file(targetPresentationPath, patched);
 }
 
-async function resolvePowerPointTemplate(deck: DeckSpec): Promise<ResolvedPowerPointTemplate | undefined> {
-  const template = (await listAllTemplates()).find((item) => item.id === deck.template);
-  if (!template?.powerPointTemplate) {
+async function resolvePowerPointTemplate(templateMatch: TemplateManifest | undefined): Promise<ResolvedPowerPointTemplate | undefined> {
+  if (!templateMatch?.powerPointTemplate) {
     return undefined;
   }
-  const sourceZip = await JSZip.loadAsync(decodePowerPointPackageDataUri(template.powerPointTemplate.dataUri));
+  const sourceZip = await JSZip.loadAsync(decodePowerPointPackageDataUri(templateMatch.powerPointTemplate.dataUri));
   return {
-    manifest: template,
-    templatePackage: template.powerPointTemplate,
-    backgrounds: await inferTemplateBackgrounds(sourceZip, template.powerPointTemplate, template)
+    manifest: templateMatch,
+    templatePackage: templateMatch.powerPointTemplate,
+    backgrounds: await inferTemplateBackgrounds(sourceZip, templateMatch.powerPointTemplate, templateMatch)
   };
+}
+
+/** Built-in styled template ids that legitimately ship no embedded .pptx/.potx package. */
+const BUILTIN_TEMPLATE_IDS = new Set(listTemplates().map((template) => template.id));
+
+/**
+ * Fraction of the slide canvas covered by an element, used to detect a generated full-bleed
+ * backdrop that would hide an imported template's own cover design.
+ */
+function elementAreaFraction(
+  element: SlideElement,
+  canvasWidth: number,
+  canvasHeight: number
+): number {
+  const area = Math.max(0, element.w) * Math.max(0, element.h);
+  const canvas = canvasWidth * canvasHeight;
+  return canvas > 0 ? area / canvas : 0;
+}
+
+/**
+ * Cover/closing slides that draw a generated hero (accent bars, chips, side panels, full-bleed
+ * backdrop) over an embedded template smother the template's own cover layout. Surface a warning so
+ * the author either builds the cover from the template (scaffold_from_template / template scaffold)
+ * or drops the custom hero and lets the template's title placeholder carry the title.
+ */
+function coverOverdrawWarnings(deck: DeckSpec): string[] {
+  const canvasWidth = deck.slideSize?.widthInches ?? 13.333;
+  const canvasHeight = deck.slideSize?.heightInches ?? 7.5;
+  const warnings: string[] = [];
+  deck.slides.forEach((slide, index) => {
+    const kind = layoutKindForSlide(slide, index);
+    if (kind !== "title" && kind !== "closing") {
+      return;
+    }
+    // A generated hero is identified by multiple decorative shapes (accent bars, chips, panels) or a
+    // full-bleed generated backdrop (svg/shape). A captured template cover image or an intentional
+    // full-bleed photo is NOT treated as overdraw, so the faithful scaffold cover does not warn.
+    const shapeCount = slide.elements.filter((element) => element.type === "shape").length;
+    const fullBleedGenerated = slide.elements.some(
+      (element) =>
+        (element.type === "shape" || element.type === "svg") &&
+        elementAreaFraction(element, canvasWidth, canvasHeight) >= 0.55
+    );
+    if (shapeCount >= 3 || fullBleedGenerated) {
+      const detail = shapeCount >= 3 ? `${shapeCount} generated shape(s)` : "a full-bleed generated backdrop";
+      warnings.push(
+        `warning:template.cover-overdrawn:slides.${index}:The ${kind} slide draws ${detail} over the imported template's own cover layout, so the template design is hidden rather than used. ` +
+          "To leverage the template cover, build this slide from the template (MCP scaffold_from_template / CLI template scaffold) or remove the custom hero/backdrop and let the template's title placeholder carry the title."
+      );
+    }
+  });
+  return warnings;
+}
+
+/**
+ * Make "did the imported PowerPoint template actually get used?" explicit. When a deck references a
+ * `template` id that is not a built-in style and does not resolve to a registered template carrying
+ * an embedded PowerPoint package, the render silently falls back to the default master plus generated
+ * shapes/backgrounds — i.e. it only *mimics* the template. These warnings tell the author the master
+ * was not embedded and exactly how to fix it, and (when it was embedded) flag a cover drawn over it.
+ */
+function templateUsageWarnings(
+  deck: DeckSpec,
+  templateMatch: TemplateManifest | undefined,
+  resolved: ResolvedPowerPointTemplate | undefined
+): string[] {
+  const id = deck.template;
+  if (!id || BUILTIN_TEMPLATE_IDS.has(id)) {
+    return [];
+  }
+  if (!templateMatch) {
+    return [
+      `warning:template.package-not-embedded:deck.template:Template "${id}" is not in the template registry, so its PowerPoint master and layouts were NOT embedded — the deck only mimics the look with generated shapes/backgrounds. ` +
+        "Import the source .pptx/.potx with register=true (MCP import_template / CLI `template import --register`) and reference its id so the real template is applied."
+    ];
+  }
+  if (!resolved) {
+    return [
+      `warning:template.package-not-embedded:deck.template:Template "${id}" is registered but has no embedded PowerPoint package, so only its colors and fonts are applied — the original slide master and layouts were NOT used. ` +
+        "Re-import the source .pptx/.potx (import captures and embeds the master) and reference that template id."
+    ];
+  }
+  return coverOverdrawWarnings(deck);
 }
 
 async function applyPowerPointTemplatePackage(pptxPath: string, deck: DeckSpec, template: PowerPointTemplatePackage): Promise<void> {
@@ -1719,7 +1802,9 @@ export async function renderDeckToPptx(input: unknown, outputPath: string, optio
     );
   }
   const tokens = deck.tokens ?? defaultTokens(deck.locale);
-  const powerPointTemplate = await resolvePowerPointTemplate(deck);
+  const templateMatch = deck.template ? (await listAllTemplates()).find((item) => item.id === deck.template) : undefined;
+  const powerPointTemplate = await resolvePowerPointTemplate(templateMatch);
+  warnings.push(...templateUsageWarnings(deck, templateMatch, powerPointTemplate));
   const pptx = new PptxGenJSConstructor();
 
   if (deck.slideSize) {

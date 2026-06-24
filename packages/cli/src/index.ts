@@ -105,6 +105,28 @@ function parseBusinessSlideCount(value: string): number {
   return count;
 }
 
+/**
+ * Print render warnings about template usage (`template.package-not-embedded`,
+ * `template.cover-overdrawn`) so a user can see that an imported template was not actually embedded
+ * or that a generated cover is hiding the template. Other render warnings are already represented by
+ * the lint summary, so only template warnings are surfaced here.
+ */
+function printTemplateWarnings(renderWarnings: string[]): void {
+  const templateWarnings = renderWarnings.filter((warning) => warning.includes(":template."));
+  if (templateWarnings.length === 0) {
+    return;
+  }
+  console.log(`Template warnings: ${templateWarnings.length}`);
+  for (const warning of templateWarnings) {
+    const match = /^[^:]+:([^:]+):([^:]*):([\s\S]*)$/.exec(warning);
+    if (match) {
+      console.log(`TEMPLATE ${match[1]} ${match[2]}: ${match[3].trim()}`);
+    } else {
+      console.log(`TEMPLATE ${warning}`);
+    }
+  }
+}
+
 function parseContentMode(value: string): ContentMode {
   if (value === "presentation" || value === "report" || value === "technical" || value === "handout" || value === "decision") {
     return value;
@@ -536,6 +558,7 @@ program
     if (result.warnings.length > 0) {
       console.log(cliMessage(outputLocale(parsedDeck.locale), "cli.lintWarnings", { count: result.warnings.length }));
     }
+    printTemplateWarnings(result.warnings);
   }));
 
 program
@@ -608,6 +631,7 @@ program
     blockingErrors.forEach((item) => {
       console.log(`ERROR ${item.code} ${item.path}: ${item.message}`);
     });
+    printTemplateWarnings(renderWarnings);
   }));
 
 program

@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
-import { createSampleDeck } from "@pptcreater/core";
+import { createSampleDeck, defaultTokens, registerTemplateManifest, scaffoldDeckFromTemplate } from "@pptcreater/core";
 import { importTemplateFromPptx, renderDeckToPptx } from "./index.js";
 import { createRequire } from "node:module";
 
@@ -942,5 +942,126 @@ describe("PPTX renderer", () => {
     expect(contentTypes).toContain('PartName="/ppt/slideLayouts/slideLayout2.xml"');
     expect(contentTypes).not.toContain('PartName="/ppt/slideMasters/_rels/');
     expect(contentTypes).not.toContain('PartName="/ppt/slideLayouts/_rels/');
+  });
+
+  async function withRegistry<T>(registryPath: string, run: () => Promise<T>): Promise<T> {
+    const previous = process.env.PPTCREATER_TEMPLATE_REGISTRY_PATH;
+    process.env.PPTCREATER_TEMPLATE_REGISTRY_PATH = registryPath;
+    try {
+      return await run();
+    } finally {
+      if (previous === undefined) {
+        delete process.env.PPTCREATER_TEMPLATE_REGISTRY_PATH;
+      } else {
+        process.env.PPTCREATER_TEMPLATE_REGISTRY_PATH = previous;
+      }
+    }
+  }
+
+  it("warns when a referenced template id is not registered, so the PowerPoint master was not embedded", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-template-missing-"));
+    const registryPath = join(outputDir, "registry.json");
+    const deck = createSampleDeck("ja-JP", { slideCount: 3 });
+    deck.template = "brand-not-registered";
+
+    const result = await withRegistry(registryPath, () => renderDeckToPptx(deck, join(outputDir, "out.pptx")));
+    const notEmbedded = result.warnings.filter((warning) => warning.includes("template.package-not-embedded"));
+    expect(notEmbedded.length).toBe(1);
+    expect(notEmbedded[0]).toContain("brand-not-registered");
+    expect(notEmbedded[0]).toContain("not in the template registry");
+
+    const zip = await JSZip.loadAsync(await readFile(join(outputDir, "out.pptx")));
+    const layouts = Object.keys(zip.files).filter((name) => /ppt\/slideLayouts\/slideLayout\d+\.xml$/.test(name));
+    expect(layouts.length).toBe(1);
+  });
+
+  it("does not emit a template warning for a built-in styled template id", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-template-builtin-"));
+    const registryPath = join(outputDir, "registry.json");
+    const deck = createSampleDeck("ja-JP", { slideCount: 3 });
+    deck.template = "modern-simple";
+
+    const result = await withRegistry(registryPath, () => renderDeckToPptx(deck, join(outputDir, "out.pptx")));
+    expect(result.warnings.filter((warning) => warning.includes("template."))).toHaveLength(0);
+  });
+
+  it("warns when a registered template has no embedded PowerPoint package", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-template-nopackage-"));
+    const registryPath = join(outputDir, "registry.json");
+    await registerTemplateManifest(
+      {
+        id: "manifest-only",
+        name: "Manifest only",
+        locale: "ja-JP",
+        description: "Colors and fonts captured without an embedded PowerPoint package.",
+        tokens: defaultTokens("ja-JP"),
+        layouts: [{ id: "content", name: "Content", description: "Content layout", placeholders: [] }],
+        accessibility: {
+          minimumBodyFontSize: 18,
+          minimumContrast: 4.5,
+          requiresSlideTitles: true,
+          requiresReadingOrder: true,
+          requiresAltText: true
+        },
+        tags: []
+      },
+      { registryPath }
+    );
+
+    const deck = createSampleDeck("ja-JP", { slideCount: 3 });
+    deck.template = "manifest-only";
+
+    const result = await withRegistry(registryPath, () => renderDeckToPptx(deck, join(outputDir, "out.pptx")));
+    const notEmbedded = result.warnings.filter((warning) => warning.includes("template.package-not-embedded"));
+    expect(notEmbedded.length).toBe(1);
+    expect(notEmbedded[0]).toContain("has no embedded PowerPoint package");
+  });
+
+  it("warns that a generated hero cover overdraws an embedded template's own cover", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-template-overdraw-"));
+    const registryPath = join(outputDir, "registry.json");
+    const potxPath = join(outputDir, "brand.potx");
+    await writeFile(potxPath, await buildTemplatePotx());
+    await importTemplateFromPptx(potxPath, { id: "brand-overdraw", name: "Brand", register: true, registryPath });
+
+    const deck = createSampleDeck("ja-JP", { slideCount: 4 });
+    deck.template = "brand-overdraw";
+    deck.slides[0].layout = "title-slide";
+
+    const outputPath = join(outputDir, "out.pptx");
+    const result = await withRegistry(registryPath, () => renderDeckToPptx(deck, outputPath));
+    const overdrawn = result.warnings.filter((warning) => warning.includes("template.cover-overdrawn"));
+    expect(overdrawn.some((warning) => warning.includes("slides.0"))).toBe(true);
+    // The master was still embedded — the warning is about the cover, not a failure to apply the template.
+    const zip = await JSZip.loadAsync(await readFile(outputPath));
+    const layouts = Object.keys(zip.files).filter((name) => /ppt\/slideLayouts\/slideLayout\d+\.xml$/.test(name));
+    expect(layouts.length).toBeGreaterThan(1);
+  });
+
+  it("does not flag a faithful template cover (captured image + text, no generated shapes) as overdrawn", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-template-faithful-"));
+    const registryPath = join(outputDir, "registry.json");
+    const potxPath = join(outputDir, "brand.potx");
+    await writeFile(potxPath, await buildTemplatePotx());
+    const imported = await importTemplateFromPptx(potxPath, { id: "brand-faithful", name: "Brand", register: true, registryPath });
+
+    const deck = scaffoldDeckFromTemplate(imported.template, { title: "表紙", subtitle: "サブタイトル" });
+    // Simulate a captured full-bleed cover raster on the title slide — a faithful reproduction of the
+    // template cover, not a generated hero. This must NOT be flagged as overdraw.
+    deck.slides[0].elements.unshift({
+      id: "title-cover-image",
+      type: "image",
+      dataUri:
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+      x: 0,
+      y: 0,
+      w: 13.333,
+      h: 7.5,
+      decorative: true,
+      readingOrder: 0
+    });
+
+    const result = await withRegistry(registryPath, () => renderDeckToPptx(deck, join(outputDir, "out.pptx")));
+    expect(result.warnings.filter((warning) => warning.includes("template.cover-overdrawn"))).toHaveLength(0);
   });
 });

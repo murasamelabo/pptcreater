@@ -164,6 +164,16 @@ Before creating a DeckSpec, clarify these points when they are not already speci
 19. If MCP render tools are not visible in the current tool selection, use the CLI fallback: \`pptcreater render <deck.json> --output <deck.pptx> --polish\`.
 20. Do not bypass pptcreater with PowerPoint COM automation or ad-hoc PPTX scripts for normal deck creation. If research produces local SVG/PNG/JPEG/GIF/WebP files, reference workspace-local files via DeckSpec \`image.path\` only for logos/photos/source quotes/exact-fidelity figures and still call pptcreater render; pptcreater embeds them safely.
 
+## Using a provided PowerPoint template (.pptx/.potx)
+
+When the user gives you a PowerPoint template and wants their deck to actually use it (not just look similar):
+
+1. \`import_template\` with \`register=true\` (CLI \`pptcreater template import <file> --register\`). This embeds the source slide master, layouts, and theme and saves them to the registry. Without registering, rendering only mimics the template and emits a \`template.package-not-embedded\` warning.
+2. Start the deck with \`scaffold_from_template\` (CLI \`pptcreater template scaffold <id>\`). The scaffold reuses the template's OWN cover/closing and sets \`DeckSpec.template\` to the registered id so render embeds the real master.
+3. Add your content slides, then optionally \`apply_template_design\` to re-skin the middle content slides to the template.
+4. Do NOT draw a custom hero/cover (accent bars, chips, side panels, full-bleed background) over a referenced template — it hides the template's own cover. \`render_pptx\`/\`finalize_deck\` flag this as \`template.cover-overdrawn\`; rebuild that slide from \`scaffold_from_template\` instead.
+5. Always treat \`template.package-not-embedded\` (master not embedded — register the source and reference its id) and \`template.cover-overdrawn\` (generated cover hides the template) warnings in the render result as defects to fix, not noise.
+
 ## Design rules
 
 - One slide, one message.

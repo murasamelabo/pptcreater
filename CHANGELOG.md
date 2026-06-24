@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## v0.5.20 - 2026-06-24
+
+- **Made imported PowerPoint templates reliably and faithfully used, with explicit warnings when they are not.** Two failure modes were previously silent: (1) a deck that referenced a template id which was not registered (or registered without the embedded `.pptx`/`.potx` package) rendered with the default master plus generated shapes/backgrounds — only *mimicking* the template; (2) a deck that referenced a real embedded template but drew its own generated hero/cover (accent bars, chips, side panels, full-bleed backdrop) over the template's own cover, hiding it. `render_pptx` / `create_pptx` / `finalize` now surface these as render warnings:
+  - `template.package-not-embedded` — the referenced template id is not registered, or is registered without the embedded PowerPoint package, so the real slide master/layouts were NOT embedded. Fix: `import_template` with `register=true` (CLI `template import --register`) and reference that id.
+  - `template.cover-overdrawn` — the master was embedded, but a cover/closing slide draws ≥3 generated shapes or a full-bleed generated `svg`/`shape` backdrop over the template's own cover. Captured cover images and intentional full-bleed photos are not flagged, so the faithful `scaffold_from_template` cover stays clean. Fix: build that slide from `scaffold_from_template`.
+- The CLI `render` and `finalize` commands print these template warnings (`TEMPLATE <code> <path>: <message>`); MCP returns them in the render result `warnings` array.
+- Sharpened `import_template`, `scaffold_from_template`, and `apply_template_design` tool descriptions and added a `templateFlow` guidance entry + a "Using a provided PowerPoint template" section in the installed skills file, the README, so agents register the template binary, reference its id, start from the template's own cover, and never overdraw it.
+- Added five render regression tests (unregistered id, built-in id, registered-without-package, generated-hero overdraw, and faithful captured-image cover). Full suite now at 306 tests.
+
 ## v0.5.19 - 2026-06-24
 
 - **Raised the sample/quick-deck slide-count limit from 4 to 40.** `create_pptx`, `create_powerpoint`, and `create_deck` (and the underlying `createSampleDeck`) previously capped at 4 slides; requesting more silently returned 4. They now generate up to 40 slides: the three intro/content slides are kept, the closing slide stays last, and the requested number of extra content slides are inserted in between as alternating card/step sections with distinct, section-numbered titles (JA/EN) so they stay lint-clean, visually rich, and accessible. The CLI `pptcreater new --slides` parser and the MCP `create_pptx` / `create_powerpoint` / `create_deck` schemas now accept `1..40` (matching `plan_business_deck`).
