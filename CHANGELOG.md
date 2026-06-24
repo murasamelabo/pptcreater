@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## v0.5.26 - 2026-06-24
+
+- **Hardened the multi-agent routing and figure-tool guidance so the deck-building agents actually get used.** Analysis of two real Copilot CLI sessions showed the installed deck agents were barely engaged: figures were hand-built, the figure MCP tools (`recommend_figure` / `render_design_component` / `generate_native_diagram` / `generate_schematic`) were bypassed by a hand-written script that imported `@pptcreater/core` directly, and `review_deck` was skipped in favor of a generic code review. This is a guidance/text-only release (no runtime behavior change) that tightens four surfaces so the agents and tools are used as designed:
+  - **(A) Imperative delegation.** The installed Copilot/Claude instruction blocks and the skills "Multi-agent orchestration" section now state that you **MUST** delegate multi-slide, important, executive, or customer-facing decks to the Deck Director rather than treating it as optional advice.
+  - **(B) Host-independent Director.** The embedded and source `deck-director.agent.md`, plus `docs/AGENTS.md`, now describe the Director as host-independent: when the host can spawn sub-agents it dispatches to the specialists; when it cannot, it plays each role itself and **returns an executable step-by-step plan** — it never skips the plan, the figure tools, or the review gate.
+  - **(C) `review_deck` required gate.** The instruction blocks, skills workflow (step 17), the Director agent loop, and a new MCP `reviewGate` guidance entry make `review_deck` the **required** quality gate before a deck is declared done; a generic code review is explicitly **not** a substitute.
+  - **(D) No self-authored generation scripts.** The instruction blocks, skills (workflow step 21), the Director principles, `docs/AGENTS.md`, and a new MCP `noSelfAuthoredScripts` guidance entry prohibit building/rendering a deck by writing your own script that imports `@pptcreater/core` (or using PowerPoint COM / ad-hoc PPTX assembly), since that bypasses the figure tools and the review gate and causes clipped node text, dangling connectors, and unused curated zukai figures.
+  - Each SlidePlan must now name its figure via `recommend_figure` (design-pack component vs schematic kind) so the Designer realises it with the matching tool instead of hand-placing boxes and connectors.
+- No schema/renderer/selector changes; full suite unchanged at 312 tests.
+
 ## v0.5.25 - 2026-06-24
 
 - **Added color-tone support to `render_design_component` so curated figures fit any deck (light or dark).** A curated design-pack figure is authored on a light slide background that is NOT carried when the figure is transplanted into another deck, so dropping a zukai figure into a dark-template deck previously lost its backdrop and rendered its dark catalog title dark-on-dark. `render_design_component` / `renderDesignComponentDeck` now accept:

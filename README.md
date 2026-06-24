@@ -599,10 +599,17 @@ When a deck uses external websites as references, record each source in `metadat
 
 For larger or higher-stakes decks, pptcreater supports a six-role agent workflow — Director,
 Story Architect, Content Strategist, Designer, Copywriter, and Reviewer — coordinated around one
-shared `DeckSpec`. The Reviewer step is deterministic: `reviewDeck` runs lint + content + business
-reviews in one pass, classifies every finding (blocking / polish-fixable / advisory), scores the
-deck (accessibility / content / structure / overall), and routes each issue to the agent role that
-owns the fix, so the iteration loop stops on objective criteria.
+shared `DeckSpec`. Delegate multi-slide, important, executive, or customer-facing decks to the
+**Deck Director** rather than free-handing them. The Director is host-independent: when the host can
+spawn sub-agents it dispatches to the specialists; when it cannot, it plays each role itself and
+returns an executable step-by-step plan. Each slide's figure is chosen with `recommend_figure`
+(curated design-pack component vs. generated schematic) and realised with the matching tool —
+never by hand-placing boxes and connectors, and never by writing a script that imports
+`@pptcreater/core` directly. The Reviewer step is the required gate and is deterministic: `reviewDeck`
+runs lint + content + business reviews in one pass, classifies every finding (blocking /
+polish-fixable / advisory), scores the deck (accessibility / content / structure / overall), and
+routes each issue to the agent role that owns the fix, so the iteration loop stops on objective
+criteria.
 
 ```powershell
 pptcreater agents                 # print the role pipeline + hand-off contracts

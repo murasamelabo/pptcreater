@@ -159,11 +159,11 @@ Before creating a DeckSpec, clarify these points when they are not already speci
 14. Create a visual DeckSpec with editable PowerPoint shapes/text where possible.
 15. Run \`review_business_deck\` for business storyline, section flow, page emphasis, and final landing checks.
 16. Run \`review_content\` (or CLI \`pptcreater content-review\`) before linting. It applies locale/content-mode writing rules: Japanese report/technical/handout decks use a short topic title + slide message, Japanese presentation/decision decks allow concise assertion titles, and English decks prefer action titles.
-17. Run \`lint_deck\`.
+17. Run \`lint_deck\`, then \`review_deck\` as the REQUIRED quality gate before declaring the deck done: it aggregates lint + content + business reviews, classifies findings (blocking / polish-fixable / advisory), and routes each blocking issue to its owner role. Fix every blocking finding and re-run until \`ok\` is true. A generic code review is not a substitute for \`review_deck\`.
 18. Run \`polish_deck_layout\` when layout issues or overflow risks are present. \`render_pptx\` also applies this safeguard automatically.
 19. Render with \`render_pptx\` / \`render_powerpoint\` or preview with \`render_studio\`. If text still cannot fit after polish, shorten or split the slide; do not force-render a broken layout.
 20. If MCP render tools are not visible in the current tool selection, use the CLI fallback: \`pptcreater render <deck.json> --output <deck.pptx> --polish\`.
-21. Do not bypass pptcreater with PowerPoint COM automation or ad-hoc PPTX scripts for normal deck creation. If research produces local SVG/PNG/JPEG/GIF/WebP files, reference workspace-local files via DeckSpec \`image.path\` only for logos/photos/source quotes/exact-fidelity figures and still call pptcreater render; pptcreater embeds them safely.
+21. Do not bypass pptcreater with PowerPoint COM automation or ad-hoc PPTX scripts for normal deck creation. Do NOT author your own script (JS/TS/Python) that imports \`@pptcreater/core\` or any pptcreater package to build/render a deck — that bypasses the figure tools (recommend_figure / render_design_component / generate_native_diagram / generate_schematic) and the review gate, and is the main cause of clipped text, broken connectors, and unused zukai figures. Use the pptcreater MCP tools or the \`pptcreater\` CLI instead. If research produces local SVG/PNG/JPEG/GIF/WebP files, reference workspace-local files via DeckSpec \`image.path\` only for logos/photos/source quotes/exact-fidelity figures and still call pptcreater render; pptcreater embeds them safely.
 
 ## Using a provided PowerPoint template (.pptx/.potx)
 
@@ -223,11 +223,13 @@ When the user gives you a PowerPoint template and wants their deck to actually u
 ## Multi-agent orchestration (use the deck team for non-trivial decks)
 
 For anything beyond a quick one-off slide — multi-slide decks, important/executive/customer-facing
-presentations, or when quality matters — delegate to the deck-building agents installed in
+presentations, or when quality matters — you MUST delegate to the deck-building agents installed in
 \`.github/agents/\` instead of doing everything in a single pass:
 
 - \`deck-director\` (orchestrator) — start here. It owns the shared DeckSpec, sequences the
-  specialists, runs the review gate, and finalizes/renders.
+  specialists, runs the review gate, and finalizes/renders. The Director is host-independent: it
+  plans the deck and, when the host cannot spawn sub-agents, returns a plan you execute yourself
+  (including a per-slide figure choice from \`recommend_figure\`).
 - \`deck-story-architect\` — narrative + chapter structure (DeckOutline).
 - \`deck-content-strategist\` — per-slide message + figure choice (SlidePlan[]); calls \`recommend_figure\`.
 - \`deck-designer\` — layout, figures, colour, icons, placement.
@@ -237,13 +239,24 @@ presentations, or when quality matters — delegate to the deck-building agents 
 How routing works:
 
 1. Hand non-trivial deck requests to \`deck-director\`; for a single slice you may invoke a specialist
-   directly. Use \`list_agent_roles\` for each role's responsibility, hand-off contract, and tools.
-2. The flow is DeckBrief -> DeckOutline -> SlidePlan[] -> DeckSpec -> DeckReviewReport.
-3. \`review_deck\` is the deterministic stop condition: it runs lint + content + business reviews,
-   classifies each finding (blocking / polish-fixable / advisory), scores the deck, and routes each
-   blocking issue to its owner role (\`layout.*\`/\`visual.*\`/\`diagram.*\` -> Designer;
-   \`text.*\`/\`content.*\` -> Copywriter; \`slide.*\`/most \`business.*\` -> Story Architect;
-   \`source.*\` -> Content Strategist). Fix blocking issues, re-run, and only finalize when \`ok\` is true.
+   directly. Use \`list_agent_roles\` for each role's responsibility, hand-off contract, and tools. If
+   your host cannot spawn the specialists, follow the Director's returned plan step by step yourself —
+   do NOT skip the plan and free-hand the deck.
+2. The flow is DeckBrief -> DeckOutline -> SlidePlan[] -> DeckSpec -> DeckReviewReport. Each SlidePlan
+   must name its figure: call \`recommend_figure\` per slide and use \`render_design_component\` (design
+   pack) or \`generate_schematic\` / \`generate_native_diagram\` (schematic) — never hand-place node
+   boxes + connectors.
+3. \`review_deck\` is the REQUIRED, deterministic stop condition (a generic code review is not a
+   substitute): it runs lint + content + business reviews, classifies each finding (blocking /
+   polish-fixable / advisory), scores the deck, and routes each blocking issue to its owner role
+   (\`layout.*\`/\`visual.*\`/\`diagram.*\` -> Designer; \`text.*\`/\`content.*\` -> Copywriter;
+   \`slide.*\`/most \`business.*\` -> Story Architect; \`source.*\` -> Content Strategist). Fix blocking
+   issues, re-run, and only finalize when \`ok\` is true.
+
+Do NOT author your own script that imports \`@pptcreater/core\` (or any pptcreater package) to build or
+render a deck, and do NOT use PowerPoint COM or ad-hoc PPTX assembly. Always go through the pptcreater
+MCP tools or the pptcreater CLI; a hand-written generator script bypasses the figure tools and the
+review gate and is the main cause of clipped text, broken connectors, and unused zukai figures.
 ${SKILLS_BLOCK_END}
 `;
 }
@@ -252,11 +265,15 @@ function copilotInstructionBlock(skillsPathForInstruction: string): string {
   return `${COPILOT_BLOCK_START}
 Read ${skillsPathForInstruction} before creating PowerPoint presentations or slide decks.
 
-For multi-slide, important, executive, or customer-facing decks, delegate to the deck-building custom agents in .github/agents: hand the request to the "Deck Director" agent, which sequences the Story Architect, Content Strategist, Designer, Copywriter, and Reviewer and uses review_deck as the stop condition. You may invoke a single specialist agent directly for a one-off slice. For a quick single slide you can work directly.
+For multi-slide, important, executive, or customer-facing decks, you MUST delegate to the deck-building custom agents in .github/agents: hand the request to the "Deck Director" agent first. The Director plans the deck (DeckBrief -> DeckOutline -> SlidePlan[]) including a per-slide figure choice, and sequences the Story Architect, Content Strategist, Designer, Copywriter, and Reviewer; if your host cannot spawn those sub-agents, follow the Director's returned plan yourself step by step. Only a genuine single quick slide may be handled directly without the Director.
+
+Do NOT build decks by writing your own script that imports @pptcreater/core (or any pptcreater package) and calls render/generation functions directly, and do NOT use PowerPoint COM or ad-hoc PPTX assembly. Always go through the pptcreater MCP tools (or the pptcreater CLI). Hand-writing a generator script bypasses the figure tools and is the main cause of clipped text and broken connectors.
 
 When creating slides, use the pptcreater MCP. If purpose, audience, delivery format, slide count, or source assets are unclear, ask a short briefing before creating the DeckSpec.
 
-After the brief is clear, create a visual DeckSpec with editable PowerPoint objects where possible. Use generate_intent_diagram when the intended concept composition/granularity is known, use generate_native_diagram for general architecture/security/ponchi-e diagrams instead of flattening them into SVG images, run review_content and lint_deck (or review_deck for the aggregated, routed gate), optionally run polish_deck_layout, then render_pptx/render_powerpoint or render_studio. If MCP render tools are unavailable, run CLI: pptcreater render <deck.json> --output <deck.pptx> --polish. Never use PowerPoint COM or ad-hoc PPTX scripts for normal output.
+For every figure (flow, process, timeline, comparison, hierarchy, cycle, matrix, etc.), call recommend_figure first and use what it returns: when renderer is "design-pack", use render_design_component with a curated zukai component of the recommended kind; only when renderer is "schematic" fall back to generate_schematic or generate_native_diagram. Use generate_intent_diagram when the intended concept composition/granularity is known. Never hand-place node boxes + connector lines for a connected diagram.
+
+After the brief is clear, create a visual DeckSpec with editable PowerPoint objects, run review_content and lint_deck, and run review_deck as the required quality gate before declaring the deck done — fix every blocking finding and re-run until ok is true (a generic code review is not a substitute for review_deck). Then render with render_pptx/render_powerpoint or finalize_deck, or CLI: pptcreater render <deck.json> --output <deck.pptx> --polish.
 ${COPILOT_BLOCK_END}`;
 }
 
@@ -264,9 +281,11 @@ function claudeInstructionBlock(skillsPathForInstruction: string): string {
   return `${CLAUDE_BLOCK_START}
 Before creating PowerPoint presentations or slide decks, read ${skillsPathForInstruction}.
 
-For multi-slide, important, executive, or customer-facing decks, delegate to the deck-building custom agents in .github/agents: start with the "Deck Director" agent, which sequences the Story Architect, Content Strategist, Designer, Copywriter, and Reviewer and uses review_deck as the stop condition. Invoke a single specialist directly for a one-off slice; for a quick single slide you can work directly.
+For multi-slide, important, executive, or customer-facing decks, you MUST delegate to the deck-building custom agents in .github/agents: start with the "Deck Director" agent. The Director plans the deck (DeckBrief -> DeckOutline -> SlidePlan[]) including a per-slide figure choice and sequences the Story Architect, Content Strategist, Designer, Copywriter, and Reviewer; if your host cannot spawn those sub-agents, follow the Director's returned plan yourself step by step. Only a genuine single quick slide may be handled directly without the Director.
 
-Use the pptcreater MCP for slide work. Start by clarifying purpose, audience, delivery mode, volume, and available source assets when they are unclear. Prefer editable PowerPoint shapes/text over flattened images. Use generate_intent_diagram when the intended concept composition/granularity is known, and use generate_native_diagram for general architecture/security/ponchi-e diagrams. Run review_content and lint_deck (or review_deck for the aggregated, routed gate) before rendering, and use polish_deck_layout only when needed. Render with render_pptx/render_powerpoint, or CLI \`pptcreater render <deck.json> --output <deck.pptx> --polish\` if MCP render tools are not visible. Never use PowerPoint COM or ad-hoc PPTX scripts for normal output.
+Do NOT build decks by writing your own script that imports @pptcreater/core (or any pptcreater package) and calls render/generation functions directly, and do NOT use PowerPoint COM or ad-hoc PPTX assembly. Always go through the pptcreater MCP tools (or the pptcreater CLI). Hand-writing a generator script bypasses the figure tools and is the main cause of clipped text and broken connectors.
+
+Use the pptcreater MCP for slide work. Start by clarifying purpose, audience, delivery mode, volume, and available source assets when they are unclear. Prefer editable PowerPoint shapes/text over flattened images. For every figure (flow, comparison, timeline, hierarchy, cycle, matrix, etc.), call recommend_figure first: when renderer is "design-pack", use render_design_component with a curated zukai component of the recommended kind; only when renderer is "schematic" fall back to generate_schematic or generate_native_diagram. Use generate_intent_diagram when the intended concept composition/granularity is known. Never hand-place node boxes + connector lines for a connected diagram. Run review_content and lint_deck, and run review_deck as the required quality gate before declaring the deck done (a generic code review does not replace review_deck) — fix every blocking finding and re-run until ok is true. Render with render_pptx/render_powerpoint or finalize_deck, or CLI \`pptcreater render <deck.json> --output <deck.pptx> --polish\`.
 ${CLAUDE_BLOCK_END}`;
 }
 
@@ -319,18 +338,27 @@ You are the Director of a small team that builds high-quality, accessible PowerP
 
 ## Your loop
 
+You are host-independent: when your host can spawn the specialist sub-agents, dispatch to them; when
+it cannot, perform each step yourself in their role and RETURN A PLAN the caller can execute. Either
+way the steps and the review gate are the same — never skip the plan and free-hand the deck.
+
 1. **Clarify the brief.** Capture purpose, audience, usage context, desired action, tone/brand, and
    constraints. If anything essential is missing, call \`interview_slide_brief\`. Call
    \`get_slide_creation_rules\` and \`list_skills\` before any authoring.
 2. **Story.** Hand the brief to the Story Architect to produce a \`DeckOutline\` via
    \`plan_business_deck\`.
 3. **Plan slides.** Hand the outline to the Content Strategist to produce \`SlidePlan[]\` — one
-   message + evidence + figure kind + data per slide (they call \`recommend_figure\`).
-4. **Build (parallel).** The Designer realises each \`SlidePlan\` into DeckSpec elements (curated
-   \`render_design_component\` or generated \`generate_schematic\` / diagrams), and the Copywriter
-   writes concise titles, labels, captions, and alt text. Assemble one shared \`DeckSpec\`.
-5. **Review gate.** Call \`review_deck\` — your stop condition. If \`ok\` is false, dispatch each
-   blocking issue to \`issue.owner\`, fix, and re-run (cap ~3 loops). If \`ok\` is true, proceed.
+   message + evidence + figure kind + data per slide. Each SlidePlan MUST name its figure: call
+   \`recommend_figure\` per slide and record whether it is a design-pack component (kind + variant) or
+   a schematic kind.
+4. **Build (parallel).** The Designer realises each \`SlidePlan\` into DeckSpec elements using the
+   figure the plan named: \`render_design_component\` for a design-pack (zukai) component, else
+   \`generate_schematic\` / \`generate_native_diagram\` / \`generate_intent_diagram\`. Never hand-place
+   node boxes + connector lines for a connected diagram. The Copywriter writes concise titles, labels,
+   captions, and alt text. Assemble one shared \`DeckSpec\`.
+5. **Review gate (required).** Call \`review_deck\` — your deterministic stop condition. A generic code
+   review is NOT a substitute. If \`ok\` is false, dispatch each blocking issue to \`issue.owner\`, fix,
+   and re-run (cap ~3 loops). If \`ok\` is true, proceed.
 6. **Finalize & render.** Call \`finalize_deck\` (deck + outputPath); fix only its \`blockingErrors\`,
    then call again or \`render_pptx\`.
 
@@ -339,7 +367,9 @@ You are the Director of a small team that builds high-quality, accessible PowerP
 - One slide, one message. Three-second glance test. Visible hierarchy. High signal-to-noise.
 - Prefer curated, editable figures (design packs) over flattened images.
 - Accessibility is non-negotiable: AA contrast, minimum font sizes, alt text, reading order.
-- Never fall back to PowerPoint COM; always render through pptcreater. Match the deck locale.
+- Never author a script that imports \`@pptcreater/core\` to build/render a deck, never use PowerPoint
+  COM, and never hand-place connectors — always go through the pptcreater MCP tools / CLI and the
+  figure tools. Match the deck locale.
 
 Use \`list_agent_roles\` for the exact responsibilities, contracts, and tools of each role.
 `

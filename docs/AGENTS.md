@@ -35,8 +35,11 @@ others; or invoke a specialist directly when you only need that slice.
      decks to the `deck-director` agent** (and lets it handle a quick single slide directly).
      `pptcreater install-copilot` / `install-claude-code` install both the agents and this routing
      instruction, so the entry point exists out of the box.
-   Note: the Director sequences the specialists by following its own playbook; sub-agent dispatch
-   depends on the host's agent capabilities.
+   Note: the Director is host-independent — when the host can spawn sub-agents it dispatches to the
+   specialists; when it cannot, the Director plays each role itself and **returns a step-by-step plan
+   the caller executes**. Either way it never skips the plan, the figure tools, or the review gate.
+   The base assistant must also **never build a deck by writing its own script that imports
+   `@pptcreater/core`** or by using PowerPoint COM — that bypasses the figure tools and `review_deck`.
 2. **Issue routing (which role fixes a finding).** This is deterministic and lives in the code:
    `reviewDeck` → `ownerForCode` (see the routing table below), surfaced by the `review_deck` tool.
 
