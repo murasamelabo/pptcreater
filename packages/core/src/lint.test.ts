@@ -224,6 +224,60 @@ describe("DeckSpec linting", () => {
     expect(report.ok).toBe(false);
   });
 
+  it("does not flag generate_schematic output (arrow/-card id conventions) as hand-built connectors", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    // Mirror renderNativeSchematicDiagram's flow/step output: `<prefix>-...-card` node cards plus
+    // elbow `<prefix>-...-arrow-<i>-a/-b/-c` connectors where only `-c` carries the arrow head. Even
+    // with 4 arrow-headed connectors (which would otherwise escalate to a blocking error), generator
+    // output must be exempt — the lint targets HAND-placed arrows, never the generators' own shapes.
+    for (let i = 0; i < 4; i += 1) {
+      deck.slides[0].elements.push(
+        {
+          id: `xdr-flow-step-${i}-card`,
+          type: "shape",
+          shape: "roundRect",
+          fill: "#eef2ff",
+          x: 0.8 + i * 3,
+          y: 2.4,
+          w: 2.4,
+          h: 1.1,
+          decorative: true,
+          readingOrder: 300 + i * 4
+        },
+        {
+          id: `xdr-flow-step-arrow-${i}-a`,
+          type: "shape",
+          shape: "line",
+          fill: "none",
+          x: 3.2 + i * 3,
+          y: 2.95,
+          w: 0.3,
+          h: 0,
+          decorative: true,
+          readingOrder: 301 + i * 4,
+          line: { color: "#475569" }
+        },
+        {
+          id: `xdr-flow-step-arrow-${i}-c`,
+          type: "shape",
+          shape: "line",
+          fill: "none",
+          x: 3.5 + i * 3,
+          y: 2.95,
+          w: 0.3,
+          h: 0,
+          decorative: true,
+          readingOrder: 302 + i * 4,
+          line: { color: "#475569", endArrowType: "triangle" }
+        }
+      );
+    }
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "diagram.native-connectors")).toBe(false);
+  });
+
   it("does not flag native diagram generator connectors as hand-placed arrows", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     deck.slides[0].elements.push(

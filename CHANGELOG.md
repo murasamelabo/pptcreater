@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.5.23 - 2026-06-24
+
+- **Fixed a false positive where `generate_schematic` output was flagged as a hand-built connector diagram.** While rebuilding a user's broken flow/timeline slides with the generators as a test, the schematic generator's own native output (flow/step/cycle) tripped `diagram.native-connectors`: its connectors use `<prefix>-…-arrow-<i>(-a|-b|-c)` ids and its node cards use `<prefix>-…-card` ids, which the lint exemption did not recognize (it only knew `generate_native_diagram`'s `-connector-<i>-<j>` / `-node-…` conventions). Combined with the v0.5.22 escalation, a schematic with 4+ arrow segments would have wrongly **blocked** rendering. The exemption now also recognizes the schematic id conventions, so legitimate generator output is never flagged. Hand-placed arrow diagrams are still flagged (warning, or error when complex).
+- Added a lint regression test that schematic-style output (4 `-card` nodes + 4 `-arrow-<i>-c` arrow-headed connectors) produces no `diagram.native-connectors` finding. Full suite now at 310 tests.
+
 ## v0.5.22 - 2026-06-24
 
 - **Push agents to adopt the figure generators instead of hand-building diagrams.** Investigating a user deck showed its flow and timeline diagrams were hand-built from raw shapes + manually placed connector lines (not `generate_native_diagram` / `generate_schematic`), which is why arrows left gaps to their boxes and timeline-card body text clipped. Added an explicit "adopt the figure generators" guideline across the MCP guidance (`figureAdoption`), the installed skills file (a workflow step + design rule), and the README: before hand-placing node boxes + connectors, timeline rails, comparison columns, or step rows, call `recommend_figure` / `list_schematic_presets` and use the recommended generator — `generate_schematic` auto-fits each label so node text never clips, `generate_native_diagram` routes connectors border-to-border so arrows never dangle. Hand-built shape compositions stay appropriate only for simple, short-label layouts.

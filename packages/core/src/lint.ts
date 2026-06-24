@@ -146,14 +146,28 @@ function isLikelyDiagramImage(element: Extract<SlideElement, { type: "image" }>,
   return diagramPattern.test(clueText);
 }
 
+// Recognize connectors produced by the diagram generators so an agent's slide that legitimately
+// embeds generate_native_diagram / generate_schematic output is never mistaken for a hand-placed
+// connector diagram. generate_native_diagram emits `<prefix>-connector-<i>-<j>`; the schematic
+// generators (flow/step/cycle) emit `<prefix>-...-arrow-<i>` with optional elbow segments `-a/-b/-c`;
+// the diagram-intent generator tags its connectors with a stable altText.
 function isGeneratedNativeDiagramConnector(element: ShapeElement): boolean {
-  return /(?:^|-)connector-\d+-\d+$/u.test(element.id) || element.altText === "generated diagram intent connector";
+  return (
+    /(?:^|-)connector-\d+-\d+$/u.test(element.id) ||
+    /(?:^|-)arrow-\d+(?:-[a-c])?$/u.test(element.id) ||
+    element.altText === "generated diagram intent connector"
+  );
 }
 
+// Recognize node/card shapes produced by the diagram generators: generate_native_diagram emits
+// `<prefix>-node-<key>-<index>`; the schematic generators emit `<prefix>-...-card`; the diagram-intent
+// generator tags its shapes with a stable altText.
 function isGeneratedNativeDiagramNode(element: SlideElement): boolean {
   return (
     element.type === "shape" &&
-    (/(?:^|-)node-[a-zA-Z0-9._-]+-\d+$/u.test(element.id) || element.altText === "generated diagram intent shape")
+    (/(?:^|-)node-[a-zA-Z0-9._-]+-\d+$/u.test(element.id) ||
+      /-card$/u.test(element.id) ||
+      element.altText === "generated diagram intent shape")
   );
 }
 
