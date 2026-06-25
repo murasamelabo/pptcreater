@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.5.27 - 2026-06-25
+
+- **Fixed layout polish growing a stacked card straight over the card below it.** A user's "導入の7ステップ" phase slide stacked three cards in its middle column with an exact 0.12in gap; after `finalize_deck` / `--polish`, the upper two cards rendered fused into one box with hairline divider lines while the side columns stayed cleanly separated. Root cause: in `expandCardsToContainContent`, the text-fit growth caps a card's height at the next blocking element below it, but the blocker test used `candidate.y > card.y + card.h + 0.12` — a dead zone that **ignored any sibling whose top sat within 0.12in below the card bottom**. With the gap exactly 0.12in, the sibling was skipped, so the card grew to fit its label and overlapped the next card by ~0.03in. Changed the threshold to `card.y + card.h - 0.12` so a tightly-stacked sibling is recognised as a blocker and the card is capped (keeping the `CARD_BLOCK_GAP` spacing) instead of overrunning it. Same-row neighbours (`candidate.y ≈ card.y`) remain excluded, so multi-column card rows are unaffected.
+- Added a layout regression test (three cards stacked with a 0.12in gap + fit-triggering labels) asserting no card extends into the card below it. Full suite now at 313 tests.
+
 ## v0.5.26 - 2026-06-24
 
 - **Hardened the multi-agent routing and figure-tool guidance so the deck-building agents actually get used.** Analysis of two real Copilot CLI sessions showed the installed deck agents were barely engaged: figures were hand-built, the figure MCP tools (`recommend_figure` / `render_design_component` / `generate_native_diagram` / `generate_schematic`) were bypassed by a hand-written script that imported `@pptcreater/core` directly, and `review_deck` was skipped in favor of a generic code review. This is a guidance/text-only release (no runtime behavior change) that tightens four surfaces so the agents and tools are used as designed:

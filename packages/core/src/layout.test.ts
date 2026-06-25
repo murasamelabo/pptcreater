@@ -824,6 +824,39 @@ describe("layout polish", () => {
     expect((cardA?.y ?? 0) + (cardA?.h ?? 0)).toBeLessThan((table?.y ?? 0) - 0.02);
   });
 
+  it("does not grow a card over a tightly-stacked sibling below it", () => {
+    // Reproduces a real deck where a phase column stacked three cards with an exact 0.12in gap.
+    // The text-fit growth used to expand the upper cards straight over the next card because the
+    // blocker check ignored siblings within 0.12in below the card bottom.
+    const card = (id: string, y: number, h: number) =>
+      ({ id, type: "shape", shape: "roundRect", x: 5.22, y, w: 3.36, h, fill: "#ffffff", decorative: true, readingOrder: 1 }) as const;
+    const label = (id: string, y: number, text: string) =>
+      ({ id, type: "text", role: "caption", text, x: 6.05, y, w: 2.37, h: 0.92, fontSize: 16, bold: false, decorative: false, readingOrder: 2 }) as const;
+    const slide: Slide = {
+      id: "stacked-phase-cards",
+      title: "Stacked phase cards",
+      layout: "title-content",
+      elements: [
+        card("step-3-box", 3.13, 0.92),
+        card("step-4-box", 4.17, 0.92),
+        card("step-5-box", 5.21, 0.92),
+        label("step-3-label", 3.13, "Cloud Discovery有効化"),
+        label("step-4-label", 4.17, "アプリ接続（Connector）"),
+        label("step-5-label", 5.21, "CAAC構成")
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const boxes = ["step-3-box", "step-4-box", "step-5-box"].map((id) =>
+      normalized.elements.find((element) => element.id === id)
+    );
+    // No box may extend into the next box below it.
+    for (let i = 0; i < boxes.length - 1; i++) {
+      const bottom = (boxes[i]?.y ?? 0) + (boxes[i]?.h ?? 0);
+      expect(bottom).toBeLessThanOrEqual((boxes[i + 1]?.y ?? 0) + 0.001);
+    }
+  });
+
   it("shrinks oversized cards in a row back to the needed uniform height", () => {
     const slide: Slide = {
       id: "oversized-card-row",

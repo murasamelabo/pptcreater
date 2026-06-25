@@ -956,7 +956,11 @@ function expandCardsToContainContent(elements: SlideElement[]): SlideElement[] {
             return false;
           }
 
-          return candidate.y > card.y + card.h + 0.12 && horizontalOverlap(card, candidate) > Math.min(card.w, candidate.w) * 0.35;
+          // A vertically-stacked sibling below this card blocks downward growth even when it is
+          // tightly spaced. Using `card.y + card.h - 0.12` (rather than `+ 0.12`) closes a dead zone
+          // where a sibling within ~0.12in below the card bottom was ignored, letting the card grow
+          // straight over it. Same-row neighbours (candidate.y ≈ card.y) stay excluded.
+          return candidate.y > card.y + card.h - 0.12 && horizontalOverlap(card, candidate) > Math.min(card.w, candidate.w) * 0.35;
         })
         .map((candidate) => candidate.y),
       SLIDE_WIDE.height
