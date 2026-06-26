@@ -1,9 +1,18 @@
 ﻿import { describe, expect, it } from "vitest";
-import { mkdir, readFile, writeFile, mkdtemp } from "node:fs/promises";
+import { mkdir, readFile, writeFile, mkdtemp, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
-import { createSampleDeck, defaultTokens, registerTemplateManifest, scaffoldDeckFromTemplate } from "@pptcreater/core";
+import {
+  COMPREHENSIVE_PATTERN_GALLERY_IDS,
+  createComprehensivePatternDeck,
+  createSampleDeck,
+  defaultTokens,
+  lintDeckSpec,
+  parseDeckSpec,
+  registerTemplateManifest,
+  scaffoldDeckFromTemplate
+} from "@pptcreater/core";
 import { importTemplateFromPptx, renderDeckToPptx } from "./index.js";
 import { createRequire } from "node:module";
 
@@ -183,6 +192,20 @@ function pngDimensions(png: Buffer): { width: number; height: number } {
 }
 
 describe("PPTX renderer", () => {
+  it("renders a comprehensive pattern gallery deck without blocking lint errors", async () => {
+    const deck = parseDeckSpec(createComprehensivePatternDeck("ja-JP"));
+    const report = lintDeckSpec(deck);
+    const blocking = report.issues.filter((issue) => issue.severity === "error" && !issue.polishFixable);
+    expect(blocking).toEqual([]);
+    expect(deck.slides.map((slide) => slide.id)).toEqual([...COMPREHENSIVE_PATTERN_GALLERY_IDS]);
+
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-pattern-gallery-"));
+    const result = await renderDeckToPptx(deck, join(outputDir, "pattern-gallery.pptx"));
+    const written = await stat(result.outputPath);
+
+    expect(written.size).toBeGreaterThan(10_000);
+  });
+
   it("refuses to render decks with lint errors by default", async () => {
     const deck = createSampleDeck("en-US");
     deck.slides[0].elements.push({

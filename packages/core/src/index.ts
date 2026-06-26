@@ -18,3 +18,4 @@ export * from "./designPacks.js";
 export * from "./director.js";
 export * from "./figureSelector.js";
 export * from "./typography.js";
+export * from "./patternGallery.js";
