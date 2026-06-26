@@ -14,7 +14,7 @@ import {
   createSectionDividerSlides,
   createDetailSlide,
   createVisualScaffold,
-  classifyLintReport,
+  classifyFinalizeLintReports,
   DeckSpecSchema,
   deleteTemplateManifest,
   ensureSourceReferenceSlide,
@@ -601,7 +601,8 @@ export function createPptcreaterMcpServer(): McpServer {
       const outputLocale = locale ?? polished.locale;
       // Classify the authored (pre-polish) deck so polishFixable lists what polish auto-resolves.
       const report = localizeLintReport(lintDeckSpec(base), outputLocale);
-      const { blockingErrors, polishFixable, warnings } = classifyLintReport(report);
+      const polishedReport = localizeLintReport(lintDeckSpec(polished), outputLocale);
+      const { blockingErrors, polishFixable, warnings } = classifyFinalizeLintReports(report, polishedReport);
 
       let render: Awaited<ReturnType<typeof renderDeckToPptx>> | undefined;
       const blocked = blockingErrors.length > 0 && !force;

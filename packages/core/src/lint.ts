@@ -86,6 +86,59 @@ export function classifyLintReport(report: LintReport): {
   return { blockingErrors, polishFixable, warnings };
 }
 
+function lintIssueKey(item: LintIssue): string {
+  return `${item.code}\u0000${item.path}\u0000${item.message}`;
+}
+
+function appendUniqueLintIssue(target: LintIssue[], seen: Set<string>, item: LintIssue): void {
+  const key = lintIssueKey(item);
+  if (seen.has(key)) {
+    return;
+  }
+
+  seen.add(key);
+  target.push(item);
+}
+
+/**
+ * Classify a finalize pass that has both the authored deck's lint report and the post-polish report.
+ * Pre-polish polishFixable issues remain informational, but any error still present after polish is a
+ * real blocker: rendering it would produce the broken slide the quality gate was meant to prevent.
+ */
+export function classifyFinalizeLintReports(
+  prePolishReport: LintReport,
+  postPolishReport: LintReport
+): {
+  blockingErrors: LintIssue[];
+  polishFixable: LintIssue[];
+  warnings: LintIssue[];
+} {
+  const pre = classifyLintReport(prePolishReport);
+  const blockingErrors: LintIssue[] = [];
+  const seenBlocking = new Set<string>();
+  for (const item of pre.blockingErrors) {
+    appendUniqueLintIssue(blockingErrors, seenBlocking, item);
+  }
+  for (const item of postPolishReport.issues) {
+    if (item.severity === "error") {
+      appendUniqueLintIssue(blockingErrors, seenBlocking, item);
+    }
+  }
+
+  const warnings: LintIssue[] = [];
+  const seenWarnings = new Set<string>();
+  for (const item of pre.warnings) {
+    appendUniqueLintIssue(warnings, seenWarnings, item);
+  }
+  for (const item of postPolishReport.issues) {
+    if (item.severity !== "error") {
+      appendUniqueLintIssue(warnings, seenWarnings, item);
+    }
+  }
+
+  return { blockingErrors, polishFixable: pre.polishFixable, warnings };
+}
+
 function textLength(slide: Slide): number {
   return slide.elements.reduce((sum, element) => {
     return element.type === "text" ? sum + element.text.length : sum;

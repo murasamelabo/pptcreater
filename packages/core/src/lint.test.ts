@@ -1,5 +1,6 @@
 ﻿import { describe, expect, it } from "vitest";
 import {
+  classifyFinalizeLintReports,
   classifyLintReport,
   createSampleDeck,
   ensureSourceReferenceSlide,
@@ -2154,5 +2155,44 @@ describe("polish-fixable lint classification", () => {
     const totalClassified =
       classified.blockingErrors.length + classified.polishFixable.length + classified.warnings.length;
     expect(totalClassified).toBe(report.issues.length);
+  });
+
+  it("treats errors still present after polish as finalize blockers", () => {
+    const classified = classifyFinalizeLintReports(
+      {
+        ok: false,
+        issues: [
+          {
+            severity: "error",
+            code: "layout.text-overflow-risk",
+            message: "Pre-polish overflow that polish should resolve.",
+            path: "slides.0.elements.1.text",
+            polishFixable: true
+          },
+          {
+            severity: "warning",
+            code: "text.small-font",
+            message: "Small but readable.",
+            path: "slides.0.elements.2.fontSize"
+          }
+        ]
+      },
+      {
+        ok: false,
+        issues: [
+          {
+            severity: "error",
+            code: "layout.text-overlap",
+            message: "Polished title now overlaps the lead.",
+            path: "slides.0.elements.2",
+            details: { otherId: "title" }
+          }
+        ]
+      }
+    );
+
+    expect(classified.polishFixable.map((issue) => issue.code)).toContain("layout.text-overflow-risk");
+    expect(classified.blockingErrors.map((issue) => issue.code)).toContain("layout.text-overlap");
+    expect(classified.warnings.map((issue) => issue.code)).toContain("text.small-font");
   });
 });

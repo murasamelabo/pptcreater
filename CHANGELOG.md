@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.5.35 - 2026-06-27
+
+- **Blocked post-polish layout regressions during finalize.** `finalize` / `finalize_deck` now classify both the authored DeckSpec and the post-polish DeckSpec, so errors that remain or appear after layout polish (for example title/lead overlap or unresolved hand-routed connector diagrams) stop rendering instead of producing a broken PowerPoint.
+- Added a regression test for finalize classification to ensure pre-polish polish-fixable items stay informational while post-polish errors become blocking.
+- Verified the previously broken Agent 365 deck now exits with `rendered=false` and returns blocking errors instead of writing a damaged `.pptx`.
+
 ## v0.5.34 - 2026-06-26
 
 - **Forced locale-specific slide-craft skill pack application.** `parseDeckSpec` now normalizes every deck to `slide-craft-ja` or `slide-craft-en` based on `locale`, so standard CLI/MCP/library parse paths always carry the PDF-derived slide-craft method even when a DeckSpec omits `skillPack` or specifies an older/custom pack.

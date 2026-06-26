@@ -8,8 +8,8 @@ import { SCHEMATIC_KIND_CATALOG, SCHEMATIC_MODE_TEMPLATES, SCHEMATIC_STYLE_PRESE
 import {
   applyTemplateContentDesign,
   BUSINESS_STYLE_MODES,
+  classifyFinalizeLintReports,
   cliMessage,
-  classifyLintReport,
   createEditWithCopilotPrompt,
   createSampleDeck,
   createSectionDividerSlides,
@@ -579,7 +579,8 @@ program
     // Classify the authored (pre-polish) deck so polishFixable reflects what polish will auto-resolve;
     // render uses the polished deck. Non-polish-fixable errors are identical pre/post polish.
     const report = localizeLintReport(lintDeckSpec(base), locale);
-    const { blockingErrors, polishFixable, warnings } = classifyLintReport(report);
+    const polishedReport = localizeLintReport(lintDeckSpec(polished), locale);
+    const { blockingErrors, polishFixable, warnings } = classifyFinalizeLintReports(report, polishedReport);
 
     if (options.polishedOut) {
       await writeJson(options.polishedOut, polished);
