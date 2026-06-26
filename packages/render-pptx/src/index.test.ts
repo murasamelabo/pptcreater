@@ -252,7 +252,7 @@ describe("PPTX renderer", () => {
     const written = await stat(result.outputPath);
 
     expect(written.size).toBeGreaterThan(10_000);
-  });
+  }, 20_000);
 
   it("refuses to render decks with lint errors by default", async () => {
     const deck = createSampleDeck("en-US");

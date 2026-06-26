@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.5.37 - 2026-06-27
+
+- Raised the comprehensive pattern gallery render test timeout to 20 seconds so the real 33-slide PowerPoint render remains part of CI instead of failing on slower GitHub Actions runners.
+- Includes the v0.5.36 gallery coverage and native schematic fixes; v0.5.36 was not released because CI caught the timeout before release publication.
+
 ## v0.5.36 - 2026-06-27
 
 - **Added a comprehensive pattern gallery render test.** The test builds and renders a real 33-slide DeckSpec that covers section dividers, detail explanation/Q&A/benefits slides, visual scaffold, SVG/image assets, diagram slides, and all 25 schematic pattern categories through the actual native schematic renderer.

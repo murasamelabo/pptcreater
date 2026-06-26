@@ -1,6 +1,6 @@
 ﻿{
   "name": "@pptcreater/core",
-  "version": "0.5.36",
+  "version": "0.5.37",
   "type": "module",
   "engines": {
     "node": ">=22.12.0",
