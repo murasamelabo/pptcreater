@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.5.36 - 2026-06-27
+
+- **Added a comprehensive pattern gallery render test.** The test builds and renders a real 33-slide DeckSpec that covers section dividers, detail explanation/Q&A/benefits slides, visual scaffold, SVG/image assets, diagram slides, and all 25 schematic pattern categories through the actual native schematic renderer.
+- Added `createComprehensivePatternDeck()` and `COMPREHENSIVE_PATTERN_GALLERY_IDS` so future rendering/lint changes can validate broad slide-pattern coverage before release.
+- Fixed real native schematic output issues found by the gallery: generated schematic connectors are now identified as generated output, correlation labels reserve space for sublabels, and layer labels reserve space for right-side notes.
+- Followed a RED/GREEN test checkpoint: the new render test first failed on the missing gallery generator, then passed after the gallery DeckSpec generator and export were added.
+
 ## v0.5.35 - 2026-06-27
 
 - **Blocked post-polish layout regressions during finalize.** `finalize` / `finalize_deck` now classify both the authored DeckSpec and the post-polish DeckSpec, so errors that remain or appear after layout polish (for example title/lead overlap or unresolved hand-routed connector diagrams) stop rendering instead of producing a broken PowerPoint.

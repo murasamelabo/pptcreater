@@ -2429,8 +2429,7 @@ function nativeLineSegment(
     }
   }
 
-  return nativeShape(id, "line", { x, y, w, h }, { fill: "none", line, decorative: true, readingOrder: options.readingOrder });
-  return nativeShape(id, "line", { x, y, w, h }, { fill: "none", line, decorative: true, readingOrder: options.readingOrder });
+  return nativeShape(id, "line", { x, y, w, h }, { fill: "none", line, decorative: true, altText: "generated native schematic connector", readingOrder: options.readingOrder });
 }
 function nativeSchematicText(
   id: string,
@@ -2570,6 +2569,7 @@ function nativeSmartPill(
       line: { color: stroke, width: 1.2 },
       radius: 0.14,
       decorative: true,
+      altText: "generated native schematic shape",
       readingOrder: nextOrder()
     })
   ];
@@ -2592,7 +2592,7 @@ function nativeSmartPill(
     );
   }
   elements.push(
-    nativeSchematicText(`${id}-label`, label, { x: textX, y: rect.y + 0.12, w: textW, h: rect.h - 0.22 }, fill, nextOrder, {
+    nativeSchematicText(`${id}-label`, label, { x: textX, y: rect.y + (options.sublabel ? 0.08 : 0.12), w: textW, h: options.sublabel ? rect.h * 0.38 : rect.h - 0.22 }, fill, nextOrder, {
       size: options.size ?? 12,
       min: 8.5,
       lines: options.sublabel ? 1 : options.maxLines ?? 2,
@@ -2776,8 +2776,8 @@ function renderNativeSchematicCards(
       const nodeFill = index === 0 ? "#DBEAFE" : "#FFFFFF";
       elements.push(nativeShape(`${idPrefix}-cycle-node-${index}`, "ellipse", { x: center.x - nodeW / 2, y: center.y - nodeH / 2, w: nodeW, h: nodeH }, { fill: nodeFill, line: { color: index === 0 ? accent : "#CBD5E1", width: 1.2 }, decorative: true, readingOrder: nextOrder() }));
       elements.push(nativeShape(`${idPrefix}-cycle-badge-${index}`, "ellipse", { x: center.x - nodeW / 2 + 0.1, y: center.y - nodeH / 2 + 0.08, w: 0.28, h: 0.28 }, { fill: accent, line: { color: accent, width: 0.1 }, decorative: true, readingOrder: nextOrder() }));
-      elements.push(nativeSchematicText(`${idPrefix}-cycle-badge-text-${index}`, `${index + 1}`, { x: center.x - nodeW / 2 + 0.1, y: center.y - nodeH / 2 + 0.17, w: 0.28, h: 0.1 }, accent, nextOrder, { size: 8, min: 8, lines: 1, color: "#FFFFFF" }));
-      elements.push(nativeSchematicText(`${idPrefix}-cycle-label-${index}`, item, { x: center.x - nodeW / 2 + 0.26, y: center.y - 0.14, w: nodeW - 0.34, h: 0.28 }, nodeFill, nextOrder, { size: 10.5, min: 8.5, lines: 2 }));
+      elements.push(nativeSchematicText(`${idPrefix}-cycle-badge-text-${index}`, `${index + 1}`, { x: center.x - nodeW / 2 + 0.1, y: center.y - nodeH / 2 + 0.12, w: 0.28, h: 0.2 }, accent, nextOrder, { size: 8, min: 8, lines: 1, color: "#FFFFFF" }));
+      elements.push(nativeSchematicText(`${idPrefix}-cycle-label-${index}`, item, { x: center.x - nodeW / 2 + 0.26, y: center.y - 0.04, w: nodeW - 0.34, h: 0.28 }, nodeFill, nextOrder, { size: 10.5, min: 8.5, lines: 2 }));
     });
     return elements;
   }
@@ -2999,7 +2999,8 @@ function renderNativeSchematicCards(
       const y = area.y + index * (layerH + 0.1);
       const layerFill = ["#DBEAFE", "#E0F2FE", "#ECFDF5", "#FEF3C7", "#F8FAFC"][index] ?? "#FFFFFF";
       elements.push(nativeShape(`${idPrefix}-layer-${index}`, "roundRect", { x: area.x + inset, y, w: area.w - inset * 2, h: layerH }, { fill: layerFill, line: { color: "#CBD5E1", width: 1 }, radius: 0.08, decorative: true, readingOrder: nextOrder() }));
-      elements.push(nativeSchematicText(`${idPrefix}-layer-label-${index}`, item, { x: area.x + inset + 0.25, y: y + 0.14, w: area.w - inset * 2 - 0.5, h: layerH - 0.22 }, layerFill, nextOrder, { size: 12, lines: 1 }));
+      const hasNote = Boolean(secondary[index]);
+      elements.push(nativeSchematicText(`${idPrefix}-layer-label-${index}`, item, { x: area.x + inset + 0.25, y: y + 0.14, w: area.w - inset * 2 - (hasNote ? 3.05 : 0.5), h: layerH - 0.22 }, layerFill, nextOrder, { size: 12, lines: 1 }));
       if (secondary[index]) {
         elements.push(nativeSchematicText(`${idPrefix}-layer-note-${index}`, secondary[index], { x: area.x + area.w - 2.6, y: y + 0.16, w: 2.0, h: layerH - 0.24 }, layerFill, nextOrder, { size: 9.5, min: 8, lines: 1, bold: false, color: "#475569" }));
       }

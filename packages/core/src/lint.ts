@@ -215,7 +215,9 @@ function isGeneratedNativeDiagramConnector(element: ShapeElement): boolean {
   return (
     /(?:^|-)connector-\d+-\d+$/u.test(element.id) ||
     /(?:^|-)arrow-\d+(?:-[a-c])?$/u.test(element.id) ||
-    element.altText === "generated diagram intent connector"
+    /(?:^|-)rel-\d+(?:-[a-c])?$/u.test(element.id) ||
+    element.altText === "generated diagram intent connector" ||
+    element.altText === "generated native schematic connector"
   );
 }
 
@@ -227,7 +229,9 @@ function isGeneratedNativeDiagramNode(element: SlideElement): boolean {
     element.type === "shape" &&
     (/(?:^|-)node-[a-zA-Z0-9._-]+-\d+$/u.test(element.id) ||
       /-card$/u.test(element.id) ||
-      element.altText === "generated diagram intent shape")
+    /(?:^|-)(?:hub|leaf-\d+-shape|cycle-node-\d+|layer-\d+)$/u.test(element.id) ||
+    element.altText === "generated diagram intent shape" ||
+    element.altText === "generated native schematic shape")
   );
 }
 

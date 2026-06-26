@@ -13,6 +13,12 @@ import {
   registerTemplateManifest,
   scaffoldDeckFromTemplate
 } from "@pptcreater/core";
+import {
+  renderNativeSchematicDiagram,
+  SCHEMATIC_KINDS,
+  schematicTemplateForStyleProfile,
+  type SchematicKind
+} from "@pptcreater/diagram";
 import { importTemplateFromPptx, renderDeckToPptx } from "./index.js";
 import { createRequire } from "node:module";
 
@@ -24,6 +30,44 @@ const JSZip = require("jszip") as {
   };
   loadAsync(data: Buffer): Promise<{ file(name: string): { async(type: "string"): Promise<string>; async(type: "nodebuffer"): Promise<Buffer> } | null; files: Record<string, unknown> }>;
 };
+
+function applyRealSchematicRendererOutput(deck: ReturnType<typeof parseDeckSpec>): ReturnType<typeof parseDeckSpec> {
+  const next = structuredClone(deck);
+  for (const kind of SCHEMATIC_KINDS) {
+    const slide = next.slides.find((candidate) => candidate.id === `pattern-schematic-${kind}`);
+    if (!slide) {
+      throw new Error(`Missing schematic gallery slide for ${kind}.`);
+    }
+    const template = schematicTemplateForStyleProfile("technical", kind as SchematicKind);
+    const rendered = renderNativeSchematicDiagram(
+      {
+        kind,
+        title: template.titleJa,
+        summary: template.summary,
+        longDescription: template.longDescription,
+        items: [...template.items],
+        secondaryItems: [...(template.secondaryItems ?? [])],
+        tone: template.tone,
+        axisX: template.axisX,
+        axisY: template.axisY,
+        width: 960,
+        height: 540
+      },
+      {
+        frame: { x: 0.8, y: 1.8, w: 11.75, h: 5.2 },
+        idPrefix: `real-schematic-${kind}`,
+        readingOrderStart: 10
+      }
+    );
+    slide.elements = [
+      slide.elements[0],
+      slide.elements[1],
+      slide.elements[2],
+      ...rendered.elements
+    ];
+  }
+  return next;
+}
 
 const TEMPLATE_CONTENT_TYPES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -193,11 +237,15 @@ function pngDimensions(png: Buffer): { width: number; height: number } {
 
 describe("PPTX renderer", () => {
   it("renders a comprehensive pattern gallery deck without blocking lint errors", async () => {
-    const deck = parseDeckSpec(createComprehensivePatternDeck("ja-JP"));
+    const deck = applyRealSchematicRendererOutput(parseDeckSpec(createComprehensivePatternDeck("ja-JP")));
     const report = lintDeckSpec(deck);
     const blocking = report.issues.filter((issue) => issue.severity === "error" && !issue.polishFixable);
     expect(blocking).toEqual([]);
     expect(deck.slides.map((slide) => slide.id)).toEqual([...COMPREHENSIVE_PATTERN_GALLERY_IDS]);
+    for (const kind of SCHEMATIC_KINDS) {
+      const slide = deck.slides.find((candidate) => candidate.id === `pattern-schematic-${kind}`);
+      expect(slide?.elements.some((element) => element.id.startsWith(`real-schematic-${kind}`))).toBe(true);
+    }
 
     const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-pattern-gallery-"));
     const result = await renderDeckToPptx(deck, join(outputDir, "pattern-gallery.pptx"));
