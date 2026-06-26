@@ -10,6 +10,28 @@ import {
 } from "./index.js";
 
 describe("DeckSpec linting", () => {
+  it("auto-applies the locale-specific slide-craft skill pack while parsing", () => {
+    const ja = createSampleDeck("ja-JP", { slideCount: 1 });
+    const en = createSampleDeck("en-US", { slideCount: 1 });
+    ja.skillPack = undefined;
+    en.skillPack = "modern-slide-design";
+
+    expect(parseDeckSpec(ja).skillPack).toBe("slide-craft-ja");
+    expect(parseDeckSpec(en).skillPack).toBe("slide-craft-en");
+  });
+
+  it("blocks decks that bypass parsing and omit the locale-specific slide-craft skill pack", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.skillPack = "business-ppt-director-ja";
+
+    const report = lintDeckSpec(deck);
+    const missingCraft = report.issues.find((issue) => issue.code === "content.slide-craft-skill-missing");
+
+    expect(missingCraft?.severity).toBe("error");
+    expect(missingCraft?.details?.requiredSkillPack).toBe("slide-craft-ja");
+    expect(report.ok).toBe(false);
+  });
+
   it("accepts the generated sample deck", () => {
     const deck = parseDeckSpec(createSampleDeck("ja-JP"));
     const report = lintDeckSpec(deck);

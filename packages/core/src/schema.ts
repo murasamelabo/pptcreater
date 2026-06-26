@@ -339,6 +339,22 @@ export type PptxSlideColorReplacement = z.infer<typeof PptxSlideColorReplacement
 export type Slide = z.infer<typeof SlideSchema>;
 export type DeckSpec = z.infer<typeof DeckSpecSchema>;
 
+export function slideCraftSkillPackForLocale(locale: Locale): string {
+  return locale === "ja-JP" ? "slide-craft-ja" : "slide-craft-en";
+}
+
+export function ensureSlideCraftSkillPack(deck: DeckSpec): DeckSpec {
+  const requiredSkillPack = slideCraftSkillPackForLocale(deck.locale);
+  if (deck.skillPack === requiredSkillPack) {
+    return deck;
+  }
+
+  return {
+    ...deck,
+    skillPack: requiredSkillPack
+  };
+}
+
 export function parseDeckSpec(input: unknown): DeckSpec {
-  return DeckSpecSchema.parse(input);
+  return ensureSlideCraftSkillPack(DeckSpecSchema.parse(input));
 }

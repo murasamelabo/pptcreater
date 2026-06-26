@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.5.34 - 2026-06-26
+
+- **Forced locale-specific slide-craft skill pack application.** `parseDeckSpec` now normalizes every deck to `slide-craft-ja` or `slide-craft-en` based on `locale`, so standard CLI/MCP/library parse paths always carry the PDF-derived slide-craft method even when a DeckSpec omits `skillPack` or specifies an older/custom pack.
+- Strengthened the `content.slide-craft-skill-missing` lint from a warning to a blocking error for callers that bypass `parseDeckSpec` and feed raw DeckSpec objects into `lintDeckSpec`. The error reports the required locale-specific skill pack and points callers to `parseDeckSpec` / `ensureSlideCraftSkillPack`.
+- Added regression tests covering automatic JA/EN skill-pack normalization and blocking raw decks that skip normalization. Full suite now at 332 tests.
+
 ## v0.5.33 - 2026-06-26
 
 - **Made the slide-craft knowledge enforceable at lint/finalize time, not just advisory.** A real pptcreater-generated Defender/Sentinel deck used the renderer but still bypassed the PDF-derived craft rules because the DeckSpec did not declare `slide-craft-ja` and the quality gates did not inspect for those failure modes. New lint gates now block:

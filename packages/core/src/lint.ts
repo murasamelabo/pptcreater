@@ -1,7 +1,7 @@
 ﻿import { contrastRatio, defaultTokens } from "./color.js";
 import { reviewDeckContent } from "./content.js";
 import { estimateTextOverflow, findTextLineBreakIssue, SLIDE_WIDE, textReadableMinimumFontSize } from "./layout.js";
-import type { DeckSpec, ShapeElement, Slide, SlideElement, TextElement } from "./schema.js";
+import { slideCraftSkillPackForLocale, type DeckSpec, type ShapeElement, type Slide, type SlideElement, type TextElement } from "./schema.js";
 import { hasCompleteSourceReferenceSlide } from "./sourceReferences.js";
 import { defaultFontSizeForRole } from "./typography.js";
 
@@ -1124,7 +1124,8 @@ export function lintDeckSpec(deck: DeckSpec): LintReport {
       !["cover", "title", "section", "divider", "closing", "references"].includes(slide.layout ?? "")
   );
   const nonProseBodySlides = bodySlides.filter((slide) => !isProseDetailSlide(slide));
-  const slideCraftSkillPack = deck.skillPack?.includes("slide-craft") ?? false;
+  const requiredSlideCraftSkillPack = slideCraftSkillPackForLocale(deck.locale);
+  const slideCraftSkillPack = deck.skillPack === requiredSlideCraftSkillPack;
   const modalitySlideCount = nonProseBodySlides.filter((slide) => hasSubstantiveVisualModality(slide)).length;
   const repeatedCardGridSlideCount = nonProseBodySlides.filter((slide) => isRepeatedCardGridSlide(slide)).length;
   const referencedSourceIds = new Set(
@@ -1134,10 +1135,11 @@ export function lintDeckSpec(deck: DeckSpec): LintReport {
   if (!slideCraftSkillPack) {
     issues.push(
       issue(
-        "warning",
+        "error",
         "content.slide-craft-skill-missing",
-        "DeckSpec does not declare slide-craft-ja/en. The slide-craft quality gates still run, but agents should set the slide-craft skill pack so PDF-derived craft rules are visible during authoring.",
-        "skillPack"
+        "DeckSpec must use the locale-specific slide-craft skill pack. Run parseDeckSpec/ensureSlideCraftSkillPack or set skillPack to the required value before lint/finalize so PDF-derived craft rules are applied during authoring.",
+        "skillPack",
+        { requiredSkillPack: requiredSlideCraftSkillPack }
       )
     );
   }
