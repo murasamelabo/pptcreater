@@ -134,6 +134,15 @@ function normalizeText(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
+// Layout markers that opt a slide into being an intentional text-rich slide (detailed prose, Q&A,
+// or a "得られること / benefits" list). On these slides fuller body copy is the point, so the
+// prose/bullet-count suggestions are skipped — but the concise-title/message checks still apply.
+const PROSE_DETAIL_LAYOUTS = new Set(["detail", "prose", "qa", "q-a", "qanda", "q-and-a", "faq"]);
+
+function isProseDetailSlide(slide: Slide): boolean {
+  return PROSE_DETAIL_LAYOUTS.has((slide.layout ?? "").trim().toLowerCase());
+}
+
 function compactJapaneseLength(text: string): number {
   return text.replace(/\s+/g, "").length;
 }
@@ -419,7 +428,11 @@ export function reviewDeckContent(
       reviewEnglishSlide(slide, slideIndex, profile, issues);
     }
 
-    reviewBodyCopy(slide, slideIndex, profile, issues);
+    // Concise-title/message checks above still apply; only the prose/bullet body checks are skipped
+    // on intentional detail/Q&A slides where fuller explanation is the goal.
+    if (!isProseDetailSlide(slide)) {
+      reviewBodyCopy(slide, slideIndex, profile, issues);
+    }
   });
 
   return {

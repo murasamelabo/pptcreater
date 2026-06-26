@@ -92,9 +92,16 @@ function textLength(slide: Slide): number {
   }, 0);
 }
 
-function textElementMinimumSize(element: TextElement, deck: DeckSpec): number {
+function textElementMinimumSize(element: TextElement, deck: DeckSpec, proseDetail = false): number {
   if (element.role === "caption" && isGeneratedDiagramIntentText(element)) {
     return 8.5;
+  }
+
+  // Intentional detail/Q&A slides carry denser reading text by design, so the *recommended* minimum
+  // for their body/callout copy is relaxed to 14pt (reference decks routinely set 14-16pt prose).
+  // The hard readable floor (textReadableMinimumFontSize, an error) and AA contrast are unchanged.
+  if (proseDetail && (element.role === "body" || element.role === "callout" || element.role === "subtitle")) {
+    return 14;
   }
 
   if (deck.template === "report-formal" || deck.metadata.contentMode === "report" || deck.metadata.contentMode === "handout") {
@@ -179,6 +186,18 @@ function hasReferenceSlideMarkers(slide: Slide): boolean {
   return slide.layout === "references" || slide.id === "source-references" || slide.title === "参考URL・出典" || slide.title === "References and sources";
 }
 
+// Layout markers that opt a slide into being an intentional text-rich slide: a detailed prose
+// explanation, a Q&A / FAQ, or a "得られること / benefits" list with descriptions. These are the
+// few slides a deck legitimately wants to be word-heavy (titles/headings stay concise, but the body
+// deliberately carries fuller explanation), mirroring strong reference decks. They are exempt from
+// the visual-richness gate and excluded from the deck's visual-ratio denominator, while every other
+// accessibility/overflow/title rule still applies.
+const PROSE_DETAIL_LAYOUTS = new Set(["detail", "prose", "qa", "q-a", "qanda", "q-and-a", "faq"]);
+
+export function isProseDetailSlide(slide: Slide): boolean {
+  return PROSE_DETAIL_LAYOUTS.has((slide.layout ?? "").trim().toLowerCase());
+}
+
 function isReferenceSlide(slide: Slide, deck: DeckSpec, slideIndex: number): boolean {
   const hasUrlSources = deck.metadata.sources.some((source) => Boolean(source.url));
   return hasReferenceSlideMarkers(slide) || (hasUrlSources && slideIndex === deck.slides.length - 1 && hasCompleteSourceReferenceSlide(deck));
@@ -186,6 +205,11 @@ function isReferenceSlide(slide: Slide, deck: DeckSpec, slideIndex: number): boo
 
 function isContentSlide(slide: Slide, deck: DeckSpec, slideIndex: number): boolean {
   if (isReferenceSlide(slide, deck, slideIndex)) {
+    return false;
+  }
+
+  // Intentional text-rich slides (detail/prose/Q&A) are not held to the visual-richness gate.
+  if (isProseDetailSlide(slide)) {
     return false;
   }
 
@@ -654,7 +678,7 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
 
     if (element.type === "text") {
       const fontSize = element.fontSize ?? defaultFontSizeForRole(element.role, tokens);
-      const minimum = textElementMinimumSize(element, deck);
+      const minimum = textElementMinimumSize(element, deck, isProseDetailSlide(slide));
       if (fontSize < minimum) {
         issues.push(
           issue(
@@ -996,6 +1020,27 @@ export function lintDeckSpec(deck: DeckSpec): LintReport {
           richSlides: richContentSlideCount,
           substantiveVisuals: substantiveVisualCount
         }
+      )
+    );
+  }
+
+  // Detail/prose/Q&A slides are allowed and exempt from the gate above, but a deck whose body is
+  // mostly word-heavy prose loses the at-a-glance strength of a deck. Warn (not block) when the
+  // intentional prose slides outnumber the visual body slides, so a few stay the exception.
+  const bodySlides = deck.slides.filter(
+    (slide, slideIndex) =>
+      !isReferenceSlide(slide, deck, slideIndex) &&
+      !["cover", "title", "section", "divider", "closing", "references"].includes(slide.layout ?? "")
+  );
+  const proseDetailSlideCount = bodySlides.filter((slide) => isProseDetailSlide(slide)).length;
+  if (proseDetailSlideCount >= 3 && proseDetailSlideCount / bodySlides.length > 0.5) {
+    issues.push(
+      issue(
+        "warning",
+        "visual.prose-heavy",
+        "Most body slides are text-rich detail/Q&A slides. Detail slides are intentional, but keep them the exception — convert some to a schematic, diagram, or card layout so the deck stays scannable.",
+        "slides",
+        { proseDetailSlides: proseDetailSlideCount, bodySlides: bodySlides.length }
       )
     );
   }

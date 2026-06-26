@@ -12,6 +12,7 @@ import {
   ContentModeSchema,
   createSampleDeck,
   createSectionDividerSlides,
+  createDetailSlide,
   createVisualScaffold,
   classifyLintReport,
   DeckSpecSchema,
@@ -996,6 +997,48 @@ export function createPptcreaterMcpServer(): McpServer {
   );
 
   server.registerTool(
+    "generate_detail_slide",
+    {
+      title: "Generate a text-rich detail / Q&A / benefits slide",
+      description:
+        "Generate a single accessible, overflow-safe TEXT-RICH slide for content that genuinely needs fuller prose — a detailed explanation, a Q&A / FAQ, or a 得られること / benefits list with descriptions — mirroring strong reference decks (e.g. Slideland's 得られること and Q&A page types). Most slides should still be visual, but use this for the few slides where deliberate explanation is the point: the returned slide uses a layout marker ('detail' or 'qa') that is EXEMPT from the visual-richness gate and excluded from the deck's visual-ratio denominator, while AA contrast, minimum font sizes, reading order, overflow fitting, and concise-title rules all still apply. Keep the `title` and any `heading`/`label`/`question` concise; put the longer explanation in `body`/`answer`/`description`. Variants: 'explanation' (concise heading + lead + prose blocks), 'qa' (Q/A pairs), 'benefits' (numbered label + description). Insert the returned `slide` into deck.slides; up to 6 items/blocks per slide (extras are dropped with a warning — split across slides).",
+      inputSchema: {
+        variant: z.enum(["explanation", "qa", "benefits"]).default("explanation"),
+        title: z.string().min(1),
+        lead: z.string().optional(),
+        blocks: z
+          .array(z.object({ heading: z.string().optional(), body: z.string().min(1) }))
+          .optional(),
+        items: z
+          .array(
+            z.union([
+              z.object({ question: z.string().min(1), answer: z.string().min(1) }),
+              z.object({ label: z.string().min(1), description: z.string().min(1) })
+            ])
+          )
+          .optional(),
+        locale: LocaleSchema.default("ja-JP"),
+        accent: z
+          .string()
+          .regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/)
+          .optional(),
+        idPrefix: z
+          .string()
+          .min(1)
+          .regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,59}$/)
+          .default("detail")
+      }
+    },
+    async ({ variant, title, lead, blocks, items, locale, accent, idPrefix }) =>
+      jsonText(
+        createDetailSlide(
+          { variant, title, lead, blocks, items: items as never },
+          { locale, accent, idPrefix }
+        )
+      )
+  );
+
+  server.registerTool(
     "generate_visual_scaffold",
     {
       title: "Generate per-slide concept visual scaffold",
@@ -1363,10 +1406,11 @@ export function createPptcreaterMcpServer(): McpServer {
               finishFlow: "To finish a deck in ONE pass, call finalize_deck (deck + outputPath) instead of separate polish_deck_layout + lint_deck + render_pptx. It polishes, lints, and renders together and returns blockingErrors (the only items you must hand-fix), polishFixable (auto-resolved), and warnings. This avoids the slow edit→lint→polish→render loop. CLI equivalent: pptcreater finalize <deck.json> --output <deck.pptx>.",
               researchPerformance: "Do not run blocking shell web-search commands (PowerShell Invoke-WebRequest/Invoke-RestMethod scraping, curl loops) to gather sources — they can hang for many minutes and dominate runtime. Use the host's documentation/fetch/search tools instead, fetch sources in parallel, and keep research scoped to what the deck needs.",
               cognitiveLoad: "Use one visual grammar per slide. Call list_schematic_presets before choosing a structured diagram kind. Prefer table/contrast for comparisons, tree/layer for hierarchy, flow/vertical-flow/cycle/step for processes, matrix/scale-contrast/grow/ranking for analysis, gantt for schedules, venn/set/puzzle/correlation/map for conceptual grouping, generate_intent_diagram for known concept compositions/granularity, and generate_native_diagram for general architecture/security flows with editable connectors. Avoid many custom text boxes with uneven manual line breaks or body-only enumerations. Let layout polish wrap Japanese text instead of hand-coding line breaks. Content slides must not be text-only: fix visual.richness-missing and visual.richness-deck by adding generate_schematic, generate_intent_diagram, generate_native_diagram, registered icons, images, or card/shape composition so at least 75% of content slides have visual structure. When embedding SVG diagrams, keep internal labels at least 8pt after scaling or recreate/split them.",
+              proseDetailSlides: "Text-rich slides ARE allowed for the few slides that genuinely need fuller prose — a detailed explanation, a Q&A / FAQ, or a 得られること/benefits list with descriptions. Use generate_detail_slide (variant explanation/qa/benefits): it returns a slide with a detail/qa layout marker that is exempt from the visual-richness gate and excluded from the 75% denominator, so detailed paragraphs do not need a figure. Keep the title and any heading/label/question concise and put the longer text in body/answer/description; AA contrast, reading order, overflow fitting, and concise-title checks still apply (detail body may be 14-16pt). Keep these the exception — visual.prose-heavy warns when prose/Q&A slides outnumber the visual body slides.",
               sourceReferences: "Whenever a deck uses external websites, record each source in metadata.sources with the actual url. render_pptx, render_studio, and polish_deck_layout automatically append/update the final references slide (参考URL・出典 / References and sources) so the last slide contains all external URLs. Per-slide citations are optional for URL-backed sources when the final references slide is complete.",
               sourceVisuals: "Use metadata.sources plus element.sourceId/citation when quoting, recreating, or using source visuals as inspiration. Prefer editable shape/text objects for recreated visuals. For URL-backed sources, final-slide references can replace per-slide citation text.",
               requiredVisualAccessibility: "Non-decorative SVG, image, and diagram elements require altText. Diagram elements also require summary and longDescription.",
-              recommendedWorkflow: ["get_slide_creation_rules before custom DeckSpec authoring", "plan_business_deck for business/executive/customer-facing decks", "create_pptx/create_powerpoint for direct output", "search_templates", "search_assets", "generate_section_divider to insert chapter/section title slides between major sections of longer decks", "generate_intent_diagram when the intended ponchi-e composition/granularity is known", "generate_native_diagram for general editable ponchi-e/architecture/security diagrams", "list_schematic_presets then generate_schematic for structured visuals", "create_deck or custom DeckSpec", "review_business_deck for storyline/section/emphasis checks", "review_content", "finalize_deck (deck + outputPath) for a single polish+lint+render pass — fix only its blockingErrors, then call again", "or step-by-step: lint_deck, render_pptx/render_powerpoint or render_studio", "CLI fallback if MCP tools are hidden: pptcreater finalize <deck.json> --output <deck.pptx> (one pass) or pptcreater render <deck.json> --output <deck.pptx> --polish"]
+              recommendedWorkflow: ["get_slide_creation_rules before custom DeckSpec authoring", "plan_business_deck for business/executive/customer-facing decks", "create_pptx/create_powerpoint for direct output", "search_templates", "search_assets", "generate_section_divider to insert chapter/section title slides between major sections of longer decks", "generate_detail_slide for the few text-rich slides that need fuller prose (detailed explanation / Q&A / 得られること benefits)", "generate_intent_diagram when the intended ponchi-e composition/granularity is known", "generate_native_diagram for general editable ponchi-e/architecture/security diagrams", "list_schematic_presets then generate_schematic for structured visuals", "create_deck or custom DeckSpec", "review_business_deck for storyline/section/emphasis checks", "review_content", "finalize_deck (deck + outputPath) for a single polish+lint+render pass — fix only its blockingErrors, then call again", "or step-by-step: lint_deck, render_pptx/render_powerpoint or render_studio", "CLI fallback if MCP tools are hidden: pptcreater finalize <deck.json> --output <deck.pptx> (one pass) or pptcreater render <deck.json> --output <deck.pptx> --polish"]
             },
             null,
             2

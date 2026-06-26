@@ -628,6 +628,9 @@ true). Ready-made Copilot CLI / VS Code custom agents for all six roles live in
 ## Design principles
 
 - One slide, one message
+- Mostly visual, with room for prose: most content slides carry a figure/structure, but text-rich
+  detail / Q&A / 得られること(benefits) slides are first-class via `generate_detail_slide` (layout
+  `detail`/`qa`) — exempt from the visual-richness gate, with concise titles but fuller body copy
 - Template-level accessibility defaults
 - WCAG-inspired contrast thresholds
 - Explicit reading order and alternative text
