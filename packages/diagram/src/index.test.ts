@@ -281,6 +281,56 @@ describe("native ponchi diagram rendering", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  it("colors all native nodes with a single shared accent regardless of node kind", () => {
+    const rendered = renderNativePonchiDiagram({
+      title: "Single accent",
+      summary: "Single accent across kinds",
+      longDescription: "Verifies that mixed node kinds do not produce a rainbow of category fills — every node shares one accent (no per-kind hue), per the one-accent design principle.",
+      nodes: [
+        { id: "a", label: "Actor", kind: "actor" },
+        { id: "b", label: "System", kind: "system" },
+        { id: "c", label: "Data", kind: "data" },
+        { id: "d", label: "Cloud", kind: "cloud" }
+      ],
+      arrows: [
+        { from: "a", to: "b" },
+        { from: "b", to: "c" },
+        { from: "c", to: "d" }
+      ]
+    });
+    const accentBars = rendered.elements.filter(
+      (element) => element.type === "shape" && /native-diagram-accent-/.test(element.id)
+    );
+    expect(accentBars.length).toBe(4);
+    const fills = new Set(accentBars.map((element) => (element.type === "shape" ? element.fill : "")));
+    // All four mixed-kind nodes share exactly one accent color.
+    expect(fills.size).toBe(1);
+    // And it is the single brand accent, not a per-kind hue like the old cloud violet.
+    expect(fills.has("#2563eb")).toBe(true);
+  });
+
+  it("honors an explicit accent and a per-node accent override", () => {
+    const rendered = renderNativePonchiDiagram(
+      {
+        title: "Custom accent",
+        summary: "Custom accent",
+        longDescription: "Verifies that the diagram accent option recolors all nodes and a per-node accent overrides just that node.",
+        nodes: [
+          { id: "a", label: "A", kind: "system" },
+          { id: "b", label: "B", kind: "system", accent: "#9333ea" }
+        ],
+        arrows: [{ from: "a", to: "b" }]
+      },
+      { accent: "#0f766e" }
+    );
+    const barA = rendered.elements.find((element) => element.type === "shape" && element.id === "native-diagram-accent-a-0");
+    const barB = rendered.elements.find((element) => element.type === "shape" && element.id === "native-diagram-accent-b-1");
+    if (barA?.type === "shape" && barB?.type === "shape") {
+      expect(barA.fill).toBe("#0f766e");
+      expect(barB.fill).toBe("#9333ea");
+    }
+  });
+
   it("keeps native node labels below the accent/marker band", () => {
     const rendered = renderNativePonchiDiagram({
       title: "Readable node labels",

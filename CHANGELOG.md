@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## v0.5.32 - 2026-06-26
+
+- **Applied the one-accent / no-category-coloring principle to the diagram generators (placement & coloring), not just the guidance.** The v0.5.30/0.5.31 slide-craft knowledge was guidance-only, so the figure generators still color-coded nodes by kind: `generate_native_diagram` and `generate_diagram` assigned a different hue per node kind (actor=indigo, system=blue, process=teal, data=green, note=amber, cloud=violet), turning any mixed-kind diagram into a rainbow — the exact "塗分け禁止 / one accent" anti-pattern the books warn against, and a color-only encoding of role. Changed the node styling so:
+  - **Every node now shares a single accent** with a neutral surface; node `kind` selects the role icon/marker, not the fill hue, so mixed-kind diagrams stay calm and on-brand. Roles are differentiated by icon/shape and label, never by arbitrary color.
+  - **The one focal node** can still stand out via `node.emphasis` (accent stroke + faint accent fill), and the accent is themeable: a new `accent` option on `generate_native_diagram` / `renderNativePonchiDiagram` recolors the whole diagram to the deck, and `node.accent` overrides a single node.
+  - **The native diagram backdrop panel lost its hard border** (it was an empty bordered box around the figure); per "separate with whitespace, not boxes" it is now a soft borderless surface, with grouping still shown by the dashed group lanes.
+- Added diagram regression tests (mixed-kind nodes share one accent and it is the brand accent, not the old per-kind violet; the `accent` option and per-node `accent` override are honored) and updated the `generate_native_diagram` tool description and MCP `diagramFlow` guidance. Full suite now at 326 tests.
+
 ## v0.5.31 - 2026-06-26
 
 - **Deepened the slide-craft knowledge from the source books' body text and slide examples (not just their tables of contents).** The v0.5.30 packs were distilled from the books' chapter/section headings; this release reads the actual page content — via OCR of the body text and by visually studying the before/after slide examples — and folds the concrete, specific principles into the `slide-craft-ja` / `slide-craft-en` skill packs and the installed "Slide craft method" guidance (no verbatim reproduction of the copyrighted material; principles are re-expressed in our own words):

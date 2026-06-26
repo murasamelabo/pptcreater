@@ -125,6 +125,10 @@ export const NativeDiagramFrameSchema = z.object({
 
 export const NativePonchiRenderOptionsSchema = z.object({
   frame: NativeDiagramFrameSchema.default({ x: 0.75, y: 1.55, w: 11.85, h: 5.35 }),
+  accent: z
+    .string()
+    .regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/)
+    .optional(),
   idPrefix: z
     .string()
     .min(1)
@@ -779,6 +783,23 @@ const SCHEMATIC_PALETTES: Record<z.infer<typeof SchematicToneSchema>, SchematicP
   }
 };
 
+// Single restrained brand accent for generated diagrams. Following the "one accent, neutral
+// surfaces" principle (do not color-code nodes by category): every node shares one accent and one
+// neutral surface, and roles are differentiated by icon/shape — not by hue. A node may override its
+// accent (node.accent) and the emphasized node gets a stronger accent treatment, so exactly one
+// focal element stands out instead of a rainbow of category fills.
+const DEFAULT_NODE_ACCENT = "#2563eb";
+const NEUTRAL_NODE_SURFACE = { fill: "#ffffff", stroke: "#d8dee9" } as const;
+
+function nodeSurface(node: PonchiDiagram["nodes"][number], accent: string): { fill: string; stroke: string; accent: string } {
+  const resolvedAccent = node.accent ?? accent;
+  return {
+    fill: node.emphasis ? "#eff4fe" : NEUTRAL_NODE_SURFACE.fill,
+    stroke: node.emphasis ? resolvedAccent : NEUTRAL_NODE_SURFACE.stroke,
+    accent: resolvedAccent
+  };
+}
+
 const NODE_COLORS: Record<PonchiDiagram["nodes"][number]["kind"], { fill: string; stroke: string; accent: string }> = {
   actor: { fill: "#eef2ff", stroke: "#c7d2fe", accent: "#4f46e5" },
   system: { fill: "#eff6ff", stroke: "#bfdbfe", accent: "#2563eb" },
@@ -787,6 +808,7 @@ const NODE_COLORS: Record<PonchiDiagram["nodes"][number]["kind"], { fill: string
   note: { fill: "#fffbeb", stroke: "#fde68a", accent: "#b45309" },
   cloud: { fill: "#f5f3ff", stroke: "#ddd6fe", accent: "#7c3aed" }
 };
+void NODE_COLORS;
 
 function escapeXml(value: string): string {
   return value
@@ -1903,8 +1925,8 @@ function connector(from: PlacedNode, to: PlacedNode, options: ConnectorOptions):
 }
 
 function ponchiNode(node: PlacedNode): string {
-  const palette = NODE_COLORS[node.kind];
-  const accent = node.accent ?? palette.accent;
+  const palette = nodeSurface(node, DEFAULT_NODE_ACCENT);
+  const accent = palette.accent;
   const c = centerOf(node);
   const icon = node.icon ?? node.kind;
   const hasIcon = icon !== "none";
@@ -3135,9 +3157,9 @@ function nativeIdPart(value: string, index: number): string {
   return `${sanitized || "item"}-${index}`;
 }
 
-function nativeNodeElements(node: PlacedNode, nodeIndex: number, rect: NativeRect, idPrefix: string, readingOrder: () => number): NativeDiagramElement[] {
-  const palette = NODE_COLORS[node.kind];
-  const accent = node.accent ?? palette.accent;
+function nativeNodeElements(node: PlacedNode, nodeIndex: number, rect: NativeRect, idPrefix: string, readingOrder: () => number, accent: string): NativeDiagramElement[] {
+  const palette = nodeSurface(node, accent);
+  const resolvedAccent = palette.accent;
   const safeNodeId = nativeIdPart(node.id, nodeIndex);
   const padding = Math.min(0.18, rect.w * 0.08);
   const contentWidth = Math.max(0.2, rect.w - padding * 2);
@@ -3194,7 +3216,7 @@ function nativeNodeElements(node: PlacedNode, nodeIndex: number, rect: NativeRec
     ),
     nativeShape(`${idPrefix}-node-${safeNodeId}`, "roundRect", rect, {
       fill: palette.fill,
-      line: { color: node.emphasis ? accent : palette.stroke, width: node.emphasis ? 1.6 : 1 },
+      line: { color: node.emphasis ? resolvedAccent : palette.stroke, width: node.emphasis ? 1.6 : 1 },
       radius: 0.08,
       decorative: true,
       readingOrder: readingOrder()
@@ -3203,13 +3225,13 @@ function nativeNodeElements(node: PlacedNode, nodeIndex: number, rect: NativeRec
       `${idPrefix}-accent-${safeNodeId}`,
       "rect",
       { x: rect.x + 0.08, y: rect.y + 0.06, w: Math.max(0.1, rect.w - 0.16), h: Math.min(0.07, rect.h * 0.08) },
-      { fill: accent, line: { color: accent, width: 0.1 }, decorative: true, readingOrder: readingOrder() }
+      { fill: resolvedAccent, line: { color: resolvedAccent, width: 0.1 }, decorative: true, readingOrder: readingOrder() }
     ),
     nativeShape(
       `${idPrefix}-kind-${safeNodeId}`,
       "ellipse",
       { x: rect.x + 0.12, y: rect.y + 0.12, w: kindDotSize, h: kindDotSize },
-      { fill: accent, line: { color: accent, width: 0.1 }, decorative: true, readingOrder: readingOrder() }
+      { fill: resolvedAccent, line: { color: resolvedAccent, width: 0.1 }, decorative: true, readingOrder: readingOrder() }
     ),
     nativeText(
       `${idPrefix}-label-${safeNodeId}`,
@@ -3255,13 +3277,17 @@ export function renderNativePonchiDiagram(
   const elements: NativeDiagramElement[] = [];
   const connectorLabels: Array<{ arrowIndex: number; label: string; anchor: Point; maxWidth: number }> = [];
   const warnings: string[] = [];
+  const accent = options.accent ?? DEFAULT_NODE_ACCENT;
   let order = options.readingOrderStart;
   const nextOrder = () => order++;
 
+  // Backdrop region for the diagram. Per "separate with whitespace, not boxes", this is a soft
+  // surface panel WITHOUT a hard border so it groups the figure on any template without reading as
+  // an empty boxed frame; grouping is shown by whitespace and the dashed group panels below.
   elements.push(
     nativeShape(`${options.idPrefix}-panel`, "roundRect", options.frame, {
       fill: "#FFFFFF",
-      line: { color: "#D9DEE8", width: 1 },
+      line: { color: "#FFFFFF", width: 0.1 },
       radius: 0.08,
       decorative: true,
       readingOrder: nextOrder()
@@ -3345,7 +3371,7 @@ export function renderNativePonchiDiagram(
     if (rect.w < 1.2 || rect.h < 0.62) {
       warnings.push(`Node "${node.id}" is compact (${rect.w.toFixed(2)}x${rect.h.toFixed(2)} in). Split the diagram or use a larger frame if labels feel dense.`);
     }
-    elements.push(...nativeNodeElements(node, nodeIndex, rect, options.idPrefix, nextOrder));
+    elements.push(...nativeNodeElements(node, nodeIndex, rect, options.idPrefix, nextOrder, accent));
   }
 
   for (const connectorLabel of connectorLabels) {
