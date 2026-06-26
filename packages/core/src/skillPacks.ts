@@ -208,6 +208,66 @@ export const BUILTIN_SKILL_PACKS: SkillPack[] = [
       "Preserve explicit reading order"
     ],
     forbidden: ["decorative animation", "images of text", "ambiguous link text"]
+  },
+  {
+    id: "slide-craft-ja",
+    name: "Slide Craft Japanese",
+    locale: "ja-JP",
+    description: "「説明が先、スライドは後」を起点に、メッセージ設計→構造抽出→ノイズ除去→最小限の装飾の順で、3秒で伝わる図解中心スライドを作るための実践方針（日本語ビジネス／SNS資料向け）。",
+    designDirection: "story-first-craft",
+    density: "medium",
+    rules: [
+      "スライドを作る前にまず言語化する: 口頭で説明できる結論・大枠・抽象を固めてからDeckSpecに落とす（説明が先、スライドは後）",
+      "主役は聴き手。各スライドは『要するに何か』を1文で言い切り、それをタイトルかキーメッセージにする",
+      "情報を構造として抽出する: 並列・対比・包含・順序・因果のどれかを見極め、recommend_figure / list_schematic_presets で対応する図解（list/contrast/tree/flow・step/cycle/matrix）に落とす",
+      "スライドは引き算。一度すべてをグレーにしてから、本当に強調したい1要素だけにアクセント色を与える（塗分けの濫用と多色化を避ける）",
+      "色は最小限。低彩度の背景・中立面を使い、アクセントは細い罫線・アイコン・バッジ・1つの主役オブジェクトだけに使う。状態を赤/緑だけで表さない",
+      "図形は四角・丸・三角の基本形に統一し、一度決めたスタイル（角丸半径・線幅・余白）を資料全体で守る。角丸は控えめにし、図形のタテヨコ比を歪めない",
+      "余白も要素。要素を詰め込まず、関係が近いものを近くに置き、グループ間に十分な余白を取る。『遠くから眺めて』塊が読めるか確認する",
+      "四角を並べて構造を作り、視線はZ（左上→右下）で流す。ハコ（領域）を先に作ってからキレイに揃え、型を作って繰り返す",
+      "凡例・ラベルは要素に直接書く。罫線や格子（碁盤の目）は脇役にして文字を主役にする",
+      "文字は読み手の道具: 見出しを付け、数字は大きく、強調は太字に絞る（影・下線・多色を避ける）。長文は左揃え、数値は右揃え。不自然な改行を避け、polish_deck_layout に折り返しを任せる",
+      "詳細な説明・Q&A・得られることなど文章が主役のページは generate_detail_slide を使い、それ以外のページは図解で1スライド1メッセージにする",
+      "先人に学ぶ: 既存テンプレート（search_templates）や登録アイコン（search_assets）を再利用し、生成後は review_content → lint_deck → review_deck を通してから render_pptx する"
+    ],
+    forbidden: [
+      "スカスカ（情報が薄く余白だけ）／ミチミチ（詰め込みすぎ）の両極端",
+      "文字文字（本文の長文ベタ書きだけ）で図解にしない",
+      "写真頼り（意味のないビジュアルでごまかす）",
+      "サバサバ（メリハリ・強調がなく全要素が同じ強さ）",
+      "ゴテゴテ（多色・多装飾・影や枠の盛りすぎ）",
+      "凡例の外出し、格子や罫線を主役にする、状態を色だけで示す"
+    ]
+  },
+  {
+    id: "slide-craft-en",
+    name: "Slide Craft English",
+    locale: "en-US",
+    description: "A craft-first method: explanation before slides, then message design -> structure extraction -> noise removal -> minimal decoration, to produce figure-first slides that land in three seconds.",
+    designDirection: "story-first-craft",
+    density: "medium",
+    rules: [
+      "Verbalize first: be able to say the conclusion, the big picture, and the abstraction out loud before authoring DeckSpec (explanation first, slides second)",
+      "The audience is the protagonist. Distill each slide to one sentence ('what it boils down to') and make that the title or key message",
+      "Extract information as structure: decide whether it is parallel, contrast, containment, sequence, or causation, then map it to a figure via recommend_figure / list_schematic_presets (list/contrast/tree/flow-step/cycle/matrix)",
+      "A slide is subtraction. Make everything gray first, then give an accent color to only the one element you truly want to emphasize (avoid multi-color fills and color sprawl)",
+      "Use color sparingly: low-chroma backgrounds and neutral surfaces; reserve the accent for thin rules, icons, badges, and a single focal object. Never encode state with red/green alone",
+      "Keep shapes to rectangle, circle, and triangle, and once a style is set (corner radius, stroke width, spacing) keep it consistent across the deck. Keep corner radius restrained and never distort a shape's aspect ratio",
+      "Whitespace is an element. Don't cram; put related things close together with generous space between groups, and 'step back' to check the blocks are legible from afar",
+      "Lay out boxes to build structure and lead the eye in a Z (top-left to bottom-right). Create the regions first, then align cleanly, then make a pattern and repeat it",
+      "Write legends and labels directly on the elements. Keep gridlines and rules in a supporting role and make the text the lead",
+      "Text is the reader's tool: add headings, make numbers big, and limit emphasis to bold (avoid shadow/underline/multi-color). Left-align long text, right-align numbers; avoid awkward manual breaks and let polish_deck_layout wrap",
+      "For pages where prose is the lead (detailed explanation, Q&A, benefits) use generate_detail_slide; keep every other page one-message-one-figure",
+      "Learn from predecessors: reuse existing templates (search_templates) and registered icons (search_assets), and run review_content -> lint_deck -> review_deck before render_pptx"
+    ],
+    forbidden: [
+      "Too sparse (thin content, only whitespace) or too dense (crammed) — both extremes",
+      "Wall-of-text body copy instead of a figure",
+      "Leaning on decorative photos to paper over a weak message",
+      "Flat emphasis where every element has the same weight",
+      "Over-decoration: many colors, heavy borders, shadows, and effects",
+      "External legends, gridlines as the lead, or state encoded by color alone"
+    ]
   }
 ];
 

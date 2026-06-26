@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.5.30 - 2026-06-26
+
+- **Added a message-first "slide craft" knowledge layer distilled from established slide-design practice.** Two new built-in skill packs — `slide-craft-ja` and `slide-craft-en` (listed via `list_skills`) — encode a craft loop for slides that land in three seconds: explanation before slides (verbalize the conclusion/big-picture/abstraction first), the audience is the protagonist (distill each slide to one sentence and make it the title/key message), extract the structure (parallel / contrast / containment / sequence / causation) then map it to a figure via `recommend_figure` / `list_schematic_presets`, subtract to clarify (make everything gray first, then one accent only where the eye must go), whitespace is an element (don't cram; step back to check legibility), build boxes then align and repeat with a Z reading path, label directly and make numbers big with bold-only emphasis, and route prose-heavy pages to `generate_detail_slide`. Each pack also lists deck anti-patterns to self-check against (too sparse / wall-of-text / decorative-photo crutch / flat emphasis / crammed / over-decorated).
+- Added a **"Slide craft method" section** to the installed skills guidance summarizing the same message-first loop before the detailed visual-richness rules, and noted the new packs in the README. These are guidance/knowledge additions (no runtime behavior change); existing detailed design rules already covered alignment, one-message-per-slide, restrained color, direct labeling, and cognitive load.
+- Added `skillPacks.test.ts` (schema validation, both-locale craft packs present, unique ids) and a guidance assertion for the new section. Full suite now at 324 tests.
+
 ## v0.5.29 - 2026-06-25
 
 - **Made text-rich detail / Q&A / 得られること(benefits) slides first-class.** The visual-richness gate (`visual.richness-missing` per slide + `visual.richness-deck` 75% rule) is a blocking error that effectively prohibited word-heavy slides, so decks rarely carried a slide that explains something in fuller prose — even though strong reference decks (e.g. Slideland's 得られること and Q&A page types) use them deliberately. Added an explicit, opt-in **prose/detail slide type** so the few slides that genuinely need detailed text are allowed, while the deck stays mostly visual:

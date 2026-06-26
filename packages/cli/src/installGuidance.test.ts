@@ -20,6 +20,8 @@ describe("installGuidance", () => {
     expect(skills).toContain("AI agents creating PowerPoint decks");
     expect(skills).toContain("Multi-agent orchestration");
     expect(skills).toContain("deck-director");
+    // The installed skills carry the message-first craft method.
+    expect(skills).toContain("Slide craft method");
     expect(instructions).toContain("Read .github/pptcreater-skills.md");
     // The instruction block routes non-trivial decks to the Director agent.
     expect(instructions).toContain("Deck Director");

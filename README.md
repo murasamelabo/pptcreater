@@ -565,7 +565,7 @@ To force both registries under a custom base directory, set `PPTCREATER_HOME`. T
 
 ## Brief before generating decks
 
-Good slide design depends on purpose, audience, delivery mode, and volume. The built-in skill packs `slide-briefing-ja` and `slide-briefing-en` define intake questions for AI agents.
+Good slide design depends on purpose, audience, delivery mode, and volume. The built-in skill packs `slide-briefing-ja` and `slide-briefing-en` define intake questions for AI agents, and `slide-craft-ja` / `slide-craft-en` carry a message-first craft method (explanation before slides, distill to one sentence, extract structure, subtract to clarify, then minimal decoration) plus the deck anti-patterns to self-check against. List them with `list_skills`.
 
 To reduce repeated lint/render fixes, fetch the first-pass rules before writing custom DeckSpec:
 

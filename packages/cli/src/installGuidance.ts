@@ -188,6 +188,19 @@ When the user gives you a PowerPoint template and wants their deck to actually u
 - Preserve reading order, alt text, source citations, and contrast.
 - For source visuals, quote only with clear rights and attribution; otherwise recreate as editable objects or use as inspiration.
 
+## Slide craft method (message-first, subtract to clarify)
+
+A message-first craft loop for slides that land in three seconds. Follow it before reaching for layout details.
+
+- Explanation before slides: be able to say the conclusion, the big picture, and the abstraction out loud first; verbalize the point, then author DeckSpec. If you cannot say it, do not draw it.
+- The audience is the protagonist: each slide answers "what does this boil down to?" in one sentence — make that sentence the title or key message (one slide, one message).
+- Extract structure, then pick the figure: decide whether the content is parallel, contrast, containment, sequence, or causation, then let \`recommend_figure\` / \`list_schematic_presets\` map it to list/contrast/tree/flow-step/cycle/matrix. Do not start from a blank canvas of free text boxes.
+- Subtract to clarify: a slide is subtraction. Conceptually make everything gray first, then add one accent only where the eye must go. Cut anything that does not serve the message (legends, gridlines, boxes, shadows, extra colors).
+- Whitespace is an element: don't cram; put related items close and leave generous space between groups. "Step back" (zoom out / squint) and check the blocks are still readable — fix both the sparse and the crammed extremes.
+- Build boxes, then align and repeat: lay out regions (boxes) first, lead the eye in a Z (top-left → bottom-right), align cleanly, and make a pattern then repeat it so the deck feels consistent.
+- Make numbers big and label directly: write legends/labels onto the elements, keep gridlines/rules in a supporting role with text as the lead, enlarge key figures, and limit emphasis to bold (avoid underline, shadow, and multi-color emphasis).
+- Anti-patterns to avoid (self-check the deck): スカスカ (too sparse) / 文字文字 (wall of text) / 写真頼り (decorative-photo crutch) / サバサバ (flat, no emphasis) / ミチミチ (crammed) / ゴテゴテ (over-decorated). The \`slide-craft-ja\` / \`slide-craft-en\` skill packs (\`list_skills\`) carry this method in full.
+
 ## Visual richness rules (avoid plain default-shape decks)
 
 - Layering and reading order: decorative background shapes MUST have a lower readingOrder than the text on top of them. Full-bleed backgrounds use the lowest readingOrder; cards/scrims sit above the background; text and content visuals sit on top. Never let an opaque shape cover text. \`render_pptx\` re-stacks elements defensively, but build the order correctly and run \`lint_deck\` to catch \`layout.shape-over-text\`.
