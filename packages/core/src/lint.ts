@@ -221,6 +221,98 @@ function isContentSlide(slide: Slide, deck: DeckSpec, slideIndex: number): boole
   return textLength(slide) >= 100 || bodyTextCount >= 2 || slide.elements.length >= 4;
 }
 
+const CODE_QUERY_PATTERN =
+  /(?:\b(?:SecurityIncident|DeviceEvents|DeviceInfo|DeviceFileEvents|SigninLogs|AzureDiagnostics)\b\s*\|)|(?:\|\s*(?:where|summarize|project|join|extend|take|order\s+by)\b)|(?:\b(?:count|bin|TimeGenerated|ProviderName)\s*\()/iu;
+const CODE_BLOCK_ID_PATTERN = /(?:^|[-_])(code|kql|query|snippet)(?:[-_]|$)/iu;
+const PROSE_IN_CODE_PATTERN = /(?:確認観点|基本確認|イベント確認|確認します|確認。|流入|件数|遅延|影響|注意|補足|観点|してください)/u;
+const COMPACT_NUMBERED_LIST_PATTERN = /(?:^|\s)1[.)．][\s\S]{25,}2[.)．][\s\S]{25,}3[.)．]/u;
+
+function normalizedTextUnits(text: string): number {
+  return text.replace(/\s+/gu, "").length;
+}
+
+function visibleLineCount(text: string): number {
+  return text.split(/\r?\n/gu).filter((line) => line.trim().length > 0).length;
+}
+
+function hasCodeQuery(text: string): boolean {
+  return CODE_QUERY_PATTERN.test(text);
+}
+
+function isMixedCodeAndProse(text: string): boolean {
+  return hasCodeQuery(text) && PROSE_IN_CODE_PATTERN.test(text);
+}
+
+function looksLikeDedicatedCodeElement(element: TextElement): boolean {
+  if (!CODE_BLOCK_ID_PATTERN.test(element.id)) {
+    return false;
+  }
+
+  if (isMixedCodeAndProse(element.text)) {
+    return false;
+  }
+
+  const lines = element.text.split(/\r?\n/gu).map((line) => line.trim()).filter(Boolean);
+  if (lines.length === 0) {
+    return false;
+  }
+
+  const codeLines = lines.filter((line) => /(?:\||==|!=|>=|<=|=|\(|\)|\/\/|--|#)/u.test(line));
+  return codeLines.length / lines.length >= 0.7;
+}
+
+function lintSlideCraftText(slide: Slide, slideIndex: number, textBoxes: Array<{ element: TextElement; elementIndex: number }>): LintIssue[] {
+  const issues: LintIssue[] = [];
+  const bodyBoxes = textBoxes.filter(({ element }) => element.role === "body");
+
+  if (isProseDetailSlide(slide) && bodyBoxes.length === 1) {
+    const [{ element, elementIndex }] = bodyBoxes;
+    const textUnits = normalizedTextUnits(element.text);
+    if (textUnits >= 260) {
+      issues.push(
+        issue(
+          "error",
+          "content.long-prose-unstructured",
+          "This detail slide has one long body block. Apply slide-craft structure: split it into headed blocks, short paragraphs, or a detail/Q&A/benefits layout instead of a single pasted paragraph.",
+          `slides.${slideIndex}.elements.${elementIndex}.text`,
+          { textUnits, minimumStructuredBlocks: 2 }
+        )
+      );
+    }
+  }
+
+  textBoxes.forEach(({ element, elementIndex }) => {
+    const path = `slides.${slideIndex}.elements.${elementIndex}.text`;
+    const textUnits = normalizedTextUnits(element.text);
+
+    if (COMPACT_NUMBERED_LIST_PATTERN.test(element.text) && visibleLineCount(element.text) < 3) {
+      issues.push(
+        issue(
+          "error",
+          "content.compacted-numbered-list",
+          "Numbered prose is compacted into one text run. Put each item on its own line with a heading, or convert it to a structured list/card/grid so the reader can scan it.",
+          path,
+          { textUnits }
+        )
+      );
+    }
+
+    if (hasCodeQuery(element.text) && !looksLikeDedicatedCodeElement(element)) {
+      issues.push(
+        issue(
+          "error",
+          "content.code-block-needed",
+          "Code or KQL is mixed into normal prose. Put query text in a dedicated code block/text element and keep explanation or verification criteria in a separate labelled block.",
+          path,
+          { lines: visibleLineCount(element.text) }
+        )
+      );
+    }
+  });
+
+  return issues;
+}
+
 function visualRichnessLevel(slide: Slide): number {
   return slide.elements.reduce((score, element) => {
     if (element.type === "diagram" || element.type === "smartart" || element.type === "pptxSlide") {
@@ -241,6 +333,38 @@ function visualRichnessLevel(slide: Slide): number {
 
     return score;
   }, 0);
+}
+
+function hasGeneratedNativeDiagram(slide: Slide): boolean {
+  const hasGeneratedNode = slide.elements.some(isGeneratedNativeDiagramNode);
+  const hasGeneratedConnector = slide.elements.some((element) => element.type === "shape" && isGeneratedNativeDiagramConnector(element));
+  return hasGeneratedNode && hasGeneratedConnector;
+}
+
+function hasSubstantiveVisualModality(slide: Slide): boolean {
+  return (
+    hasGeneratedNativeDiagram(slide) ||
+    slide.elements.some((element) => {
+      if (element.decorative) {
+        return false;
+      }
+      if (element.type === "diagram" || element.type === "smartart" || element.type === "pptxSlide") {
+        return true;
+      }
+      if (element.type === "svg" || element.type === "image") {
+        return element.w * element.h >= 0.45;
+      }
+      return false;
+    })
+  );
+}
+
+function isRepeatedCardGridSlide(slide: Slide): boolean {
+  const rectangularShapes = slide.elements.filter(
+    (element) => element.type === "shape" && ["rect", "roundRect", "roundedRect"].includes(element.shape) && element.w >= 0.8 && element.h >= 0.35
+  ).length;
+  const textBoxes = slide.elements.filter((element) => element.type === "text").length;
+  return !hasSubstantiveVisualModality(slide) && rectangularShapes >= 6 && textBoxes >= 8;
 }
 
 function parseSvgViewBox(svg: string): { width: number; height: number } | undefined {
@@ -810,6 +934,8 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
   });
   const hierarchyTextBoxes = textBoxes.filter(({ element }) => element.role === "callout" || element.role === "title");
   const visualElements = slide.elements.filter((element) => element.type !== "text");
+  issues.push(...lintSlideCraftText(slide, slideIndex, textBoxes));
+
   if (isContentSlide(slide, deck, slideIndex) && visualRichnessLevel(slide) < 3) {
     issues.push(
       issue(
@@ -992,9 +1118,29 @@ export function lintDeckSpec(deck: DeckSpec): LintReport {
   const substantiveVisualCount = contentSlides.flatMap((slide) =>
     slide.elements.filter((element) => element.type === "svg" || element.type === "image" || element.type === "diagram")
   ).length;
+  const bodySlides = deck.slides.filter(
+    (slide, slideIndex) =>
+      !isReferenceSlide(slide, deck, slideIndex) &&
+      !["cover", "title", "section", "divider", "closing", "references"].includes(slide.layout ?? "")
+  );
+  const nonProseBodySlides = bodySlides.filter((slide) => !isProseDetailSlide(slide));
+  const slideCraftSkillPack = deck.skillPack?.includes("slide-craft") ?? false;
+  const modalitySlideCount = nonProseBodySlides.filter((slide) => hasSubstantiveVisualModality(slide)).length;
+  const repeatedCardGridSlideCount = nonProseBodySlides.filter((slide) => isRepeatedCardGridSlide(slide)).length;
   const referencedSourceIds = new Set(
     deck.slides.flatMap((slide) => slide.elements.map((element) => element.sourceId).filter((sourceId): sourceId is string => Boolean(sourceId)))
   );
+
+  if (!slideCraftSkillPack) {
+    issues.push(
+      issue(
+        "warning",
+        "content.slide-craft-skill-missing",
+        "DeckSpec does not declare slide-craft-ja/en. The slide-craft quality gates still run, but agents should set the slide-craft skill pack so PDF-derived craft rules are visible during authoring.",
+        "skillPack"
+      )
+    );
+  }
 
   if (urlSourceCount > 0 && !hasFinalReferenceSlide) {
     issues.push(
@@ -1024,14 +1170,25 @@ export function lintDeckSpec(deck: DeckSpec): LintReport {
     );
   }
 
+  if (bodySlides.length >= 8 && modalitySlideCount < 2 && repeatedCardGridSlideCount >= Math.ceil(bodySlides.length * 0.45)) {
+    issues.push(
+      issue(
+        "error",
+        "visual.expression-variety",
+        "The deck relies on repeated card/table-like shape grids and lacks enough diagrams, schematics, images, or generated native diagrams. Apply slide-craft structure extraction: vary the expression with flows, before/after, matrices, architecture diagrams, or code/detail blocks where appropriate.",
+        "slides",
+        {
+          bodySlides: bodySlides.length,
+          modalitySlides: modalitySlideCount,
+          repeatedCardGridSlides: repeatedCardGridSlideCount
+        }
+      )
+    );
+  }
+
   // Detail/prose/Q&A slides are allowed and exempt from the gate above, but a deck whose body is
   // mostly word-heavy prose loses the at-a-glance strength of a deck. Warn (not block) when the
   // intentional prose slides outnumber the visual body slides, so a few stay the exception.
-  const bodySlides = deck.slides.filter(
-    (slide, slideIndex) =>
-      !isReferenceSlide(slide, deck, slideIndex) &&
-      !["cover", "title", "section", "divider", "closing", "references"].includes(slide.layout ?? "")
-  );
   const proseDetailSlideCount = bodySlides.filter((slide) => isProseDetailSlide(slide)).length;
   if (proseDetailSlideCount >= 3 && proseDetailSlideCount / bodySlides.length > 0.5) {
     issues.push(

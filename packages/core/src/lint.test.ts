@@ -91,6 +91,142 @@ describe("DeckSpec linting", () => {
     expect(report.ok).toBe(false);
   });
 
+  it("blocks a detail slide that pastes one long prose block without headings", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1, contentMode: "technical" });
+    deck.skillPack = "slide-craft-ja";
+    deck.slides = [
+      {
+        id: "detail-long",
+        title: "アーキテクチャ詳細",
+        layout: "detail",
+        elements: [
+          { id: "title", type: "text", role: "title", text: "アーキテクチャ詳細", x: 0.8, y: 0.5, w: 8, h: 0.5, fontSize: 28, bold: true, decorative: false, readingOrder: 1 },
+          { id: "heading", type: "text", role: "subtitle", text: "統合で流れるもの", x: 1.1, y: 1.5, w: 10, h: 0.5, fontSize: 20, bold: false, decorative: false, readingOrder: 2 },
+          {
+            id: "body",
+            type: "text",
+            role: "body",
+            text:
+              "Defender XDR で生成された incident は、関連 alert、entity、調査に必要な context を含んだ状態で Sentinel に連携されます。Azure portal 側の connector では incidents、alerts、advanced hunting events を Sentinel workspace に流し、Defender portal 側の統合では Sentinel data を Defender portal 上でも確認できます。運用上は何がどこから流れるかを確認し、既存ルールや自動化に影響がないかを事前に整理します。",
+            x: 1.1,
+            y: 2.1,
+            w: 10.5,
+            h: 3.2,
+            fontSize: 15,
+            bold: false,
+            decorative: false,
+            readingOrder: 3
+          }
+        ]
+      }
+    ];
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const longProse = report.issues.find((issue) => issue.code === "content.long-prose-unstructured");
+
+    expect(longProse?.severity).toBe("error");
+    expect(report.ok).toBe(false);
+  });
+
+  it("blocks KQL mixed into normal prose instead of a dedicated code block", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1, contentMode: "technical" });
+    deck.skillPack = "slide-craft-ja";
+    deck.slides = [
+      {
+        id: "kql-detail",
+        title: "KQL による検証",
+        layout: "detail",
+        elements: [
+          { id: "title", type: "text", role: "title", text: "KQL による検証", x: 0.8, y: 0.5, w: 8, h: 0.5, fontSize: 28, bold: true, decorative: false, readingOrder: 1 },
+          {
+            id: "kql-body",
+            type: "text",
+            role: "body",
+            text:
+              "基本確認: SecurityIncident | where ProviderName == \"Microsoft XDR\"\nイベント確認: DeviceEvents | summarize Count=count() by bin(TimeGenerated, 1d)\n確認観点: incidents / alerts / events の流入、件数、遅延、既存 rule への影響を確認。",
+            x: 1.1,
+            y: 1.6,
+            w: 10.5,
+            h: 2.2,
+            fontSize: 15,
+            bold: false,
+            decorative: false,
+            readingOrder: 2
+          }
+        ]
+      }
+    ];
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const codeBlock = report.issues.find((issue) => issue.code === "content.code-block-needed");
+
+    expect(codeBlock?.severity).toBe("error");
+    expect(report.ok).toBe(false);
+  });
+
+  it("does not treat ordinary prose containing where/project/extend/by as KQL", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1, contentMode: "technical" });
+    deck.skillPack = "slide-craft-ja";
+    deck.slides = [
+      {
+        id: "plain-prose",
+        title: "通常文の説明",
+        layout: "detail",
+        elements: [
+          { id: "title", type: "text", role: "title", text: "通常文の説明", x: 0.8, y: 0.5, w: 8, h: 0.5, fontSize: 28, bold: true, decorative: false, readingOrder: 1 },
+          {
+            id: "body",
+            type: "text",
+            role: "body",
+            text: "Teams decide where to start by mapping controls to risk.\nThe project is governed by the platform team.\nExtend coverage by adding telemetry.",
+            x: 1.1,
+            y: 1.6,
+            w: 10.5,
+            h: 1.4,
+            fontSize: 16,
+            bold: false,
+            decorative: false,
+            readingOrder: 2
+          }
+        ]
+      }
+    ];
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.find((issue) => issue.code === "content.code-block-needed")).toBeUndefined();
+  });
+
+  it("blocks decks that repeat card grids without enough expression variety", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1, contentMode: "technical" });
+    deck.skillPack = "slide-craft-ja";
+    deck.slides = Array.from({ length: 8 }, (_, slideIndex) => ({
+      id: `grid-${slideIndex}`,
+      title: `カード反復 ${slideIndex + 1}`,
+      layout: "title-content",
+      elements: [
+        { id: `grid-${slideIndex}-title`, type: "text" as const, role: "title" as const, text: `カード反復 ${slideIndex + 1}`, x: 0.7, y: 0.45, w: 8, h: 0.5, fontSize: 28, bold: true, decorative: false, readingOrder: 1 },
+        { id: `grid-${slideIndex}-lead`, type: "text" as const, role: "subtitle" as const, text: "カードだけで情報を並べています。", x: 0.7, y: 1.05, w: 10, h: 0.4, fontSize: 20, bold: false, decorative: false, readingOrder: 2 },
+        ...Array.from({ length: 6 }, (_, cardIndex) => {
+          const x = 0.8 + (cardIndex % 3) * 4.0;
+          const y = 1.8 + Math.floor(cardIndex / 3) * 1.7;
+          const ro = 10 + cardIndex * 3;
+          return [
+            { id: `grid-${slideIndex}-card-${cardIndex}`, type: "shape" as const, shape: "roundRect" as const, fill: "#ffffff", x, y, w: 3.4, h: 1.25, decorative: true, readingOrder: ro },
+            { id: `grid-${slideIndex}-card-title-${cardIndex}`, type: "text" as const, role: "callout" as const, text: `見出し ${cardIndex + 1}`, x: x + 0.2, y: y + 0.15, w: 3, h: 0.3, fontSize: 20, bold: true, decorative: false, readingOrder: ro + 1 },
+            { id: `grid-${slideIndex}-card-body-${cardIndex}`, type: "text" as const, role: "body" as const, text: "説明を短く入れるカードです。", x: x + 0.2, y: y + 0.55, w: 3, h: 0.45, fontSize: 20, bold: false, decorative: false, readingOrder: ro + 2 }
+          ];
+        }).flat()
+      ]
+    }));
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const variety = report.issues.find((issue) => issue.code === "visual.expression-variety");
+
+    expect(variety?.severity).toBe("error");
+    expect(report.ok).toBe(false);
+  });
+
   it("flags square accent bars flush with rounded card edges", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     deck.slides[0].elements = [

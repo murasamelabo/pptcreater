@@ -601,7 +601,7 @@ export function createSampleDeck(locale: Locale, options: CreateSampleDeckOption
     title: deckTitle,
     locale,
     template: templateId,
-    skillPack: isJapanese ? "slide-briefing-ja" : "slide-briefing-en",
+    skillPack: isJapanese ? "slide-craft-ja" : "slide-craft-en",
     tokens,
     metadata: {
       keywords: ["accessible", "powerpoint", "deck", "native-shape", "editable", styleProfile],
@@ -611,4 +611,3 @@ export function createSampleDeck(locale: Locale, options: CreateSampleDeckOption
     slides: finalSlides
   };
 }
-

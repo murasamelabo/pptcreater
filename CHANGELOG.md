@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## v0.5.33 - 2026-06-26
+
+- **Made the slide-craft knowledge enforceable at lint/finalize time, not just advisory.** A real pptcreater-generated Defender/Sentinel deck used the renderer but still bypassed the PDF-derived craft rules because the DeckSpec did not declare `slide-craft-ja` and the quality gates did not inspect for those failure modes. New lint gates now block:
+  - **Unstructured long detail prose** (`content.long-prose-unstructured`) when a detail/prose slide pastes one large body block instead of splitting it into headed blocks or short paragraphs.
+  - **Compacted numbered prose** (`content.compacted-numbered-list`) when numbered items are flattened into one unreadable text run instead of separate lines/cards.
+  - **KQL/code mixed into normal prose** (`content.code-block-needed`) so query text must live in a dedicated code/query block while explanation and verification criteria stay separate.
+  - **Repeated card/table-only expression** (`visual.expression-variety`) when a deck relies heavily on card-grid slides and lacks enough diagrams, schematics, images, or generated native diagrams.
+- Added a `content.slide-craft-skill-missing` warning when DeckSpecs omit `slide-craft-ja/en`, so future sessions can see when the craft pack was not applied during authoring. Built-in sample decks now declare `slide-craft-ja/en` by default instead of the older `slide-briefing-*` packs.
+- Added regression tests for the Defender/Sentinel failure modes and a false-positive guard so ordinary prose containing words like "where", "project", "extend", and "by" is not mistaken for KQL. Full suite now at 330 tests.
+
 ## v0.5.32 - 2026-06-26
 
 - **Applied the one-accent / no-category-coloring principle to the diagram generators (placement & coloring), not just the guidance.** The v0.5.30/0.5.31 slide-craft knowledge was guidance-only, so the figure generators still color-coded nodes by kind: `generate_native_diagram` and `generate_diagram` assigned a different hue per node kind (actor=indigo, system=blue, process=teal, data=green, note=amber, cloud=violet), turning any mixed-kind diagram into a rainbow — the exact "塗分け禁止 / one accent" anti-pattern the books warn against, and a color-only encoding of role. Changed the node styling so:
