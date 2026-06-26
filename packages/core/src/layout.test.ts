@@ -824,6 +824,42 @@ describe("layout polish", () => {
     expect((cardA?.y ?? 0) + (cardA?.h ?? 0)).toBeLessThan((table?.y ?? 0) - 0.02);
   });
 
+  it("keeps taller side-column cards when a 3-card middle column shares their top-y", () => {
+    // Reproduces a real deck (a 3-phase "steps" slide) where a 3-card middle column shares its top-y
+    // with 2-card side columns. The middle column's tight inter-card spacing must NOT shrink the
+    // roomier side columns to the middle card height via row-unification.
+    const card = (id: string, x: number, y: number, h: number) =>
+      ({ id, type: "shape", shape: "roundRect", x, y, w: 3.3, h, fill: "#ffffff", decorative: true, readingOrder: 1 }) as const;
+    const label = (id: string, x: number, y: number, text: string) =>
+      ({ id, type: "text", role: "caption", text, x: x + 0.2, y: y + 0.2, w: 2.4, h: 0.45, fontSize: 14, bold: false, decorative: false, readingOrder: 2 }) as const;
+    const slide: Slide = {
+      id: "phase-columns",
+      title: "Phase columns",
+      layout: "title-content",
+      elements: [
+        // Left column: 2 cards (top-y 3.13, taller).
+        card("left-top-box", 0.92, 3.13, 1.39), label("left-top-label", 0.92, 3.55, "A"),
+        card("left-bot-box", 0.92, 4.74, 1.39), label("left-bot-label", 0.92, 5.16, "B"),
+        // Middle column: 3 cards (top-y 3.13, shorter, tightly spaced).
+        card("mid-1-box", 5.22, 3.13, 0.85), label("mid-1-label", 5.22, 3.35, "C"),
+        card("mid-2-box", 5.22, 4.20, 0.85), label("mid-2-label", 5.22, 4.42, "D"),
+        card("mid-3-box", 5.22, 5.28, 0.85), label("mid-3-label", 5.22, 5.50, "E"),
+        // Right column: 2 cards (top-y 3.13, taller).
+        card("right-top-box", 9.52, 3.13, 1.39), label("right-top-label", 9.52, 3.55, "F"),
+        card("right-bot-box", 9.52, 4.74, 1.39), label("right-bot-label", 9.52, 5.16, "G")
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const h = (id: string) => normalized.elements.find((e) => e.id === id)?.h ?? 0;
+    // Side-column cards keep their taller authored height instead of collapsing to the middle's ~0.85.
+    for (const id of ["left-top-box", "left-bot-box", "right-top-box", "right-bot-box"]) {
+      expect(h(id)).toBeGreaterThan(1.2);
+    }
+    // Middle cards stay short.
+    expect(h("mid-1-box")).toBeLessThan(1.0);
+  });
+
   it("does not grow a card over a tightly-stacked sibling below it", () => {
     // Reproduces a real deck where a phase column stacked three cards with an exact 0.12in gap.
     // The text-fit growth used to expand the upper cards straight over the next card because the

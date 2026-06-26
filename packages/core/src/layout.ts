@@ -25,6 +25,12 @@ const LINE_WIDTH_SAFETY = 0.94;
 const TEXT_BOX_INSET = 0.06;
 const CARD_CONTENT_PADDING = 0.16;
 const CARD_BLOCK_GAP = 0.18;
+// Cards that merely share a top-y are only unified to one row height when they form a genuine grid
+// row, i.e. each has comparable vertical room below it. When their available room (limit) diverges by
+// more than this, the cards belong to different column structures (e.g. a 3-card middle column whose
+// top card sits beside 2-card side columns) and forcing a single height would wrongly shrink the
+// roomier columns to the tightest column's height — so each card is sized individually (grow-only).
+const ROW_LIMIT_DIVERGENCE = 0.3;
 // Horizontal breathing room kept between a card's inner content and its left/right edges.
 const CARD_SIDE_PADDING = 0.16;
 // Left inset (inches) applied to a card's inner content when the card carries a left-edge accent
@@ -990,6 +996,20 @@ function expandCardsToContainContent(elements: SlideElement[]): SlideElement[] {
     }
 
     const rowPlans = row.map((card) => cardPlans.get(card.id)).filter((plan): plan is CardPlan => Boolean(plan));
+
+    // Only unify the row when the cards form a real grid row (comparable vertical room). If their
+    // limits diverge a lot, they are different column structures sharing a top-y; unifying would
+    // shrink the roomier columns to the tightest one. Size each individually (grow-only) instead.
+    const rowLimits = rowPlans.map((plan) => plan.limit);
+    if (Math.max(...rowLimits) - Math.min(...rowLimits) > ROW_LIMIT_DIVERGENCE) {
+      for (const plan of rowPlans) {
+        if (plan.needed > plan.card.h + 0.03) {
+          targetHeights.set(plan.card.id, Math.min(plan.needed, plan.limit));
+        }
+      }
+      continue;
+    }
+
     const rowBase = Math.min(...rowPlans.map((plan) => plan.card.h));
     const target = Math.min(
       Math.max(rowBase, ...rowPlans.map((plan) => plan.needed)),
