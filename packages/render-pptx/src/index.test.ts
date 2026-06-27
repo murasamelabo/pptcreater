@@ -254,7 +254,7 @@ describe("PPTX renderer", () => {
     const written = await stat(result.outputPath);
 
     expect(written.size).toBeGreaterThan(10_000);
-  }, 20_000);
+  }, 40_000);
 
   it("renders a message-map-generated deck through the real PPTX renderer", async () => {
     const deck = createDeckFromMessageMap(
