@@ -731,6 +731,44 @@ describe("schematic diagram rendering", () => {
     expect(text).not.toContain("…");
   });
 
+  it("does not truncate narrow native schematic labels with ellipsis", () => {
+    const rendered = renderNativeSchematicDiagram(
+      {
+        kind: "list",
+        title: "Narrow labels",
+        summary: "No truncation in narrow frame",
+        longDescription: "Verifies that narrow right-rail schematic labels wrap instead of being replaced by ellipsis.",
+        items: ["審査約10営業日", "承認後に予約", "60日先まで", "予約上限3回"],
+        tone: "minimal"
+      },
+      { frame: { x: 8.35, y: 2.0, w: 3.8, h: 3.7 }, idPrefix: "narrow-no-ellipsis" }
+    );
+    const text = rendered.elements.filter((element) => element.type === "text").map((element) => element.text).join("\n");
+
+    expect(text).not.toContain("…");
+    expect(text).toContain("承認");
+    expect(text).toContain("予約");
+  });
+
+  it("does not truncate narrow native flow labels with ellipsis", () => {
+    const rendered = renderNativeSchematicDiagram(
+      {
+        kind: "flow",
+        title: "Narrow flow labels",
+        summary: "No truncation in narrow flow",
+        longDescription: "Verifies that narrow flow labels wrap instead of using ellipsis in right-side flow figures.",
+        items: ["パマトコ申請", "区役所面談", "空き確認", "自費枠も確保"],
+        tone: "minimal"
+      },
+      { frame: { x: 7.85, y: 2.15, w: 4.2, h: 3.8 }, idPrefix: "narrow-flow-no-ellipsis" }
+    );
+    const text = rendered.elements.filter((element) => element.type === "text").map((element) => element.text).join("\n");
+
+    expect(text).not.toContain("…");
+    expect(text).toContain("パマ");
+    expect(text).toContain("自費");
+  });
+
   it("emits valid DeckSpec elements for native table schematics without secondary items", () => {
     const rendered = renderNativeSchematicDiagram({
       kind: "table",
@@ -759,6 +797,23 @@ describe("schematic diagram rendering", () => {
         metadata: { keywords: [], sources: [] }
       }).success
     ).toBe(true);
+  });
+
+  it("does not duplicate the final row in native table schematics", () => {
+    const rendered = renderNativeSchematicDiagram({
+      kind: "table",
+      title: "Facility table",
+      summary: "Facility table",
+      longDescription: "Verifies native table schematics render one body row per data item without repeating the final item.",
+      items: ["施設", "A病院", "B助産院"],
+      secondaryItems: ["場所", "中区", "南区"],
+      tone: "minimal"
+    });
+    const leftRows = rendered.elements
+      .filter((element) => element.type === "text" && /table-l-\d+$/u.test(element.id))
+      .map((element) => element.text);
+
+    expect(leftRows).toEqual(["A病院", "B助産院"]);
   });
 
   it("emits only horizontal or vertical native schematic connector segments", () => {
