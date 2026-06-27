@@ -1782,7 +1782,7 @@ function collectSlideAccessibilityNotes(deck: DeckSpec, deckSlide: DeckSpec["sli
   const notes = [`Slide ${slideIndex + 1}: ${deckSlide.title}`];
   const sourcesById = new Map(deck.metadata.sources.map((source) => [source.id, source]));
   deckSlide.elements.forEach((element) => {
-    if ("altText" in element && element.altText) {
+    if ("altText" in element && element.altText && !element.decorative && !element.altText.startsWith("generated ")) {
       notes.push(`${element.id}: ${element.altText}`);
     }
 

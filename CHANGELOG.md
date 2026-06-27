@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.5.38 - 2026-06-27
+
+- **Blocked AI-looking repeated accent-bar card grids.** `lintDeckSpec` now raises `visual.accent-bar-card-repetition` when a slide repeats three or more colored vertical accent-bar cards, steering authors away from the common generated-slide look.
+- Updated first-pass creation rules and `slide-craft-ja/en` guidance to forbid repeated colored accent-bar cards and convert those cases into table/contrast, matrix, flow, map, or ponchi-e visuals based on the slide message.
+- Added TDD coverage for the new lint gate, including a safe case for one focal accent card.
+
 ## v0.5.37 - 2026-06-27
 
 - Raised the comprehensive pattern gallery render test timeout to 20 seconds so the real 33-slide PowerPoint render remains part of CI instead of failing on slower GitHub Actions runners.

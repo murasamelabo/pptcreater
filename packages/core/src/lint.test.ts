@@ -542,6 +542,7 @@ describe("DeckSpec linting", () => {
           w: 2.4,
           h: 1.1,
           decorative: true,
+          altText: "generated native schematic shape",
           readingOrder: 300 + i * 4
         },
         {

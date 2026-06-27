@@ -228,7 +228,6 @@ function isGeneratedNativeDiagramNode(element: SlideElement): boolean {
   return (
     element.type === "shape" &&
     (/(?:^|-)node-[a-zA-Z0-9._-]+-\d+$/u.test(element.id) ||
-      /-card$/u.test(element.id) ||
     /(?:^|-)(?:hub|leaf-\d+-shape|cycle-node-\d+|layer-\d+)$/u.test(element.id) ||
     element.altText === "generated diagram intent shape" ||
     element.altText === "generated native schematic shape")
@@ -425,7 +424,7 @@ function isRepeatedCardGridSlide(slide: Slide): boolean {
 }
 
 function isTemplateGeneratedCard(card: ShapeElement): boolean {
-  return /(?:^|-)(?:card|node|hub|leaf-\d+-shape|cycle-node-\d+|layer-\d+)$/u.test(card.id) || card.altText === "generated native schematic shape";
+  return card.altText === "generated native schematic shape" || card.altText === "generated diagram intent shape";
 }
 
 function accentBarCardCount(slide: Slide): number {

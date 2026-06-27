@@ -2471,6 +2471,7 @@ function nativeSchematicCard(
       line: { color: options.stroke ?? "#CBD5E1", width: 1 },
       radius: 0.1,
       decorative: true,
+      altText: "generated native schematic shape",
       readingOrder: nextOrder()
     }),
     nativeShape(`${id}-accent`, "rect", { x: rect.x, y: rect.y, w: 0.08, h: rect.h }, {

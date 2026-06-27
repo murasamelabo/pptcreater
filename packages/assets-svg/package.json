@@ -1,6 +1,6 @@
 ﻿{
   "name": "@pptcreater/assets-svg",
-  "version": "0.5.37",
+  "version": "0.5.38",
   "type": "module",
   "engines": {
     "node": ">=22.12.0",
@@ -18,7 +18,7 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@pptcreater/core": "0.5.37",
+    "@pptcreater/core": "0.5.38",
     "saxes": "^6.0.0",
     "zod": "^4.4.3"
   },
