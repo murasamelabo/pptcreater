@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import { createSampleDeck, reviewVisualQuality } from "./index.js";
 
 describe("visual quality review", () => {
@@ -81,5 +81,43 @@ describe("visual quality review", () => {
 
     expect(report.ok).toBe(false);
     expect(report.issues.map((issue) => issue.code)).toEqual(expect.arrayContaining(["visual.axis-y-not-vertical", "visual.repeated-layout-run"]));
+  });
+
+  it("flags broken hub-map connectors and icon-less generated message slides", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].layout = "message-hub-map";
+    deck.slides[0].elements = [
+      {
+        id: "bad-diagonal",
+        type: "shape",
+        shape: "line",
+        x: 1,
+        y: 2,
+        w: 3,
+        h: 2,
+        fill: "none",
+        decorative: true,
+        readingOrder: 1
+      },
+      {
+        id: "message",
+        type: "text",
+        role: "body",
+        text: "本文",
+        x: 1,
+        y: 1,
+        w: 2,
+        h: 0.4,
+        fontSize: 18,
+        bold: false,
+        decorative: false,
+        readingOrder: 2
+      }
+    ];
+
+    const report = reviewVisualQuality(deck);
+
+    expect(report.ok).toBe(false);
+    expect(report.issues.map((issue) => issue.code)).toEqual(expect.arrayContaining(["visual.hub-map-diagonal-connector", "visual.message-slide-icon-missing"]));
   });
 });

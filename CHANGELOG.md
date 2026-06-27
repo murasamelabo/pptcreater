@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.5.41 - 2026-06-28
+
+- **Improved Message Map deck visuals.** Message-generated slides now include reusable inline SVG icons so decks are not limited to plain text, boxes, and lines.
+- **Fixed hub-map slide composition.** `ponchi-e` / map-like SlideIntent output now uses categorized panels with icons instead of a radial center node with diagonal connectors that can cross through labels.
+- **Hardened visual QA for hub maps.** `review_visual_quality` now flags diagonal hub-map connectors and message-generated slides without icons/images/diagrams.
+- Added regression tests that verify hub-map slides are categorized panels and all generated message slides include SVG visual elements.
+
 ## v0.5.40 - 2026-06-28
 
 - **Added a Message Map deck generator.** `createDeckFromMessageMap` turns a `DeckMessageMap` / `SlideIntent[]` plan into a full editable DeckSpec with cover, closing, and varied message-first visual archetypes.

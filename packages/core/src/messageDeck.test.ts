@@ -100,6 +100,9 @@ describe("message map deck generator", () => {
     expect(MESSAGE_DECK_ARCHETYPES).toContain(archetypeForIntent(MESSAGE_MAP.intents[5]));
     expect(archetypeForIntent(MESSAGE_MAP.intents[7])).toBe("steps");
     expect(deck.slides.find((slide) => slide.id === "next")?.layout).toBe("message-steps");
+    for (const slide of deck.slides.filter((candidate) => candidate.layout?.startsWith("message-"))) {
+      expect(slide.elements.some((element) => element.type === "svg")).toBe(true);
+    }
     expect(reviewMessageMap(deck)).toEqual({ ok: true, issues: [] });
     expect(reviewVisualQuality(deck)).toEqual({ ok: true, issues: [] });
 
@@ -118,5 +121,45 @@ describe("message map deck generator", () => {
     const xAxis = matrix?.elements.find((element) => element.type === "shape" && element.id === "decision-axis-x-line");
     expect(yAxis).toMatchObject({ type: "shape", shape: "line", w: 0.001 });
     expect(xAxis).toMatchObject({ type: "shape", shape: "line", h: 0 });
+  });
+
+  it("renders hub-map slides as categorized panels rather than broken radial connectors", () => {
+    const deck = createDeckFromMessageMap(MESSAGE_MAP, { title: "産後ケア比較", locale: "ja-JP" });
+    const hubMap = deck.slides.find((slide) => slide.id === "map");
+
+    expect(hubMap?.layout).toBe("message-hub-map");
+    expect(hubMap?.elements.some((element) => element.type === "text" && element.text === "病院型")).toBe(true);
+    expect(hubMap?.elements.some((element) => element.type === "text" && element.text === "助産院型")).toBe(true);
+    expect(hubMap?.elements.filter((element) => element.type === "shape" && element.shape === "line")).toHaveLength(0);
+    expect(hubMap?.elements.filter((element) => element.type === "svg").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("uses neutral hub-map labels for non-healthcare topics", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "Compare rollout options",
+        audience: "Platform team",
+        desiredAction: "Choose the rollout path",
+        intents: [
+          {
+            slideId: "rollout-map",
+            title: "Options",
+            message: "Two rollout groups carry different coordination needs.",
+            evidence: ["Pilot teams", "Internal champions", "External partners", "Operations owners"],
+            quietInfo: [],
+            visualType: "map",
+            emphasis: "Rollout groups"
+          }
+        ]
+      },
+      { title: "Rollout comparison", locale: "en-US" }
+    );
+
+    const hubMap = deck.slides.find((slide) => slide.id === "rollout-map");
+    const textValues = hubMap?.elements.filter((element) => element.type === "text").map((element) => element.text) ?? [];
+    expect(textValues).toContain("Option group A");
+    expect(textValues).toContain("Option group B");
+    expect(textValues).not.toContain("病院型");
+    expect(textValues).not.toContain("助産院型");
   });
 });

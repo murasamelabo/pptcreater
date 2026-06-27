@@ -1,4 +1,4 @@
-import type { DeckSpec, ShapeElement, Slide, TextElement } from "./schema.js";
+﻿import type { DeckSpec, ShapeElement, Slide, TextElement } from "./schema.js";
 
 export type VisualQualityIssue = {
   severity: "error" | "warning" | "suggestion";
@@ -57,6 +57,10 @@ function isHorizontalLine(element: ShapeElement): boolean {
   return element.shape === "line" && Math.abs(element.h) <= 0.03 && Math.abs(element.w) >= 0.35;
 }
 
+function hasIconOrImage(slide: Slide): boolean {
+  return slide.elements.some((element) => element.type === "svg" || element.type === "image" || element.type === "diagram");
+}
+
 export function reviewVisualQuality(deck: DeckSpec): VisualQualityReport {
   const issues: VisualQualityIssue[] = [];
   deck.slides.forEach((slide, slideIndex) => {
@@ -100,7 +104,26 @@ export function reviewVisualQuality(deck: DeckSpec): VisualQualityReport {
           details: { w: Number(element.w.toFixed(3)), h: Number(element.h.toFixed(3)) }
         });
       }
+
+      if (slide.layout === "message-hub-map" && element.type === "shape" && element.shape === "line" && Math.abs(element.w) > 0.08 && Math.abs(element.h) > 0.08) {
+        issues.push({
+          severity: "error",
+          code: "visual.hub-map-diagonal-connector",
+          message: "Hub-map slides must not use diagonal connector lines that can cross through the hub or labels. Use grouped panels, orthogonal connectors, or generated diagram connectors.",
+          path: `slides.${slideIndex}.elements.${elementIndex}`,
+          details: { w: Number(element.w.toFixed(3)), h: Number(element.h.toFixed(3)) }
+        });
+      }
     });
+
+    if ((slide.layout ?? "").startsWith("message-") && !hasIconOrImage(slide)) {
+      issues.push({
+        severity: "warning",
+        code: "visual.message-slide-icon-missing",
+        message: "Message-generated slides should include at least one icon, image, or diagram element so the deck does not become a plain text-and-box layout.",
+        path: `slides.${slideIndex}`
+      });
+    }
 
     for (const role of ["title", "subtitle", "body", "callout", "caption"] as const) {
       const roleTexts = slide.elements.filter((element): element is TextElement => element.type === "text" && element.role === role);

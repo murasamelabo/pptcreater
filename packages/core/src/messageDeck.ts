@@ -1,6 +1,18 @@
 ﻿import { defaultTokens } from "./color.js";
 import { estimateTextOverflow, normalizeDeckLayout } from "./layout.js";
-import type { ContentMode, DeckMessageMap, DeckSpec, DesignTokens, Locale, ShapeElement, Slide, SlideElement, SlideIntent, TextElement } from "./schema.js";
+import type {
+  ContentMode,
+  DeckMessageMap,
+  DeckSpec,
+  DesignTokens,
+  Locale,
+  ShapeElement,
+  Slide,
+  SlideElement,
+  SlideIntent,
+  SvgElement,
+  TextElement
+} from "./schema.js";
 import { getTemplate, recommendTemplateForContentMode, styleProfileTokens, templateForStyleProfile, type StyleProfile } from "./templates.js";
 
 const W = 13.333;
@@ -45,6 +57,23 @@ type Theme = {
   accentSoft: string;
   line: string;
   inkOnAccent: string;
+};
+
+type IconKey = "baby" | "calendar" | "check" | "clipboard" | "heart" | "home-care" | "hospital" | "map-pin" | "route" | "scale" | "spark" | "yen";
+
+const ICON_PATHS: Record<IconKey, string> = {
+  baby: '<circle cx="10" cy="8" r="3.2"/><path d="M5.2 15.8c.9-2.4 2.6-3.7 4.8-3.7s3.9 1.3 4.8 3.7"/><path d="M8.3 8.2h.1M11.6 8.2h.1"/><path d="M8.7 10.2c.8.5 1.8.5 2.6 0"/>',
+  calendar: '<rect x="4" y="5.2" width="12" height="10.8" rx="1.8"/><path d="M7 3.8v3M13 3.8v3M4 8.4h12"/><path d="M7 11h2M11 11h2M7 13.5h2"/>',
+  check: '<path d="M4.5 10.2 8.3 14 15.7 6.2"/>',
+  clipboard: '<rect x="5" y="4.6" width="10" height="12" rx="1.6"/><rect x="7.5" y="3" width="5" height="3.2" rx="1"/><path d="M7.8 9.2h4.4M7.8 12h4.4"/>',
+  heart: '<path d="M10 16.2S4.2 12.8 4.2 8.4A2.9 2.9 0 0 1 9.4 6.7L10 7.5l.6-.8a2.9 2.9 0 0 1 5.2 1.7c0 4.4-5.8 7.8-5.8 7.8Z"/>',
+  "home-care": '<path d="M3.8 9.4 10 4.2l6.2 5.2"/><path d="M5.4 8.8v7h9.2v-7"/><path d="M10 11.2v3.6M8.2 13h3.6"/>',
+  hospital: '<rect x="4" y="4.2" width="12" height="12" rx="1.5"/><path d="M10 7.2v6M7 10.2h6"/><path d="M7 16.2v-2.4h6v2.4"/>',
+  "map-pin": '<path d="M14.2 8.2c0 3.3-4.2 8-4.2 8s-4.2-4.7-4.2-8a4.2 4.2 0 0 1 8.4 0Z"/><circle cx="10" cy="8.2" r="1.3"/>',
+  route: '<path d="M5.2 15.2c3.8 0 1.4-10.4 5.2-10.4 3.4 0 1.7 7.2 4.4 7.2"/><circle cx="5.2" cy="15.2" r="1.3"/><circle cx="10.4" cy="4.8" r="1.3"/><circle cx="14.8" cy="12" r="1.3"/>',
+  scale: '<path d="M10 4v12M6.2 16h7.6M5.2 6.6h9.6"/><path d="m5.4 6.8-2 4h4l-2-4ZM14.6 6.8l-2 4h4l-2-4Z"/>',
+  spark: '<path d="M10 3.4 11.7 8l4.6 1.7-4.6 1.7L10 16l-1.7-4.6-4.6-1.7L8.3 8 10 3.4Z"/>',
+  yen: '<path d="m6 4 4 6 4-6M7.2 10.4h5.6M7.2 13h5.6M10 10v5.4"/>'
 };
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -199,6 +228,44 @@ function shape(
   };
 }
 
+function icon(
+  id: string,
+  key: IconKey,
+  x: number,
+  y: number,
+  size: number,
+  readingOrder: number,
+  theme: Theme,
+  options: { color?: string; decorative?: boolean; altText?: string; bg?: string } = {}
+): SvgElement {
+  const color = options.color ?? theme.accent;
+  const bg = options.bg
+    ? `<rect x="1.2" y="1.2" width="17.6" height="17.6" rx="5" fill="${options.bg}" stroke="${mix(color, theme.background, 0.55)}" stroke-width="0.7"/>`
+    : "";
+  return {
+    id,
+    type: "svg",
+    x,
+    y,
+    w: size,
+    h: size,
+    readingOrder,
+    decorative: options.decorative ?? false,
+    altText: options.altText ?? key,
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="${color}" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round">${bg}${ICON_PATHS[key]}</svg>`
+  };
+}
+
+function iconForEvidence(value: string, index: number): IconKey {
+  if (/費|円|価格|自費|助成/u.test(value)) return "yen";
+  if (/病院|医師|医療/u.test(value)) return "hospital";
+  if (/助産|生活|家庭|預か|休息/u.test(value)) return "home-care";
+  if (/申請|承認|確認/u.test(value)) return "clipboard";
+  if (/予約|日|週|月|営業/u.test(value)) return "calendar";
+  if (/場所|近さ|候補|施設/u.test(value)) return "map-pin";
+  return (["check", "heart", "spark", "route"] as const)[index % 4];
+}
+
 function slideShell(theme: Theme, intent: SlideIntent, elements: SlideElement[], archetype: MessageDeckArchetype, index: number): Slide {
   const id = intent.slideId;
   const title = slideTopicTitle(intent);
@@ -216,13 +283,18 @@ function slideShell(theme: Theme, intent: SlideIntent, elements: SlideElement[],
       .join("\n"),
     elements: [
       shape(`${id}-canvas`, "rect", 0, 0, W, H, 0, theme.background, theme.background, { radius: 0 }),
+      icon(`${id}-header-icon`, iconForEvidence(intent.emphasis ?? intent.title, index), 0.7, 0.86, 0.42, 4, theme, {
+        color: theme.accent,
+        decorative: true,
+        bg: theme.accentSoft
+      }),
       text(`${id}-eyebrow`, "caption", `SLIDE ${String(index + 1).padStart(2, "0")}`, 0.7, 0.38, 1.5, 0.25, 1, theme, {
         color: theme.accent,
         bg: theme.background,
         fontSize: 12,
         bold: true
       }),
-      text(`${id}-title`, "title", title, 0.68, 0.72, 4.15, 0.72, 2, theme, { fontSize: 27 }),
+      text(`${id}-title`, "title", title, 1.22, 0.72, 3.62, 0.58, 2, theme, { fontSize: 24 }),
       text(`${id}-message`, "subtitle", intent.message, 5.05, 0.68, 7.35, 0.92, 3, theme, { color: theme.text, fontSize: 20 }),
       ...elements
     ]
@@ -251,6 +323,7 @@ function statementVisual(theme: Theme, intent: SlideIntent, id: string): SlideEl
   const items = evidenceItems(intent, 3).slice(0, 3);
   const elements: SlideElement[] = [
     shape(`${id}-statement-panel`, "roundRect", 0.82, 2.05, 5.55, 3.98, 10, theme.accentSoft, theme.line, { radius: 0.18 }),
+    icon(`${id}-statement-icon`, iconForEvidence(intent.emphasis ?? intent.message, 0), 1.16, 2.2, 0.54, 10, theme, { color: theme.accent, decorative: true }),
     text(`${id}-statement-focus`, "callout", intent.emphasis ?? intent.message, 1.16, 2.55, 4.85, 0.72, 11, theme, {
       bg: theme.accentSoft,
       color: theme.accent,
@@ -265,7 +338,8 @@ function statementVisual(theme: Theme, intent: SlideIntent, id: string): SlideEl
   items.forEach((item, index) => {
     const y = 2.12 + index * 1.22;
     elements.push(shape(`${id}-evidence-chip-${index}`, "roundRect", 7.05, y, 4.95, 0.86, 20 + index * 2, theme.surface, theme.line, { radius: 0.18 }));
-    elements.push(text(`${id}-evidence-text-${index}`, "body", item, 7.35, y + 0.18, 4.35, 0.38, 21 + index * 2, theme, { bg: theme.surface, fontSize: 18 }));
+    elements.push(icon(`${id}-evidence-icon-${index}`, iconForEvidence(item, index), 7.28, y + 0.2, 0.34, 21 + index * 3, theme, { color: theme.accent, decorative: true }));
+    elements.push(text(`${id}-evidence-text-${index}`, "body", item, 7.78, y + 0.18, 3.92, 0.38, 22 + index * 3, theme, { bg: theme.surface, fontSize: 18 }));
   });
   return elements;
 }
@@ -280,21 +354,25 @@ function flowVisual(theme: Theme, intent: SlideIntent, id: string): SlideElement
     const x = startX + index * (nodeW + gap);
     const order = 10 + index * 5;
     elements.push(shape(`${id}-flow-node-${index}`, "roundRect", x, 3.0, nodeW, 1.2, order, index === 0 ? theme.accent : theme.surface, index === 0 ? theme.accent : theme.line, { radius: 0.2 }));
-    elements.push(text(`${id}-flow-label-${index}`, "caption", `STEP ${index + 1}`, x + 0.2, 3.15, nodeW - 0.4, 0.22, order + 1, theme, {
+    elements.push(icon(`${id}-flow-icon-${index}`, iconForEvidence(item, index), x + nodeW / 2 - 0.17, 3.08, 0.34, order + 1, theme, {
+      color: index === 0 ? theme.inkOnAccent : theme.accent,
+      decorative: true
+    }));
+    elements.push(text(`${id}-flow-label-${index}`, "caption", `STEP ${index + 1}`, x + 0.2, 3.15, nodeW - 0.4, 0.22, order + 2, theme, {
       color: index === 0 ? theme.inkOnAccent : theme.accent,
       bg: index === 0 ? theme.accent : theme.surface,
       fontSize: 12,
       bold: true,
       align: "center"
     }));
-    elements.push(text(`${id}-flow-text-${index}`, "body", item, x + 0.22, 3.45, nodeW - 0.44, 0.45, order + 2, theme, {
+    elements.push(text(`${id}-flow-text-${index}`, "body", item, x + 0.22, 3.55, nodeW - 0.44, 0.38, order + 3, theme, {
       color: index === 0 ? theme.inkOnAccent : theme.text,
       bg: index === 0 ? theme.accent : theme.surface,
       fontSize: 17,
       align: "center"
     }));
     if (index < items.length - 1) {
-      elements.push(shape(`${id}-flow-connector-${index}`, "line", x + nodeW + 0.12, 3.6, gap - 0.24, 0, order + 3, "none", theme.accent, { width: 1.4, endArrow: true }));
+      elements.push(shape(`${id}-flow-connector-${index}`, "line", x + nodeW + 0.12, 3.6, gap - 0.24, 0, order + 4, "none", theme.accent, { width: 1.4, endArrow: true }));
     }
   });
   return elements;
@@ -308,6 +386,8 @@ function contrastVisual(theme: Theme, intent: SlideIntent, id: string, afterLabe
     shape(`${id}-left-panel`, "roundRect", 0.82, 2.0, 4.75, 3.92, 10, theme.surface, theme.line, { radius: 0.18 }),
     shape(`${id}-right-panel`, "roundRect", 7.75, 2.0, 4.75, 3.92, 20, theme.accentSoft, theme.line, { radius: 0.18 }),
     shape(`${id}-bridge`, "rightArrow", 5.95, 3.46, 1.32, 0.64, 30, theme.accent, theme.accent, { radius: 0.04 }),
+    icon(`${id}-left-icon`, iconForEvidence(left[0] ?? "left", 0), 1.18, 2.14, 0.46, 10, theme, { color: theme.accent, decorative: true }),
+    icon(`${id}-right-icon`, iconForEvidence(right[0] ?? "right", 1), 8.1, 2.14, 0.46, 20, theme, { color: theme.accent, decorative: true }),
     text(`${id}-left-title`, "callout", left[0] ?? "Before", 1.18, 2.42, 4.05, 0.42, 11, theme, { bg: theme.surface, fontSize: 21, color: theme.text }),
     text(`${id}-left-body`, "body", left[1] ?? intent.message, 1.18, 3.18, 4.05, 1.4, 12, theme, { bg: theme.surface, fontSize: 19, color: theme.mutedText }),
     text(`${id}-bridge-text`, "caption", afterLabel, 6.15, 3.63, 0.9, 0.22, 31, theme, { bg: theme.accent, color: theme.inkOnAccent, align: "center", fontSize: 12 }),
@@ -322,13 +402,15 @@ function tableVisual(theme: Theme, intent: SlideIntent, id: string): SlideElemen
     shape(`${id}-table-bg`, "roundRect", 0.82, 1.95, 11.65, 4.78, 10, theme.surface, theme.line, { radius: 0.16 }),
     shape(`${id}-table-head`, "rect", 0.82, 1.95, 11.65, 0.72, 11, theme.accent, theme.accent, { radius: 0 })
   ];
-  elements.push(text(`${id}-table-head-text`, "callout", intent.emphasis ?? intent.title, 1.12, 2.12, 10.95, 0.28, 12, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 18 }));
+  elements.push(icon(`${id}-table-icon`, iconForEvidence(intent.emphasis ?? intent.title, 0), 1.05, 2.09, 0.34, 12, theme, { color: theme.inkOnAccent, decorative: true }));
+  elements.push(text(`${id}-table-head-text`, "callout", intent.emphasis ?? intent.title, 1.55, 2.12, 10.5, 0.28, 13, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 18 }));
   items.forEach((item, index) => {
     const y = 2.85 + index * 0.68;
     const fill = index % 2 === 0 ? mix(theme.surface, theme.background, 0.35) : theme.surface;
     elements.push(shape(`${id}-row-${index}`, "rect", 0.98, y, 11.3, 0.56, 20 + index * 3, fill, fill, { radius: 0 }));
-    elements.push(text(`${id}-row-index-${index}`, "caption", String(index + 1).padStart(2, "0"), 1.2, y + 0.16, 0.5, 0.18, 21 + index * 3, theme, { bg: fill, color: theme.accent, fontSize: 12, bold: true }));
-    elements.push(text(`${id}-row-text-${index}`, "body", item, 1.95, y + 0.08, 9.8, 0.3, 22 + index * 3, theme, { bg: fill, fontSize: 17 }));
+    elements.push(icon(`${id}-row-icon-${index}`, iconForEvidence(item, index), 1.2, y + 0.12, 0.28, 21 + index * 4, theme, { color: theme.accent, decorative: true }));
+    elements.push(text(`${id}-row-index-${index}`, "caption", String(index + 1).padStart(2, "0"), 1.58, y + 0.16, 0.5, 0.18, 22 + index * 4, theme, { bg: fill, color: theme.accent, fontSize: 12, bold: true }));
+    elements.push(text(`${id}-row-text-${index}`, "body", item, 2.28, y + 0.08, 9.45, 0.3, 23 + index * 4, theme, { bg: fill, fontSize: 17 }));
   });
   return elements;
 }
@@ -342,7 +424,8 @@ function matrixVisual(theme: Theme, intent: SlideIntent, id: string): SlideEleme
     text(`${id}-axis-x-label`, "caption", "柔軟性", 6.55, 4.66, 1.0, 0.2, 13, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 12, align: "right" }),
     text(`${id}-axis-y-label`, "caption", "費用負担", 3.85, 2.32, 1.3, 0.2, 14, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 12, align: "center" }),
     shape(`${id}-insight`, "roundRect", 8.55, 2.25, 3.55, 3.75, 50, theme.accentSoft, theme.line, { radius: 0.18 }),
-    text(`${id}-insight-title`, "callout", intent.emphasis ?? "判断軸", 8.92, 2.7, 2.85, 0.42, 51, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 21 }),
+    icon(`${id}-insight-icon`, "scale", 8.92, 2.42, 0.42, 50, theme, { color: theme.accent, decorative: true }),
+    text(`${id}-insight-title`, "callout", intent.emphasis ?? "判断軸", 9.48, 2.5, 2.28, 0.32, 51, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 21 }),
     text(`${id}-insight-body`, "body", intent.message, 8.92, 3.42, 2.85, 1.45, 52, theme, { bg: theme.accentSoft, color: theme.text, fontSize: 18 })
   ];
   const points = [
@@ -359,35 +442,77 @@ function matrixVisual(theme: Theme, intent: SlideIntent, id: string): SlideEleme
   return elements;
 }
 
-function hubMapVisual(theme: Theme, intent: SlideIntent, id: string): SlideElement[] {
+type HubPanel = {
+  title: string;
+  iconKey: IconKey;
+  items: string[];
+};
+
+function hubPanelModel(intent: SlideIntent, locale: Locale): [HubPanel, HubPanel] {
   const items = evidenceItems(intent, 5).slice(0, 5);
-  const hubX = 5.55;
-  const hubY = 3.35;
-  const nodes = [
-    [1.1, 2.2],
-    [8.85, 2.2],
-    [1.3, 5.0],
-    [8.9, 5.0],
-    [5.1, 5.72]
-  ] as const;
+  const clueText = [intent.title, intent.message, intent.emphasis, ...intent.evidence, ...intent.quietInfo].filter(Boolean).join(" ");
+  const healthcareFacilitySplit = /病院型|助産院型|助産|midwife|hospital/i.test(clueText);
+  const leftItems = items.slice(0, Math.ceil(items.length / 2));
+  const rightItems = items.slice(Math.ceil(items.length / 2));
+
+  if (healthcareFacilitySplit) {
+    return [
+      {
+        title: locale === "ja-JP" ? "病院型" : "Hospital type",
+        iconKey: "hospital",
+        items: leftItems
+      },
+      {
+        title: locale === "ja-JP" ? "助産院型" : "Midwife / home-care type",
+        iconKey: "home-care",
+        items: rightItems
+      }
+    ];
+  }
+
+  return [
+    {
+      title: locale === "ja-JP" ? "候補群A" : "Option group A",
+      iconKey: iconForEvidence(leftItems.join(" "), 0),
+      items: leftItems
+    },
+    {
+      title: locale === "ja-JP" ? "候補群B" : "Option group B",
+      iconKey: iconForEvidence(rightItems.join(" "), 1),
+      items: rightItems
+    }
+  ];
+}
+
+function hubMapVisual(theme: Theme, intent: SlideIntent, id: string, locale: Locale): SlideElement[] {
+  const [leftPanel, rightPanel] = hubPanelModel(intent, locale);
   const elements: SlideElement[] = [
-    shape(`${id}-hub`, "ellipse", hubX, hubY, 1.7, 1.7, 10, theme.accent, theme.accent),
-    text(`${id}-hub-text`, "callout", intent.emphasis ?? "中心", hubX + 0.2, hubY + 0.62, 1.3, 0.28, 11, theme, {
+    shape(`${id}-left-panel`, "roundRect", 0.95, 2.0, 5.15, 4.75, 10, theme.surface, theme.line, { radius: 0.2 }),
+    shape(`${id}-right-panel`, "roundRect", 7.22, 2.0, 5.15, 4.75, 30, theme.accentSoft, theme.line, { radius: 0.2 }),
+    shape(`${id}-relation-band`, "roundRect", 5.72, 3.62, 1.9, 0.62, 50, theme.accent, theme.accent, { radius: 0.2 }),
+    icon(`${id}-left-icon`, leftPanel.iconKey, 1.32, 2.34, 0.58, 11, theme, { color: theme.accent, decorative: true }),
+    icon(`${id}-right-icon`, rightPanel.iconKey, 7.6, 2.34, 0.58, 31, theme, { color: theme.accent, decorative: true }),
+    text(`${id}-left-title`, "callout", leftPanel.title, 2.08, 2.42, 3.3, 0.34, 12, theme, { bg: theme.surface, color: theme.text, fontSize: 22 }),
+    text(`${id}-right-title`, "callout", rightPanel.title, 8.36, 2.42, 3.3, 0.34, 32, theme, { bg: theme.accentSoft, color: theme.text, fontSize: 22 }),
+    text(`${id}-relation`, "caption", intent.emphasis ?? "施設タイプ", 5.95, 3.83, 1.44, 0.18, 51, theme, {
       bg: theme.accent,
       color: theme.inkOnAccent,
-      fontSize: 17,
-      align: "center"
+      align: "center",
+      fontSize: 12,
+      bold: true
     })
   ];
-  items.forEach((item, index) => {
-    const [x, y] = nodes[index];
-    const lineX = x < hubX ? x + 2.38 : hubX + 1.7;
-    const lineY = y + 0.42;
-    const targetX = x < hubX ? hubX : x;
-    const targetY = hubY + 0.85;
-    elements.push(shape(`${id}-connector-${index}`, "line", Math.min(lineX, targetX), Math.min(lineY, targetY), Math.abs(targetX - lineX), Math.abs(targetY - lineY), 20 + index * 4, "none", theme.line, { width: 1.1 }));
-    elements.push(shape(`${id}-node-${index}`, "roundRect", x, y, 2.38, 0.86, 21 + index * 4, theme.surface, theme.line, { radius: 0.18 }));
-    elements.push(text(`${id}-node-text-${index}`, "body", item, x + 0.22, y + 0.18, 1.94, 0.3, 22 + index * 4, theme, { bg: theme.surface, fontSize: 16, align: "center" }));
+  leftPanel.items.forEach((item, index) => {
+    const y = 3.18 + index * 0.82;
+    elements.push(shape(`${id}-left-chip-${index}`, "roundRect", 1.32, y, 4.28, 0.58, 20 + index * 3, mix(theme.surface, theme.background, 0.25), theme.line, { radius: 0.16 }));
+    elements.push(icon(`${id}-left-chip-icon-${index}`, iconForEvidence(item, index), 1.52, y + 0.14, 0.28, 21 + index * 3, theme, { color: theme.accent, decorative: true }));
+    elements.push(text(`${id}-left-chip-text-${index}`, "body", item, 1.98, y + 0.1, 3.22, 0.22, 22 + index * 3, theme, { bg: theme.surface, fontSize: 15, align: "left" }));
+  });
+  rightPanel.items.forEach((item, index) => {
+    const y = 3.18 + index * 0.82;
+    elements.push(shape(`${id}-right-chip-${index}`, "roundRect", 7.6, y, 4.28, 0.58, 40 + index * 3, theme.surface, theme.line, { radius: 0.16 }));
+    elements.push(icon(`${id}-right-chip-icon-${index}`, iconForEvidence(item, index + 3), 7.8, y + 0.14, 0.28, 41 + index * 3, theme, { color: theme.accent, decorative: true }));
+    elements.push(text(`${id}-right-chip-text-${index}`, "body", item, 8.26, y + 0.1, 3.22, 0.22, 42 + index * 3, theme, { bg: theme.surface, fontSize: 15, align: "left" }));
   });
   return elements;
 }
@@ -396,14 +521,17 @@ function stepsVisual(theme: Theme, intent: SlideIntent, id: string): SlideElemen
   const items = evidenceItems(intent, 5).slice(0, 6);
   const elements: SlideElement[] = [
     shape(`${id}-rail`, "roundRect", 0.88, 2.0, 3.45, 4.6, 10, theme.accent, theme.accent, { radius: 0.18 }),
+    icon(`${id}-rail-icon`, "clipboard", 1.18, 2.18, 0.52, 10, theme, { color: theme.inkOnAccent, decorative: true }),
     text(`${id}-rail-title`, "callout", intent.emphasis ?? "実行順", 1.18, 2.45, 2.85, 0.45, 11, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 22 }),
     text(`${id}-rail-body`, "body", intent.emphasis ?? intent.message, 1.18, 3.25, 2.85, 1.4, 12, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 18 })
   ];
   items.forEach((item, index) => {
     const y = 2.05 + index * 0.76;
-    elements.push(shape(`${id}-step-dot-${index}`, "ellipse", 5.35, y + 0.08, 0.34, 0.34, 20 + index * 3, theme.accent, theme.accent));
-    elements.push(shape(`${id}-step-line-${index}`, "line", 5.52, y + 0.45, 0.001, 0.32, 21 + index * 3, "none", theme.line, { width: 1 }));
-    elements.push(text(`${id}-step-text-${index}`, "body", item, 5.98, y, 5.75, 0.36, 22 + index * 3, theme, { bg: theme.background, fontSize: 17 }));
+    const order = 20 + index * 5;
+    elements.push(shape(`${id}-step-dot-${index}`, "ellipse", 5.35, y + 0.08, 0.34, 0.34, order, theme.accent, theme.accent));
+    elements.push(icon(`${id}-step-icon-${index}`, iconForEvidence(item, index), 5.43, y + 0.16, 0.18, order + 1, theme, { color: theme.inkOnAccent, decorative: true }));
+    elements.push(shape(`${id}-step-line-${index}`, "line", 5.52, y + 0.45, 0.001, 0.32, order + 2, "none", theme.line, { width: 1 }));
+    elements.push(text(`${id}-step-text-${index}`, "body", item, 5.98, y, 5.75, 0.36, order + 3, theme, { bg: theme.background, fontSize: 17 }));
   });
   return elements;
 }
@@ -438,7 +566,7 @@ export function archetypeForIntent(intent: SlideIntent): MessageDeckArchetype {
   }
 }
 
-function visualForIntent(theme: Theme, intent: SlideIntent): [MessageDeckArchetype, SlideElement[]] {
+function visualForIntent(theme: Theme, intent: SlideIntent, locale: Locale): [MessageDeckArchetype, SlideElement[]] {
   const id = intent.slideId;
   const archetype = archetypeForIntent(intent);
   switch (archetype) {
@@ -453,7 +581,7 @@ function visualForIntent(theme: Theme, intent: SlideIntent): [MessageDeckArchety
     case "matrix":
       return [archetype, matrixVisual(theme, intent, id)];
     case "hub-map":
-      return [archetype, hubMapVisual(theme, intent, id)];
+      return [archetype, hubMapVisual(theme, intent, id, locale)];
     case "steps":
       return [archetype, stepsVisual(theme, intent, id)];
     case "statement":
@@ -475,13 +603,16 @@ function createCover(theme: Theme, title: string, messageMap: DeckMessageMap): S
       shape("cover-orbit-1", "ellipse", 8.25, 1.55, 1.05, 1.05, 2, theme.surface, theme.line),
       shape("cover-orbit-2", "ellipse", 10.35, 2.65, 1.3, 1.3, 3, theme.accent, theme.accent),
       shape("cover-orbit-3", "ellipse", 8.95, 4.65, 1.0, 1.0, 4, theme.surface, theme.line),
-      text("cover-kicker", "caption", "MESSAGE-FIRST DECK", 0.78, 1.08, 4.2, 0.28, 5, theme, { color: theme.accent, fontSize: 12, bold: true }),
-      text("cover-title", "title", title, 0.76, 1.62, 6.4, 1.62, 6, theme, { fontSize: 34 }),
-      text("cover-objective", "body", messageMap.objective ?? "目的を1つに絞り、各スライドを1メッセージで構成します。", 0.8, 3.66, 6.15, 0.86, 7, theme, {
+      icon("cover-icon-1", "baby", 8.52, 1.81, 0.5, 5, theme, { color: theme.accent, decorative: true }),
+      icon("cover-icon-2", "heart", 10.72, 3.0, 0.55, 6, theme, { color: theme.inkOnAccent, decorative: true }),
+      icon("cover-icon-3", "map-pin", 9.22, 4.9, 0.5, 7, theme, { color: theme.accent, decorative: true }),
+      text("cover-kicker", "caption", "MESSAGE-FIRST DECK", 0.78, 1.08, 4.2, 0.28, 8, theme, { color: theme.accent, fontSize: 12, bold: true }),
+      text("cover-title", "title", title, 0.76, 1.62, 6.4, 1.62, 9, theme, { fontSize: 34 }),
+      text("cover-objective", "body", messageMap.objective ?? "目的を1つに絞り、各スライドを1メッセージで構成します。", 0.8, 3.66, 6.15, 0.86, 10, theme, {
         color: theme.mutedText,
         fontSize: 20
       }),
-      text("cover-action", "callout", messageMap.desiredAction ?? "次の判断へ進む", 0.8, 5.48, 5.55, 0.54, 8, theme, { color: theme.accent, fontSize: 21 })
+      text("cover-action", "callout", messageMap.desiredAction ?? "次の判断へ進む", 0.8, 5.48, 5.55, 0.54, 11, theme, { color: theme.accent, fontSize: 21 })
     ]
   };
 }
@@ -548,7 +679,7 @@ export function createDeckFromMessageMap(messageMap: DeckMessageMap, options: Cr
   }
 
   messageMap.intents.forEach((intent, index) => {
-    const [archetype, elements] = visualForIntent(theme, intent);
+    const [archetype, elements] = visualForIntent(theme, intent, locale);
     slides.push(slideShell(theme, intent, elements, archetype, index));
   });
 
