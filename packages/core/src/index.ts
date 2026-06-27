@@ -20,4 +20,5 @@ export * from "./figureSelector.js";
 export * from "./typography.js";
 export * from "./patternGallery.js";
 export * from "./messageMap.js";
+export * from "./messageDeck.js";
 export * from "./visualQuality.js";

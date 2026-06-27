@@ -57,4 +57,29 @@ describe("visual quality review", () => {
 
     expect(report.issues.some((issue) => issue.severity === "error")).toBe(false);
   });
+
+  it("flags non-orthogonal matrix axes and repeated layout runs", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 3 });
+    deck.slides.forEach((slide, index) => {
+      slide.layout = "message-table";
+      slide.id = `content-${index}`;
+      slide.elements.push({
+        id: index === 0 ? "decision-axis-y-line" : `line-${index}`,
+        type: "shape",
+        shape: "line",
+        x: 1,
+        y: 2,
+        w: index === 0 ? 0.7 : 0,
+        h: index === 0 ? 2.2 : 1,
+        fill: "none",
+        decorative: true,
+        readingOrder: 100 + index
+      });
+    });
+
+    const report = reviewVisualQuality(deck);
+
+    expect(report.ok).toBe(false);
+    expect(report.issues.map((issue) => issue.code)).toEqual(expect.arrayContaining(["visual.axis-y-not-vertical", "visual.repeated-layout-run"]));
+  });
 });

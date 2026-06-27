@@ -34,6 +34,27 @@ describe("Studio preview", () => {
     expect(html).toContain(".native-text { overflow: hidden; white-space: pre-wrap; line-height: 1.15; overflow-wrap: normal; }");
   });
 
+  it("keeps native preview text large enough to approximate slide readability", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "preview-size-probe",
+      type: "text",
+      role: "body",
+      text: "本文",
+      x: 1,
+      y: 1,
+      w: 2,
+      h: 0.4,
+      fontSize: 20,
+      bold: false,
+      decorative: false
+    });
+
+    const html = renderStudioHtml(deck);
+
+    expect(html).toContain("font-size:14px");
+  });
+
   it("does not emit whitespace-only lines", () => {
     const html = renderStudioHtml(createSampleDeck("ja-JP"));
 

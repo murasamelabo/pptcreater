@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## v0.5.40 - 2026-06-28
+
+- **Added a Message Map deck generator.** `createDeckFromMessageMap` turns a `DeckMessageMap` / `SlideIntent[]` plan into a full editable DeckSpec with cover, closing, and varied message-first visual archetypes.
+- **Added CLI and MCP entry points for message-first generation.** Use `pptcreater from-message-map` or MCP `create_deck_from_message_map` to generate a deck from one-message-per-slide intent instead of rerunning ad-hoc scripts.
+- **Added visual archetype coverage for statement, flow, contrast, before/after, table, hub-map, and matrix slides.** The generator avoids repeated colored accent-bar cards and keeps matrix axes orthogonal.
+- **Hardened Visual QA.** `review_visual_quality` now also catches non-orthogonal matrix axes and repeated layout runs that make decks look template-generated.
+- Added real PPTX render regression coverage for the message-map-generated deck path.
+
 ## v0.5.39 - 2026-06-27
 
 - **Removed repeated vertical accent bars from generated native schematic cards.** Native schematic cards now use neutral surfaces and badges/labels rather than the AI-looking colored line-card pattern.

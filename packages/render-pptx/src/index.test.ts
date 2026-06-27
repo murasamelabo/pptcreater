@@ -5,11 +5,13 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import {
   COMPREHENSIVE_PATTERN_GALLERY_IDS,
+  createDeckFromMessageMap,
   createComprehensivePatternDeck,
   createSampleDeck,
   defaultTokens,
   lintDeckSpec,
   parseDeckSpec,
+  reviewVisualQuality,
   registerTemplateManifest,
   scaffoldDeckFromTemplate
 } from "@pptcreater/core";
@@ -249,6 +251,34 @@ describe("PPTX renderer", () => {
 
     const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-pattern-gallery-"));
     const result = await renderDeckToPptx(deck, join(outputDir, "pattern-gallery.pptx"));
+    const written = await stat(result.outputPath);
+
+    expect(written.size).toBeGreaterThan(10_000);
+  }, 20_000);
+
+  it("renders a message-map-generated deck through the real PPTX renderer", async () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "横浜市周辺の産後ケア施設を選ぶ判断軸を示す",
+        audience: "産後ケアを検討する家族",
+        desiredAction: "助成を申請し、候補施設へ空き確認する",
+        intents: [
+          { slideId: "summary", title: "結論", message: "市助成を起点に自費で補う。", evidence: ["低価格", "柔軟利用", "急ぎ対応"], quietInfo: [], visualType: "summary", emphasis: "市助成" },
+          { slideId: "flow", title: "手順", message: "申請から予約まで順番に進める。", evidence: ["申請", "承認", "空き確認", "予約"], quietInfo: [], visualType: "flow", emphasis: "順番" },
+          { slideId: "table", title: "候補", message: "候補は場所と特徴で比べる。", evidence: ["病院型", "助産院型", "自費枠", "近さ"], quietInfo: [], visualType: "table", emphasis: "候補比較" },
+          { slideId: "matrix", title: "判断軸", message: "価格と柔軟性で選び方が変わる。", evidence: ["助成デイ", "助成宿泊", "病院自費", "助産院自費"], quietInfo: [], visualType: "matrix", emphasis: "二軸" },
+          { slideId: "next", title: "次の行動", message: "対象と空きを同時に確認する。", evidence: ["対象月齢", "空き日程", "追加費用", "キャンセル料"], quietInfo: [], visualType: "step", emphasis: "確認順" }
+        ]
+      },
+      { title: "横浜市周辺の産後ケア施設比較", locale: "ja-JP", contentMode: "report" }
+    );
+
+    expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
+    const blocking = lintDeckSpec(deck).issues.filter((issue) => issue.severity === "error" && !issue.polishFixable);
+    expect(blocking).toEqual([]);
+
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-message-deck-"));
+    const result = await renderDeckToPptx(deck, join(outputDir, "message-deck.pptx"), { polishLayout: true });
     const written = await stat(result.outputPath);
 
     expect(written.size).toBeGreaterThan(10_000);

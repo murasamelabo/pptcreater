@@ -10,6 +10,7 @@ import {
   BUSINESS_STYLE_MODES,
   classifyFinalizeLintReports,
   cliMessage,
+  createDeckFromMessageMap,
   createEditWithCopilotPrompt,
   createSampleDeck,
   createSectionDividerSlides,
@@ -21,6 +22,7 @@ import {
   getContentGuidance,
   getDefaultTemplateRegistryPath,
   getSlideCreationRules,
+  DeckMessageMapSchema,
   listAllTemplates,
   listSkillPacks,
   lintDeckSpec,
@@ -261,6 +263,56 @@ program
   }));
 
 program
+  .command("from-message-map")
+  .description("Create a complete DeckSpec from a DeckMessageMap / SlideIntent plan using varied visual archetypes.")
+  .argument("<message-map>", "JSON path containing a DeckMessageMap, { messageMap }, or a DeckSpec with metadata.messageMap")
+  .requiredOption("-o, --output <path>", "Output DeckSpec path")
+  .requiredOption("--title <title>", "Deck title")
+  .option("--locale <locale>", "Deck locale", "ja-JP")
+  .option("--content-mode <mode>", "presentation, report, technical, handout, or decision", parseContentMode, "report")
+  .option("--style <profile>", "Force a style: minimal, stylish, report, presentation, technical", parseStyleProfile)
+  .option("--template <id>", "Template id")
+  .option("--author <name>", "Deck author")
+  .option("--no-cover", "Skip the generated cover slide")
+  .option("--no-closing", "Skip the generated closing slide")
+  .option("--json", "Emit JSON result", false)
+  .action(commandAction(async (messageMapPath: string, options: {
+    output: string;
+    title: string;
+    locale: string;
+    contentMode: ContentMode;
+    style?: StyleProfile;
+    template?: string;
+    author?: string;
+    cover: boolean;
+    closing: boolean;
+    json: boolean;
+  }) => {
+    const raw = await readJson(messageMapPath);
+    const container = raw as { messageMap?: unknown; metadata?: { messageMap?: unknown }; keywords?: unknown };
+    const messageMap = DeckMessageMapSchema.parse(container.messageMap ?? container.metadata?.messageMap ?? raw);
+    const keywords =
+      Array.isArray(container.keywords) && container.keywords.every((value): value is string => typeof value === "string") ? container.keywords : undefined;
+    const deck = createDeckFromMessageMap(messageMap, {
+      title: options.title,
+      locale: asLocale(options.locale),
+      contentMode: options.contentMode,
+      styleProfile: options.style,
+      template: options.template,
+      author: options.author,
+      includeCover: options.cover,
+      includeClosing: options.closing,
+      keywords
+    });
+    await writeJson(options.output, deck);
+    if (options.json) {
+      console.log(JSON.stringify({ outputPath: options.output, deck }, null, 2));
+      return;
+    }
+    console.log(cliMessage(outputLocale(deck.locale), "cli.created", { path: options.output }));
+  }));
+
+program
   .command("rules")
   .description("Print first-pass slide generation rules to reduce lint/render retry loops.")
   .option("--locale <locale>", "Rules locale", "ja-JP")
@@ -433,7 +485,7 @@ program
 
 program
   .command("visual-review")
-  .description("Review a DeckSpec for visual-quality issues such as truncation, repeated accent-bar cards, and typography inconsistency.")
+  .description("Review a DeckSpec for visual-quality issues such as truncation, repeated accent-bar cards/layouts, axis alignment, and typography inconsistency.")
   .argument("<deck>", "DeckSpec JSON path")
   .option("--json", "Emit JSON", false)
   .action(commandAction(async (deckPath: string, options: { json: boolean }) => {

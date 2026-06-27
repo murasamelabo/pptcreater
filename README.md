@@ -61,6 +61,18 @@ Available styles: `minimal`, `stylish`, `report`, `presentation`, `technical`. F
 
 From MCP, use `create_pptx` when the user simply asks for a `.pptx`. It creates a styled DeckSpec, lints it, polishes layout, and renders the PowerPoint in one call. `create_pptx`, `create_powerpoint`, and `create_deck` accept `slideCount` from 1 to 40 (the CLI `pptcreater new --slides` uses the same range); when more than the four built-in slides are requested, extra section-numbered card/step content slides are inserted before the closing slide. Use the lower-level `create_deck` -> `review_content` -> `lint_deck` -> `render_pptx` workflow only when you need to manually edit the DeckSpec.
 
+When you already know the deck's one-message-per-slide structure, prefer the Message Map generator instead of authoring boxes by hand. It turns `DeckMessageMap` / `SlideIntent[]` into a complete editable DeckSpec with varied visual archetypes:
+
+```powershell
+pptcreater from-message-map .\message-map.json `
+  --title "横浜市周辺の産後ケア施設比較" `
+  --locale ja-JP `
+  --content-mode report `
+  --output .\deck.json
+```
+
+From MCP, use `create_deck_from_message_map` for the same workflow. Follow it with `finalize_deck` / `render_pptx`, then run `review_message_map` and `review_visual_quality`.
+
 `review_content` / `pptcreater content-review` provides the content-writing guardrail that prevents AI-generated decks from reading like long documents. It switches rules by locale and `contentMode`:
 
 - Japanese `report`, `technical`, and `handout`: use a short topic-label title plus a separate slide message (one factual claim, about 50 characters or fewer).
@@ -580,6 +592,7 @@ From MCP, use:
 - `interview_slide_brief` when the user's request does not specify purpose, audience, delivery context, or slide count.
 - `create_pptx` when the user wants a PowerPoint file directly.
 - `create_deck` with `purpose`, `audience`, `slideCount`, and `contentMode` when those details are known and you need to inspect or edit DeckSpec.
+- `create_deck_from_message_map` when the deck objective, desired action, and per-slide `SlideIntent` entries are known. This is the preferred path for high-stakes decks because it varies visual archetypes from the message plan instead of repeating generic cards.
 - `generate_intent_diagram` for access-plane maps, closed privileged paths, and other known concept compositions before attempting general diagram generation.
 - `generate_native_diagram` for editable architecture/security/control-plane/ponchi-e diagrams before attempting SVG image generation.
 - `generate_schematic` for table/tree/flow/list/mockup visuals before attempting custom SVG.

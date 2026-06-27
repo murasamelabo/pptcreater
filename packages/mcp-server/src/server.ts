@@ -8,6 +8,7 @@ import { DiagramIntentSchema, SCHEMATIC_KIND_CATALOG, SCHEMATIC_MODE_TEMPLATES, 
 import {
   applyTemplateContentDesign,
   BUSINESS_STYLE_MODES,
+  createDeckFromMessageMap,
   createEditWithCopilotPrompt,
   ContentModeSchema,
   createSampleDeck,
@@ -15,6 +16,7 @@ import {
   createDetailSlide,
   createVisualScaffold,
   classifyFinalizeLintReports,
+  DeckMessageMapSchema,
   DeckSpecSchema,
   deleteTemplateManifest,
   ensureSourceReferenceSlide,
@@ -277,7 +279,7 @@ async function assertSafeLocalImagePaths(deck: DeckSpec): Promise<void> {
 export function createPptcreaterMcpServer(): McpServer {
   const server = new McpServer({
     name: "pptcreater",
-    version: "0.2.0"
+    version: "0.5.40"
   });
   const createPowerPointInputSchema = {
     locale: z.enum(["ja-JP", "en-US"]).default("ja-JP"),
@@ -373,6 +375,39 @@ export function createPptcreaterMcpServer(): McpServer {
     },
     async ({ locale, purpose, audience, slideCount, contentMode, styleProfile }) =>
       jsonText(createSampleDeck(locale, { purpose, audience, slideCount, contentMode, styleProfile }))
+  );
+
+  server.registerTool(
+    "create_deck_from_message_map",
+    {
+      title: "Create DeckSpec from Message Map",
+      description:
+        "Create a complete editable DeckSpec directly from a DeckMessageMap / SlideIntent plan. Use this when the deck message is known and the output must materially vary visual archetypes instead of repeating generic cards.",
+      inputSchema: {
+        title: z.string().min(1),
+        messageMap: DeckMessageMapSchema,
+        locale: LocaleSchema.default("ja-JP"),
+        contentMode: ContentModeSchema.default("report"),
+        styleProfile: z.enum(STYLE_PROFILES).optional(),
+        template: z.string().optional(),
+        author: z.string().optional(),
+        includeCover: z.boolean().default(true),
+        includeClosing: z.boolean().default(true)
+      }
+    },
+    async ({ title, messageMap, locale, contentMode, styleProfile, template, author, includeCover, includeClosing }) =>
+      jsonText(
+        createDeckFromMessageMap(messageMap, {
+          title,
+          locale,
+          contentMode,
+          styleProfile,
+          template,
+          author,
+          includeCover,
+          includeClosing
+        })
+      )
   );
 
   server.registerTool(
@@ -479,7 +514,7 @@ export function createPptcreaterMcpServer(): McpServer {
     {
       title: "Review visual quality",
       description:
-        "Review a DeckSpec for visual-quality issues that make slides look AI-generated: truncated text, inconsistent role typography, and repeated colored accent-bar card grids. Run after polish/finalize before accepting the deck.",
+        "Review a DeckSpec for visual-quality issues that make slides look AI-generated: truncated text, inconsistent role typography, repeated colored accent-bar card grids, repeated layout runs, and non-orthogonal matrix axes. Run after polish/finalize before accepting the deck.",
       inputSchema: {
         deck: DeckSpecSchema
       }

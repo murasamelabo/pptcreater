@@ -45,6 +45,18 @@ function typographySpread(texts: TextElement[]): number {
   return sizes.length ? Math.max(...sizes) - Math.min(...sizes) : 0;
 }
 
+function isContentSlide(slide: Slide): boolean {
+  return !["cover", "title", "title-slide", "section", "divider", "closing", "closing-slide", "references"].includes(slide.layout ?? "");
+}
+
+function isVerticalLine(element: ShapeElement): boolean {
+  return element.shape === "line" && Math.abs(element.w) <= 0.03 && Math.abs(element.h) >= 0.35;
+}
+
+function isHorizontalLine(element: ShapeElement): boolean {
+  return element.shape === "line" && Math.abs(element.h) <= 0.03 && Math.abs(element.w) >= 0.35;
+}
+
 export function reviewVisualQuality(deck: DeckSpec): VisualQualityReport {
   const issues: VisualQualityIssue[] = [];
   deck.slides.forEach((slide, slideIndex) => {
@@ -68,6 +80,26 @@ export function reviewVisualQuality(deck: DeckSpec): VisualQualityReport {
           path: `slides.${slideIndex}.elements.${elementIndex}.text`
         });
       }
+
+      if (element.type === "shape" && element.shape === "line" && /axis-y-line/u.test(element.id) && !isVerticalLine(element)) {
+        issues.push({
+          severity: "error",
+          code: "visual.axis-y-not-vertical",
+          message: "Matrix y-axis must be a vertical line. Keep w near zero and vary only height.",
+          path: `slides.${slideIndex}.elements.${elementIndex}`,
+          details: { w: Number(element.w.toFixed(3)), h: Number(element.h.toFixed(3)) }
+        });
+      }
+
+      if (element.type === "shape" && element.shape === "line" && /axis-x-line/u.test(element.id) && !isHorizontalLine(element)) {
+        issues.push({
+          severity: "error",
+          code: "visual.axis-x-not-horizontal",
+          message: "Matrix x-axis must be a horizontal line. Keep h near zero and vary only width.",
+          path: `slides.${slideIndex}.elements.${elementIndex}`,
+          details: { w: Number(element.w.toFixed(3)), h: Number(element.h.toFixed(3)) }
+        });
+      }
     });
 
     for (const role of ["title", "subtitle", "body", "callout", "caption"] as const) {
@@ -84,6 +116,20 @@ export function reviewVisualQuality(deck: DeckSpec): VisualQualityReport {
       }
     }
   });
+
+  const contentSlides = deck.slides.filter(isContentSlide);
+  for (let index = 2; index < contentSlides.length; index += 1) {
+    const layouts = contentSlides.slice(index - 2, index + 1).map((slide) => slide.layout ?? "");
+    if (layouts.every((layout) => layout && layout === layouts[0])) {
+      issues.push({
+        severity: "warning",
+        code: "visual.repeated-layout-run",
+        message: "Three consecutive content slides use the same layout. Vary the visual archetype to avoid a generated-template impression.",
+        path: `slides.${deck.slides.indexOf(contentSlides[index - 2])}`,
+        details: { layout: layouts[0], runLength: 3 }
+      });
+    }
+  }
 
   return { ok: issues.every((issue) => issue.severity !== "error"), issues };
 }

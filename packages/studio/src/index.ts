@@ -84,7 +84,7 @@ function nativeShapePreview(slide: DeckSpec["slides"][number]): string {
         const top = (element.y / 7.5) * 100;
         const width = (element.w / 13.333) * 100;
         const height = (element.h / 7.5) * 100;
-        const fontSize = Math.max(8, Math.round((element.fontSize ?? 18) * 0.52));
+        const fontSize = Math.max(10, Math.round((element.fontSize ?? 18) * 0.72));
         const weight = element.bold ? 700 : 400;
         const align = element.align ?? "left";
         return `<div class="native-text native-text-${element.role}" style="left:${left}%;top:${top}%;width:${width}%;height:${height}%;font-size:${fontSize}px;font-weight:${weight};color:${element.color ?? "#0f172a"};text-align:${align};">${escapeHtml(element.text)}</div>`;
