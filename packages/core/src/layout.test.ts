@@ -34,6 +34,29 @@ describe("layout polish", () => {
     expect(fullBleed).toMatchObject({ x: 0, y: 0, w: 13.333, h: 7.5 });
   });
 
+  it("preserves near-zero width vertical line geometry", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "axis-y",
+      type: "shape",
+      shape: "line",
+      x: 2,
+      y: 2,
+      w: 0.001,
+      h: 3,
+      fill: "none",
+      line: { color: "#2563eb", beginArrowType: "triangle" },
+      decorative: true,
+      readingOrder: 100
+    });
+
+    const polished = normalizeDeckLayout(deck);
+    const axis = polished.slides[0].elements.find((element) => element.id === "axis-y");
+
+    expect(axis?.type === "shape" ? axis.w : 1).toBeLessThanOrEqual(0.01);
+    expect(axis?.type === "shape" ? axis.h : 0).toBeGreaterThan(2.9);
+  });
+
   it("adjusts long text boxes", () => {
     const deck = createSampleDeck("en-US");
     const text = deck.slides[0].elements.find((element) => element.type === "text");
