@@ -7,6 +7,8 @@
 - **Removed repeated vertical accent bars from generated native schematic cards.** Native schematic cards now use neutral surfaces and badges/labels rather than the AI-looking colored line-card pattern.
 - **Honored `style: "straight"` in native ponchi diagrams.** Relationship-map connectors can now render as one clean segment instead of being forced into jagged elbow routes.
 - Prevented layout polish from shortening generated native schematic labels with ellipses, and fixed native table schematics duplicating the final row.
+- Added Message Map / SlideIntent review APIs plus CLI/MCP tools so each slide can be checked for one clear message, evidence, visual type, and emphasis before rendering.
+- Added Visual QA review APIs plus CLI/MCP tools to detect truncated text, inconsistent typography, and repeated AI-looking card patterns as a release gate.
 - Added regression tests for schematic accent-bar removal, straight native ponchi connectors, no-ellipsis native schematic labels, and native table row counts.
 
 ## v0.5.38 - 2026-06-27

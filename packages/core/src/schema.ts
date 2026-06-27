@@ -296,6 +296,7 @@ export const SlideVisualTypeSchema = z.enum([
   "contrast",
   "matrix",
   "flow",
+  "before-after",
   "step",
   "cycle",
   "map",
