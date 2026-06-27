@@ -383,6 +383,108 @@ describe("DeckSpec linting", () => {
     expect(report.ok).toBe(false);
   });
 
+  it("blocks repeated colored accent-bar cards that make generated slides look templated", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements = deck.slides[0].elements.slice(0, 3);
+    for (let index = 0; index < 4; index += 1) {
+      const x = 0.8 + index * 3;
+      deck.slides[0].elements.push(
+        {
+          id: `ai-card-${index}-box`,
+          type: "shape",
+          shape: "roundRect",
+          fill: "#ffffff",
+          x,
+          y: 2.1,
+          w: 2.5,
+          h: 1.35,
+          decorative: true,
+          readingOrder: 100 + index * 10
+        },
+        {
+          id: `ai-card-${index}-bar`,
+          type: "shape",
+          shape: "rect",
+          fill: ["#2563eb", "#059669", "#b91c1c", "#7c3aed"][index],
+          x: x + 0.08,
+          y: 2.24,
+          w: 0.12,
+          h: 1.05,
+          decorative: true,
+          readingOrder: 101 + index * 10
+        },
+        {
+          id: `ai-card-${index}-title`,
+          type: "text",
+          role: "callout",
+          text: `項目${index + 1}`,
+          x: x + 0.34,
+          y: 2.35,
+          w: 1.8,
+          h: 0.28,
+          fontSize: 15,
+          bold: true,
+          decorative: false,
+          readingOrder: 102 + index * 10
+        },
+        {
+          id: `ai-card-${index}-body`,
+          type: "text",
+          role: "body",
+          text: "短い説明を同じ形で並べる",
+          x: x + 0.34,
+          y: 2.78,
+          w: 1.8,
+          h: 0.36,
+          fontSize: 13,
+          decorative: false,
+          readingOrder: 103 + index * 10
+        }
+      );
+    }
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const issue = report.issues.find((item) => item.code === "visual.accent-bar-card-repetition");
+
+    expect(issue?.severity).toBe("error");
+    expect(issue?.message).toMatch(/accent bar/i);
+    expect(report.ok).toBe(false);
+  });
+
+  it("does not block a single accent-bar card used as the focal element", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push(
+      {
+        id: "focus-card-box",
+        type: "shape",
+        shape: "roundRect",
+        fill: "#ffffff",
+        x: 1,
+        y: 2,
+        w: 3,
+        h: 1.2,
+        decorative: true,
+        readingOrder: 300
+      },
+      {
+        id: "focus-card-bar",
+        type: "shape",
+        shape: "rect",
+        fill: "#2563eb",
+        x: 1.08,
+        y: 2.14,
+        w: 0.12,
+        h: 0.92,
+        decorative: true,
+        readingOrder: 301
+      }
+    );
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((item) => item.code === "visual.accent-bar-card-repetition")).toBe(false);
+  });
+
   it("does not flag generate_schematic output (arrow/-card id conventions) as hand-built connectors", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     // Mirror renderNativeSchematicDiagram's flow/step output: `<prefix>-...-card` node cards plus
