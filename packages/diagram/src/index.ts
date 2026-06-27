@@ -2473,12 +2473,6 @@ function nativeSchematicCard(
       decorative: true,
       altText: "generated native schematic shape",
       readingOrder: nextOrder()
-    }),
-    nativeShape(`${id}-accent`, "rect", { x: rect.x, y: rect.y, w: 0.08, h: rect.h }, {
-      fill: accent,
-      line: { color: accent, width: 0.1 },
-      decorative: true,
-      readingOrder: nextOrder()
     })
   ];
   if (options.badge) {
@@ -3341,9 +3335,9 @@ export function renderNativePonchiDiagram(
       color: "#475569",
       dashed: arrow.dashed,
       bidirectional: arrow.bidirectional,
-      orthogonal: true,
+      orthogonal: arrow.style === "orthogonal",
       label: arrow.label,
-      bypass: bypassFor(from, to, placedNodes, diagram.direction, canvasWidth, canvasHeight)
+      bypass: arrow.style === "orthogonal" ? bypassFor(from, to, placedNodes, diagram.direction, canvasWidth, canvasHeight) : undefined
     });
     const points = route.points.map((point) => transformPoint(point, origin, scale));
     for (let segmentIndex = 0; segmentIndex < points.length - 1; segmentIndex += 1) {

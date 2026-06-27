@@ -430,11 +430,11 @@ describe("native ponchi diagram rendering", () => {
     }
   });
 
-  it("routes straight native connectors as orthogonal segments to avoid diagonal flips", () => {
+  it("renders straight native connectors as a single segment", () => {
     const rendered = renderNativePonchiDiagram({
       title: "Straight connector",
-      summary: "Orthogonal native fallback",
-      longDescription: "Verifies that straight connectors with a negative slope are emitted as safe orthogonal native line segments.",
+      summary: "Straight native connector",
+      longDescription: "Verifies that straight connectors with a negative slope are emitted as one clean native line segment instead of a jagged elbow route.",
       nodes: [
         { id: "from", label: "From", x: 80, y: 320, w: 176, h: 92, kind: "system" },
         { id: "to", label: "To", x: 620, y: 120, w: 176, h: 92, kind: "system" }
@@ -445,8 +445,9 @@ describe("native ponchi diagram rendering", () => {
       (element) => element.type === "shape" && element.shape === "line" && element.id.startsWith("native-diagram-connector-")
     );
 
-    expect(connectorSegments.length).toBeGreaterThan(1);
-    expect(connectorSegments.every((segment) => segment.w <= 0.01 || segment.h <= 0.01)).toBe(true);
+    expect(connectorSegments).toHaveLength(1);
+    expect(connectorSegments[0]?.type === "shape" ? connectorSegments[0].w : 0).toBeGreaterThan(0.01);
+    expect(connectorSegments[0]?.type === "shape" ? connectorSegments[0].h : 0).toBeGreaterThan(0.01);
   });
 
   it("fits long connector labels against the actual native text box width", () => {
