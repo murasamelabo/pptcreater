@@ -731,6 +731,47 @@ describe("PPTX renderer", () => {
     expect(Object.keys(zip.files).some((name) => name.startsWith("ppt/notesMasters/"))).toBe(false);
   });
 
+  it("does not leak generated schematic provenance alt text into speaker notes", async () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push(
+      {
+        id: "generated-card",
+        type: "shape",
+        shape: "roundRect",
+        x: 0.8,
+        y: 2,
+        w: 2.4,
+        h: 1.1,
+        fill: "#ffffff",
+        decorative: true,
+        altText: "generated native schematic shape",
+        readingOrder: 300
+      },
+      {
+        id: "meaningful-icon",
+        type: "svg",
+        x: 4,
+        y: 2,
+        w: 1.2,
+        h: 1.2,
+        decorative: false,
+        altText: "Meaningful visual cue",
+        svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><circle cx="60" cy="60" r="48" fill="#2563eb"/></svg>',
+        readingOrder: 301
+      }
+    );
+
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-notes-alt-"));
+    const outputPath = join(outputDir, "notes-alt.pptx");
+    await renderDeckToPptx(deck, outputPath);
+
+    const zip = await JSZip.loadAsync(await readFile(outputPath));
+    const notes = (await zip.file("ppt/notesSlides/notesSlide1.xml")?.async("string")) ?? "";
+
+    expect(notes).toContain("Meaningful visual cue");
+    expect(notes).not.toContain("generated native schematic shape");
+  });
+
   it("transplants SmartArt graphicFrames and diagram parts from a template PPTX", async () => {
     const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-smartart-"));
     const sourceDataUri = `data:application/vnd.openxmlformats-officedocument.presentationml.presentation;base64,${(await buildSmartArtTemplatePptx()).toString("base64")}`;
