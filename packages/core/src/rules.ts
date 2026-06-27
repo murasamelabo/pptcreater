@@ -89,6 +89,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "本文スライドはテキストだけにしない。少なくともカード、アイコン、表、図解、フロー、ツリー、タイムライン、または Slideland 風 schematic パターンのいずれかを入れる。",
         "図解を別途作らない本文スライドには generate_visual_scaffold で右側に編集可能なコンセプトビジュアル(パネル＋アイコン/モノグラム＋見出し＋観点チップ)を付け、テキストのみ・低リッチネスを避ける。観点チップは短いフレーズ(目安24字以内)に絞る。",
         "色付きライン付きカードを3つ以上並べるだけの表現を避ける。カードは主役1つの強調に留め、比較は table/contrast、判断は matrix、流れは flow、全体像は map/ponchi-e に変換する。",
+        "公式画像・製品画面・現地写真・調査したイメージ図を使える場合は、visualType: image と visualAsset(altText/sourceId/citation/placement)で左右どちらかに画像、反対側にメッセージと根拠を置く。権利が不明な画像は貼らず、編集可能なイメージ図として再作成する。",
         "Enterprise Access Model、閉じた特権経路、左右比較など構図を外したくない概念図は generate_intent_diagram を使う。一般的なアーキテクチャ/セキュリティ/制御フロー/ポンチ絵は generate_native_diagram を使い、ローカルSVGを image.path として貼らない。",
         "プロセスや変化の表現は generate_intent_diagram のプリセットを使い分ける: 反復工程は lifecycle、段階的高度化は maturity-ladder、現状と目標の対比は before-after、中核機能と関連領域の関係は relationship-map。",
         "SVG図を使う場合も、可視ラベルを入れ、内部テキストが8pt未満にならないサイズで配置する。",
@@ -99,6 +100,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "Content slides must not be text-only. Include cards, icons, tables, diagrams, flows, trees, timelines, or Slideland-style schematic patterns.",
         "For content slides without a dedicated diagram, attach an editable right-rail concept visual (panel + icon/monogram + heading + aspect chips) via generate_visual_scaffold to avoid text-only/low-richness slides. Keep aspect chips to short phrases (~24 chars max).",
         "Do not build slides by repeating three or more colored accent-bar cards. Keep accent bars for at most one focal card; convert comparisons to table/contrast, decisions to matrix, processes to flow, and overviews to map/ponchi-e.",
+        "When an official image, product screenshot, field photo, or researched illustration is appropriate and rights are clear, use visualType: image with visualAsset (altText/sourceId/citation/placement): image on one side, message/evidence on the other. If rights are unclear, recreate the idea as an editable illustration instead of embedding the source image.",
         "Use generate_intent_diagram for concept diagrams where composition must not drift, such as Enterprise Access Model, closed privileged paths, or side-by-side comparisons. Use generate_native_diagram for general architecture/security/control-flow/ponchi-e diagrams; do not paste local SVG diagrams as image.path.",
         "Pick the right generate_intent_diagram preset for process/change stories: lifecycle for repeating cycles, maturity-ladder for staged improvement, before-after for current-vs-target contrast, and relationship-map for a hub function and its related domains.",
         "If SVG diagrams are used, include visible labels and place them large enough that internal text stays at least 8pt.",
@@ -124,11 +126,13 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
     ? [
         "外部URL・資料を使ったら metadata.sources に url と usage を記録する。",
         "出典図をそのまま引用するのは、正確性と利用権が明確な場合だけ。通常は編集可能な図として再作成する。",
+        "公式画像・写真・スクリーンショットを使う場合は visualAsset.sourceId / citation と metadata.sources を必ず対応させ、altText を入れる。引用ではなく参考利用なら、画像を貼らずに意味だけを図解として再構成する。",
         "参照URLは最終スライドへ集約されるため、DeckSpec 生成時点で sources を欠落させない。"
       ]
     : [
         "Record external URLs/documents in metadata.sources with url and usage.",
         "Quote source visuals only when exact fidelity and usage rights are clear; otherwise recreate them as editable visuals.",
+        "When using official images, photos, or screenshots, pair visualAsset.sourceId / citation with metadata.sources and provide altText. If the source is only inspiration, do not embed it; recreate the meaning as an editable diagram.",
         "References are collected on the final slide, so do not omit sources during DeckSpec creation."
       ];
 

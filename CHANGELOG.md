@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.5.42 - 2026-06-28
+
+- **Added side-image message slides.** `SlideIntent.visualAsset` now supports official images, screenshots, photos, or SVG illustrations with source/citation metadata; `visualType: "image"` renders a left/right image panel beside the message and evidence.
+- **Fixed icon/text overlap at the generator and QA level.** Flow-node icon placement no longer collides with step labels, and `review_visual_quality` now reports `visual.icon-text-overlap`.
+- **Updated slide creation rules for source visuals.** Rules now guide agents to use official images only when usage rights are clear, otherwise recreate the idea as an editable diagram, and always include `altText`, `sourceId`, and `citation`.
+- Added regression coverage for image-message layouts and SVG/text overlap detection.
+
 ## v0.5.41 - 2026-06-28
 
 - **Improved Message Map deck visuals.** Message-generated slides now include reusable inline SVG icons so decks are not limited to plain text, boxes, and lines.

@@ -120,4 +120,40 @@ describe("visual quality review", () => {
     expect(report.ok).toBe(false);
     expect(report.issues.map((issue) => issue.code)).toEqual(expect.arrayContaining(["visual.hub-map-diagonal-connector", "visual.message-slide-icon-missing"]));
   });
+
+  it("flags icons that overlap text", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements = [
+      {
+        id: "step-icon",
+        type: "svg",
+        x: 1,
+        y: 1,
+        w: 0.5,
+        h: 0.5,
+        svg: "<svg/>",
+        decorative: true,
+        readingOrder: 1
+      },
+      {
+        id: "step-label",
+        type: "text",
+        role: "caption",
+        text: "STEP 1",
+        x: 1.1,
+        y: 1.1,
+        w: 1,
+        h: 0.3,
+        fontSize: 12,
+        bold: false,
+        decorative: false,
+        readingOrder: 2
+      }
+    ];
+
+    const report = reviewVisualQuality(deck);
+
+    expect(report.ok).toBe(false);
+    expect(report.issues.map((issue) => issue.code)).toContain("visual.icon-text-overlap");
+  });
 });

@@ -46,6 +46,7 @@ import {
   formatSlideCreationRules,
   type BusinessStyleMode,
   type ContentMode,
+  type DeckSpec,
   type Locale,
   type StyleProfile,
   type TemplateRegistryEntry
@@ -62,6 +63,31 @@ async function readJson(path: string): Promise<unknown> {
 async function writeJson(path: string, value: unknown): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+type DeckSource = DeckSpec["metadata"]["sources"][number];
+
+function isDeckSource(value: unknown): value is DeckSource {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const candidate = value as { id?: unknown; title?: unknown; usage?: unknown; url?: unknown };
+  return (
+    typeof candidate.id === "string" &&
+    typeof candidate.title === "string" &&
+    (candidate.url === undefined || typeof candidate.url === "string") &&
+    (candidate.usage === "quote" || candidate.usage === "recreate" || candidate.usage === "inspiration")
+  );
+}
+
+function extractDeckSources(raw: unknown): DeckSpec["metadata"]["sources"] | undefined {
+  const container = raw as { sources?: unknown; metadata?: { sources?: unknown } };
+  const rawSources = Array.isArray(container.sources) ? container.sources : Array.isArray(container.metadata?.sources) ? container.metadata.sources : undefined;
+  if (!rawSources) {
+    return undefined;
+  }
+
+  return rawSources.filter(isDeckSource);
 }
 
 function templateEntryJson(entry: TemplateRegistryEntry): Record<string, unknown> {
@@ -291,6 +317,7 @@ program
     const raw = await readJson(messageMapPath);
     const container = raw as { messageMap?: unknown; metadata?: { messageMap?: unknown }; keywords?: unknown };
     const messageMap = DeckMessageMapSchema.parse(container.messageMap ?? container.metadata?.messageMap ?? raw);
+    const sources = extractDeckSources(raw);
     const keywords =
       Array.isArray(container.keywords) && container.keywords.every((value): value is string => typeof value === "string") ? container.keywords : undefined;
     const deck = createDeckFromMessageMap(messageMap, {
@@ -302,7 +329,8 @@ program
       author: options.author,
       includeCover: options.cover,
       includeClosing: options.closing,
-      keywords
+      keywords,
+      sources
     });
     await writeJson(options.output, deck);
     if (options.json) {

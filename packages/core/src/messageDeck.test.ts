@@ -162,4 +162,46 @@ describe("message map deck generator", () => {
     expect(textValues).not.toContain("病院型");
     expect(textValues).not.toContain("助産院型");
   });
+
+  it("renders image visualType as a side image plus message layout with source metadata", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "Show the official service context",
+        audience: "Residents",
+        desiredAction: "Confirm eligibility",
+        intents: [
+          {
+            slideId: "official-context",
+            title: "Official context",
+            message: "Use the official visual only when usage rights and source are clear.",
+            evidence: ["Official image", "Clear source", "Side-by-side explanation"],
+            quietInfo: [],
+            visualType: "image",
+            emphasis: "Official visual",
+            visualAsset: {
+              type: "svg",
+              svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80"><rect width="120" height="80" fill="#e0f2fe"/><circle cx="60" cy="40" r="18" fill="#0284c7"/></svg>',
+              altText: "Official service diagram",
+              placement: "right",
+              caption: "Source: official service page",
+              sourceId: "official-page",
+              citation: "Official page"
+            }
+          }
+        ]
+      },
+      {
+        title: "Official visual example",
+        locale: "en-US",
+        sources: [{ id: "official-page", title: "Official service page", url: "https://example.com/service", usage: "quote" }]
+      }
+    );
+
+    const slide = deck.slides.find((candidate) => candidate.id === "official-context");
+    expect(slide?.layout).toBe("message-image");
+    const visual = slide?.elements.find((element) => element.id === "official-context-visual-asset");
+    expect(visual).toMatchObject({ type: "svg", sourceId: "official-page", citation: "Official page", altText: "Official service diagram" });
+    expect(slide?.elements.some((element) => element.id === "official-context-copy-panel")).toBe(true);
+    expect(reviewVisualQuality(deck)).toEqual({ ok: true, issues: [] });
+  });
 });

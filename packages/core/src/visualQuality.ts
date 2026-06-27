@@ -1,4 +1,4 @@
-﻿import type { DeckSpec, ShapeElement, Slide, TextElement } from "./schema.js";
+﻿import type { DeckSpec, ShapeElement, Slide, SlideElement, TextElement } from "./schema.js";
 
 export type VisualQualityIssue = {
   severity: "error" | "warning" | "suggestion";
@@ -61,6 +61,16 @@ function hasIconOrImage(slide: Slide): boolean {
   return slide.elements.some((element) => element.type === "svg" || element.type === "image" || element.type === "diagram");
 }
 
+function overlapArea(a: SlideElement, b: SlideElement): number {
+  const x = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
+  const y = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+  return x * y;
+}
+
+function isGeneratedIcon(element: SlideElement): boolean {
+  return element.type === "svg" && (/icon/u.test(element.id) || (element.w <= 0.7 && element.h <= 0.7));
+}
+
 export function reviewVisualQuality(deck: DeckSpec): VisualQualityReport {
   const issues: VisualQualityIssue[] = [];
   deck.slides.forEach((slide, slideIndex) => {
@@ -114,6 +124,24 @@ export function reviewVisualQuality(deck: DeckSpec): VisualQualityReport {
           details: { w: Number(element.w.toFixed(3)), h: Number(element.h.toFixed(3)) }
         });
       }
+    });
+
+    const texts = slide.elements.filter((element): element is TextElement => element.type === "text");
+    const icons = slide.elements.filter(isGeneratedIcon);
+    icons.forEach((icon, iconIndex) => {
+      texts.forEach((textElement, textIndex) => {
+        const area = overlapArea(icon, textElement);
+        const iconArea = icon.w * icon.h;
+        if (iconArea > 0 && area / iconArea > 0.08) {
+          issues.push({
+            severity: "error",
+            code: "visual.icon-text-overlap",
+            message: "Icon/SVG element overlaps text. Move the icon into its own slot or reserve padding before rendering.",
+            path: `slides.${slideIndex}.elements.${slide.elements.indexOf(icon)}`,
+            details: { iconIndex, textIndex, overlapRatio: Number((area / iconArea).toFixed(2)) }
+          });
+        }
+      });
     });
 
     if ((slide.layout ?? "").startsWith("message-") && !hasIconOrImage(slide)) {

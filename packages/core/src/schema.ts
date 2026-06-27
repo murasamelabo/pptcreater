@@ -308,6 +308,36 @@ export const SlideVisualTypeSchema = z.enum([
   "cards"
 ]);
 
+export const SlideVisualAssetSchema = z
+  .object({
+    type: z.enum(["image", "svg"]).default("image"),
+    path: z.string().min(1).optional(),
+    dataUri: z.string().min(1).optional(),
+    svg: z.string().min(1).optional(),
+    altText: z.string().min(1),
+    placement: z.enum(["left", "right"]).default("left"),
+    caption: z.string().min(1).optional(),
+    sourceId: z.string().min(1).optional(),
+    citation: z.string().min(1).optional()
+  })
+  .superRefine((asset, context) => {
+    if (asset.type === "image" && !asset.path && !asset.dataUri) {
+      context.addIssue({
+        code: "custom",
+        message: "Image visualAsset requires path or dataUri.",
+        path: ["path"]
+      });
+    }
+
+    if (asset.type === "svg" && !asset.svg) {
+      context.addIssue({
+        code: "custom",
+        message: "SVG visualAsset requires svg.",
+        path: ["svg"]
+      });
+    }
+  });
+
 export const SlideIntentSchema = z.object({
   slideId: z.string().min(1),
   title: z.string().min(1),
@@ -315,7 +345,8 @@ export const SlideIntentSchema = z.object({
   evidence: z.array(z.string().min(1)).default([]),
   visualType: SlideVisualTypeSchema,
   emphasis: z.string().min(1).optional(),
-  quietInfo: z.array(z.string().min(1)).default([])
+  quietInfo: z.array(z.string().min(1)).default([]),
+  visualAsset: SlideVisualAssetSchema.optional()
 });
 
 export const DeckMessageMapSchema = z.object({
@@ -378,6 +409,7 @@ export type DeckSpec = z.infer<typeof DeckSpecSchema>;
 export type SlideVisualType = z.infer<typeof SlideVisualTypeSchema>;
 export type SlideIntent = z.infer<typeof SlideIntentSchema>;
 export type DeckMessageMap = z.infer<typeof DeckMessageMapSchema>;
+export type SlideVisualAsset = z.infer<typeof SlideVisualAssetSchema>;
 
 export function slideCraftSkillPackForLocale(locale: Locale): string {
   return locale === "ja-JP" ? "slide-craft-ja" : "slide-craft-en";

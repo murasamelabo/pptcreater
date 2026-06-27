@@ -279,7 +279,7 @@ async function assertSafeLocalImagePaths(deck: DeckSpec): Promise<void> {
 export function createPptcreaterMcpServer(): McpServer {
   const server = new McpServer({
     name: "pptcreater",
-    version: "0.5.41"
+    version: "0.5.42"
   });
   const createPowerPointInputSchema = {
     locale: z.enum(["ja-JP", "en-US"]).default("ja-JP"),
@@ -311,6 +311,16 @@ export function createPptcreaterMcpServer(): McpServer {
     customerFacing: z.boolean().default(false),
     importantMeeting: z.boolean().default(false)
   };
+  const sourceInputSchema = z.array(
+    z.object({
+      id: z.string().min(1),
+      title: z.string().min(1),
+      url: z.string().url().optional(),
+      usage: z.enum(["quote", "recreate", "inspiration"]),
+      attribution: z.string().optional(),
+      notes: z.string().optional()
+    })
+  );
   const createPowerPoint = async ({
     locale,
     purpose,
@@ -391,11 +401,12 @@ export function createPptcreaterMcpServer(): McpServer {
         styleProfile: z.enum(STYLE_PROFILES).optional(),
         template: z.string().optional(),
         author: z.string().optional(),
+        sources: sourceInputSchema.optional(),
         includeCover: z.boolean().default(true),
         includeClosing: z.boolean().default(true)
       }
     },
-    async ({ title, messageMap, locale, contentMode, styleProfile, template, author, includeCover, includeClosing }) =>
+    async ({ title, messageMap, locale, contentMode, styleProfile, template, author, sources, includeCover, includeClosing }) =>
       jsonText(
         createDeckFromMessageMap(messageMap, {
           title,
@@ -404,6 +415,7 @@ export function createPptcreaterMcpServer(): McpServer {
           styleProfile,
           template,
           author,
+          sources,
           includeCover,
           includeClosing
         })

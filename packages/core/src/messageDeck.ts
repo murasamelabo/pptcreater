@@ -10,6 +10,7 @@ import type {
   Slide,
   SlideElement,
   SlideIntent,
+  SlideVisualAsset,
   SvgElement,
   TextElement
 } from "./schema.js";
@@ -26,6 +27,7 @@ export const MESSAGE_DECK_ARCHETYPES = [
   "table",
   "matrix",
   "hub-map",
+  "image-message",
   "steps"
 ] as const;
 
@@ -266,13 +268,77 @@ function iconForEvidence(value: string, index: number): IconKey {
   return (["check", "heart", "spark", "route"] as const)[index % 4];
 }
 
+function illustrationSvg(theme: Theme, intent: SlideIntent): string {
+  const iconKey = iconForEvidence([intent.title, intent.message, intent.emphasis, ...intent.evidence].filter(Boolean).join(" "), 0);
+  const path = ICON_PATHS[iconKey];
+  return [
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" role="img">',
+    `<rect width="960" height="640" rx="36" fill="${theme.accentSoft}"/>`,
+    `<circle cx="230" cy="190" r="92" fill="${theme.surface}" stroke="${theme.line}" stroke-width="4"/>`,
+    `<circle cx="730" cy="430" r="120" fill="${theme.accent}" opacity="0.16"/>`,
+    `<rect x="270" y="300" width="420" height="180" rx="32" fill="${theme.surface}" stroke="${theme.line}" stroke-width="4"/>`,
+    `<g transform="translate(430 250) scale(8)" fill="none" stroke="${theme.accent}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${path}</g>`,
+    `<path d="M170 476 C260 384, 340 548, 460 454 S680 370, 790 468" fill="none" stroke="${theme.accent}" stroke-width="8" opacity="0.5"/>`,
+    "</svg>"
+  ].join("");
+}
+
+function visualAssetElement(
+  asset: SlideVisualAsset | undefined,
+  theme: Theme,
+  intent: SlideIntent,
+  id: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  readingOrder: number
+): SlideElement {
+  if (asset?.type === "image" && (asset.path || asset.dataUri)) {
+    return {
+      id,
+      type: "image",
+      x,
+      y,
+      w,
+      h,
+      readingOrder,
+      decorative: false,
+      altText: asset.altText,
+      path: asset.path,
+      dataUri: asset.dataUri,
+      sourceId: asset.sourceId,
+      citation: asset.citation,
+      description: asset.caption
+    };
+  }
+
+  return {
+    id,
+    type: "svg",
+    x,
+    y,
+    w,
+    h,
+    readingOrder,
+    decorative: false,
+    altText: asset?.altText ?? `${intent.title} illustration`,
+    sourceId: asset?.sourceId,
+    citation: asset?.citation,
+    title: asset?.caption ?? intent.title,
+    description: asset?.caption ?? intent.message,
+    svg: asset?.svg ?? illustrationSvg(theme, intent)
+  };
+}
+
 function slideShell(theme: Theme, intent: SlideIntent, elements: SlideElement[], archetype: MessageDeckArchetype, index: number): Slide {
   const id = intent.slideId;
   const title = slideTopicTitle(intent);
+  const layout = archetype === "image-message" ? "message-image" : `message-${archetype}`;
   return {
     id,
     title,
-    layout: `message-${archetype}`,
+    layout,
     background: { color: theme.background },
     speakerNotes: [
       `Message: ${intent.message}`,
@@ -323,8 +389,8 @@ function statementVisual(theme: Theme, intent: SlideIntent, id: string): SlideEl
   const items = evidenceItems(intent, 3).slice(0, 3);
   const elements: SlideElement[] = [
     shape(`${id}-statement-panel`, "roundRect", 0.82, 2.05, 5.55, 3.98, 10, theme.accentSoft, theme.line, { radius: 0.18 }),
-    icon(`${id}-statement-icon`, iconForEvidence(intent.emphasis ?? intent.message, 0), 1.16, 2.2, 0.54, 10, theme, { color: theme.accent, decorative: true }),
-    text(`${id}-statement-focus`, "callout", intent.emphasis ?? intent.message, 1.16, 2.55, 4.85, 0.72, 11, theme, {
+    icon(`${id}-statement-icon`, iconForEvidence(intent.emphasis ?? intent.message, 0), 1.16, 2.48, 0.54, 10, theme, { color: theme.accent, decorative: true }),
+    text(`${id}-statement-focus`, "callout", intent.emphasis ?? intent.message, 1.88, 2.55, 4.13, 0.72, 11, theme, {
       bg: theme.accentSoft,
       color: theme.accent,
       fontSize: 24
@@ -353,26 +419,26 @@ function flowVisual(theme: Theme, intent: SlideIntent, id: string): SlideElement
   items.forEach((item, index) => {
     const x = startX + index * (nodeW + gap);
     const order = 10 + index * 5;
-    elements.push(shape(`${id}-flow-node-${index}`, "roundRect", x, 3.0, nodeW, 1.2, order, index === 0 ? theme.accent : theme.surface, index === 0 ? theme.accent : theme.line, { radius: 0.2 }));
-    elements.push(icon(`${id}-flow-icon-${index}`, iconForEvidence(item, index), x + nodeW / 2 - 0.17, 3.08, 0.34, order + 1, theme, {
+    elements.push(shape(`${id}-flow-node-${index}`, "roundRect", x, 2.9, nodeW, 1.42, order, index === 0 ? theme.accent : theme.surface, index === 0 ? theme.accent : theme.line, { radius: 0.2 }));
+    elements.push(icon(`${id}-flow-icon-${index}`, iconForEvidence(item, index), x + nodeW / 2 - 0.17, 3.05, 0.34, order + 1, theme, {
       color: index === 0 ? theme.inkOnAccent : theme.accent,
       decorative: true
     }));
-    elements.push(text(`${id}-flow-label-${index}`, "caption", `STEP ${index + 1}`, x + 0.2, 3.15, nodeW - 0.4, 0.22, order + 2, theme, {
+    elements.push(text(`${id}-flow-label-${index}`, "caption", `STEP ${index + 1}`, x + 0.2, 3.46, nodeW - 0.4, 0.2, order + 2, theme, {
       color: index === 0 ? theme.inkOnAccent : theme.accent,
       bg: index === 0 ? theme.accent : theme.surface,
       fontSize: 12,
       bold: true,
       align: "center"
     }));
-    elements.push(text(`${id}-flow-text-${index}`, "body", item, x + 0.22, 3.55, nodeW - 0.44, 0.38, order + 3, theme, {
+    elements.push(text(`${id}-flow-text-${index}`, "body", item, x + 0.22, 3.75, nodeW - 0.44, 0.34, order + 3, theme, {
       color: index === 0 ? theme.inkOnAccent : theme.text,
       bg: index === 0 ? theme.accent : theme.surface,
       fontSize: 17,
       align: "center"
     }));
     if (index < items.length - 1) {
-      elements.push(shape(`${id}-flow-connector-${index}`, "line", x + nodeW + 0.12, 3.6, gap - 0.24, 0, order + 4, "none", theme.accent, { width: 1.4, endArrow: true }));
+      elements.push(shape(`${id}-flow-connector-${index}`, "line", x + nodeW + 0.12, 3.62, gap - 0.24, 0, order + 4, "none", theme.accent, { width: 1.4, endArrow: true }));
     }
   });
   return elements;
@@ -388,12 +454,53 @@ function contrastVisual(theme: Theme, intent: SlideIntent, id: string, afterLabe
     shape(`${id}-bridge`, "rightArrow", 5.95, 3.46, 1.32, 0.64, 30, theme.accent, theme.accent, { radius: 0.04 }),
     icon(`${id}-left-icon`, iconForEvidence(left[0] ?? "left", 0), 1.18, 2.14, 0.46, 10, theme, { color: theme.accent, decorative: true }),
     icon(`${id}-right-icon`, iconForEvidence(right[0] ?? "right", 1), 8.1, 2.14, 0.46, 20, theme, { color: theme.accent, decorative: true }),
-    text(`${id}-left-title`, "callout", left[0] ?? "Before", 1.18, 2.42, 4.05, 0.42, 11, theme, { bg: theme.surface, fontSize: 21, color: theme.text }),
+    text(`${id}-left-title`, "callout", left[0] ?? "Before", 1.78, 2.42, 3.45, 0.42, 11, theme, { bg: theme.surface, fontSize: 21, color: theme.text }),
     text(`${id}-left-body`, "body", left[1] ?? intent.message, 1.18, 3.18, 4.05, 1.4, 12, theme, { bg: theme.surface, fontSize: 19, color: theme.mutedText }),
     text(`${id}-bridge-text`, "caption", afterLabel, 6.15, 3.63, 0.9, 0.22, 31, theme, { bg: theme.accent, color: theme.inkOnAccent, align: "center", fontSize: 12 }),
-    text(`${id}-right-title`, "callout", right[0] ?? intent.emphasis ?? "After", 8.1, 2.42, 4.05, 0.42, 21, theme, { bg: theme.accentSoft, fontSize: 21, color: theme.accent }),
+    text(`${id}-right-title`, "callout", right[0] ?? intent.emphasis ?? "After", 8.7, 2.42, 3.45, 0.42, 21, theme, { bg: theme.accentSoft, fontSize: 21, color: theme.accent }),
     text(`${id}-right-body`, "body", right[1] ?? intent.message, 8.1, 3.18, 4.05, 1.4, 22, theme, { bg: theme.accentSoft, fontSize: 19, color: theme.text })
   ];
+}
+
+function imageMessageVisual(theme: Theme, intent: SlideIntent, id: string): SlideElement[] {
+  const placement = intent.visualAsset?.placement ?? "left";
+  const imageFrame = placement === "right" ? { x: 7.05, y: 1.92, w: 5.35, h: 4.82 } : { x: 0.86, y: 1.92, w: 5.35, h: 4.82 };
+  const copyFrame = placement === "right" ? { x: 0.92, y: 2.08, w: 5.55, h: 4.35 } : { x: 6.65, y: 2.08, w: 5.55, h: 4.35 };
+  const items = evidenceItems(intent, 3).slice(0, 4);
+  const elements: SlideElement[] = [
+    shape(`${id}-image-backdrop`, "roundRect", imageFrame.x, imageFrame.y, imageFrame.w, imageFrame.h, 10, theme.accentSoft, theme.line, { radius: 0.22 }),
+    visualAssetElement(intent.visualAsset, theme, intent, `${id}-visual-asset`, imageFrame.x + 0.22, imageFrame.y + 0.22, imageFrame.w - 0.44, imageFrame.h - 0.72, 11),
+    shape(`${id}-copy-panel`, "roundRect", copyFrame.x, copyFrame.y, copyFrame.w, copyFrame.h, 20, theme.surface, theme.line, { radius: 0.2 }),
+    icon(`${id}-copy-icon`, iconForEvidence(intent.emphasis ?? intent.message, 0), copyFrame.x + 0.38, copyFrame.y + 0.36, 0.52, 21, theme, {
+      color: theme.accent,
+      decorative: true
+    }),
+    text(`${id}-copy-heading`, "callout", intent.emphasis ?? intent.title, copyFrame.x + 1.08, copyFrame.y + 0.43, copyFrame.w - 1.55, 0.38, 22, theme, {
+      bg: theme.surface,
+      color: theme.accent,
+      fontSize: 22
+    }),
+    text(`${id}-copy-message`, "body", intent.message, copyFrame.x + 0.42, copyFrame.y + 1.12, copyFrame.w - 0.84, 0.8, 23, theme, {
+      bg: theme.surface,
+      color: theme.text,
+      fontSize: 19
+    })
+  ];
+  if (intent.visualAsset?.caption) {
+    elements.push(
+      text(`${id}-image-caption`, "caption", intent.visualAsset.caption, imageFrame.x + 0.36, imageFrame.y + imageFrame.h - 0.38, imageFrame.w - 0.72, 0.18, 12, theme, {
+        bg: theme.accentSoft,
+        color: theme.mutedText,
+        fontSize: 12
+      })
+    );
+  }
+  items.forEach((item, index) => {
+    const y = copyFrame.y + 2.2 + index * 0.52;
+    elements.push(icon(`${id}-copy-item-icon-${index}`, iconForEvidence(item, index), copyFrame.x + 0.5, y + 0.02, 0.24, 30 + index * 3, theme, { color: theme.accent, decorative: true }));
+    elements.push(text(`${id}-copy-item-${index}`, "caption", item, copyFrame.x + 0.88, y, copyFrame.w - 1.25, 0.24, 31 + index * 3, theme, { bg: theme.surface, fontSize: 13, color: theme.text }));
+  });
+  return elements;
 }
 
 function tableVisual(theme: Theme, intent: SlideIntent, id: string): SlideElement[] {
@@ -522,7 +629,7 @@ function stepsVisual(theme: Theme, intent: SlideIntent, id: string): SlideElemen
   const elements: SlideElement[] = [
     shape(`${id}-rail`, "roundRect", 0.88, 2.0, 3.45, 4.6, 10, theme.accent, theme.accent, { radius: 0.18 }),
     icon(`${id}-rail-icon`, "clipboard", 1.18, 2.18, 0.52, 10, theme, { color: theme.inkOnAccent, decorative: true }),
-    text(`${id}-rail-title`, "callout", intent.emphasis ?? "実行順", 1.18, 2.45, 2.85, 0.45, 11, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 22 }),
+    text(`${id}-rail-title`, "callout", intent.emphasis ?? "実行順", 1.86, 2.45, 2.05, 0.45, 11, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 22 }),
     text(`${id}-rail-body`, "body", intent.emphasis ?? intent.message, 1.18, 3.25, 2.85, 1.4, 12, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 18 })
   ];
   items.forEach((item, index) => {
@@ -554,11 +661,12 @@ export function archetypeForIntent(intent: SlideIntent): MessageDeckArchetype {
     case "ponchi-e":
     case "native-diagram":
       return "hub-map";
+    case "image":
+      return "image-message";
     case "summary":
     case "cards":
     case "visual-scaffold":
     case "detail":
-    case "image":
     case "cycle":
     case "section":
     default:
@@ -582,6 +690,8 @@ function visualForIntent(theme: Theme, intent: SlideIntent, locale: Locale): [Me
       return [archetype, matrixVisual(theme, intent, id)];
     case "hub-map":
       return [archetype, hubMapVisual(theme, intent, id, locale)];
+    case "image-message":
+      return [archetype, imageMessageVisual(theme, intent, id)];
     case "steps":
       return [archetype, stepsVisual(theme, intent, id)];
     case "statement":
