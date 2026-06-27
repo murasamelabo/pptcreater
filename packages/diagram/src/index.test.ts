@@ -331,6 +331,22 @@ describe("native ponchi diagram rendering", () => {
     }
   });
 
+  it("respects straight connector style for native ponchi diagrams", () => {
+    const rendered = renderNativePonchiDiagram({
+      title: "Straight relationship",
+      summary: "Straight connector",
+      longDescription: "Verifies that straight connector style is honored so relationship maps do not become jagged elbow routes.",
+      nodes: [
+        { id: "a", label: "A", x: 40, y: 40, w: 160, h: 80, kind: "system" },
+        { id: "b", label: "B", x: 520, y: 280, w: 160, h: 80, kind: "system" }
+      ],
+      arrows: [{ from: "a", to: "b", style: "straight" }]
+    });
+    const connectorSegments = rendered.elements.filter((element) => element.id.startsWith("native-diagram-connector-"));
+
+    expect(connectorSegments).toHaveLength(1);
+  });
+
   it("keeps native node labels below the accent/marker band", () => {
     const rendered = renderNativePonchiDiagram({
       title: "Readable node labels",
@@ -671,6 +687,47 @@ describe("schematic diagram rendering", () => {
       expect(JSON.stringify(rendered)).not.toContain("\"type\":\"image\"");
       expect(rendered.elements.every((element) => element.w > 0 && element.h >= 0)).toBe(true);
     }
+  });
+
+  it("does not render native schematic cards with repeated vertical accent bars", () => {
+    const rendered = renderNativeSchematicDiagram(
+      {
+        kind: "flow",
+        title: "Flow without accent bars",
+        summary: "No repeated accent-bar cards",
+        longDescription: "Verifies that generated schematic cards do not use the AI-looking repeated colored vertical accent-bar card style.",
+        items: ["目的", "申請", "確認", "予約"],
+        tone: "minimal"
+      },
+      { frame: { x: 0.5, y: 1.5, w: 12.2, h: 5.7 }, idPrefix: "no-accent-bars" }
+    );
+    const verticalAccentBars = rendered.elements.filter(
+      (element) =>
+        element.type === "shape" &&
+        element.shape === "rect" &&
+        /-accent$/u.test(element.id) &&
+        element.w <= 0.12 &&
+        element.h >= 0.5
+    );
+
+    expect(verticalAccentBars).toEqual([]);
+  });
+
+  it("does not truncate native schematic labels with ellipsis", () => {
+    const rendered = renderNativeSchematicDiagram(
+      {
+        kind: "list-horizontal",
+        title: "Long labels",
+        summary: "No truncation",
+        longDescription: "Verifies that native schematic text fitting wraps or resizes labels instead of silently replacing content with ellipsis.",
+        items: ["対象月齢と自治体要件", "母子同室または別室", "ミルクおむつ追加費用", "キャンセル料と持ち物"],
+        tone: "minimal"
+      },
+      { frame: { x: 0.5, y: 1.5, w: 12.2, h: 5.7 }, idPrefix: "no-ellipsis" }
+    );
+    const text = rendered.elements.filter((element) => element.type === "text").map((element) => element.text).join("\n");
+
+    expect(text).not.toContain("…");
   });
 
   it("emits valid DeckSpec elements for native table schematics without secondary items", () => {
