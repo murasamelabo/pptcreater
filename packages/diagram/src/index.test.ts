@@ -810,7 +810,7 @@ describe("schematic diagram rendering", () => {
       tone: "minimal"
     });
     const leftRows = rendered.elements
-      .filter((element) => element.type === "text" && /table-l-\d+$/u.test(element.id))
+      .filter((element): element is Extract<typeof element, { type: "text" }> => element.type === "text" && /table-l-\d+$/u.test(element.id))
       .map((element) => element.text);
 
     expect(leftRows).toEqual(["A病院", "B助産院"]);

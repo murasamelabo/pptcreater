@@ -1,6 +1,6 @@
 ﻿{
   "name": "@pptcreater/diagram",
-  "version": "0.5.38",
+  "version": "0.5.39",
   "type": "module",
   "engines": {
     "node": ">=22.12.0",

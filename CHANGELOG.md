@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.5.39 - 2026-06-27
+
+- **Removed repeated vertical accent bars from generated native schematic cards.** Native schematic cards now use neutral surfaces and badges/labels rather than the AI-looking colored line-card pattern.
+- **Honored `style: "straight"` in native ponchi diagrams.** Relationship-map connectors can now render as one clean segment instead of being forced into jagged elbow routes.
+- Prevented layout polish from shortening generated native schematic labels with ellipses, and fixed native table schematics duplicating the final row.
+- Added regression tests for schematic accent-bar removal, straight native ponchi connectors, no-ellipsis native schematic labels, and native table row counts.
+
 ## v0.5.38 - 2026-06-27
 
 - **Blocked AI-looking repeated accent-bar card grids.** `lintDeckSpec` now raises `visual.accent-bar-card-repetition` when a slide repeats three or more colored vertical accent-bar cards, steering authors away from the common generated-slide look.

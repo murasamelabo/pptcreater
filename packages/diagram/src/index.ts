@@ -2452,6 +2452,7 @@ function nativeSchematicText(
     align: options.align ?? "center",
     valign: "middle",
     role: options.role ?? "caption",
+    altText: "generated native schematic text",
     readingOrder: nextOrder()
   });
 }
@@ -2625,7 +2626,7 @@ function renderNativeSchematicCards(
   const area = { x: frame.x + 0.32, y: frame.y + 0.38, w: frame.w - 0.64, h: frame.h - 0.76 };
 
   if (kind === "table") {
-    const rows = Math.min(Math.max(items.length, secondary.length), 6);
+    const rows = Math.min(Math.max(items.length - 1, secondary.length - 1, 0), 6);
     const rowH = Math.min(0.62, area.h / Math.max(rows + 1, 1));
     const colW = area.w / 2;
     elements.push(nativeShape(`${idPrefix}-table-head`, "roundRect", { x: area.x, y: area.y, w: area.w, h: rowH }, { fill: "#DBEAFE", line: { color: "#93C5FD", width: 1 }, radius: 0.08, decorative: true, readingOrder: nextOrder() }));

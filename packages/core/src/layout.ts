@@ -104,7 +104,7 @@ function textMinimumFontSize(element: TextElement): number {
   }
 
   if (element.role === "caption") {
-    if (isGeneratedDiagramIntentText(element)) {
+    if (isGeneratedDiagramText(element)) {
       return 8.5;
     }
 
@@ -120,6 +120,14 @@ function isGeneratedDiagramIntentText(element: TextElement): boolean {
   return /^diagram-intent-/u.test(element.id) || element.altText === "generated diagram intent text";
 }
 
+function isGeneratedNativeSchematicText(element: TextElement): boolean {
+  return element.altText === "generated native schematic text";
+}
+
+function isGeneratedDiagramText(element: TextElement): boolean {
+  return isGeneratedDiagramIntentText(element) || isGeneratedNativeSchematicText(element);
+}
+
 export function textReadableMinimumFontSize(element: TextElement): number {
   if (element.role === "title") {
     return 24;
@@ -130,7 +138,7 @@ export function textReadableMinimumFontSize(element: TextElement): number {
   }
 
   if (element.role === "caption") {
-    if (isGeneratedDiagramIntentText(element)) {
+    if (isGeneratedDiagramText(element)) {
       return 8.5;
     }
 
@@ -727,7 +735,7 @@ function fitTextElement(element: TextElement, tokens: DesignTokens, options: { s
 
     if (fontSize <= minimumFontSize) {
       const text = result.text;
-      const shouldShorten = next.role === "caption" && !isGeneratedDiagramIntentText(next);
+      const shouldShorten = next.role === "caption" && !isGeneratedDiagramText(next);
       next = {
         ...next,
         text: shouldShorten && options.shortenAtMinimum ? shortenTextToFit({ ...next, text }, fontSize) : isPreformattedText(text) ? text : enforceLineWidths(text, next.w, fontSize)
