@@ -50,6 +50,31 @@ describe("layout polish", () => {
     expect(polishedText?.h).toBeGreaterThanOrEqual(0.2);
   });
 
+  it("does not shorten generated native schematic text with ellipsis during polish", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "schematic-label",
+      type: "text",
+      role: "caption",
+      text: "市助成を申請",
+      x: 10.8,
+      y: 2.4,
+      w: 0.75,
+      h: 0.24,
+      fontSize: 12,
+      bold: true,
+      decorative: false,
+      altText: "generated native schematic text",
+      readingOrder: 50
+    });
+
+    const polished = normalizeDeckLayout(deck);
+    const label = polished.slides[0].elements.find((element) => element.id === "schematic-label");
+
+    expect(label?.type === "text" ? label.text : "").not.toContain("…");
+    expect(label?.type === "text" ? label.text : "").toContain("市助成");
+  });
+
   it("wraps Japanese title text into balanced lines", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     const title = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
