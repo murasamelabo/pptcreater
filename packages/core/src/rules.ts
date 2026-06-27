@@ -31,8 +31,10 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "最初にこの get_slide_creation_rules / pptcreater rules の内容を読み、以後の DeckSpec 生成制約として扱う。",
         "目的・聴衆・contentMode・枚数・出典・使うテンプレート/ブランドが曖昧なら、DeckSpec を書く前に確認または合理的に仮定する。",
         "DeckSpecを書く前にMessage Map / SlideIntentを作り、各スライドのmessage・evidence・visualType・emphasisを決める。メッセージが曖昧ならヒアリングしてから進める。",
+        "PDF知見: いきなりPowerPointを立ち上げない。先に「聴き手に何を納得/行動してもらうか」「贈り物として何を渡すか」を紙・メモ・Message Mapで決める。",
         "経営向け・顧客向け・重要会議・コンサル風資料では plan_business_deck を先に実行し、章構成と各スライドの役割を決める。",
         "search_templates / recommend_template で template を決め、search_assets で既存アイコン・クラウドプリセットを先に探す。",
+        "PDF知見: 先人に学ぶ。ゼロから自由配置で発明せず、既存テンプレート、schematic、intent diagram、side-image など近い型を選んでから内容を当てはめる。",
         "意図した構図・粒度がある図解は generate_intent_diagram を先に使い、それ以外は list_schematic_presets で型を選んで generate_schematic、または generate_native_diagram でテキスト・カード・矢印・ラベルを編集可能な形で作る。",
         "DeckSpec 作成後は finalize_deck（または CLI `pptcreater finalize <deck.json> --output <deck.pptx>`）で polish→lint→render を1回でまとめて実行する。改行・はみ出し・小さすぎる文字・読み上げ順などの polishFixable 項目は polish が自動修正するので手作業で直さない。blockingErrors（本当に直すべき項目）だけを修正して再実行する。lint/polish/render を別々に何度も呼ぶ非効率なループは避ける。"
       ]
@@ -40,8 +42,10 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "Read these get_slide_creation_rules / pptcreater rules first and treat them as constraints for the DeckSpec you are about to write.",
         "If purpose, audience, contentMode, slide count, sources, template, or brand constraints are unclear, clarify or make explicit assumptions before writing DeckSpec.",
         "Before writing DeckSpec, create a Message Map / SlideIntent set that defines message, evidence, visualType, and emphasis for each slide. If the message is unclear, interview first.",
+        "PDF-derived rule: do not open PowerPoint first. Decide what the audience should understand/do and what 'gift' the slide gives them using paper, notes, or Message Map before layout.",
         "For executive, customer-facing, important-meeting, or consulting-style decks, run plan_business_deck first to define sections and slide roles.",
         "Choose the template through search_templates / recommend_template, and search_assets before creating new icons or cloud pictograms.",
+        "PDF-derived rule: learn from predecessors. Do not invent freeform layouts from scratch; choose the nearest existing template, schematic, intent diagram, or side-image pattern, then adapt content.",
         "Use generate_intent_diagram first when a diagram has a known intended composition/granularity; otherwise call list_schematic_presets and use generate_schematic, or use generate_native_diagram so diagrams, cards, arrows, and labels remain editable.",
         "After DeckSpec creation, run finalize_deck (or CLI `pptcreater finalize <deck.json> --output <deck.pptx>`) to polish, lint, and render in a single pass. polishFixable items (line breaks, overflow, too-small text, reading order) are auto-resolved by polish — do not hand-edit them; fix only the blockingErrors and re-run. Avoid the slow loop of calling lint, polish, and render separately and repeatedly."
       ];
@@ -49,6 +53,10 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
   const hardRules = locale === "ja-JP"
     ? [
         "1スライド1メッセージ。複数論点・複数判断・複数フローを1枚に詰め込まない。",
+        "主役は作り手ではなく聴き手。自分が話したい順ではなく、相手が納得し行動しやすい順に並べる。",
+        "スライドはメッセージを伝える手段であり目的ではない。キー・メッセージ・図表の3要素を先に分ける。",
+        "主役を強める前に脇役を弱める。不要な線、濃い枠、過剰な色、巨大な矢印、装飾アイコンを減らして、残す主役を明確にする。",
+        "文字を減らすこと自体を目的にしない。必要な文字は残し、意味のかたまり・見出し・図表で読める構造にする。",
         contentGuidance.titleModel,
         contentGuidance.messageModel,
         contentGuidance.bodyModel,
@@ -58,6 +66,10 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
       ]
     : [
         "One slide, one message. Do not combine multiple arguments, decisions, or flows on one slide.",
+        "The audience is the protagonist. Order content by what helps them understand, agree, and act — not by the author's thinking order.",
+        "Slides are a means to convey a message, not the goal. Separate key point, message, and visual/table before designing.",
+        "Before strengthening the hero, weaken supporting elements: remove unnecessary lines, heavy borders, excessive color, oversized arrows, and decorative icons.",
+        "Do not make text reduction the goal. Keep necessary words, but organize them into semantic chunks, headings, and visuals/tables.",
         contentGuidance.titleModel,
         contentGuidance.messageModel,
         contentGuidance.bodyModel,
@@ -69,6 +81,9 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
   const layoutRules = locale === "ja-JP"
     ? [
         "まずレイアウト枠を決めてから要素を置く。タイトル帯、メッセージ帯、本文/図解エリア、注釈エリアを重ねない。",
+        "PDF知見: レイアウトは思考を映す鏡。行き当たりばったりで要素を置かず、タテ・ヨコの軸、視線の流れ、意味のかたまりを先に決める。",
+        "余白は余った白ではなく設計要素。スライド端まで詰めず、主役以外を弱めることでメッセージを際立たせる。",
+        "横書きスライドでは左上から右へ、次に下へ向かう視線のストーリーを意識する。Z型/横方向の流れに沿わない配置は、見出し・番号・矢印・余白で順路を明示する。",
         "6枚を超えるデッキでは、主要な章の冒頭に generate_section_divider で扉スライド(layout: section)を挿入し、章の切り替えを明示する。扉スライドは視覚リッチネス判定の対象外。",
         "タイトルは原則30pt以上、リード/メッセージは18pt以上、本文は14pt以上、ラベル/注釈は12pt以上を目安にする。",
         "テキストボックスは最初から十分な幅・高さを取る。短い高さの横長カードに長文を入れない。",
@@ -77,6 +92,9 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
       ]
     : [
         "Decide the layout frame before placing elements: title band, message band, body/visual area, and notes must not overlap.",
+        "PDF-derived rule: layout mirrors thinking. Do not place objects ad hoc; decide vertical/horizontal axes, eye flow, and semantic chunks first.",
+        "Whitespace is a designed element, not leftover space. Avoid edge-to-edge clutter and weaken supporting elements so the message stands out.",
+        "For horizontal slides, plan the eye-flow story from upper-left to right, then downward. If the layout breaks the Z/left-to-right flow, clarify the route with headings, numbers, arrows, or whitespace.",
         "For decks longer than six slides, insert section divider slides (layout 'section') via generate_section_divider at the start of each major section to signal chapter changes; divider slides are exempt from the visual-richness gate.",
         "Use roughly >=30pt titles, >=18pt leads/messages, >=14pt body text, and >=12pt labels/notes.",
         "Allocate enough width and height up front. Do not put long copy into shallow horizontal cards.",
@@ -92,9 +110,14 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "公式画像・製品画面・現地写真・調査したイメージ図を使える場合は、visualType: image と visualAsset(altText/sourceId/citation/placement)で左右どちらかに画像、反対側にメッセージと根拠を置く。権利が不明な画像は貼らず、編集可能なイメージ図として再作成する。",
         "Enterprise Access Model、閉じた特権経路、左右比較など構図を外したくない概念図は generate_intent_diagram を使う。一般的なアーキテクチャ/セキュリティ/制御フロー/ポンチ絵は generate_native_diagram を使い、ローカルSVGを image.path として貼らない。",
         "プロセスや変化の表現は generate_intent_diagram のプリセットを使い分ける: 反復工程は lifecycle、段階的高度化は maturity-ladder、現状と目標の対比は before-after、中核機能と関連領域の関係は relationship-map。",
+        "表は罫線ではなく文字が主役。格子を濃くしない。必要な列/行のまとまり、見出し、余白、強調だけで読ませる。",
+        "グラフは軸・目盛り・凡例ではなく視覚的情報が主役。不要な目盛線やラベルを弱め、主張に関係する系列や数字だけを強調する。",
+        "矢印は脇役。大きすぎる矢印や手置きの斜め矢印で主役を奪わない。工程は flow/step/native diagram、関係性は hub/map/relationship-map を使う。",
+        "写真や画像頼りにしない。写真は雰囲気・実物確認・公式画面の文脈を作る用途に絞り、必ず隣にメッセージと根拠を置く。",
         "SVG図を使う場合も、可視ラベルを入れ、内部テキストが8pt未満にならないサイズで配置する。",
         "クラウド/ベンダー図では search_assets で preset-azure / preset-entra / preset-aws / preset-google を先に探す。公式SVGが必要な場合は list_icon_sources でライセンスを確認してから登録する。",
-        "色だけで意味を表さない。状態・差分・リスクにはラベル、形、アイコン、凡例を併用する。"
+        "色だけで意味を表さない。状態・差分・リスクにはラベル、形、アイコン、凡例を併用する。",
+        "文字が黒い塊に見える場合は、文章を短くするだけでなく、意味のかたまり、見出し、余白、数字の強調、図表化で読み始めやすくする。"
       ]
     : [
         "Content slides must not be text-only. Include cards, icons, tables, diagrams, flows, trees, timelines, or Slideland-style schematic patterns.",
@@ -103,9 +126,14 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "When an official image, product screenshot, field photo, or researched illustration is appropriate and rights are clear, use visualType: image with visualAsset (altText/sourceId/citation/placement): image on one side, message/evidence on the other. If rights are unclear, recreate the idea as an editable illustration instead of embedding the source image.",
         "Use generate_intent_diagram for concept diagrams where composition must not drift, such as Enterprise Access Model, closed privileged paths, or side-by-side comparisons. Use generate_native_diagram for general architecture/security/control-flow/ponchi-e diagrams; do not paste local SVG diagrams as image.path.",
         "Pick the right generate_intent_diagram preset for process/change stories: lifecycle for repeating cycles, maturity-ladder for staged improvement, before-after for current-vs-target contrast, and relationship-map for a hub function and its related domains.",
+        "In tables, text is the hero, not grid lines. Keep grids light and use grouping, headers, whitespace, and selective emphasis to guide reading.",
+        "In charts, visual information is the hero, not axes, ticks, or legends. Weaken unnecessary gridlines/labels and emphasize only the series or numbers tied to the message.",
+        "Arrows are supporting actors. Do not let oversized or hand-placed diagonal arrows steal attention. Use flow/step/native diagram for processes and hub/map/relationship-map for relationships.",
+        "Do not rely on photos alone. Use photos for atmosphere, real-world proof, or official-screen context, and always pair them with a message and evidence.",
         "If SVG diagrams are used, include visible labels and place them large enough that internal text stays at least 8pt.",
         "For cloud/vendor diagrams, search_assets for preset-azure / preset-entra / preset-aws / preset-google first. If exact official SVGs are required, check list_icon_sources before registering them.",
-        "Do not encode meaning by color alone; combine labels, shapes, icons, or legends for state, difference, and risk."
+        "Do not encode meaning by color alone; combine labels, shapes, icons, or legends for state, difference, and risk.",
+        "If text looks like a black block, do not only shorten it; create semantic chunks, headings, whitespace, numeric emphasis, and visuals/tables so the reader knows where to start."
       ];
 
   const accessibilityRules = locale === "ja-JP"

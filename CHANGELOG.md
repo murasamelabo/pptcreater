@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.5.43 - 2026-06-28
+
+- **Added OCR-derived slide craft rules.** Local OCR of representative pages from the user's PowerPoint knowledge PDFs confirmed and added explicit guidance for audience-first messaging, deciding the message before opening PowerPoint, whitespace as a designed element, eye-flow/axis planning, and avoiding text that reads as a black block.
+- **Expanded OCR coverage to both full PDFs.** All 458 rendered pages were OCRed locally (no external upload) and the first-pass rules now also cover weakening supporting elements, table/grid hierarchy, graph emphasis, arrows as supporting actors, image/photo usage, and learning from existing patterns before freeform layout.
+- Added tests ensuring the first-pass slide creation rules include the OCR-derived principles in Japanese and English prompts.
+
 ## v0.5.42 - 2026-06-28
 
 - **Added side-image message slides.** `SlideIntent.visualAsset` now supports official images, screenshots, photos, or SVG illustrations with source/citation metadata; `visualType: "image"` renders a left/right image panel beside the message and evidence.

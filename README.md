@@ -1,4 +1,4 @@
-# pptcreater
+﻿# pptcreater
 
 Agent-friendly PowerPoint creation toolkit focused on concise, well-designed, accessible slides.
 
@@ -71,7 +71,7 @@ pptcreater from-message-map .\message-map.json `
   --output .\deck.json
 ```
 
-From MCP, use `create_deck_from_message_map` for the same workflow. Follow it with `finalize_deck` / `render_pptx`, then run `review_message_map` and `review_visual_quality`. The generator adds inline SVG icons/illustration accents to message slides, uses categorized panels for hub-map / ponchi-e style comparisons to avoid broken radial connector layouts, and supports `visualType: "image"` with `visualAsset` for left/right official-image-or-illustration + message layouts. Only embed official images, screenshots, or photos when usage rights are clear; otherwise recreate the idea as an editable illustration and still record sources.
+From MCP, use `create_deck_from_message_map` for the same workflow. Follow it with `finalize_deck` / `render_pptx`, then run `review_message_map` and `review_visual_quality`. The generator adds inline SVG icons/illustration accents to message slides, uses categorized panels for hub-map / ponchi-e style comparisons to avoid broken radial connector layouts, and supports `visualType: "image"` with `visualAsset` for left/right official-image-or-illustration + message layouts. Only embed official images, screenshots, or photos when usage rights are clear; otherwise recreate the idea as an editable illustration and still record sources. The first-pass rules also incorporate locally OCRed PowerPoint-craft principles from both supplied PDFs: decide the audience action before opening PowerPoint, treat whitespace as a design element, plan eye flow/axes before placing objects, weaken supporting elements before strengthening the hero, keep table grids/arrows/chart axes subordinate, and break text into semantic chunks instead of black blocks.
 
 `review_content` / `pptcreater content-review` provides the content-writing guardrail that prevents AI-generated decks from reading like long documents. It switches rules by locale and `contentMode`:
 
