@@ -241,6 +241,7 @@ export const BUILTIN_SKILL_PACKS: SkillPack[] = [
       "写真頼り（意味のないビジュアルでごまかす）",
       "サバサバ（メリハリ・強調がなく全要素が同じ強さ）",
       "ゴテゴテ（多色・多装飾・影や枠の盛りすぎ）",
+      "色付きライン付きカードを3つ以上並べるだけのAI生成風レイアウト。カードは主役1つに留め、比較・判断・流れ・全体像に応じて表・マトリクス・フロー・ポンチ絵へ変換する",
       "凡例の外出し、格子や罫線を主役にする、状態を色だけで示す、矢印を主役にする、角丸など図形スタイルの不揃い"
     ]
   },
@@ -276,6 +277,7 @@ export const BUILTIN_SKILL_PACKS: SkillPack[] = [
       "Leaning on decorative photos to paper over a weak message",
       "Flat emphasis where every element has the same weight",
       "Over-decoration: many colors, heavy borders, shadows, and effects",
+      "Repeating three or more colored accent-bar cards as the main slide expression; keep accent bars to one focal card and convert comparison, decision, process, or overview content into table, matrix, flow, or ponchi-e",
       "External legends, gridlines as the lead, state encoded by color alone, arrows as the star, or inconsistent shape styles (e.g. mismatched corner radii)"
     ]
   }

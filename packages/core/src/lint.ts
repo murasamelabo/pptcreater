@@ -424,6 +424,48 @@ function isRepeatedCardGridSlide(slide: Slide): boolean {
   return !hasSubstantiveVisualModality(slide) && rectangularShapes >= 6 && textBoxes >= 8;
 }
 
+function isTemplateGeneratedCard(card: ShapeElement): boolean {
+  return /(?:^|-)(?:card|node|hub|leaf-\d+-shape|cycle-node-\d+|layer-\d+)$/u.test(card.id) || card.altText === "generated native schematic shape";
+}
+
+function accentBarCardCount(slide: Slide): number {
+  const cards = slide.elements.filter(
+    (element): element is ShapeElement =>
+      element.type === "shape" &&
+      (element.shape === "roundRect" || element.shape === "roundedRect") &&
+      element.fill !== "none" &&
+      element.w >= 1 &&
+      element.h >= 0.7 &&
+      !isTemplateGeneratedCard(element)
+  );
+  const matchedCards = new Set<string>();
+
+  for (const element of slide.elements) {
+    if (
+      element.type !== "shape" ||
+      element.shape !== "rect" ||
+      element.fill === "none" ||
+      !element.decorative ||
+      element.w > 0.24 ||
+      element.h < 0.45
+    ) {
+      continue;
+    }
+
+    const card = cards.find((candidate) => {
+      const insideHorizontally = element.x >= candidate.x - 0.03 && element.x + element.w <= candidate.x + Math.min(0.45, candidate.w);
+      const verticallyAligned = element.y >= candidate.y - 0.04 && element.y + element.h <= candidate.y + candidate.h + 0.04;
+      const substantialHeight = element.h >= candidate.h * 0.55;
+      return insideHorizontally && verticallyAligned && substantialHeight;
+    });
+    if (card) {
+      matchedCards.add(card.id);
+    }
+  }
+
+  return matchedCards.size;
+}
+
 function parseSvgViewBox(svg: string): { width: number; height: number } | undefined {
   const viewBox = /viewBox\s*=\s*["']\s*[-+]?\d*\.?\d+\s+[-+]?\d*\.?\d+\s+([-+]?\d*\.?\d+)\s+([-+]?\d*\.?\d+)\s*["']/iu.exec(svg);
   if (viewBox) {
@@ -1012,6 +1054,19 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
         "layout.enumeration-hierarchy",
         "Large enumerations should use a visual hierarchy: callout headings, icons, accent rules, or a schematic list/table instead of body text boxes only.",
         `slides.${slideIndex}`
+      )
+    );
+  }
+
+  const accentBarCards = accentBarCardCount(slide);
+  if (accentBarCards >= 3) {
+    issues.push(
+      issue(
+        "error",
+        "visual.accent-bar-card-repetition",
+        "Repeated colored accent bar cards make the slide look mechanically generated. Use the slide-craft method: decide the message first, then vary the expression with a table/contrast, matrix, flow, map, or ponchi-e diagram; reserve accent bars for at most one focal card.",
+        `slides.${slideIndex}`,
+        { accentBarCards }
       )
     );
   }

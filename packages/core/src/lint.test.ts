@@ -437,6 +437,7 @@ describe("DeckSpec linting", () => {
           w: 1.8,
           h: 0.36,
           fontSize: 13,
+          bold: false,
           decorative: false,
           readingOrder: 103 + index * 10
         }
