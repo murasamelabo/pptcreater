@@ -32,6 +32,8 @@ import {
   reviewBusinessDeck,
   reviewDeckContent,
   reviewDeck,
+  reviewMessageMap,
+  reviewVisualQuality,
   describeAgentPipeline,
   selectFigure,
   listFigureIntents,
@@ -405,6 +407,50 @@ program
       console.log("Edit with Copilot prompt:");
       console.log(result.editWithCopilotPrompt);
     }
+  }));
+
+program
+  .command("message-review")
+  .description("Review the DeckSpec Message Map / SlideIntent plan for one-message-per-slide coverage.")
+  .argument("<deck>", "DeckSpec JSON path")
+  .option("--json", "Emit JSON", false)
+  .action(commandAction(async (deckPath: string, options: { json: boolean }) => {
+    const deck = parseDeckSpec(await readJson(deckPath));
+    const report = reviewMessageMap(deck);
+    if (options.json) {
+      console.log(JSON.stringify(report, null, 2));
+      if (!report.ok) process.exitCode = 1;
+      return;
+    }
+
+    if (report.issues.length === 0) {
+      console.log("No message-map issues.");
+      return;
+    }
+    report.issues.forEach((item) => console.log(`${item.severity.toUpperCase()} ${item.code} ${item.path}: ${item.message}`));
+    if (!report.ok) process.exitCode = 1;
+  }));
+
+program
+  .command("visual-review")
+  .description("Review a DeckSpec for visual-quality issues such as truncation, repeated accent-bar cards, and typography inconsistency.")
+  .argument("<deck>", "DeckSpec JSON path")
+  .option("--json", "Emit JSON", false)
+  .action(commandAction(async (deckPath: string, options: { json: boolean }) => {
+    const deck = parseDeckSpec(await readJson(deckPath));
+    const report = reviewVisualQuality(deck);
+    if (options.json) {
+      console.log(JSON.stringify(report, null, 2));
+      if (!report.ok) process.exitCode = 1;
+      return;
+    }
+
+    if (report.issues.length === 0) {
+      console.log("No visual quality issues.");
+      return;
+    }
+    report.issues.forEach((item) => console.log(`${item.severity.toUpperCase()} ${item.code} ${item.path}: ${item.message}`));
+    if (!report.ok) process.exitCode = 1;
   }));
 
 program

@@ -1,6 +1,7 @@
 import type { DeckSpec, Locale, ContentMode } from "./schema.js";
 import { lintDeckSpec, classifyLintReport, type LintIssue } from "./lint.js";
 import { reviewDeckContent, type ContentReviewIssue } from "./content.js";
+import { reviewVisualQuality, type VisualQualityIssue } from "./visualQuality.js";
 import {
   reviewBusinessDeck,
   type BusinessDeckBrief,
@@ -112,7 +113,7 @@ export const AGENT_ROLES: Record<AgentRoleId, AgentRole> = {
   }
 };
 
-export type ReviewSource = "lint" | "content" | "business";
+export type ReviewSource = "lint" | "content" | "business" | "visual";
 
 export type ReviewDisposition = "blocking" | "polish-fixable" | "advisory";
 
@@ -280,6 +281,20 @@ export function reviewDeck(deck: DeckSpec, options: ReviewDeckOptions = {}): Dec
       // Content findings are never auto-fixable by layout polish; warnings block, suggestions advise.
       disposition: issue.severity === "warning" ? "blocking" : "advisory",
       owner: ownerForCode("content", issue.code),
+      details: issue.details
+    });
+  }
+
+  const visualReport = reviewVisualQuality(deck);
+  for (const issue of visualReport.issues as VisualQualityIssue[]) {
+    routed.push({
+      source: "visual",
+      code: issue.code,
+      message: issue.message,
+      path: issue.path,
+      severity: issue.severity,
+      disposition: issue.severity === "error" ? "blocking" : "advisory",
+      owner: ownerForCode("visual", issue.code),
       details: issue.details
     });
   }

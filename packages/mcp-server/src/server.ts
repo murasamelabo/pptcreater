@@ -39,6 +39,8 @@ import {
   reviewBusinessDeck,
   reviewDeck,
   reviewDeckContent,
+  reviewMessageMap,
+  reviewVisualQuality,
   describeAgentPipeline,
   selectFigure,
   listFigureIntents,
@@ -457,6 +459,32 @@ export function createPptcreaterMcpServer(): McpServer {
       const parsedDeck = parseDeckSpec(deck);
       return jsonText(reviewDeckContent(parsedDeck, locale ?? parsedDeck.locale, contentMode ?? parsedDeck.metadata.contentMode ?? "presentation"));
     }
+  );
+
+  server.registerTool(
+    "review_message_map",
+    {
+      title: "Review DeckSpec message map",
+      description:
+        "Review the deck's Message Map / SlideIntent plan before rendering. Use this to ensure every content slide has one clear message, evidence, visualType, and emphasis; if it fails, clarify the brief before authoring more slides.",
+      inputSchema: {
+        deck: DeckSpecSchema
+      }
+    },
+    async ({ deck }) => jsonText(reviewMessageMap(parseDeckSpec(deck)))
+  );
+
+  server.registerTool(
+    "review_visual_quality",
+    {
+      title: "Review visual quality",
+      description:
+        "Review a DeckSpec for visual-quality issues that make slides look AI-generated: truncated text, inconsistent role typography, and repeated colored accent-bar card grids. Run after polish/finalize before accepting the deck.",
+      inputSchema: {
+        deck: DeckSpecSchema
+      }
+    },
+    async ({ deck }) => jsonText(reviewVisualQuality(parseDeckSpec(deck)))
   );
 
   server.registerTool(

@@ -289,6 +289,41 @@ export const SlideSchema = z.object({
   elements: z.array(SlideElementSchema).min(1)
 });
 
+export const SlideVisualTypeSchema = z.enum([
+  "section",
+  "summary",
+  "table",
+  "contrast",
+  "matrix",
+  "flow",
+  "step",
+  "cycle",
+  "map",
+  "ponchi-e",
+  "native-diagram",
+  "detail",
+  "visual-scaffold",
+  "image",
+  "cards"
+]);
+
+export const SlideIntentSchema = z.object({
+  slideId: z.string().min(1),
+  title: z.string().min(1),
+  message: z.string().min(1),
+  evidence: z.array(z.string().min(1)).default([]),
+  visualType: SlideVisualTypeSchema,
+  emphasis: z.string().min(1).optional(),
+  quietInfo: z.array(z.string().min(1)).default([])
+});
+
+export const DeckMessageMapSchema = z.object({
+  objective: z.string().optional(),
+  audience: z.string().optional(),
+  desiredAction: z.string().optional(),
+  intents: z.array(SlideIntentSchema).default([])
+});
+
 export const DeckSpecSchema = z.object({
   version: z.literal("0.1"),
   title: z.string().min(1),
@@ -305,6 +340,7 @@ export const DeckSpecSchema = z.object({
       subject: z.string().optional(),
       keywords: z.array(z.string()).default([]),
       contentMode: ContentModeSchema.optional(),
+      messageMap: DeckMessageMapSchema.optional(),
       sources: z
         .array(
           z.object({
@@ -338,6 +374,9 @@ export type PptxSlideNodeOperation = z.infer<typeof PptxSlideNodeOperationSchema
 export type PptxSlideColorReplacement = z.infer<typeof PptxSlideColorReplacementSchema>;
 export type Slide = z.infer<typeof SlideSchema>;
 export type DeckSpec = z.infer<typeof DeckSpecSchema>;
+export type SlideVisualType = z.infer<typeof SlideVisualTypeSchema>;
+export type SlideIntent = z.infer<typeof SlideIntentSchema>;
+export type DeckMessageMap = z.infer<typeof DeckMessageMapSchema>;
 
 export function slideCraftSkillPackForLocale(locale: Locale): string {
   return locale === "ja-JP" ? "slide-craft-ja" : "slide-craft-en";
