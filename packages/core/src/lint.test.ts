@@ -486,6 +486,44 @@ describe("DeckSpec linting", () => {
     expect(report.issues.some((item) => item.code === "visual.accent-bar-card-repetition")).toBe(false);
   });
 
+  it("does not trust generic *-card ids as generated schematic provenance", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements = deck.slides[0].elements.slice(0, 3);
+    for (let index = 0; index < 3; index += 1) {
+      const x = 0.9 + index * 3.4;
+      deck.slides[0].elements.push(
+        {
+          id: `feature-${index}-card`,
+          type: "shape",
+          shape: "roundRect",
+          fill: "#ffffff",
+          x,
+          y: 2.1,
+          w: 2.9,
+          h: 1.4,
+          decorative: true,
+          readingOrder: 200 + index * 10
+        },
+        {
+          id: `feature-${index}-accent`,
+          type: "shape",
+          shape: "rect",
+          fill: "#2563eb",
+          x: x + 0.1,
+          y: 2.24,
+          w: 0.12,
+          h: 1.08,
+          decorative: true,
+          readingOrder: 201 + index * 10
+        }
+      );
+    }
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((item) => item.code === "visual.accent-bar-card-repetition")).toBe(true);
+  });
+
   it("does not flag generate_schematic output (arrow/-card id conventions) as hand-built connectors", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     // Mirror renderNativeSchematicDiagram's flow/step output: `<prefix>-...-card` node cards plus
