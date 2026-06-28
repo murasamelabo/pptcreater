@@ -70,6 +70,8 @@ The User Simulator writes one `ScenarioSpec` per generated test deck.
 ### EvalReport
 
 The Evaluator turns generated artifacts into concrete development feedback.
+Detailed scoring rules, required evidence, severity, and PatchRequest criteria are defined in
+[`dev-loop-evaluator-criteria.md`](dev-loop-evaluator-criteria.md).
 
 ```json
 {
