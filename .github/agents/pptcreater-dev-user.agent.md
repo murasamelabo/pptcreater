@@ -23,10 +23,12 @@ scenario.
 ## Workflow
 
 1. Read the ScenarioSpec and WorkItem objective.
-2. Create a deck scenario that stresses the changed behavior.
-3. Generate DeckSpec, PPTX, review log, finalize log, and optional Studio HTML.
-4. Keep artifacts under the requested run directory.
-5. Report successes, blockers, and exact commands.
+2. Treat each ScenarioSpec as a realistic user request, not a narrow feature test.
+3. Create a deck scenario that stresses the changed behavior while still satisfying the user-facing
+  purpose, audience, tone, and must-cover topics.
+4. Generate DeckSpec, PPTX, review log, finalize log, and optional Studio HTML.
+5. Keep artifacts under the requested run directory.
+6. Report successes, blockers, and exact commands.
 
 ## Required Output
 
