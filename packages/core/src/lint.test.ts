@@ -21,6 +21,31 @@ describe("DeckSpec linting", () => {
     expect(parseDeckSpec(en).skillPack).toBe("slide-craft-en");
   });
 
+  it("accepts only http(s) element hyperlinks", () => {
+    const deck = createSampleDeck("en-US", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "official-link",
+      type: "text",
+      role: "caption",
+      text: "Official page",
+      x: 0.8,
+      y: 6.8,
+      w: 2.6,
+      h: 0.3,
+      decorative: false,
+      bold: false,
+      hyperlink: "https://example.com/facility"
+    });
+
+    expect(() => parseDeckSpec(deck)).not.toThrow();
+
+    deck.slides[0].elements.at(-1)!.hyperlink = "javascript:alert(1)";
+    expect(() => parseDeckSpec(deck)).toThrow(/http\(s\) URL/);
+
+    deck.slides[0].elements.at(-1)!.hyperlink = "file:///C:/tmp/facility.html";
+    expect(() => parseDeckSpec(deck)).toThrow(/http\(s\) URL/);
+  });
+
   it("blocks decks that bypass parsing and omit the locale-specific slide-craft skill pack", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     deck.skillPack = "business-ppt-director-ja";

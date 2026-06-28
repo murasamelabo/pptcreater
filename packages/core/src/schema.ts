@@ -7,6 +7,18 @@ export const HexColorSchema = z
   .string()
   .regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/, "Expected a hex color such as #123abc");
 
+export const ExternalHyperlinkSchema = z.string().url().refine(
+  (value) => {
+    try {
+      const protocol = new URL(value).protocol;
+      return protocol === "http:" || protocol === "https:";
+    } catch {
+      return false;
+    }
+  },
+  { message: "Expected an http(s) URL" }
+);
+
 export const TypographyTokensSchema = z.object({
   headingFont: z.string().min(1),
   bodyFont: z.string().min(1),
@@ -124,7 +136,8 @@ const ElementBaseSchema = z.object({
   decorative: z.boolean().default(false),
   altText: z.string().optional(),
   sourceId: z.string().optional(),
-  citation: z.string().optional()
+  citation: z.string().optional(),
+  hyperlink: ExternalHyperlinkSchema.optional()
 });
 
 export const TextElementSchema = ElementBaseSchema.extend({

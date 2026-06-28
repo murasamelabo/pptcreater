@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added DeckSpec element hyperlinks so text, shape, SVG/diagram, and image elements can render as external clickable links in generated PPTX files.
+
 ## v0.5.44 - 2026-06-28
 
 - **Fixed stretched image/illustration visuals.** Message-map side-image SVG assets are now fitted inside their image panel with the source aspect ratio preserved instead of filling the whole panel.

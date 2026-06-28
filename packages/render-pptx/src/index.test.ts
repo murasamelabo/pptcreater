@@ -449,6 +449,96 @@ describe("PPTX renderer", () => {
     expect(slide2).toContain("https://example.com/reference");
   });
 
+  it("renders element hyperlinks as external clickable links", async () => {
+    const deck = createSampleDeck("en-US", { slideCount: 1 });
+    deck.slides[0].elements = [
+      {
+        id: "title",
+        type: "text",
+        role: "title",
+        text: "Linked facility slide",
+        x: 0.8,
+        y: 0.6,
+        w: 8.4,
+        h: 0.6,
+        decorative: false,
+        bold: true,
+        readingOrder: 1
+      },
+      {
+        id: "facility-text-link",
+        type: "text",
+        role: "callout",
+        text: "Open official page",
+        x: 0.8,
+        y: 1.5,
+        w: 3.2,
+        h: 0.45,
+        fontSize: 18,
+        color: "#1d4ed8",
+        decorative: false,
+        bold: false,
+        readingOrder: 2,
+        hyperlink: "https://example.com/text"
+      },
+      {
+        id: "facility-shape-link",
+        type: "shape",
+        shape: "roundRect",
+        x: 0.8,
+        y: 2.35,
+        w: 2.2,
+        h: 1.0,
+        fill: "#e0f2fe",
+        line: { color: "#0369a1", width: 1 },
+        decorative: false,
+        altText: "Linked shape",
+        readingOrder: 3,
+        hyperlink: "https://example.com/shape"
+      },
+      {
+        id: "facility-svg-link",
+        type: "svg",
+        svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80"><rect x="10" y="10" width="100" height="60" rx="10" fill="#dcfce7" stroke="#15803d"/><text x="60" y="50" text-anchor="middle" font-size="18" fill="#14532d">SVG</text></svg>',
+        altText: "Linked SVG card",
+        x: 3.5,
+        y: 2.35,
+        w: 2.2,
+        h: 1.0,
+        decorative: false,
+        readingOrder: 4,
+        hyperlink: "https://example.com/svg"
+      },
+      {
+        id: "facility-image-link",
+        type: "image",
+        dataUri: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+        altText: "Linked image",
+        x: 6.2,
+        y: 2.35,
+        w: 2.2,
+        h: 1.0,
+        decorative: false,
+        readingOrder: 5,
+        hyperlink: "https://example.com/image"
+      }
+    ];
+
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-render-"));
+    const outputPath = join(outputDir, "hyperlink.pptx");
+
+    await renderDeckToPptx(deck, outputPath);
+
+    const zip = await JSZip.loadAsync(await readFile(outputPath));
+    const slide1 = (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
+    const rels = (await zip.file("ppt/slides/_rels/slide1.xml.rels")?.async("string")) ?? "";
+    expect(slide1).toContain("hlinkClick");
+    for (const url of ["https://example.com/text", "https://example.com/shape", "https://example.com/svg", "https://example.com/image"]) {
+      expect(rels).toContain(`Target="${url}"`);
+    }
+    expect((rels.match(/TargetMode="External"/g) ?? []).length).toBeGreaterThanOrEqual(4);
+  });
+
   it("rasterizes local workspace SVG image paths to valid PNG media", async () => {
     const deck = createSampleDeck("en-US", { slideCount: 1 });
     const assetDir = join(process.cwd(), "generated", `render-path-test-${randomUUID()}`);

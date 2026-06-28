@@ -44,7 +44,7 @@ type PptxSlide = {
   slideNumber?: Record<string, unknown>;
   addText(text: string, options: Record<string, unknown>): void;
   addShape(shapeName: string, options?: Record<string, unknown>): void;
-  addImage(options: { data?: string; path?: string; x: number; y: number; w: number; h: number; altText?: string }): void;
+  addImage(options: { data?: string; path?: string; x: number; y: number; w: number; h: number; altText?: string; hyperlink?: { url: string } }): void;
   addNotes(notes: string): void;
 };
 
@@ -391,6 +391,18 @@ function pptxShapeName(shape: Extract<SlideElement, { type: "shape" }>["shape"])
   return shape;
 }
 
+function externalHyperlinkUrl(value: string): string {
+  const parsed = new URL(value);
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("Deck element hyperlink must use an http(s) URL.");
+  }
+  return parsed.toString();
+}
+
+function hyperlinkOptions(element: SlideElement): { hyperlink?: { url: string } } {
+  return element.hyperlink ? { hyperlink: { url: externalHyperlinkUrl(element.hyperlink) } } : {};
+}
+
 async function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpec, slideIndex: number): Promise<void> {
   const tokens = deck.tokens ?? defaultTokens(deck.locale);
   const position = {
@@ -412,7 +424,8 @@ async function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpe
       valign: element.valign,
       fit: "shrink",
       margin: 0.02,
-      breakLine: false
+      breakLine: false,
+      ...hyperlinkOptions(element)
     });
     return;
   }
@@ -441,7 +454,8 @@ async function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpe
       objectName: shapeObjectName(element, slideIndex),
       fill,
       line,
-      ...(element.shape === "roundRect" || element.shape === "roundedRect" ? { rectRadius: element.radius } : {})
+      ...(element.shape === "roundRect" || element.shape === "roundedRect" ? { rectRadius: element.radius } : {}),
+      ...hyperlinkOptions(element)
     };
     slide.addShape(pptxShapeName(element.shape), shapeOptions);
     return;
@@ -453,7 +467,8 @@ async function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpe
     slide.addImage({
       data,
       altText: element.decorative ? "" : element.altText ?? (element.type === "diagram" ? element.summary : undefined),
-      ...imagePosition
+      ...imagePosition,
+      ...hyperlinkOptions(element)
     });
     return;
   }
@@ -462,9 +477,9 @@ async function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpe
     if (element.dataUri) {
       const data = await safeImageDataUri(element.dataUri);
       const imagePosition = element.decorative ? position : containImagePosition(position, await imageDataUriDimensions(data));
-      slide.addImage({ data, altText: element.decorative ? "" : element.altText, ...imagePosition });
+      slide.addImage({ data, altText: element.decorative ? "" : element.altText, ...imagePosition, ...hyperlinkOptions(element) });
     } else if (element.path) {
-      slide.addImage({ path: element.path, altText: element.decorative ? "" : element.altText, ...position });
+      slide.addImage({ path: element.path, altText: element.decorative ? "" : element.altText, ...position, ...hyperlinkOptions(element) });
     }
     return;
   }
