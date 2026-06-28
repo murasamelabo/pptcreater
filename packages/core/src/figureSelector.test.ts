@@ -30,6 +30,22 @@ describe("selectFigure", () => {
     expect(rec.schematicKind).toBe("radar");
   });
 
+  it("maps timeline wording to a curated gantt/timeline figure", () => {
+    const rec = selectFigure({ message: "導入マイルストーンをタイムラインで示す", itemCount: 4 });
+    expect(rec.intent).toBe("timeline");
+    expect(rec.renderer).toBe("design-pack");
+    expect(rec.tool).toBe("render_design_component");
+    expect(rec.kind).toBe("gantt");
+  });
+
+  it("maps architecture wording to a native editable architecture diagram", () => {
+    const rec = selectFigure({ message: "Microsoft Defender と Sentinel の統合アーキテクチャ構成図", itemCount: 5 });
+    expect(rec.intent).toBe("architecture");
+    expect(rec.renderer).toBe("native-diagram");
+    expect(rec.tool).toBe("generate_native_diagram");
+    expect(rec.kind).toBe("architecture");
+  });
+
   it("routes correlation intent to a schematic (no curated component)", () => {
     const rec = selectFigure({ message: "中心概念と関連要素の相関図" });
     expect(rec.intent).toBe("correlation");
@@ -67,7 +83,8 @@ describe("selectFigure", () => {
     const intents = listFigureIntents();
     expect(intents).toHaveLength(FIGURE_INTENTS.length);
     for (const entry of intents) {
-      expect(["design-pack", "schematic"]).toContain(entry.renderer);
+      expect(["design-pack", "schematic", "native-diagram", "intent-diagram"]).toContain(entry.renderer);
+      expect(["render_design_component", "generate_schematic", "generate_native_diagram", "generate_intent_diagram"]).toContain(entry.tool);
       expect(entry.itemRange.min).toBeLessThanOrEqual(entry.itemRange.max);
       expect(entry.kind.length).toBeGreaterThan(0);
     }

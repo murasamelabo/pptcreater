@@ -6,6 +6,7 @@
 - Added a lint gate for overlapping text inside embedded SVG/diagram visuals, preventing unreadable in-chart labels before PPTX delivery.
 - Added a reusable `radar` schematic/figure intent for 4-8 axis score profiles, surfaced through `recommend_figure`, `generate_schematic`, MCP guidance, and deck-agent instructions.
 - Adjusted deck-agent and MCP guidance so `radar`, `ranking`, `matrix`, and other figure kinds are presented as peer expression options chosen by slide message/data fit, not as individually privileged directives.
+- Added `architecture` as a first-class `recommend_figure` intent that routes to `generate_native_diagram`, kept `timeline`/`gantt` as an allowed curated figure path, and updated deck-agent guidance to record role execution so users can tell whether the specialist agents actually ran.
 - Added a compact-label lint gate so short chips/buttons do not silently wrap labels into cramped two-line text.
 - Clarified that intentional text-rich slides are allowed when they use `detail`, `prose`, or `structured-text` layouts with headings, indentation, emphasis, color, and whitespace to reduce cognitive load.
 

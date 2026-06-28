@@ -70,7 +70,7 @@ export const AGENT_ROLES: Record<AgentRoleId, AgentRole> = {
     responsibility:
       "Decides, per slide, the single message, the information to include, the recommended figure kind, and the data — the bridge from chapter-level structure to slide-level intent.",
     consumes: "DeckOutline",
-    produces: "SlidePlan[] (one message + evidence + figureKind + data per slide)",
+    produces: "SlidePlan[] (one message + evidence + figureKind + data + recommended tool per slide)",
     tools: ["recommend_figure", "recommend_template", "list_design_components", "list_schematic_presets"]
   },
   designer: {
@@ -79,7 +79,7 @@ export const AGENT_ROLES: Record<AgentRoleId, AgentRole> = {
     responsibility:
       "Owns the visual layer: layout, template, figure/diagram selection, colour, icons, and placement. Produces the slide elements that realise each SlidePlan.",
     consumes: "SlidePlan",
-    produces: "DeckSpec slide elements (shapes/diagrams/scaffolds)",
+    produces: "DeckSpec slide elements (design-pack figures, schematics, native diagrams, scaffolds)",
     tools: [
       "recommend_figure",
       "render_design_component",

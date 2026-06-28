@@ -642,7 +642,7 @@ program
         return;
       }
       intents.forEach((i) =>
-        console.log(`${i.intent.padEnd(20)} ${i.renderer.padEnd(12)} ${i.kind.padEnd(18)} ${i.labelEn} (${i.itemRange.min}-${i.itemRange.max})`)
+        console.log(`${i.intent.padEnd(20)} ${i.renderer.padEnd(14)} ${i.tool.padEnd(24)} ${i.kind.padEnd(18)} ${i.labelEn} (${i.itemRange.min}-${i.itemRange.max})`)
       );
       return;
     }
@@ -653,6 +653,7 @@ program
     }
     console.log(`intent:    ${rec.intent} (${rec.labelEn} / ${rec.labelJa})`);
     console.log(`renderer:  ${rec.renderer}  kind: ${rec.kind}  schematic: ${rec.schematicKind}`);
+    console.log(`tool:      ${rec.tool}`);
     console.log(`items:     ${rec.itemRange.min}-${rec.itemRange.max}`);
     console.log(`rationale: ${rec.rationale}`);
     console.log(`alternatives: ${rec.alternatives.join(", ")}`);

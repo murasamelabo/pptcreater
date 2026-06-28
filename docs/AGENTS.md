@@ -11,7 +11,8 @@ Run `pptcreater agents` (or the MCP tool `list_agent_roles`) to print the live r
 ## Custom agents (`.github/agents/`)
 
 Ready-to-use Copilot CLI / VS Code custom agents implement the six roles — install or invoke them
-directly:
+directly. In VS Code, use the display names exactly (`Deck Director`, `Deck Story Architect`, ...);
+the lowercase names below are the file slugs:
 
 - `deck-director` — orchestrator; drives the whole loop and finalizes/renders.
 - `deck-story-architect` — narrative + chapter structure (`DeckOutline`).
@@ -38,6 +39,9 @@ others; or invoke a specialist directly when you only need that slice.
    Note: the Director is host-independent — when the host can spawn sub-agents it dispatches to the
    specialists; when it cannot, the Director plays each role itself and **returns a step-by-step plan
    the caller executes**. Either way it never skips the plan, the figure tools, or the review gate.
+  The run should expose a role execution ledger: which roles ran as sub-agents, which were executed
+  in-process, and what artifact each produced. A Director planning-only response is not proof that
+  Designer / Copywriter / Reviewer executed.
    The base assistant must also **never build a deck by writing its own script that imports
    `@pptcreater/core`** or by using PowerPoint COM — that bypasses the figure tools and `review_deck`.
 2. **Issue routing (which role fixes a finding).** This is deterministic and lives in the code:
@@ -65,7 +69,7 @@ DeckBrief
   │
   ▼ 1. Director — clarify brief, pick skill pack + budget, sequence agents
   ▼ 2. Story Architect → DeckOutline      (plan_business_deck, interview_slide_brief)
-  ▼ 3. Content Strategist → SlidePlan[]   (recommend_template, list_design_components, list_schematic_presets)
+  ▼ 3. Content Strategist → SlidePlan[]   (recommend_figure, list_design_components, list_schematic_presets)
   ├─────────────── parallel ───────────────┐
   ▼ 4. Designer                            ▼ 5. Copywriter
      (render_design_component,                (review_content guidance,
@@ -86,9 +90,11 @@ DeckBrief
 message — or an explicit `figureKind` — into a concrete renderer choice:
 
 - **renderer** — `design-pack` (a curated, fully-editable component via `render_design_component`)
-  when a matching kind exists, otherwise `schematic` (a generated native figure via
-  `generate_schematic`).
+  when a matching kind exists, `schematic` (a generated native figure via `generate_schematic`),
+  or `native-diagram` for editable architecture/security/ponchi-e diagrams via
+  `generate_native_diagram`.
 - **kind** — the concrete design-pack or schematic kind to render.
+- **tool** — the concrete tool the Designer should call.
 - **itemRange** — how many data points the figure expects (the selector warns when the slide's
   `itemCount` is outside it, so the Content Strategist can split or simplify).
 - **rationale + alternatives** — why this figure, and other viable intents for the Designer.
@@ -96,9 +102,10 @@ message — or an explicit `figureKind` — into a concrete renderer choice:
 The selector is deterministic and keyword-driven (JA + EN cues), preferring curated components so
 the deck stays editable. Example: "導入の手順を5つの工程で示す" → `process-horizontal` →
 design-pack `flow-horizontal` (items 3–6). Use `pptcreater figure --list` to see every intent.
-Treat `matrix`, `ranking`, `radar`, flow, hierarchy, comparison, schedule, list, detail, and other
-formats as peer expression options. The Designer may override or refine the initial `figureKind`
-when another visual grammar better supports the slide message, data shape, and reading path.
+Treat timeline/gantt, architecture diagrams, `matrix`, `ranking`, `radar`, flow, hierarchy,
+comparison, schedule, list, detail, and other formats as peer expression options. The Designer may
+override or refine the initial `figureKind` when another visual grammar better supports the slide
+message, data shape, and reading path.
 
 ## Hand-off contracts
 

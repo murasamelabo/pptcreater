@@ -150,7 +150,7 @@ Before creating a DeckSpec, clarify these points when they are not already speci
 5. Use \`generate_edit_with_copilot_prompt\` only when the user explicitly wants a PowerPoint for the web / Edit with Copilot prompt. This is an upstream prompt workflow; final deterministic output should still use pptcreater rendering when possible.
 6. For a direct PPTX request, prefer \`create_pptx\` or \`create_powerpoint\` first. It creates, lints, polishes, and renders with safe defaults.
 7. Use \`search_templates\` and \`search_assets\` before creating new assets.
-8. Before building ANY multi-element figure (flow, process, timeline, comparison, hierarchy, cycle, score profile, ranking, matrix, etc.), call \`recommend_figure\` with the slide message (and/or \`list_schematic_presets\`) and follow its \`renderer\`. When it returns \`design-pack\`, PREFER \`render_design_component\` with a curated component of the recommended \`kind\` from the zukai pack (the 14 figure kinds: flow-horizontal, flow-vertical, cycle, before-after, matrix, venn, formula, comparison, scale, step, gantt, list-vertical, list-horizontal, list-enumeration, plus tree) — call \`list_design_components\` to pick a P1-P6 variant, use \`textReplacements\` to fill the eyebrow/title/labels/sub-labels/caption (replace every catalog placeholder), and \`nodeOperations\` to match the node count (the layout re-fits and renumbers). Treat schematic kinds such as \`matrix\`, \`ranking\`, \`radar\`, flow, hierarchy, schedule, comparison, list, and mockup as peer expression options; select the one whose visual grammar best expresses the slide message and data shape. Do NOT change ○/△/✕ marks via text (they are colored icon shapes); keep the source mark pattern and map your columns onto it. Only when it returns \`schematic\` (no curated component) fall back to \`generate_schematic\` (auto-fits labels) or \`generate_native_diagram\` (routes connectors border-to-border). Only hand-build simple, short-label compositions (a few cards, a badge, an accent rule).
+8. Before building ANY multi-element figure (flow, process, timeline, comparison, hierarchy, cycle, score profile, ranking, matrix, architecture, etc.), call \`recommend_figure\` with the slide message (and/or \`list_schematic_presets\`) and follow its \`renderer\` / \`tool\`. When it returns \`design-pack\`, PREFER \`render_design_component\` with a curated component of the recommended \`kind\` from the zukai pack (the 14 figure kinds: flow-horizontal, flow-vertical, cycle, before-after, matrix, venn, formula, comparison, scale, step, gantt, list-vertical, list-horizontal, list-enumeration, plus tree) — call \`list_design_components\` to pick a P1-P6 variant, use \`textReplacements\` to fill the eyebrow/title/labels/sub-labels/caption (replace every catalog placeholder), and \`nodeOperations\` to match the node count (the layout re-fits and renumbers). When it returns \`schematic\`, use \`generate_schematic\`. When it returns \`native-diagram\`, use \`generate_native_diagram\`. Treat timeline, architecture, matrix, ranking, radar, flow, hierarchy, schedule, comparison, list, and mockup as peer expression options; select the one whose visual grammar best expresses the slide message and data shape. Do NOT change ○/△/✕ marks via text (they are colored icon shapes); keep the source mark pattern and map your columns onto it. Only hand-build simple, short-label compositions (a few cards, a badge, an accent rule).
 9. Use \`generate_intent_diagram\` when the user supplies or implies an intended conceptual composition/granularity, especially Enterprise Access Model, closed privileged access paths, side-by-side good/bad comparisons, or control-plane maps. It turns the intent contract into editable \`shape\`/\`text\` elements and prevents LLM drift to a different level of detail.
 10. Use \`generate_native_diagram\` for general architecture, security, enterprise control-plane, decision-flow, and ponchi-e diagrams that should remain editable in PowerPoint. Insert the returned \`shape\`/\`text\` elements directly into \`slide.elements\`; do not wrap them in \`image\`, \`svg\`, or \`diagram\`.
 11. Use \`list_schematic_presets\` then \`generate_schematic\` for \`table\`, \`tree\`, \`flow\`, \`vertical-flow\`, \`cycle\`, \`before-after\`, \`map\`, \`puzzle\`, \`correlation\`, \`matrix\`, \`venn\`, \`cross\`, \`set\`, \`contrast\`, \`scale-contrast\`, \`grow\`, \`layer\`, \`triangle\`, \`step\`, \`gantt\`, \`ranking\`, \`radar\`, \`list\`, \`list-horizontal\`, \`list-enumeration\`, and \`mockup\` visuals. Do not freehand complex SVG unless the preset cannot express the structure.
@@ -224,8 +224,8 @@ A message-first craft loop for slides that land in three seconds. Follow it befo
 - Native ponchi-e diagrams: do not embed architecture/security/control-plane diagrams as local SVG \`image.path\` unless exact fidelity is required. Use \`generate_native_diagram\` so boxes, labels, groups, and connectors are editable PowerPoint objects and keep their aspect ratio inside the requested slide frame. \`diagram.image-svg-not-editable\` warns when a large technical SVG image should be recreated natively.
 - Diagram labels: every meaningful \`diagram\` must be visually self-explanatory on the slide. Do not create SVGs that contain only rectangles, lines, arrows, or icons while putting the explanation only in \`altText\`, \`summary\`, \`longDescription\`, speaker notes, or a side paragraph. Add readable SVG \`<text>\` labels/callouts for nodes, flows, lanes, and decisions, or rebuild the visual with \`generate_native_diagram\` / \`generate_schematic\`. \`diagram.visible-labels-missing\` blocks unlabeled diagrams.
 - SVG diagram text: if an embedded SVG/diagram contains internal \`<text>\`, keep the element large enough that labels remain at least 8pt after viewBox scaling. \`visual.svg-text-too-small\` blocks diagrams whose internal labels become unreadable; enlarge the diagram, remove labels, or split it into multiple slides.
-- Adopt a prepared figure (do not hand-build diagrams): before placing your own node boxes + connector lines, timeline rails, comparison columns, or step rows, call \`recommend_figure\` with the slide message (and/or \`list_schematic_presets\`) and follow its \`renderer\`. When it returns \`design-pack\`, PREFER \`render_design_component\` with a curated component of the recommended \`kind\` from the zukai pack (flow-horizontal, flow-vertical, cycle, before-after, matrix, venn, formula, comparison, scale, step, gantt, list-vertical, list-horizontal, list-enumeration, plus tree). These are real, professionally designed PowerPoint figure slides: pick a P1-P6 variant with \`list_design_components\`, fill EVERY catalog placeholder (eyebrow, title, main labels, sub-labels, caption) with \`textReplacements\`, and match the node count with \`nodeOperations\` (it re-fits and renumbers within the footprint). Keep ○/△/✕ marks as-is (colored icon shapes) and map your columns onto the source pattern. Only when \`recommend_figure\` returns \`schematic\` (no curated component) fall back to \`generate_schematic\` (auto-fits labels so node text never clips) or \`generate_native_diagram\` (routes connectors border-to-border so arrows never dangle). Reserve hand-built shape compositions for simple, short-label layouts. \`diagram.native-connectors\` warns on a hand-built connected diagram and becomes a blocking error once the flow is complex (4+ hand-placed connectors); fix it by rebuilding with a design-pack component or generator, not by nudging coordinates.
-- Cognitive load: use one visual grammar per slide. If there are more than 3-4 comparable ideas, use \`generate_schematic\` with a fitting preset (table/contrast for comparisons, tree/layer for hierarchy, flow/cycle/step for processes, matrix/scale-contrast/grow/ranking for analysis, gantt for schedules, venn/set/puzzle/correlation/map for grouping) instead of placing many custom text boxes. Body-only enumerations without callout headings, icons, accent rules, or schematic structure are flagged by lint.
+- Adopt a prepared figure (do not hand-build diagrams): before placing your own node boxes + connector lines, timeline rails, comparison columns, or step rows, call \`recommend_figure\` with the slide message (and/or \`list_schematic_presets\`) and follow its \`renderer\` / \`tool\`. When it returns \`design-pack\`, PREFER \`render_design_component\` with a curated component of the recommended \`kind\` from the zukai pack (flow-horizontal, flow-vertical, cycle, before-after, matrix, venn, formula, comparison, scale, step, gantt, list-vertical, list-horizontal, list-enumeration, plus tree). These are real, professionally designed PowerPoint figure slides: pick a P1-P6 variant with \`list_design_components\`, fill EVERY catalog placeholder (eyebrow, title, main labels, sub-labels, caption) with \`textReplacements\`, and match the node count with \`nodeOperations\` (it re-fits and renumbers within the footprint). Keep ○/△/✕ marks as-is (colored icon shapes) and map your columns onto the source pattern. When it returns \`schematic\`, use \`generate_schematic\`; when it returns \`native-diagram\`, use \`generate_native_diagram\`; when it returns \`intent-diagram\`, use \`generate_intent_diagram\`. Reserve hand-built shape compositions for simple, short-label layouts. \`diagram.native-connectors\` warns on a hand-built connected diagram and becomes a blocking error once the flow is complex (4+ hand-placed connectors); fix it by rebuilding with a design-pack component or generator, not by nudging coordinates.
+- Cognitive load: use one visual grammar per slide. If there are more than 3-4 comparable ideas, use \`recommend_figure\` / \`generate_schematic\` / \`generate_native_diagram\` with a fitting preset or diagram family (table/contrast for comparisons, tree/layer for hierarchy, flow/cycle/step for processes, timeline/gantt for schedules, architecture/native-diagram for system overviews, matrix/scale-contrast/grow/ranking/radar for analysis, venn/set/puzzle/correlation/map for grouping) instead of placing many custom text boxes. Body-only enumerations without callout headings, icons, accent rules, or schematic structure are flagged by lint.
 - Blocking layout rules: \`layout.text-overflow-risk\`, \`layout.text-overlap\`, \`layout.bad-line-break\`, \`diagram.visible-labels-missing\`, and \`visual.svg-text-too-small\` must be fixed before final PPTX delivery. Treat \`layout.enumeration-hierarchy\` as a strong design warning.
 - SVG compatibility: pptcreater accepts a safe SVG subset. Prefer \`generate_intent_diagram\` for known concept compositions, \`generate_native_diagram\` for editable connected diagrams, and use \`generate_schematic\`, \`generate_svg\`, and registered assets for SVG visuals; avoid unsupported filter effects, external images, scripts, CSS styles, and complex patterns unless sanitized successfully.
 
@@ -255,14 +255,17 @@ presentations, or when quality matters — you MUST delegate to the deck-buildin
 
 How routing works:
 
-1. Hand non-trivial deck requests to \`deck-director\`; for a single slice you may invoke a specialist
-   directly. Use \`list_agent_roles\` for each role's responsibility, hand-off contract, and tools. If
+1. Hand non-trivial deck requests to the Deck Director (VS Code display name: \`Deck Director\`; file
+  slug: \`deck-director\`); for a single slice you may invoke a specialist directly. Use
+  \`list_agent_roles\` for each role's responsibility, hand-off contract, and tools. If
    your host cannot spawn the specialists, follow the Director's returned plan step by step yourself —
    do NOT skip the plan and free-hand the deck.
+  Keep a visible role execution ledger: role, sub-agent vs in-process execution, and artifact/evidence.
 2. The flow is DeckBrief -> DeckOutline -> SlidePlan[] -> DeckSpec -> DeckReviewReport. Each SlidePlan
    must name its figure: call \`recommend_figure\` per slide and use \`render_design_component\` (design
-   pack) or \`generate_schematic\` / \`generate_native_diagram\` (schematic) — never hand-place node
-   boxes + connectors.
+  pack), \`generate_schematic\` (schematic/timeline), \`generate_native_diagram\` (architecture /
+  control-plane / ponchi-e), or \`generate_intent_diagram\` (known composition). Timeline and
+  architecture diagrams are allowed; what is discouraged is hand-built connector geometry.
 3. \`review_deck\` is the REQUIRED, deterministic stop condition (a generic code review is not a
    substitute): it runs lint + content + business reviews, classifies each finding (blocking /
    polish-fixable / advisory), scores the deck, and routes each blocking issue to its owner role
@@ -288,7 +291,7 @@ Do NOT build decks by writing your own script that imports @pptcreater/core (or 
 
 When creating slides, use the pptcreater MCP. If purpose, audience, delivery format, slide count, or source assets are unclear, ask a short briefing before creating the DeckSpec.
 
-For every figure (flow, process, timeline, comparison, hierarchy, cycle, matrix, etc.), call recommend_figure first and use what it returns: when renderer is "design-pack", use render_design_component with a curated zukai component of the recommended kind; only when renderer is "schematic" fall back to generate_schematic or generate_native_diagram. Use generate_intent_diagram when the intended concept composition/granularity is known. Never hand-place node boxes + connector lines for a connected diagram.
+For every figure (flow, process, timeline, comparison, hierarchy, cycle, matrix, architecture, etc.), call recommend_figure first and use what it returns: when renderer is "design-pack", use render_design_component with a curated zukai component of the recommended kind; when renderer is "schematic", use generate_schematic; when renderer is "native-diagram", use generate_native_diagram. Use generate_intent_diagram when the intended concept composition/granularity is known. Timeline and architecture diagrams are allowed; never hand-place node boxes + connector lines for a complex connected diagram.
 
 After the brief is clear, create a visual DeckSpec with editable PowerPoint objects, run review_content and lint_deck, and run review_deck as the required quality gate before declaring the deck done — fix every blocking finding and re-run until ok is true (a generic code review is not a substitute for review_deck). Then render with render_pptx/render_powerpoint or finalize_deck, or CLI: pptcreater render <deck.json> --output <deck.pptx> --polish.
 ${COPILOT_BLOCK_END}`;
@@ -302,7 +305,7 @@ For multi-slide, important, executive, or customer-facing decks, you MUST delega
 
 Do NOT build decks by writing your own script that imports @pptcreater/core (or any pptcreater package) and calls render/generation functions directly, and do NOT use PowerPoint COM or ad-hoc PPTX assembly. Always go through the pptcreater MCP tools (or the pptcreater CLI). Hand-writing a generator script bypasses the figure tools and is the main cause of clipped text and broken connectors.
 
-Use the pptcreater MCP for slide work. Start by clarifying purpose, audience, delivery mode, volume, and available source assets when they are unclear. Prefer editable PowerPoint shapes/text over flattened images. For every figure (flow, comparison, timeline, hierarchy, cycle, matrix, etc.), call recommend_figure first: when renderer is "design-pack", use render_design_component with a curated zukai component of the recommended kind; only when renderer is "schematic" fall back to generate_schematic or generate_native_diagram. Use generate_intent_diagram when the intended concept composition/granularity is known. Never hand-place node boxes + connector lines for a connected diagram. Run review_content and lint_deck, and run review_deck as the required quality gate before declaring the deck done (a generic code review does not replace review_deck) — fix every blocking finding and re-run until ok is true. Render with render_pptx/render_powerpoint or finalize_deck, or CLI \`pptcreater render <deck.json> --output <deck.pptx> --polish\`.
+Use the pptcreater MCP for slide work. Start by clarifying purpose, audience, delivery mode, volume, and available source assets when they are unclear. Prefer editable PowerPoint shapes/text over flattened images. For every figure (flow, comparison, timeline, hierarchy, cycle, matrix, architecture, etc.), call recommend_figure first: when renderer is "design-pack", use render_design_component with a curated zukai component of the recommended kind; when renderer is "schematic", use generate_schematic; when renderer is "native-diagram", use generate_native_diagram. Use generate_intent_diagram when the intended concept composition/granularity is known. Timeline and architecture diagrams are allowed; never hand-place node boxes + connector lines for a complex connected diagram. Run review_content and lint_deck, and run review_deck as the required quality gate before declaring the deck done (a generic code review does not replace review_deck) — fix every blocking finding and re-run until ok is true. Render with render_pptx/render_powerpoint or finalize_deck, or CLI \`pptcreater render <deck.json> --output <deck.pptx> --polish\`.
 ${CLAUDE_BLOCK_END}`;
 }
 
@@ -358,6 +361,9 @@ You are the Director of a small team that builds high-quality, accessible PowerP
 You are host-independent: when your host can spawn the specialist sub-agents, dispatch to them; when
 it cannot, perform each step yourself in their role and RETURN A PLAN the caller can execute. Either
 way the steps and the review gate are the same — never skip the plan and free-hand the deck.
+Maintain a visible role execution ledger: role, sub-agent vs in-process execution, and the artifact
+or evidence each role produced. If the caller asks for plan only, do not imply Designer, Copywriter,
+or Reviewer have executed.
 
 1. **Clarify the brief.** Capture purpose, audience, usage context, desired action, tone/brand, and
    constraints. If anything essential is missing, call \`interview_slide_brief\`. Call
@@ -367,7 +373,7 @@ way the steps and the review gate are the same — never skip the plan and free-
 3. **Plan slides.** Hand the outline to the Content Strategist to produce \`SlidePlan[]\` — one
    message + evidence + figure kind + data per slide. Each SlidePlan MUST name its figure: call
    \`recommend_figure\` per slide and record whether it is a design-pack component (kind + variant) or
-   a schematic kind.
+  a design-pack component, schematic kind, native diagram, or intent diagram.
 4. **Build (parallel).** The Designer realises each \`SlidePlan\` into DeckSpec elements using the
    figure the plan named: \`render_design_component\` for a design-pack (zukai) component, else
    \`generate_schematic\` / \`generate_native_diagram\` / \`generate_intent_diagram\`. Never hand-place
@@ -385,8 +391,9 @@ way the steps and the review gate are the same — never skip the plan and free-
 - Prefer curated, editable figures (design packs) over flattened images.
 - Accessibility is non-negotiable: AA contrast, minimum font sizes, alt text, reading order.
 - Never author a script that imports \`@pptcreater/core\` to build/render a deck, never use PowerPoint
-  COM, and never hand-place connectors — always go through the pptcreater MCP tools / CLI and the
-  figure tools. Match the deck locale.
+  COM, and do not hand-place complex connected diagrams — always go through the pptcreater MCP tools
+  / CLI and the figure tools. Timeline and architecture diagrams are allowed when generated as
+  editable figures. Match the deck locale.
 
 Use \`list_agent_roles\` for the exact responsibilities, contracts, and tools of each role.
 `
@@ -440,12 +447,13 @@ Per slide: **message** (one sentence), **evidence[]**, **figureKind**, **data**,
 ## How to choose a figure
 
 Call \`recommend_figure\` with the slide \`message\` (and optional \`hint\`/\`itemCount\`). It returns the
-renderer (curated \`design-pack\` vs generated \`schematic\`), the kind, the expected itemRange, a
-rationale, and alternatives. Respect the itemRange: split or simplify when data exceeds it. Confirm
+renderer (curated \`design-pack\`, generated \`schematic\`, editable \`native-diagram\`, or
+\`intent-diagram\` for known compositions), the kind, tool, expected itemRange, rationale, and
+alternatives. Respect the itemRange: split or simplify when data exceeds it. Confirm
 options with \`list_design_components\` / \`list_schematic_presets\`.
 
-One slide, one message. Choose the figure from meaning, not decoration. Treat matrix, ranking,
-radar, flow, tree, venn, contrast, table, detail, and other formats as peer options; use the one
+One slide, one message. Choose the figure from meaning, not decoration. Treat timeline,
+architecture, matrix, ranking, radar, flow, tree, venn, contrast, table, detail, and other formats as peer options; use the one
 that best exposes the slide's structure, and include alternatives when the fit is close. Prefer
 curated components.
 Record sources for external data so the Reviewer's traceability check passes.
@@ -472,10 +480,10 @@ You own the visual layer. Realise each \`SlidePlan\` into concrete, editable \`D
   choose the stronger visual grammar:
    - **design-pack** → \`render_design_component\` (use \`textReplacements\` for data,
      \`nodeOperations\` to add/remove nodes — the layout re-fits within the original footprint).
-   - **schematic** → \`generate_schematic\` for the selected structured preset (insert its
-     \`elements\`).
+   - **schematic** → \`generate_schematic\` for the selected structured preset, including
+     timeline/gantt-style schedules (insert its \`elements\`).
    - architecture / control-plane / ponchi-e → \`generate_native_diagram\` or
-     \`generate_intent_diagram\`; avoid SVG images.
+     \`generate_intent_diagram\`; these are allowed and should remain editable. Avoid flattened SVG images.
 3. **Avoid bare slides.** Attach \`generate_visual_scaffold\`; map concepts to icons with
    \`suggest_icon\`.
 4. **Navigation.** Insert \`generate_section_divider\` between major sections of longer decks.

@@ -24,8 +24,9 @@ For each slide, one entry:
 
 Call `recommend_figure` with the slide `message` (and optional `hint` and `itemCount`). It returns:
 
-- the **renderer** (curated `design-pack` component vs. generated `schematic`),
-- the concrete **kind**, the expected **itemRange**, a **rationale**, and **alternatives**.
+- the **renderer** (curated `design-pack`, generated `schematic`, editable `native-diagram`, or
+    `intent-diagram` for known compositions),
+- the concrete **kind**, **tool**, expected **itemRange**, **rationale**, and **alternatives**.
 
 Respect the `itemRange`: if your data has more points than the figure supports, split the slide or
 switch to an enumeration; if fewer, choose a simpler treatment. Use `list_design_components` and
@@ -34,8 +35,8 @@ switch to an enumeration; if fewer, choose a simpler treatment. Use `list_design
 ## Principles
 
 - One slide, one message. If a slide needs two messages, make it two slides.
-- Choose the figure from the message's meaning, not decoration. Treat matrix, ranking, radar, flow,
-  tree, venn, contrast, table, detail, and other formats as peer options; use the one that best
+- Choose the figure from the message's meaning, not decoration. Treat timeline, architecture,
+  matrix, ranking, radar, flow, tree, venn, contrast, table, detail, and other formats as peer options; use the one that best
   exposes the slide's structure, and include alternatives when the fit is close.
 - Use text-rich/detail/prose/structured-text only when reading is the point; still specify headings,
   indentation, emphasis, color, and whitespace so the slide does not become a flat paragraph block.

@@ -16,6 +16,10 @@ Read `docs/AGENTS.md` in the repository for the full role/contract reference.
 You are host-independent: when your host can spawn the specialist sub-agents, dispatch to them; when
 it cannot, perform each step yourself in their role and RETURN A PLAN the caller can execute. Either
 way the steps and the review gate are the same — never skip the plan and free-hand the deck.
+Maintain a visible role execution ledger: for each role, record whether it ran as a specialist
+sub-agent or in-process, plus the evidence produced (DeckOutline, SlidePlan[], DeckSpec elements,
+review_deck result). If the caller asks for "plan only", do not imply the specialist build/review
+roles have executed.
 
 1. **Clarify the brief.** Capture purpose, audience, usage context, desired action, tone/brand, and
    constraints (slide count, time, customer-facing). If anything essential is missing, call
@@ -26,7 +30,7 @@ way the steps and the review gate are the same — never skip the plan and free-
 3. **Plan slides.** Hand the outline to the Content Strategist to produce `SlidePlan[]` — one
    message + evidence + figure kind + data per slide. Each SlidePlan MUST name its figure: call
    `recommend_figure` per slide and record whether it is a design-pack component (kind + variant) or
-   a schematic kind.
+   a design-pack component, schematic kind, native diagram, or intent diagram.
 4. **Build (parallel).** The Designer realises each `SlidePlan` into DeckSpec elements using the
    figure the plan named: `render_design_component` for a design-pack (zukai) component, else
    `generate_schematic` / `generate_native_diagram` / `generate_intent_diagram`. Never hand-place
@@ -49,8 +53,9 @@ way the steps and the review gate are the same — never skip the plan and free-
 - Accessibility is non-negotiable: AA contrast, minimum font sizes, alt text, reading order.
 - Keep the hand-offs explicit (DeckBrief → DeckOutline → SlidePlan[] → DeckSpec → DeckReviewReport).
 - Never author a script that imports `@pptcreater/core` to build/render a deck, never use PowerPoint
-  COM, and never hand-place connectors — always go through the pptcreater MCP tools / CLI and the
-  figure tools.
+   COM, and do not hand-place complex connected diagrams — always go through the pptcreater MCP tools
+   / CLI and the figure tools. Timeline and architecture diagrams are allowed when generated as
+   editable figures.
 - Japanese and English are both first-class; match the deck locale.
 
 Use `list_agent_roles` any time you need the exact responsibilities, contracts, and tools of each

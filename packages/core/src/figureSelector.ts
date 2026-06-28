@@ -14,7 +14,8 @@ import type { Locale } from "./schema.js";
  * render anything; it recommends *what* to render and *how many* items the figure expects.
  */
 
-export type FigureRenderer = "design-pack" | "schematic";
+export type FigureRenderer = "design-pack" | "schematic" | "native-diagram" | "intent-diagram";
+export type FigureTool = "render_design_component" | "generate_schematic" | "generate_native_diagram" | "generate_intent_diagram";
 
 /** Canonical figure intents the Content Strategist can request. */
 export const FIGURE_INTENTS = [
@@ -35,6 +36,7 @@ export const FIGURE_INTENTS = [
   "enumeration",
   "correlation",
   "layers",
+  "architecture",
   "pyramid",
   "ranking",
   "radar",
@@ -49,6 +51,8 @@ export type FigureRecommendation = {
   renderer: FigureRenderer;
   /** design-pack `kind` (when renderer is design-pack) or schematic `kind`. */
   kind: string;
+  /** Tool the Designer should call for the selected renderer. */
+  tool: FigureTool;
   /** Alternative schematic kind usable even when a design-pack is chosen. */
   schematicKind: string;
   /** Inclusive item-count guidance for the Content Strategist / Copywriter. */
@@ -65,6 +69,10 @@ type IntentSpec = {
   labelEn: string;
   /** design-pack kind, when a curated component exists for this intent. */
   designPackKind?: string;
+  /** Renderer override for non-schematic generated figures. */
+  renderer?: FigureRenderer;
+  /** Concrete non-design-pack/non-schematic kind, e.g. a native diagram family. */
+  kind?: string;
   /** schematic kind fallback (always present). */
   schematicKind: string;
   itemRange: { min: number; max: number };
@@ -225,6 +233,31 @@ const INTENTS: Record<FigureIntent, IntentSpec> = {
     cues: ["レイヤー", "層", "スタック", "アーキテクチャ", "責任分界", "layer", "stack", "architecture", "tier"],
     alternatives: ["hierarchy", "pyramid"]
   },
+  architecture: {
+    labelJa: "アーキテクチャ図",
+    labelEn: "Architecture diagram",
+    renderer: "native-diagram",
+    kind: "architecture",
+    schematicKind: "layer",
+    itemRange: { min: 3, max: 8 },
+    cues: [
+      "アーキテクチャ",
+      "構成図",
+      "全体構成",
+      "システム構成",
+      "連携構成",
+      "参照アーキテクチャ",
+      "architecture",
+      "architecture diagram",
+      "system architecture",
+      "reference architecture",
+      "integration diagram",
+      "component diagram",
+      "network diagram",
+      "data flow"
+    ],
+    alternatives: ["layers", "process-horizontal", "correlation"]
+  },
   pyramid: {
     labelJa: "ピラミッド",
     labelEn: "Pyramid",
@@ -323,14 +356,19 @@ export function selectFigure(input: SelectFigureInput): FigureRecommendation {
   }
 
   const spec = INTENTS[intent];
-  const renderer: FigureRenderer = spec.designPackKind ? "design-pack" : "schematic";
-  const kind = spec.designPackKind ?? spec.schematicKind;
+  const renderer: FigureRenderer = spec.renderer ?? (spec.designPackKind ? "design-pack" : "schematic");
+  const kind = spec.designPackKind ?? spec.kind ?? spec.schematicKind;
+  const tool = toolForRenderer(renderer);
 
   let rationale = rationaleBase;
   if (renderer === "design-pack") {
     rationale += ` Use a curated, editable ${spec.labelEn} component (design pack kind "${kind}").`;
-  } else {
+  } else if (renderer === "schematic") {
     rationale += ` No curated component for this intent; generate a native ${spec.labelEn} schematic ("${spec.schematicKind}").`;
+  } else if (renderer === "native-diagram") {
+    rationale += ` Use generate_native_diagram for an editable ${spec.labelEn}; use schematic "${spec.schematicKind}" only as a simpler fallback.`;
+  } else {
+    rationale += ` Use generate_intent_diagram for a fixed, known ${spec.labelEn} composition; use schematic "${spec.schematicKind}" only as a simpler fallback.`;
   }
 
   if (typeof input.itemCount === "number") {
@@ -345,6 +383,7 @@ export function selectFigure(input: SelectFigureInput): FigureRecommendation {
     intent,
     renderer,
     kind,
+    tool,
     schematicKind: spec.schematicKind,
     itemRange: spec.itemRange,
     labelJa: spec.labelJa,
@@ -377,9 +416,20 @@ function resolveExplicit(value: string): FigureIntent | undefined {
     layer: "layers",
     "list-vertical": "list",
     spider: "radar",
-    gantt: "timeline"
+    gantt: "timeline",
+    architecture: "architecture",
+    "architecture-diagram": "architecture",
+    "native-diagram": "architecture",
+    "system-architecture": "architecture"
   };
   return ALIASES[v];
+}
+
+function toolForRenderer(renderer: FigureRenderer): FigureTool {
+  if (renderer === "design-pack") return "render_design_component";
+  if (renderer === "schematic") return "generate_schematic";
+  if (renderer === "native-diagram") return "generate_native_diagram";
+  return "generate_intent_diagram";
 }
 
 /** Returns the full intent catalog for discovery (CLI/MCP). */
@@ -389,16 +439,19 @@ export function listFigureIntents(): Array<{
   labelEn: string;
   renderer: FigureRenderer;
   kind: string;
+  tool: FigureTool;
   itemRange: { min: number; max: number };
 }> {
   return FIGURE_INTENTS.map((intent) => {
     const spec = INTENTS[intent];
+    const renderer = spec.renderer ?? (spec.designPackKind ? "design-pack" : "schematic");
     return {
       intent,
       labelJa: spec.labelJa,
       labelEn: spec.labelEn,
-      renderer: spec.designPackKind ? "design-pack" : "schematic",
-      kind: spec.designPackKind ?? spec.schematicKind,
+      renderer,
+      kind: spec.designPackKind ?? spec.kind ?? spec.schematicKind,
+      tool: toolForRenderer(renderer),
       itemRange: spec.itemRange
     };
   });

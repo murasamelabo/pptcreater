@@ -21,11 +21,12 @@ never flattened images when an editable figure is possible.
      `textReplacements` to substitute the curated placeholder data, and `nodeOperations` to add or
      remove nodes (the layout re-fits within the original footprint).
     - **schematic** → `generate_schematic` for a generated native figure (insert its `elements`).
-       Treat `matrix`, `ranking`, `radar`, flow, hierarchy, comparison, schedule, list, and other
+       Treat `timeline`, `matrix`, `ranking`, `radar`, flow, hierarchy, comparison, schedule, list, and other
        schematic kinds as peer expression options; select the one whose visual grammar best matches
        the message and data shape.
    - architecture / control-plane / ponchi-e → `generate_native_diagram` or
-     `generate_intent_diagram` (known compositions); avoid SVG images.
+       `generate_intent_diagram` (known compositions). Architecture diagrams are allowed; avoid
+       flattened SVG images when an editable native diagram can express the same message.
 3. **Avoid bare slides.** Attach `generate_visual_scaffold` (panel + icon + heading + chips) to any
    content slide that would otherwise be text-only. Map concepts to icons with `suggest_icon`.
 4. **Navigation.** Insert `generate_section_divider` chapter slides between major sections of longer
