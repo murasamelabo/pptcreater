@@ -112,7 +112,7 @@ Evaluator は必ず次のJSON形で返す。
 {
   "role": "Evaluator",
   "scenarioId": "...",
-  "model": "<record caller-provided model when known>",
+  "model": "Opus4.8",
   "scores": {
     "messageFit": 0,
     "visualFit": 0,

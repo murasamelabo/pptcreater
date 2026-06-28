@@ -23,8 +23,8 @@ reduces self-review optimism, but model judgement is never the final gate by its
 | --- | --- | --- | --- | --- |
 | Development Lead | `.github/agents/pptcreater-dev-lead.agent.md` | WorkItem, implementation, integration | Yes | implementation-oriented model |
 | User Simulator | `.github/agents/pptcreater-dev-user.agent.md` | realistic pptcreater usage scenarios and generated artifacts | No repo code edits | user-like or lower-context model |
-| Evaluator | `.github/agents/pptcreater-dev-evaluator.agent.md` | artifact critique and PatchRequest creation | No | stricter / different model from developer |
-| QA Gatekeeper | `.github/agents/pptcreater-dev-qa.agent.md` | stop/continue decision and risk acceptance | No | conservative / different model from developer |
+| Evaluator | `.github/agents/pptcreater-dev-evaluator.agent.md` | artifact critique and PatchRequest creation | No | pinned to `Opus4.8` |
+| QA Gatekeeper | `.github/agents/pptcreater-dev-qa.agent.md` | stop/continue decision and risk acceptance | No | pinned to `Opus4.8` |
 
 ## Core Artifacts
 
@@ -46,8 +46,8 @@ reduces self-review optimism, but model judgement is never the final gate by its
   "modelPolicy": {
     "developer": "implementation model",
     "userSimulator": "usage simulation model",
-    "evaluator": "different critique model",
-    "qa": "different conservative model"
+    "evaluator": "Opus4.8",
+    "qa": "Opus4.8"
   }
 }
 ```
@@ -155,15 +155,15 @@ Required for agent/tool discipline:
 
 ## Model Separation
 
-The harness should not hard-code model names in repository guidance, because model availability is
-host-specific. Instead, the orchestrator supplies model names at invocation time and records them in
-the ledger:
+The Evaluator and QA Gatekeeper are pinned to `Opus4.8` in their custom-agent frontmatter. The
+Development Lead and User Simulator remain host-selected unless a WorkItem overrides them. The
+orchestrator must still record the actual resolved model in the ledger:
 
 ```json
 {
   "role": "Evaluator",
   "agent": "pptcreater-dev-evaluator",
-  "model": "<host-selected critique model>",
+  "model": "Opus4.8",
   "execution": "subagent",
   "artifact": "generated/dev-loop-runs/run-001/eval-report.json"
 }
@@ -173,8 +173,8 @@ Recommended routing:
 
 - Development Lead: strongest implementation model available.
 - User Simulator: model close to normal user behavior, sometimes deliberately less specialized.
-- Evaluator: different, strict critique model.
-- QA Gatekeeper: conservative model, with deterministic gates treated as authoritative.
+- Evaluator: `Opus4.8`, strict critique model.
+- QA Gatekeeper: `Opus4.8`, conservative model, with deterministic gates treated as authoritative.
 
 ## Failure Taxonomy
 

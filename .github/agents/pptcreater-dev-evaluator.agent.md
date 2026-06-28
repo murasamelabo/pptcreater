@@ -1,6 +1,7 @@
 ﻿---
 description: 'Use when evaluating pptcreater-generated decks, reviewing dev-loop artifacts, turning slide quality problems into PatchRequests, or critiquing tool behavior separately from implementation.'
 name: 'pptcreater Evaluator'
+model: 'Opus4.8'
 tools: ['read', 'search', 'runCommands', 'pptcreater']
 ---
 

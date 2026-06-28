@@ -1,6 +1,7 @@
 ﻿---
 description: 'Use when deciding whether a pptcreater development loop should stop or continue, reviewing EvalReports and deterministic gates, accepting residual risk, or issuing the final QA decision for a WorkItem.'
 name: 'pptcreater QA Gatekeeper'
+model: 'Opus4.8'
 tools: ['read', 'search', 'runCommands']
 ---
 
