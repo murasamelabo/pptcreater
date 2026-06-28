@@ -1,4 +1,4 @@
-# Multi-agent slide authoring
+﻿# Multi-agent slide authoring
 
 pptcreater is designed so a small team of specialised agents can build a deck together, with one
 **Director** owning the shared `DeckSpec` and an objective, deterministic review gate deciding when
@@ -131,6 +131,23 @@ Each finding becomes a `RoutedReviewIssue` with:
 
 **Stop condition:** the deck is ready when `report.ok === true` (no blocking issues). Polish-fixable
 items are resolved automatically by `finalize_deck`; advisory notes are optional improvements.
+
+### Slideland taste benchmark advisories
+
+Visual review also includes a Slideland-inspired taste benchmark based on the `cool`, `minimal`, and
+`trust` reference pages. These are advisory checks, not render blockers, but the Reviewer should call
+them out when judging whether a deck feels close to high-quality slide references:
+
+- `visual.slideland-whitespace-tight` — the slide is too edge-to-edge or cramped compared with the
+  reference examples. Increase outer margins, group related items with whitespace, or split the slide.
+- `visual.slideland-typography-flat` — title/body/callout sizes are too similar. Strengthen the font
+  hierarchy so the reader knows where to start.
+- `visual.slideland-color-discipline` — too many saturated fills compete. Keep one dominant accent and
+  move secondary color to neutral surfaces.
+
+Use the three taste families as directional references: `cool` means high contrast, bold cropping, and
+confident whitespace; `minimal` means fewer elements, few colors, and exact alignment; `trust` means
+calm palettes, stable grids, and readable tables/charts.
 
 ### Routing summary
 

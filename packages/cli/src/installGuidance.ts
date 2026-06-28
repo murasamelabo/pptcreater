@@ -213,6 +213,7 @@ A message-first craft loop for slides that land in three seconds. Follow it befo
 - Translucency: on dark templates, set shape \`fillOpacity\` (~0.6-0.7) on cards/panels so the atmosphere shows through for a modern, layered look. Keep text on a solid-enough surface that contrast still passes.
 - Photo-style slides: when a slide is mostly text, back it with an atmosphere background or a permitted image and add a scrim (a semi-transparent shape between background and text) so the text stays legible.
 - Choose a style profile that matches intent: \`minimal\`, \`stylish\`, \`report\`, \`presentation\`, or \`technical\`. Let content mode pick one automatically, or force it when the brand calls for it.
+- Slideland taste benchmark: compare slides against the observed \`cool\`, \`minimal\`, and \`trust\` reference families. Evaluate expression quality, typography hierarchy, placement, spacing, whitespace, and color discipline. \`cool\` favors high contrast, bold cropping, and confident whitespace; \`minimal\` favors reduction, few colors, and exact alignment; \`trust\` favors calm navy/blue/brown/beige palettes, stable grids, and highly legible tables/charts.
 - Cloud/vendor diagrams: before drawing custom cloud pictograms, run \`search_assets\` for \`azure\`, \`entra\`, \`microsoft 365\`, \`power platform\`, \`aws\`, or \`google cloud\`. pptcreater includes generated generic presets such as \`preset-azure-architecture\`, \`preset-entra-privileged-access\`, \`preset-aws-ai-ml\`, and \`preset-google-kubernetes\`; these are not official vendor icons. Use \`list_icon_sources\` / \`asset://icon-sources\` before registering official upstream SVGs, and check each license and brand term.
 - Color system: avoid pure saturated red/green/blue on large areas. Use low-chroma backgrounds, neutral surfaces, and reserve accent colors for thin rules, icons, badges, and one focal object.
 - Alignment: use a consistent 12-column or card grid. Align card tops, icon centers, and text baselines. Avoid arbitrary x/y positions when a schematic preset can provide the layout; every style profile has a complete schematic set, so new templates/modes should ship matching schematic recommendations.
@@ -464,6 +465,8 @@ You own the visual layer. Realise each \`SlidePlan\` into concrete, editable \`D
 
 1. **Template & style.** \`recommend_template\` for the content mode; keep colour/type/spacing
    consistent.
+  Compare the result against Slideland-style \`cool\`, \`minimal\`, and \`trust\` references for
+  expression quality, font hierarchy, placement, spacing, whitespace, and color discipline.
 2. **Figure per slide.** Honour \`figureKind\` (or call \`recommend_figure\`):
    - **design-pack** → \`render_design_component\` (use \`textReplacements\` for data,
      \`nodeOperations\` to add/remove nodes — the layout re-fits within the original footprint).
@@ -524,6 +527,9 @@ You are the deck's quality gate. You do not edit the deck; you evaluate it and r
 1. Call \`review_deck\` on the current \`DeckSpec\`. It returns scores (accessibility/content/
    structure/overall), \`blocking[]\` (each with an \`owner\`), \`polishFixable[]\`, \`advisory[]\`,
    \`ownerQueues\`, and a \`summary\`.
+  Treat \`visual.slideland-whitespace-tight\`, \`visual.slideland-typography-flat\`, and
+  \`visual.slideland-color-discipline\` as the taste benchmark advisory lane for Slideland-style
+  cool/minimal/trust closeness.
 2. Verdict: \`ok === true\` → ready to finalize (list advisory notes). \`ok === false\` → for each
    blocking issue name the \`owner\` role and the fix, and ask the Director to dispatch it.
 3. After fixes, re-run \`review_deck\` until \`ok\` is true (cap ~3 iterations; otherwise escalate).

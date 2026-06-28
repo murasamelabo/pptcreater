@@ -636,7 +636,9 @@ slide (curated design-pack component vs. generated schematic, with item-count va
 `review_deck` as the Reviewer/stop condition (then `finalize_deck` + `render_pptx` when `ok` is
 true). Ready-made Copilot CLI / VS Code custom agents for all six roles live in
 [`.github/agents/`](.github/agents) (`deck-director` and five specialists). See
-[`docs/AGENTS.md`](docs/AGENTS.md) for the roles, contracts, routing table, and loop.
+[`docs/AGENTS.md`](docs/AGENTS.md) for the roles, contracts, routing table, and loop. See
+[`docs/design-benchmark-slideland.md`](docs/design-benchmark-slideland.md) for the Slideland-style
+cool/minimal/trust taste benchmark used by visual review advisories.
 
 ## Design principles
 

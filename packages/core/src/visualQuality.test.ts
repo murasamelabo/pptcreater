@@ -156,4 +156,64 @@ describe("visual quality review", () => {
     expect(report.ok).toBe(false);
     expect(report.issues.map((issue) => issue.code)).toContain("visual.icon-text-overlap");
   });
+
+  it("adds Slideland-style advisory checks for whitespace, typography hierarchy, and color discipline", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].layout = "message-table";
+    deck.slides[0].elements = [
+      {
+        id: "title",
+        type: "text",
+        role: "title",
+        text: "見出し",
+        x: 0.05,
+        y: 0.05,
+        w: 4,
+        h: 0.4,
+        fontSize: 18,
+        bold: true,
+        decorative: false,
+        readingOrder: 1
+      },
+      {
+        id: "body",
+        type: "text",
+        role: "body",
+        text: "本文",
+        x: 0.05,
+        y: 0.55,
+        w: 4,
+        h: 0.4,
+        fontSize: 16,
+        bold: false,
+        decorative: false,
+        readingOrder: 2
+      },
+      { id: "red", type: "shape", shape: "rect", x: 0.05, y: 1.1, w: 3.1, h: 1, fill: "#e11d48", decorative: true, readingOrder: 3 },
+      { id: "blue", type: "shape", shape: "rect", x: 3.3, y: 1.1, w: 3.1, h: 1, fill: "#2563eb", decorative: true, readingOrder: 4 },
+      { id: "green", type: "shape", shape: "rect", x: 6.55, y: 1.1, w: 3.1, h: 1, fill: "#16a34a", decorative: true, readingOrder: 5 },
+      { id: "orange", type: "shape", shape: "rect", x: 9.8, y: 1.1, w: 3.1, h: 1, fill: "#f97316", decorative: true, readingOrder: 6 }
+    ];
+    for (let index = 0; index < 8; index += 1) {
+      deck.slides[0].elements.push({
+        id: `chip-${index}`,
+        type: "shape",
+        shape: "rect",
+        x: 0.05 + (index % 4) * 3.2,
+        y: 2.35 + Math.floor(index / 4) * 2.25,
+        w: 3.1,
+        h: 2.05,
+        fill: "#f8fafc",
+        decorative: true,
+        readingOrder: 10 + index
+      });
+    }
+
+    const report = reviewVisualQuality(deck);
+
+    expect(report.ok).toBe(true);
+    expect(report.issues.map((issue) => issue.code)).toEqual(
+      expect.arrayContaining(["visual.slideland-whitespace-tight", "visual.slideland-typography-flat", "visual.slideland-color-discipline"])
+    );
+  });
 });

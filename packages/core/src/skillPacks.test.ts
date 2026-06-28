@@ -18,6 +18,8 @@ describe("skill packs", () => {
     // Each carries the craft method (multiple rules) and the deck anti-patterns.
     expect((ja?.rules.length ?? 0)).toBeGreaterThanOrEqual(10);
     expect((en?.rules.length ?? 0)).toBeGreaterThanOrEqual(10);
+    expect(ja?.rules.join("\n")).toContain("Slidelandのcool/minimal/trust系事例");
+    expect(en?.rules.join("\n")).toContain("Slideland-style cool/minimal/trust references");
     expect(ja?.forbidden.join("\n")).toContain("色付きライン付きカード");
     expect(en?.forbidden.join("\n")).toContain("colored accent-bar cards");
     expect((ja?.forbidden.length ?? 0)).toBeGreaterThan(0);

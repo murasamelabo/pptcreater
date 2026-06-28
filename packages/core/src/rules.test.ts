@@ -18,6 +18,7 @@ describe("first-pass slide creation rules", () => {
     expect(rules.visualRules.join("\n")).toContain("表は罫線ではなく文字が主役");
     expect(rules.visualRules.join("\n")).toContain("矢印は脇役");
     expect(rules.visualRules.join("\n")).toContain("写真や画像頼りにしない");
+    expect(rules.visualRules.join("\n")).toContain("Slidelandのcool/minimal/trust系事例");
     expect(rules.visualRules.join("\n")).toContain("黒い塊");
   });
 
@@ -35,5 +36,6 @@ describe("first-pass slide creation rules", () => {
     expect(prompt).toContain("learn from predecessors");
     expect(prompt).toContain("Arrows are supporting actors");
     expect(prompt).toContain("In charts, visual information is the hero");
+    expect(prompt).toContain("Slideland-style cool/minimal/trust references");
   });
 });
