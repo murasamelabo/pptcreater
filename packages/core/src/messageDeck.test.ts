@@ -202,11 +202,14 @@ describe("message map deck generator", () => {
     const visual = slide?.elements.find((element) => element.id === "official-context-visual-asset");
     const backdrop = slide?.elements.find((element) => element.id === "official-context-image-backdrop");
     expect(visual).toMatchObject({ type: "svg", sourceId: "official-page", citation: "Official page", altText: "Official service diagram" });
-    expect(visual?.w / visual!.h).toBeCloseTo(120 / 80, 2);
-    expect(visual?.x).toBeGreaterThan(backdrop!.x);
-    expect(visual?.y).toBeGreaterThan(backdrop!.y);
-    expect((visual!.x + visual!.w)).toBeLessThan(backdrop!.x + backdrop!.w);
-    expect((visual!.y + visual!.h)).toBeLessThan(backdrop!.y + backdrop!.h);
+    if (!visual || visual.type !== "svg" || !backdrop || backdrop.type !== "shape") {
+      throw new Error("Expected a generated SVG visual inside an image backdrop.");
+    }
+    expect(visual.w / visual.h).toBeCloseTo(120 / 80, 2);
+    expect(visual.x).toBeGreaterThan(backdrop.x);
+    expect(visual.y).toBeGreaterThan(backdrop.y);
+    expect(visual.x + visual.w).toBeLessThan(backdrop.x + backdrop.w);
+    expect(visual.y + visual.h).toBeLessThan(backdrop.y + backdrop.h);
     expect(slide?.elements.some((element) => element.id === "official-context-copy-panel")).toBe(true);
     expect(reviewVisualQuality(deck)).toEqual({ ok: true, issues: [] });
   });
