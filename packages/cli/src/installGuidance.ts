@@ -150,7 +150,7 @@ Before creating a DeckSpec, clarify these points when they are not already speci
 5. Use \`generate_edit_with_copilot_prompt\` only when the user explicitly wants a PowerPoint for the web / Edit with Copilot prompt. This is an upstream prompt workflow; final deterministic output should still use pptcreater rendering when possible.
 6. For a direct PPTX request, prefer \`create_pptx\` or \`create_powerpoint\` first. It creates, lints, polishes, and renders with safe defaults.
 7. Use \`search_templates\` and \`search_assets\` before creating new assets.
-8. Before building ANY multi-element figure (flow, process, timeline, comparison, hierarchy, cycle, matrix, radar), call \`recommend_figure\` with the slide message (and/or \`list_schematic_presets\`) and follow its \`renderer\`. When it returns \`design-pack\`, PREFER \`render_design_component\` with a curated component of the recommended \`kind\` from the zukai pack (the 14 figure kinds: flow-horizontal, flow-vertical, cycle, before-after, matrix, venn, formula, comparison, scale, step, gantt, list-vertical, list-horizontal, list-enumeration, plus tree) — call \`list_design_components\` to pick a P1-P6 variant, use \`textReplacements\` to fill the eyebrow/title/labels/sub-labels/caption (replace every catalog placeholder), and \`nodeOperations\` to match the node count (the layout re-fits and renumbers). Use \`radar\` via \`generate_schematic\` for 4-8 axis score profiles of one option; use \`matrix\` for two-axis positioning of multiple options and \`ranking\` for ordered comparisons. Do NOT change ○/△/✕ marks via text (they are colored icon shapes); keep the source mark pattern and map your columns onto it. Only when it returns \`schematic\` (no curated component) fall back to \`generate_schematic\` (auto-fits labels) or \`generate_native_diagram\` (routes connectors border-to-border). Only hand-build simple, short-label compositions (a few cards, a badge, an accent rule).
+8. Before building ANY multi-element figure (flow, process, timeline, comparison, hierarchy, cycle, score profile, ranking, matrix, etc.), call \`recommend_figure\` with the slide message (and/or \`list_schematic_presets\`) and follow its \`renderer\`. When it returns \`design-pack\`, PREFER \`render_design_component\` with a curated component of the recommended \`kind\` from the zukai pack (the 14 figure kinds: flow-horizontal, flow-vertical, cycle, before-after, matrix, venn, formula, comparison, scale, step, gantt, list-vertical, list-horizontal, list-enumeration, plus tree) — call \`list_design_components\` to pick a P1-P6 variant, use \`textReplacements\` to fill the eyebrow/title/labels/sub-labels/caption (replace every catalog placeholder), and \`nodeOperations\` to match the node count (the layout re-fits and renumbers). Treat schematic kinds such as \`matrix\`, \`ranking\`, \`radar\`, flow, hierarchy, schedule, comparison, list, and mockup as peer expression options; select the one whose visual grammar best expresses the slide message and data shape. Do NOT change ○/△/✕ marks via text (they are colored icon shapes); keep the source mark pattern and map your columns onto it. Only when it returns \`schematic\` (no curated component) fall back to \`generate_schematic\` (auto-fits labels) or \`generate_native_diagram\` (routes connectors border-to-border). Only hand-build simple, short-label compositions (a few cards, a badge, an accent rule).
 9. Use \`generate_intent_diagram\` when the user supplies or implies an intended conceptual composition/granularity, especially Enterprise Access Model, closed privileged access paths, side-by-side good/bad comparisons, or control-plane maps. It turns the intent contract into editable \`shape\`/\`text\` elements and prevents LLM drift to a different level of detail.
 10. Use \`generate_native_diagram\` for general architecture, security, enterprise control-plane, decision-flow, and ponchi-e diagrams that should remain editable in PowerPoint. Insert the returned \`shape\`/\`text\` elements directly into \`slide.elements\`; do not wrap them in \`image\`, \`svg\`, or \`diagram\`.
 11. Use \`list_schematic_presets\` then \`generate_schematic\` for \`table\`, \`tree\`, \`flow\`, \`vertical-flow\`, \`cycle\`, \`before-after\`, \`map\`, \`puzzle\`, \`correlation\`, \`matrix\`, \`venn\`, \`cross\`, \`set\`, \`contrast\`, \`scale-contrast\`, \`grow\`, \`layer\`, \`triangle\`, \`step\`, \`gantt\`, \`ranking\`, \`radar\`, \`list\`, \`list-horizontal\`, \`list-enumeration\`, and \`mockup\` visuals. Do not freehand complex SVG unless the preset cannot express the structure.
@@ -444,7 +444,10 @@ renderer (curated \`design-pack\` vs generated \`schematic\`), the kind, the exp
 rationale, and alternatives. Respect the itemRange: split or simplify when data exceeds it. Confirm
 options with \`list_design_components\` / \`list_schematic_presets\`.
 
-One slide, one message. Choose the figure from meaning, not decoration. Prefer curated components.
+One slide, one message. Choose the figure from meaning, not decoration. Treat matrix, ranking,
+radar, flow, tree, venn, contrast, table, detail, and other formats as peer options; use the one
+that best exposes the slide's structure, and include alternatives when the fit is close. Prefer
+curated components.
 Record sources for external data so the Reviewer's traceability check passes.
 `
   },
@@ -464,10 +467,13 @@ You own the visual layer. Realise each \`SlidePlan\` into concrete, editable \`D
 
 1. **Template & style.** \`recommend_template\` for the content mode; keep colour/type/spacing
    consistent.
-2. **Figure per slide.** Honour \`figureKind\` (or call \`recommend_figure\`):
+2. **Figure per slide.** Treat \`figureKind\` as an input and own the visual fit. If another format
+  better expresses the slide message, call \`recommend_figure\` / \`list_schematic_presets\` and
+  choose the stronger visual grammar:
    - **design-pack** → \`render_design_component\` (use \`textReplacements\` for data,
      \`nodeOperations\` to add/remove nodes — the layout re-fits within the original footprint).
-   - **schematic** → \`generate_schematic\` (insert its \`elements\`).
+   - **schematic** → \`generate_schematic\` for the selected structured preset (insert its
+     \`elements\`).
    - architecture / control-plane / ponchi-e → \`generate_native_diagram\` or
      \`generate_intent_diagram\`; avoid SVG images.
 3. **Avoid bare slides.** Attach \`generate_visual_scaffold\`; map concepts to icons with
@@ -475,7 +481,7 @@ You own the visual layer. Realise each \`SlidePlan\` into concrete, editable \`D
 4. **Navigation.** Insert \`generate_section_divider\` between major sections of longer decks.
 5. **Fit & align.** Run \`polish_deck_layout\` before review.
 
-Visible hierarchy; keep everything editable; lines orthogonal; nothing overlaps text or runs
+Visible hierarchy; treat every figure kind as a peer option selected from message/data fit; keep everything editable; lines orthogonal; nothing overlaps text or runs
 off-canvas; reading order follows the visual path. Fix \`layout.*\`/\`visual.*\`/\`diagram.*\`/\`element.*\`
 issues the Reviewer routes to you.
 `

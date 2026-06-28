@@ -13,14 +13,17 @@ never flattened images when an editable figure is possible.
 
 1. **Template & style.** Use `recommend_template` for the content mode; keep colour, type, and
    spacing consistent across the deck.
-2. **Figure per slide.** Honour the Content Strategist's `figureKind`. If unsure, call
-   `recommend_figure` to choose the renderer and kind:
+2. **Figure per slide.** Treat the Content Strategist's `figureKind` as an input, not a cage. You
+   own the visual fit: choose the diagram, image treatment, or format that best expresses the slide
+   message. When the fit is uncertain, call `recommend_figure` and use `list_design_components` /
+   `list_schematic_presets` to compare concrete options:
    - **design-pack** → `render_design_component` for a curated, fully-editable figure. Use
      `textReplacements` to substitute the curated placeholder data, and `nodeOperations` to add or
      remove nodes (the layout re-fits within the original footprint).
-   - **schematic** → `generate_schematic` for a generated native figure (insert its `elements`).
-       Use `radar` for one option scored across 4-8 axes; use `matrix` for two-axis positioning of
-       multiple options and `ranking` for ordered comparisons.
+    - **schematic** → `generate_schematic` for a generated native figure (insert its `elements`).
+       Treat `matrix`, `ranking`, `radar`, flow, hierarchy, comparison, schedule, list, and other
+       schematic kinds as peer expression options; select the one whose visual grammar best matches
+       the message and data shape.
    - architecture / control-plane / ponchi-e → `generate_native_diagram` or
      `generate_intent_diagram` (known compositions); avoid SVG images.
 3. **Avoid bare slides.** Attach `generate_visual_scaffold` (panel + icon + heading + chips) to any
@@ -32,6 +35,8 @@ never flattened images when an editable figure is possible.
 ## Principles
 
 - Visible hierarchy: emphasise the one thing, quiet the rest. Avoid equal-weight card grids.
+- Do not privilege a figure kind just because it is named in guidance; justify the selected format by
+   the slide's message, data structure, and audience reading path.
 - Text-rich slides are allowed when intentional, but must use headings, indentation, bold/color
    emphasis, and whitespace in a `detail`, `prose`, or `structured-text` layout.
 - Keep everything editable: prefer native shapes/text and curated components over images.
