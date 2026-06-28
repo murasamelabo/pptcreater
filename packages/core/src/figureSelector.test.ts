@@ -22,6 +22,14 @@ describe("selectFigure", () => {
     expect(rec.renderer).toBe("design-pack");
   });
 
+  it("maps score profile wording to a radar schematic", () => {
+    const rec = selectFigure({ message: "6軸スコアで施設の特徴をレーダーチャートとして比較する", itemCount: 6 });
+    expect(rec.intent).toBe("radar");
+    expect(rec.renderer).toBe("schematic");
+    expect(rec.kind).toBe("radar");
+    expect(rec.schematicKind).toBe("radar");
+  });
+
   it("routes correlation intent to a schematic (no curated component)", () => {
     const rec = selectFigure({ message: "中心概念と関連要素の相関図" });
     expect(rec.intent).toBe("correlation");

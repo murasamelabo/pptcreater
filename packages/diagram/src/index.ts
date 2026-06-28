@@ -349,6 +349,7 @@ export const SchematicKindSchema = z.enum([
   "step",
   "gantt",
   "ranking",
+  "radar",
   "list",
   "list-horizontal",
   "list-enumeration",
@@ -406,6 +407,7 @@ export const SCHEMATIC_KIND_CATALOG = {
   step: { labelJa: "階段/ステップ", labelEn: "Stair step", description: "Ascending maturity, roadmap, or progression steps.", suggestedItemCount: "3-5 steps" },
   gantt: { labelJa: "ガントチャート", labelEn: "Gantt chart", description: "Simple task-by-period schedule with safe staggered bars.", suggestedItemCount: "3-6 tasks", secondaryItems: "Period labels." },
   ranking: { labelJa: "ランキング", labelEn: "Ranking", description: "Ordered list with rank badges and value bars.", suggestedItemCount: "3-6 ranked items", secondaryItems: "Optional numeric values per item." },
+  radar: { labelJa: "レーダーチャート", labelEn: "Radar chart", description: "Multi-axis score profile for comparing one option across 4-8 evaluation criteria.", suggestedItemCount: "4-8 axes", secondaryItems: "Scores per axis, normally 0-5 or comparable numeric values." },
   list: { labelJa: "箇条書き縦", labelEn: "Vertical list", description: "Readable vertical list with badges.", suggestedItemCount: "3-6 points" },
   "list-horizontal": { labelJa: "箇条書き横", labelEn: "Horizontal list", description: "Horizontal card list for three or four key points.", suggestedItemCount: "3-4 points" },
   "list-enumeration": { labelJa: "箇条書き羅列", labelEn: "Enumeration", description: "Numbered vertical list for ordered checkpoints.", suggestedItemCount: "3-6 points" },
@@ -458,6 +460,7 @@ const COMPLETE_SCHEMATIC_SET = [
   "step",
   "gantt",
   "ranking",
+  "radar",
   "list",
   "list-horizontal",
   "list-enumeration",
@@ -479,7 +482,7 @@ export const SCHEMATIC_STYLE_PRESETS = {
   },
   report: {
     tone: "report",
-    primaryKinds: ["table", "matrix", "contrast", "scale-contrast", "gantt", "ranking", "layer"],
+    primaryKinds: ["table", "matrix", "contrast", "scale-contrast", "gantt", "ranking", "radar", "layer"],
     kinds: COMPLETE_SCHEMATIC_SET,
     note: "Evidence-forward patterns for structured comparisons, schedules, rankings, and explanatory reports."
   },
@@ -638,6 +641,13 @@ const BASE_SCHEMATIC_TEMPLATES: Record<SchematicKind, BaseSchematicModeTemplate>
     longDescription: "順位だけでなく数値差も棒で示し、優先順位の意味を伝えやすくする図解です。",
     items: ["Flow 95", "Matrix 80", "Layer 70", "Gantt 52", "Venn 35"],
     secondaryItems: ["95", "80", "70", "52", "35"]
+  },
+  radar: {
+    titleJa: "複数軸の特徴をひと目で比べる",
+    summary: "6軸のスコアプロファイル",
+    longDescription: "一つの施設、製品、施策を複数の評価軸で採点し、強みと弱みの形をレーダーチャートで把握する図解です。",
+    items: ["休息", "専門", "食事", "家族", "交通", "価格"],
+    secondaryItems: ["4", "5", "4", "4", "5", "3"]
   },
   list: {
     titleJa: "重要項目を縦に読みやすく並べる",
@@ -1696,6 +1706,72 @@ function rankingSchematic(diagram: SchematicDiagram, palette: SchematicPalette):
     .join("");
 }
 
+function radarEntries(diagram: SchematicDiagram): Array<{ label: string; value: number; score: number }> {
+  const items = diagram.items.slice(0, 8);
+  const rawValues = items.map((item, index) => parseSchematicValue(diagram.secondaryItems[index] ?? item, 3));
+  const maxValue = Math.max(...rawValues, 5);
+  const denominator = maxValue <= 5 ? 5 : maxValue;
+  return items.map((item, index) => {
+    const value = Math.max(0, rawValues[index]);
+    const label = item.replace(/-?\d+(?:[,.]\d+)*/gu, "").trim() || item;
+    return {
+      label,
+      value,
+      score: Math.max(0, Math.min(5, (value / denominator) * 5))
+    };
+  });
+}
+
+function radarSchematic(diagram: SchematicDiagram, palette: SchematicPalette): string {
+  const entries = radarEntries(diagram);
+  const count = Math.max(entries.length, 3);
+  const cx = diagram.width / 2;
+  const cy = 300;
+  const maxR = 142;
+  const labelR = 182;
+  const angles = entries.map((_, index) => -Math.PI / 2 + (Math.PI * 2 * index) / count);
+  const point = (angle: number, radius: number) => ({ x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius });
+  const rings = [1, 2, 3, 4, 5]
+    .map((level) => {
+      const radius = (maxR * level) / 5;
+      const points = angles.map((angle) => point(angle, radius)).map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+      return `<polygon points="${points}" fill="none" stroke="${palette.line}" stroke-width="1.6"/>`;
+    })
+    .join("");
+  const spokes = angles
+    .map((angle) => {
+      const end = point(angle, maxR);
+      return `<line x1="${cx}" y1="${cy}" x2="${end.x.toFixed(1)}" y2="${end.y.toFixed(1)}" stroke="${palette.line}" stroke-width="1.4"/>`;
+    })
+    .join("");
+  const scorePoints = entries
+    .map((entry, index) => point(angles[index], (maxR * entry.score) / 5))
+    .map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`)
+    .join(" ");
+  const labels = entries
+    .map((entry, index) => {
+      const angle = angles[index];
+      const label = point(angle, labelR);
+      const anchor = Math.cos(angle) > 0.35 ? "start" : Math.cos(angle) < -0.35 ? "end" : "middle";
+      const dy = Math.sin(angle) > 0.65 ? 0 : Math.sin(angle) < -0.65 ? -2 : 6;
+      return [
+        `<text x="${label.x.toFixed(1)}" y="${(label.y + dy).toFixed(1)}" text-anchor="${anchor}" font-family="Yu Gothic, Meiryo, Arial, sans-serif" font-size="19" font-weight="700" fill="${palette.text}">${escapeXml(entry.label)}</text>`,
+        `<text x="${label.x.toFixed(1)}" y="${(label.y + dy + 21).toFixed(1)}" text-anchor="${anchor}" font-family="Yu Gothic, Meiryo, Arial, sans-serif" font-size="14" font-weight="600" fill="${palette.muted}">${Number(entry.value.toFixed(1))}/5</text>`
+      ].join("");
+    })
+    .join("");
+
+  return [
+    roundedRect(cx - 240, 100, 480, 394, 28, palette.surface, palette.line),
+    `<circle cx="${cx}" cy="${cy}" r="178" fill="${palette.surfaceAlt}" stroke="${palette.line}" stroke-width="2" opacity="0.62"/>`,
+    rings,
+    spokes,
+    `<polygon id="radar-score-polygon" points="${scorePoints}" fill="${palette.accent}" fill-opacity="0.24" stroke="${palette.accent}" stroke-width="5"/>`,
+    `<circle cx="${cx}" cy="${cy}" r="5" fill="${palette.accent}"/>`,
+    labels
+  ].join("");
+}
+
 const SCHEMATIC_RENDERERS: Record<SchematicKind, (diagram: SchematicDiagram, palette: SchematicPalette) => string> = {
   table: tableSchematic,
   tree: treeSchematic,
@@ -1718,6 +1794,7 @@ const SCHEMATIC_RENDERERS: Record<SchematicKind, (diagram: SchematicDiagram, pal
   step: stepSchematic,
   gantt: ganttSchematic,
   ranking: rankingSchematic,
+  radar: radarSchematic,
   list: (diagram, palette) => listSchematic(diagram, palette),
   "list-horizontal": (diagram, palette) => listSchematic(diagram, palette, true),
   "list-enumeration": (diagram, palette) => listSchematic(diagram, palette, false, true),
@@ -3000,6 +3077,33 @@ function renderNativeSchematicCards(
       if (secondary[index]) {
         elements.push(nativeSchematicText(`${idPrefix}-layer-note-${index}`, secondary[index], { x: area.x + area.w - 2.6, y: y + 0.16, w: 2.0, h: layerH - 0.24 }, layerFill, nextOrder, { size: 9.5, min: 8, lines: 1, bold: false, color: "#475569" }));
       }
+    });
+    return elements;
+  }
+
+  if (kind === "radar") {
+    const entries = radarEntries(diagram);
+    const count = Math.max(entries.length, 3);
+    const cx = area.x + area.w / 2;
+    const cy = area.y + area.h / 2 + 0.08;
+    const radius = Math.min(area.w, area.h) * 0.28;
+    const labelRadius = radius + 0.48;
+    const dotRadius = 0.06;
+    const angles = entries.map((_, index) => -Math.PI / 2 + (Math.PI * 2 * index) / count);
+    elements.push(nativeShape(`${idPrefix}-radar-bg`, "ellipse", { x: cx - radius - 0.24, y: cy - radius - 0.24, w: (radius + 0.24) * 2, h: (radius + 0.24) * 2 }, { fill: "#F8FAFC", line: { color: "#E2E8F0", width: 1 }, decorative: true, readingOrder: nextOrder() }));
+    for (const level of [1, 2, 3, 4, 5]) {
+      const ring = (radius * level) / 5;
+      elements.push(nativeShape(`${idPrefix}-radar-ring-${level}`, "ellipse", { x: cx - ring, y: cy - ring, w: ring * 2, h: ring * 2 }, { fill: "none", line: { color: "#CBD5E1", width: 0.7 }, decorative: true, readingOrder: nextOrder() }));
+    }
+    entries.forEach((entry, index) => {
+      const angle = angles[index];
+      const axisEnd = { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius };
+      const scorePoint = { x: cx + Math.cos(angle) * ((radius * entry.score) / 5), y: cy + Math.sin(angle) * ((radius * entry.score) / 5) };
+      const labelPoint = { x: cx + Math.cos(angle) * labelRadius, y: cy + Math.sin(angle) * labelRadius };
+      const labelW = 0.86;
+      elements.push(nativeShape(`${idPrefix}-radar-axis-${index}`, "line", { x: Math.min(cx, axisEnd.x), y: Math.min(cy, axisEnd.y), w: Math.abs(axisEnd.x - cx), h: Math.abs(axisEnd.y - cy) }, { fill: "none", line: { color: "#CBD5E1", width: 0.7 }, decorative: true, readingOrder: nextOrder() }));
+      elements.push(nativeShape(`${idPrefix}-radar-score-dot-${index}`, "ellipse", { x: scorePoint.x - dotRadius, y: scorePoint.y - dotRadius, w: dotRadius * 2, h: dotRadius * 2 }, { fill: accent, line: { color: accent, width: 1 }, decorative: true, readingOrder: nextOrder() }));
+      elements.push(nativeSchematicText(`${idPrefix}-radar-label-${index}`, `${entry.label}\n${Number(entry.value.toFixed(1))}/5`, { x: labelPoint.x - labelW / 2, y: labelPoint.y - 0.18, w: labelW, h: 0.42 }, "#FFFFFF", nextOrder, { size: 9.5, min: 8, lines: 2, color: "#0F172A" }));
     });
     return elements;
   }

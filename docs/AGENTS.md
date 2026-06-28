@@ -96,6 +96,10 @@ message — or an explicit `figureKind` — into a concrete renderer choice:
 The selector is deterministic and keyword-driven (JA + EN cues), preferring curated components so
 the deck stays editable. Example: "導入の手順を5つの工程で示す" → `process-horizontal` →
 design-pack `flow-horizontal` (items 3–6). Use `pptcreater figure --list` to see every intent.
+For a 4–8 axis score profile of one option — facility fit, vendor capability, product maturity,
+candidate strength — choose `radar` via `recommend_figure` and render it with `generate_schematic`.
+Use `matrix` when positioning multiple options on two axes, and `ranking` when order matters more
+than shape.
 
 ## Hand-off contracts
 

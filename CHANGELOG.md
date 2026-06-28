@@ -3,6 +3,9 @@
 ## Unreleased
 
 - Added DeckSpec element hyperlinks so text, shape, SVG/diagram, and image elements can render as external clickable links in generated PPTX files.
+- Added a lint gate for overlapping text inside embedded SVG/diagram visuals, preventing unreadable in-chart labels before PPTX delivery.
+- Added a reusable `radar` schematic/figure intent for 4-8 axis score profiles, surfaced through `recommend_figure`, `generate_schematic`, MCP guidance, and deck-agent instructions.
+- Added a compact-label lint gate so short chips/buttons do not silently wrap labels into cramped two-line text.
 
 ## v0.5.44 - 2026-06-28
 

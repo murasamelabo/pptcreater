@@ -181,6 +181,7 @@ For structured visuals, prefer MCP `generate_schematic` instead of freehand SVG.
 - `tree`: hierarchy and branching
 - `flow`: horizontal process
 - `vertical-flow`: step-by-step vertical process
+- `radar`: 4-8 axis score profile for one option/facility/product
 - `list`, `list-horizontal`, `list-enumeration`: clean bullet/list layouts
 - `mockup`: UI/mockup-style visual block
 

@@ -291,6 +291,30 @@ function visibleLineCount(text: string): number {
   return text.split(/\r?\n/gu).filter((line) => line.trim().length > 0).length;
 }
 
+function compactLabelTextUnits(text: string): number {
+  let units = 0;
+  for (const char of text) {
+    if (/\s/u.test(char)) {
+      units += 0.35;
+    } else if (/^[\x00-\x7F]$/u.test(char)) {
+      units += 0.58;
+    } else {
+      units += 1;
+    }
+  }
+  return units;
+}
+
+function compactLabelWrapRisk(element: TextElement, fontSize: number): { requiredWidth: number; availableWidth: number } | undefined {
+  if (isGeneratedDiagramIntentText(element) || element.altText === "generated native schematic text" || (element.role !== "caption" && element.role !== "callout") || element.h > 0.42 || element.text.includes("\n")) {
+    return undefined;
+  }
+
+  const requiredWidth = (compactLabelTextUnits(element.text) * fontSize * (element.bold ? 1.06 : 1)) / 72;
+  const availableWidth = Math.max(0, element.w - 0.06);
+  return requiredWidth > availableWidth ? { requiredWidth, availableWidth } : undefined;
+}
+
 function hasCodeQuery(text: string): boolean {
   return CODE_QUERY_PATTERN.test(text);
 }
@@ -560,6 +584,128 @@ function svgVisibleTextFontSizes(svg: string): number[] {
   return sizes;
 }
 
+type SvgTextBox = {
+  text: string;
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  fontSize: number;
+};
+
+function svgNumberAttribute(attributes: string, name: string): number | undefined {
+  const value = svgAttributeValue(attributes, name);
+  if (!value || /%$/u.test(value)) {
+    return undefined;
+  }
+
+  const parsed = Number(/^[-+]?[0-9]*\.?[0-9]+/u.exec(value.trim())?.[0]);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function svgTextAnchor(attributes: string, inherited: string | undefined): "start" | "middle" | "end" {
+  const value = (svgAttributeValue(attributes, "text-anchor") ?? svgStyleValue(attributes, "text-anchor") ?? inherited ?? "start").trim().toLowerCase();
+  return value === "middle" || value === "end" ? value : "start";
+}
+
+function svgTextUnits(value: string): number {
+  let units = 0;
+  for (const char of value) {
+    if (/\s/u.test(char)) {
+      units += 0.35;
+    } else if (/^[\x00-\x7F]$/u.test(char)) {
+      units += 0.58;
+    } else {
+      units += 1;
+    }
+  }
+  return Math.max(units, 1);
+}
+
+function svgVisibleTextBoxes(svg: string): SvgTextBox[] {
+  const invisibleContainers = new Set(["clippath", "defs", "filter", "lineargradient", "marker", "mask", "metadata", "pattern", "radialgradient", "script", "style", "symbol"]);
+  const stack: Array<{ tag: string; hidden: boolean; scale: number; fontSize?: number; anchor?: "start" | "middle" | "end" }> = [];
+  const boxes: SvgTextBox[] = [];
+  const tagPattern = /<\s*(\/?)([a-zA-Z][\w:-]*)([^<>]*?)(\/?)\s*>/gu;
+
+  for (const match of svg.matchAll(tagPattern)) {
+    const isClosing = match[1] === "/";
+    const tag = (match[2] ?? "").toLowerCase();
+
+    if (isClosing) {
+      for (let index = stack.length - 1; index >= 0; index -= 1) {
+        if (stack[index].tag === tag) {
+          stack.splice(index);
+          break;
+        }
+      }
+      continue;
+    }
+
+    const attributes = match[3] ?? "";
+    const parent = stack[stack.length - 1];
+    const inheritedHidden = stack.some((entry) => entry.hidden);
+    const hidden = inheritedHidden || invisibleContainers.has(tag) || isHiddenSvgAttributes(attributes);
+    const scale = (parent?.scale ?? 1) * svgTransformScale(attributes);
+    const fontSize = svgFontSizeFromAttributes(attributes) ?? parent?.fontSize;
+    const anchor = svgTextAnchor(attributes, parent?.anchor);
+
+    if (tag === "text" && !hidden && fontSize) {
+      const contentStart = match.index + match[0].length;
+      const closeMatch = /<\/\s*text\s*>/iu.exec(svg.slice(contentStart));
+      const content = closeMatch ? svg.slice(contentStart, contentStart + closeMatch.index) : "";
+      const visibleText = stripDirectSvgTextContent(content);
+      const x = svgNumberAttribute(attributes, "x");
+      const y = svgNumberAttribute(attributes, "y");
+
+      if (visibleText.length > 0 && x !== undefined && y !== undefined) {
+        const scaledFontSize = fontSize * scale;
+        const width = svgTextUnits(visibleText) * scaledFontSize * 0.58;
+        const height = scaledFontSize * 1.12;
+        const x0 = anchor === "middle" ? x - width / 2 : anchor === "end" ? x - width : x;
+        boxes.push({
+          text: visibleText,
+          x0,
+          y0: y - scaledFontSize * 0.86,
+          x1: x0 + width,
+          y1: y - scaledFontSize * 0.86 + height,
+          fontSize: scaledFontSize
+        });
+      }
+    }
+
+    if (match[4] !== "/") {
+      stack.push({ tag, hidden, scale, fontSize, anchor });
+    }
+  }
+
+  return boxes;
+}
+
+function firstOverlappingSvgTextPair(svg: string): { first: SvgTextBox; second: SvgTextBox; overlapRatio: number } | undefined {
+  const boxes = svgVisibleTextBoxes(svg);
+  for (let leftIndex = 0; leftIndex < boxes.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < boxes.length; rightIndex += 1) {
+      const first = boxes[leftIndex];
+      const second = boxes[rightIndex];
+      const overlapW = Math.min(first.x1, second.x1) - Math.max(first.x0, second.x0);
+      const overlapH = Math.min(first.y1, second.y1) - Math.max(first.y0, second.y0);
+      if (overlapW <= 0 || overlapH <= 0) {
+        continue;
+      }
+
+      const firstArea = Math.max((first.x1 - first.x0) * (first.y1 - first.y0), 1);
+      const secondArea = Math.max((second.x1 - second.x0) * (second.y1 - second.y0), 1);
+      const overlapRatio = (overlapW * overlapH) / Math.min(firstArea, secondArea);
+      if (overlapRatio >= 0.15) {
+        return { first, second, overlapRatio };
+      }
+    }
+  }
+
+  return undefined;
+}
+
 function stripSvgTextContent(content: string): string {
   return content
     .replace(/<[^>]*>/gu, "")
@@ -804,6 +950,23 @@ function lintEmbeddedSvgText(element: Extract<SlideElement, { type: "svg" | "dia
   const effectiveFontSize = minimumSvgFont * scale;
   const textCount = svgTextElementCount(element.svg);
   const issues: LintIssue[] = [];
+  const overlappingText = firstOverlappingSvgTextPair(element.svg);
+
+  if (overlappingText) {
+    issues.push(
+      issue(
+        "error",
+        "visual.svg-text-overlap",
+        "Embedded SVG text labels overlap. Move or remove one label, enlarge the SVG, or recreate the visual with native text elements.",
+        `${path}.svg`,
+        {
+          firstText: overlappingText.first.text.slice(0, 40),
+          secondText: overlappingText.second.text.slice(0, 40),
+          overlapRatio: Number(overlappingText.overlapRatio.toFixed(2))
+        }
+      )
+    );
+  }
 
   if (effectiveFontSize < 8) {
     issues.push(
@@ -949,6 +1112,24 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
             "Text may overflow its bounding box. Shorten the copy, split it across slides, increase the box size, or run polish_deck_layout before rendering.",
             `${path}.text`,
             { estimatedLines: overflow.estimatedLines, maxLines: overflow.maxLines }
+          )
+        );
+      }
+
+      const compactWrap = compactLabelWrapRisk(element, fontSize);
+      if (compactWrap) {
+        issues.push(
+          issue(
+            "error",
+            "layout.compact-label-wrap",
+            "Compact label text is likely to wrap inside a chip or small button. Widen the element or shorten the label.",
+            `${path}.text`,
+            {
+              requiredWidth: Number(compactWrap.requiredWidth.toFixed(2)),
+              availableWidth: Number(compactWrap.availableWidth.toFixed(2)),
+              fontSize,
+              role: element.role
+            }
           )
         );
       }

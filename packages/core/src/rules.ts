@@ -88,7 +88,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "タイトルは原則30pt以上、リード/メッセージは18pt以上、本文は14pt以上、ラベル/注釈は12pt以上を目安にする。",
         "テキストボックスは最初から十分な幅・高さを取る。短い高さの横長カードに長文を入れない。",
         "装飾背景やカードは text より低い readingOrder にする。opaque な shape をテキスト上に置かない。",
-        "比較は table/contrast、階層は tree/layer、工程は flow/vertical-flow/cycle/step、分析は matrix/scale-contrast/grow/ranking、予定は gantt、集合・関係は venn/set/puzzle/correlation/map、3-4点要約は list/list-horizontal を優先する。"
+        "比較は table/contrast、階層は tree/layer、工程は flow/vertical-flow/cycle/step、分析は matrix/scale-contrast/grow/ranking、複数軸のスコアプロファイルは radar、予定は gantt、集合・関係は venn/set/puzzle/correlation/map、3-4点要約は list/list-horizontal を優先する。"
       ]
     : [
         "Decide the layout frame before placing elements: title band, message band, body/visual area, and notes must not overlap.",
@@ -99,7 +99,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "Use roughly >=30pt titles, >=18pt leads/messages, >=14pt body text, and >=12pt labels/notes.",
         "Allocate enough width and height up front. Do not put long copy into shallow horizontal cards.",
         "Decorative backgrounds/cards must have lower readingOrder than text. Never place opaque shapes over text.",
-        "Use table/contrast for comparisons, tree/layer for hierarchy, flow/vertical-flow/cycle/step for processes, matrix/scale-contrast/grow/ranking for analysis, gantt for schedules, venn/set/puzzle/correlation/map for grouping or relationships, and list/list-horizontal for 3-4 point summaries."
+        "Use table/contrast for comparisons, tree/layer for hierarchy, flow/vertical-flow/cycle/step for processes, matrix/scale-contrast/grow/ranking for analysis, radar for multi-axis score profiles, gantt for schedules, venn/set/puzzle/correlation/map for grouping or relationships, and list/list-horizontal for 3-4 point summaries."
       ];
 
   const visualRules = locale === "ja-JP"

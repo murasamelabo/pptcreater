@@ -641,6 +641,33 @@ describe("native ponchi diagram rendering", () => {
 });
 
 describe("schematic diagram rendering", () => {
+  it("lists radar as a reusable score-profile schematic", () => {
+    expect(SCHEMATIC_KINDS).toContain("radar");
+    expect(SCHEMATIC_KIND_CATALOG.radar.labelEn).toBe("Radar chart");
+  });
+
+  it("renders radar score profiles as SVG and editable native elements", () => {
+    const input = {
+      kind: "radar",
+      title: "Facility profile",
+      summary: "Six-axis score profile",
+      longDescription: "A radar chart comparing a facility across six evaluation axes.",
+      items: ["休息", "専門", "食事", "家族", "交通", "価格"],
+      secondaryItems: ["4", "5", "4", "4", "5", "3"],
+      tone: "report"
+    } as const;
+
+    const svg = renderSchematicDiagram(input).svg;
+    expect(svg).toContain("radar-score-polygon");
+    expect(svg).toContain("休息");
+    expect(svg).not.toContain("undefined");
+
+    const native = renderNativeSchematicDiagram(input, { frame: { x: 0.6, y: 1.6, w: 4.0, h: 4.0 }, idPrefix: "radar-native" });
+    expect(native.elements.some((element) => element.id.includes("score-dot"))).toBe(true);
+    expect(native.elements.some((element) => element.type === "text" && element.text.includes("休息"))).toBe(true);
+    expect(native.elements.every((element) => element.type === "shape" || element.type === "text")).toBe(true);
+  });
+
   it("renders safe Slideland-style schematic presets", () => {
     for (const kind of SCHEMATIC_KINDS) {
       const rendered = renderSchematicDiagram({

@@ -29,6 +29,7 @@ const SCHEMATIC_PATTERNS = [
   "step",
   "gantt",
   "ranking",
+  "radar",
   "list",
   "list-horizontal",
   "list-enumeration",

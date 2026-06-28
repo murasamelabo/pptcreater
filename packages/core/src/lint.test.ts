@@ -105,6 +105,35 @@ describe("DeckSpec linting", () => {
     expect(overlap?.severity).toBe("error");
   });
 
+  it("flags compact chip labels that are likely to wrap", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements = [
+      {
+        id: "chip-label",
+        type: "text",
+        role: "caption",
+        text: "棟内クリニック",
+        x: 8.42,
+        y: 1.86,
+        w: 1.24,
+        h: 0.18,
+        fontSize: 11.8,
+        color: "#24312F",
+        contrastBackground: "#D9EEF2",
+        decorative: false,
+        bold: true,
+        align: "center",
+        readingOrder: 1
+      }
+    ];
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const wrap = report.issues.find((issue) => issue.code === "layout.compact-label-wrap");
+
+    expect(wrap?.severity).toBe("error");
+    expect(report.ok).toBe(false);
+  });
+
   it("treats text overflow risk as a render-blocking error", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     const title = deck.slides[0].elements.find((element) => element.type === "text" && element.role === "title");
@@ -1199,6 +1228,35 @@ describe("DeckSpec linting", () => {
 
     expect(report.issues.some((issue) => issue.code === "visual.svg-text-too-small")).toBe(false);
     expect(report.issues.some((issue) => issue.code === "diagram.visible-labels-missing")).toBe(false);
+  });
+
+  it("flags overlapping text labels inside embedded SVG diagrams", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "overlapping-svg-text",
+      type: "svg",
+      x: 1,
+      y: 2,
+      w: 4,
+      h: 4,
+      svg: [
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 520 520\">",
+        "<rect width=\"520\" height=\"520\" fill=\"#fff\"/>",
+        "<circle cx=\"260\" cy=\"260\" r=\"206\" fill=\"#F8F4EE\"/>",
+        "<text x=\"260\" y=\"67\" text-anchor=\"middle\" font-size=\"22\" fill=\"#3F4945\">5/5</text>",
+        "<text x=\"260\" y=\"73\" text-anchor=\"middle\" font-size=\"24\" font-weight=\"700\" fill=\"#8E332A\">ご褒美ホテルステイ</text>",
+        "</svg>"
+      ].join(""),
+      decorative: false,
+      altText: "Radar chart with overlapping labels",
+      readingOrder: 360
+    });
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+    const overlap = report.issues.find((issue) => issue.code === "visual.svg-text-overlap");
+
+    expect(overlap?.severity).toBe("error");
+    expect(report.ok).toBe(false);
   });
 
   it("does not flag concise bullet lists as bad line breaks", () => {

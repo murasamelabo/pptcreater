@@ -37,6 +37,7 @@ export const FIGURE_INTENTS = [
   "layers",
   "pyramid",
   "ranking",
+  "radar",
   "map",
   "mockup"
 ] as const;
@@ -240,6 +241,14 @@ const INTENTS: Record<FigureIntent, IntentSpec> = {
     cues: ["ランキング", "順位", "上位", "トップ", "ranking", "rank", "top", "leaderboard"],
     alternatives: ["scale", "list"]
   },
+  radar: {
+    labelJa: "レーダーチャート",
+    labelEn: "Radar chart",
+    schematicKind: "radar",
+    itemRange: { min: 4, max: 8 },
+    cues: ["レーダーチャート", "レーダー", "6軸", "六軸", "多軸", "スコアプロファイル", "score profile", "radar", "spider chart", "multi-axis", "6-axis"],
+    alternatives: ["matrix", "ranking", "comparison"]
+  },
   map: {
     labelJa: "マップ",
     labelEn: "Map",
@@ -367,6 +376,7 @@ function resolveExplicit(value: string): FigureIntent | undefined {
     triangle: "pyramid",
     layer: "layers",
     "list-vertical": "list",
+    spider: "radar",
     gantt: "timeline"
   };
   return ALIASES[v];

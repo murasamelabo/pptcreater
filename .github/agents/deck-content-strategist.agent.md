@@ -35,7 +35,8 @@ switch to an enumeration; if fewer, choose a simpler treatment. Use `list_design
 
 - One slide, one message. If a slide needs two messages, make it two slides.
 - Choose the figure from the message's meaning, not decoration: process→flow, parts-of-whole→venn,
-  positioning→matrix, sequence→step/timeline, ranked→ranking, etc.
+  positioning→matrix, sequence→step/timeline, ranked→ranking, multi-axis score profile→radar,
+  etc.
 - Prefer curated, editable components so the deck stays editable.
 - Record sources for any external data so the Reviewer's traceability check passes.
 

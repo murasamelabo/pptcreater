@@ -19,6 +19,8 @@ never flattened images when an editable figure is possible.
      `textReplacements` to substitute the curated placeholder data, and `nodeOperations` to add or
      remove nodes (the layout re-fits within the original footprint).
    - **schematic** → `generate_schematic` for a generated native figure (insert its `elements`).
+       Use `radar` for one option scored across 4-8 axes; use `matrix` for two-axis positioning of
+       multiple options and `ranking` for ordered comparisons.
    - architecture / control-plane / ponchi-e → `generate_native_diagram` or
      `generate_intent_diagram` (known compositions); avoid SVG images.
 3. **Avoid bare slides.** Attach `generate_visual_scaffold` (panel + icon + heading + chips) to any
