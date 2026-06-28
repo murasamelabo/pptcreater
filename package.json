@@ -21,6 +21,7 @@
     "sample:schematics": "npm run build && node scripts/generate-schematic-pattern-samples.mjs",
     "sample:tree-design": "npm run build && node scripts/generate-tree-design-gallery.mjs",
     "sample:zukai-design": "npm run build && node scripts/generate-zukai-gallery.mjs",
+    "dev-loop": "node scripts/run-dev-loop.mjs",
     "studio": "node ./packages/cli/dist/index.js studio ./examples/deck.ja.json --output ./generated/studio.html"
   },
   "devDependencies": {
