@@ -1,9 +1,13 @@
-# Multi-agent slide authoring
+﻿# Multi-agent slide authoring
 
 pptcreater is designed so a small team of specialised agents can build a deck together, with one
 **Director** owning the shared `DeckSpec` and an objective, deterministic review gate deciding when
 the deck is done. This document defines the roles, the hand-off contracts between them, the
 iteration loop, and how each role maps onto the existing pptcreater tools.
+
+This document is about **deck authoring**. For improving pptcreater itself with a Dev Lead, User
+Simulator, Evaluator, and QA Gatekeeper, see
+[`dev-loop-architecture.md`](dev-loop-architecture.md).
 
 Run `pptcreater agents` (or the MCP tool `list_agent_roles`) to print the live role definitions, and
 `pptcreater review <deck.json>` (or the MCP tool `review_deck`) to run the aggregated quality gate.

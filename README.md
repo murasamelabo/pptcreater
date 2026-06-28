@@ -11,6 +11,7 @@ Agent-friendly PowerPoint creation toolkit focused on concise, well-designed, ac
 - A ponchi-e/diagram DSL that can emit editable PowerPoint shape/text elements, Diagram Intent presets for concept fidelity, plus SVG output and preset schematics for tables, trees, flows, lists, and mockups
 - PowerPoint `.pptx` rendering
 - CLI and MCP surfaces for GitHub Copilot, Claude Code, and other agent workflows
+- Workspace custom agents for running a separate pptcreater development/evaluation loop
 - Static Studio HTML previews for reviewing slides, lint issues, templates, skills, and SVG assets
 
 ## Quick start
@@ -115,6 +116,14 @@ For lower cognitive load, use one visual grammar per slide: `table` for comparis
 
 
 Modern slide generation follows these principles: content-mode-aware titles/messages, modular cards, bold whitespace, restrained accents, one memorable visual scene per slide, and editable PowerPoint shapes for content that users may revise later. The MCP resource `design://modern-slide-principles` exposes this guidance to AI agents.
+
+## Development improvement loop
+
+For improving pptcreater itself, use the development-loop architecture in
+[`docs/dev-loop-architecture.md`](docs/dev-loop-architecture.md). It is intentionally separate from
+the deck-authoring agent team: the development loop uses a Dev Lead, User Simulator, Evaluator, and
+QA Gatekeeper to implement focused changes, create real pptcreater artifacts, convert quality issues
+into PatchRequests, and stop only when deterministic gates pass.
 
 ## Diagram Intent presets
 
