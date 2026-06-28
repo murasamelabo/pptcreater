@@ -283,6 +283,48 @@ function illustrationSvg(theme: Theme, intent: SlideIntent): string {
   ].join("");
 }
 
+function svgIntrinsicSize(svg: string): { width: number; height: number } {
+  const rootAttrs = svg.match(/<svg\b([^>]*)>/iu)?.[1] ?? "";
+  const attr = (name: string): string | undefined => new RegExp(`(?:^|\\s)${name}=(["'])(.*?)\\1`, "iu").exec(rootAttrs)?.[2];
+  const length = (value: string | undefined): number | undefined => {
+    const parsed = Number(value?.trim().match(/^(\d+(?:\.\d+)?)(?:px)?$/iu)?.[1]);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+  };
+  const width = length(attr("width"));
+  const height = length(attr("height"));
+  if (width && height) {
+    return { width, height };
+  }
+
+  const viewBox = rootAttrs.match(/\bviewBox=["']\s*[-+]?\d*\.?\d+\s+[-+]?\d*\.?\d+\s+([-+]?\d*\.?\d+)\s+([-+]?\d*\.?\d+)\s*["']/iu);
+  const viewBoxWidth = Number(viewBox?.[1]);
+  const viewBoxHeight = Number(viewBox?.[2]);
+  if (Number.isFinite(viewBoxWidth) && viewBoxWidth > 0 && Number.isFinite(viewBoxHeight) && viewBoxHeight > 0) {
+    return { width: viewBoxWidth, height: viewBoxHeight };
+  }
+
+  return { width: 960, height: 540 };
+}
+
+function containFrame(
+  frame: { x: number; y: number; w: number; h: number },
+  size: { width: number; height: number }
+): { x: number; y: number; w: number; h: number } {
+  const frameRatio = frame.w / frame.h;
+  const imageRatio = size.width / size.height;
+  if (!Number.isFinite(frameRatio) || !Number.isFinite(imageRatio) || frameRatio <= 0 || imageRatio <= 0) {
+    return frame;
+  }
+
+  if (imageRatio > frameRatio) {
+    const h = frame.w / imageRatio;
+    return { x: frame.x, y: frame.y + (frame.h - h) / 2, w: frame.w, h };
+  }
+
+  const w = frame.h * imageRatio;
+  return { x: frame.x + (frame.w - w) / 2, y: frame.y, w, h: frame.h };
+}
+
 function visualAssetElement(
   asset: SlideVisualAsset | undefined,
   theme: Theme,
@@ -313,13 +355,15 @@ function visualAssetElement(
     };
   }
 
+  const svg = asset?.svg ?? illustrationSvg(theme, intent);
+  const frame = containFrame({ x, y, w, h }, svgIntrinsicSize(svg));
   return {
     id,
     type: "svg",
-    x,
-    y,
-    w,
-    h,
+    x: frame.x,
+    y: frame.y,
+    w: frame.w,
+    h: frame.h,
     readingOrder,
     decorative: false,
     altText: asset?.altText ?? `${intent.title} illustration`,
@@ -327,7 +371,7 @@ function visualAssetElement(
     citation: asset?.citation,
     title: asset?.caption ?? intent.title,
     description: asset?.caption ?? intent.message,
-    svg: asset?.svg ?? illustrationSvg(theme, intent)
+    svg
   };
 }
 

@@ -92,6 +92,34 @@ function inches(value: number): number {
   return Number(value.toFixed(3));
 }
 
+type ImagePosition = { x: number; y: number; w: number; h: number };
+
+function containImagePosition(position: ImagePosition, size: { width: number; height: number }): ImagePosition {
+  const frameRatio = position.w / position.h;
+  const imageRatio = size.width / size.height;
+  if (!Number.isFinite(frameRatio) || !Number.isFinite(imageRatio) || frameRatio <= 0 || imageRatio <= 0) {
+    return position;
+  }
+
+  if (imageRatio > frameRatio) {
+    const h = position.w / imageRatio;
+    return {
+      x: inches(position.x),
+      y: inches(position.y + (position.h - h) / 2),
+      w: inches(position.w),
+      h: inches(h)
+    };
+  }
+
+  const w = position.h * imageRatio;
+  return {
+    x: inches(position.x + (position.w - w) / 2),
+    y: inches(position.y),
+    w: inches(w),
+    h: inches(position.h)
+  };
+}
+
 function svgPixelDimensions(svg: string): { width: number; height: number } {
   const attribute = (attrs: string, name: string): string | undefined => {
     const match = new RegExp(`(?:^|\\s)${name}=(["'])(.*?)\\1`, "i").exec(attrs);
@@ -279,6 +307,21 @@ async function safeImageDataUri(dataUri: string): Promise<string> {
   return dataUri;
 }
 
+async function imageDataUriDimensions(dataUri: string): Promise<{ width: number; height: number }> {
+  const header = /^data:image\/(?:svg\+xml|png|jpe?g|gif|webp);base64,/i.exec(dataUri);
+  if (!header) {
+    throw new Error("image.dataUri must be a base64 SVG, PNG, JPEG, GIF, or WebP image.");
+  }
+
+  const payload = dataUri.slice(header[0].length).replace(/\s+/g, "");
+  const metadata = await sharp(Buffer.from(payload, "base64")).metadata();
+  if (!metadata.width || !metadata.height) {
+    throw new Error("Unable to determine image dimensions for aspect-ratio preserving placement.");
+  }
+
+  return { width: metadata.width, height: metadata.height };
+}
+
 async function resolveSlideBackground(
   slide: DeckSpec["slides"][number],
   tokens: DesignTokens
@@ -405,17 +448,21 @@ async function addElement(slide: PptxSlide, element: SlideElement, deck: DeckSpe
   }
 
   if (element.type === "svg" || element.type === "diagram") {
+    const data = await svgPngDataUri(element.svg);
+    const imagePosition = element.decorative ? position : containImagePosition(position, svgPixelDimensions(element.svg));
     slide.addImage({
-      data: await svgPngDataUri(element.svg),
+      data,
       altText: element.decorative ? "" : element.altText ?? (element.type === "diagram" ? element.summary : undefined),
-      ...position
+      ...imagePosition
     });
     return;
   }
 
   if (element.type === "image") {
     if (element.dataUri) {
-      slide.addImage({ data: await safeImageDataUri(element.dataUri), altText: element.decorative ? "" : element.altText, ...position });
+      const data = await safeImageDataUri(element.dataUri);
+      const imagePosition = element.decorative ? position : containImagePosition(position, await imageDataUriDimensions(data));
+      slide.addImage({ data, altText: element.decorative ? "" : element.altText, ...imagePosition });
     } else if (element.path) {
       slide.addImage({ path: element.path, altText: element.decorative ? "" : element.altText, ...position });
     }
