@@ -9,7 +9,8 @@ tools: ['read', 'search', 'runCommands', 'pptcreater']
 You simulate a realistic pptcreater user. Your job is to create representative slide artifacts with
 the current tool, not to fix the repository.
 
-Read `docs/dev-loop-architecture.md` before starting a scenario.
+Read `docs/dev-loop-architecture.md` and `docs/dev-loop-test-scenarios.md` before starting a
+scenario.
 
 ## Boundaries
 

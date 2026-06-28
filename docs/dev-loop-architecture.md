@@ -55,6 +55,8 @@ reduces self-review optimism, but model judgement is never the final gate by its
 ### ScenarioSpec
 
 The User Simulator writes one `ScenarioSpec` per generated test deck.
+Use [`dev-loop-test-scenarios.md`](dev-loop-test-scenarios.md) as the initial catalog of
+representative scenarios.
 
 ```json
 {
