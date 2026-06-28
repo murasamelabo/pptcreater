@@ -248,7 +248,7 @@ function hasReferenceSlideMarkers(slide: Slide): boolean {
 // deliberately carries fuller explanation), mirroring strong reference decks. They are exempt from
 // the visual-richness gate and excluded from the deck's visual-ratio denominator, while every other
 // accessibility/overflow/title rule still applies.
-const PROSE_DETAIL_LAYOUTS = new Set(["detail", "prose", "qa", "q-a", "qanda", "q-and-a", "faq"]);
+const PROSE_DETAIL_LAYOUTS = new Set(["detail", "prose", "structured-text", "text-rich", "qa", "q-a", "qanda", "q-and-a", "faq"]);
 
 export function isProseDetailSlide(slide: Slide): boolean {
   return PROSE_DETAIL_LAYOUTS.has((slide.layout ?? "").trim().toLowerCase());
@@ -1220,7 +1220,7 @@ function lintSlide(slide: Slide, slideIndex: number, deck: DeckSpec): LintIssue[
       issue(
         "error",
         "visual.richness-missing",
-        "Content slides must include a meaningful visual structure, such as generate_schematic, generate_diagram, registered icons, images, or card/shape composition. Do not deliver text-only slides.",
+        "Plain content slides need visual structure, such as generate_schematic, generate_diagram, registered icons, images, or card/shape composition. If the slide must be text-rich, use a detail/prose/structured-text layout with headings, indentation, emphasis, color, and whitespace.",
         `slides.${slideIndex}`,
         { richnessScore: visualRichnessLevel(slide) }
       )

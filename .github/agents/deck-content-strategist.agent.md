@@ -37,6 +37,8 @@ switch to an enumeration; if fewer, choose a simpler treatment. Use `list_design
 - Choose the figure from the message's meaning, not decoration: process→flow, parts-of-whole→venn,
   positioning→matrix, sequence→step/timeline, ranked→ranking, multi-axis score profile→radar,
   etc.
+- Use text-rich/detail/prose/structured-text only when reading is the point; still specify headings,
+  indentation, emphasis, color, and whitespace so the slide does not become a flat paragraph block.
 - Prefer curated, editable components so the deck stays editable.
 - Record sources for any external data so the Reviewer's traceability check passes.
 

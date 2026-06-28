@@ -112,6 +112,9 @@ ambiguity stays inside each agent, not between them.
   and slide-count hint. Produced by `plan_business_deck` (`BusinessDeckPlan.sections`).
 - **SlidePlan[]** — one entry per slide: `{ message (one sentence), evidence[], figureKind, data,
   layoutHint, reviewFlags }`. Mirrors `BusinessSlidePlan` and adds the chosen figure kind/data.
+  When a text-rich slide is intentional, set `layoutHint` to `detail`, `prose`, or
+  `structured-text`, and include explicit heading/indent/emphasis guidance rather than asking for a
+  plain paragraph slide.
 - **DeckReviewReport** — `reviewDeck` output: `ok`, `scores`, `blocking[]`, `polishFixable[]`,
   `advisory[]`, `ownerQueues`, `summary`.
 

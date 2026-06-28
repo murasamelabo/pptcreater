@@ -104,7 +104,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
 
   const visualRules = locale === "ja-JP"
     ? [
-        "本文スライドはテキストだけにしない。少なくともカード、アイコン、表、図解、フロー、ツリー、タイムライン、または Slideland 風 schematic パターンのいずれかを入れる。",
+        "通常の本文スライドはプレーンなテキストだけにしない。少なくともカード、アイコン、表、図解、フロー、ツリー、タイムライン、または Slideland 風 schematic パターンのいずれかを入れる。詳細説明・Q&A・得られることなど、読むこと自体が目的のスライドは detail/prose/structured-text として扱い、見出し、インデント、太字、色、余白で認知負荷を下げる。",
         "図解を別途作らない本文スライドには generate_visual_scaffold で右側に編集可能なコンセプトビジュアル(パネル＋アイコン/モノグラム＋見出し＋観点チップ)を付け、テキストのみ・低リッチネスを避ける。観点チップは短いフレーズ(目安24字以内)に絞る。",
         "色付きライン付きカードを3つ以上並べるだけの表現を避ける。カードは主役1つの強調に留め、比較は table/contrast、判断は matrix、流れは flow、全体像は map/ponchi-e に変換する。",
         "公式画像・製品画面・現地写真・調査したイメージ図を使える場合は、visualType: image と visualAsset(altText/sourceId/citation/placement)で左右どちらかに画像、反対側にメッセージと根拠を置く。権利が不明な画像は貼らず、編集可能なイメージ図として再作成する。",
@@ -120,7 +120,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "文字が黒い塊に見える場合は、文章を短くするだけでなく、意味のかたまり、見出し、余白、数字の強調、図表化で読み始めやすくする。"
       ]
     : [
-        "Content slides must not be text-only. Include cards, icons, tables, diagrams, flows, trees, timelines, or Slideland-style schematic patterns.",
+        "Plain content slides should not be text-only. Include cards, icons, tables, diagrams, flows, trees, timelines, or Slideland-style schematic patterns. When reading is the point (detail explanation, Q&A, benefits, policy text), use a detail/prose/structured-text layout and reduce cognitive load with headings, indentation, bold emphasis, color, and whitespace.",
         "For content slides without a dedicated diagram, attach an editable right-rail concept visual (panel + icon/monogram + heading + aspect chips) via generate_visual_scaffold to avoid text-only/low-richness slides. Keep aspect chips to short phrases (~24 chars max).",
         "Do not build slides by repeating three or more colored accent-bar cards. Keep accent bars for at most one focal card; convert comparisons to table/contrast, decisions to matrix, processes to flow, and overviews to map/ponchi-e.",
         "When an official image, product screenshot, field photo, or researched illustration is appropriate and rights are clear, use visualType: image with visualAsset (altText/sourceId/citation/placement): image on one side, message/evidence on the other. If rights are unclear, recreate the idea as an editable illustration instead of embedding the source image.",
@@ -167,14 +167,14 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
   const preflightChecklist = locale === "ja-JP"
     ? [
         "タイトル/メッセージ/本文が contentMode の文字量内に収まっている。",
-        "本文スライドがテキストだけではなく、1つの視覚文法に沿っている。",
+        "通常の本文スライドがプレーンなテキストだけではなく、1つの視覚文法に沿っている。テキスト主体スライドは detail/prose/structured-text として見出し・インデント・強調・色・余白がある。",
         "長いラベル・長文・脚注をスライド面に詰め込まず、分割または notes に移している。",
         "構図意図がある概念図は intent diagram、一般的なアーキテクチャ/フロー図は native diagram、構造化図解はモード別 schematic プリセットで作っている。",
         "altText、readingOrder、sources、コントラストを最初から入れている。"
       ]
     : [
         "Titles/messages/body copy fit the selected contentMode limits.",
-        "Content slides are not text-only and use one visual grammar.",
+        "Plain content slides are not text-only and use one visual grammar; intentional text-rich slides use detail/prose/structured-text with hierarchy, indentation, emphasis, color, and whitespace.",
         "Long labels, prose, and footnotes are split or moved to notes.",
         "Concept diagrams with intended composition use intent diagrams; general architecture/flow diagrams use native diagrams, and structured visuals use mode-aware schematic presets.",
         "altText, readingOrder, sources, and contrast are present from the start."

@@ -6,6 +6,7 @@
 - Added a lint gate for overlapping text inside embedded SVG/diagram visuals, preventing unreadable in-chart labels before PPTX delivery.
 - Added a reusable `radar` schematic/figure intent for 4-8 axis score profiles, surfaced through `recommend_figure`, `generate_schematic`, MCP guidance, and deck-agent instructions.
 - Added a compact-label lint gate so short chips/buttons do not silently wrap labels into cramped two-line text.
+- Clarified that intentional text-rich slides are allowed when they use `detail`, `prose`, or `structured-text` layouts with headings, indentation, emphasis, color, and whitespace to reduce cognitive load.
 
 ## v0.5.44 - 2026-06-28
 

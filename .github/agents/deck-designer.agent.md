@@ -32,6 +32,8 @@ never flattened images when an editable figure is possible.
 ## Principles
 
 - Visible hierarchy: emphasise the one thing, quiet the rest. Avoid equal-weight card grids.
+- Text-rich slides are allowed when intentional, but must use headings, indentation, bold/color
+   emphasis, and whitespace in a `detail`, `prose`, or `structured-text` layout.
 - Keep everything editable: prefer native shapes/text and curated components over images.
 - Lines stay orthogonal; nothing overlaps text; nothing runs off-canvas.
 - Reading order must follow the intended visual path.

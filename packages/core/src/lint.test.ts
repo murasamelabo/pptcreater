@@ -1841,6 +1841,46 @@ describe("DeckSpec linting", () => {
     expect(report.issues.some((issue) => issue.code === "visual.richness-missing")).toBe(true);
   });
 
+  it("allows intentionally structured text-rich slides", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1, contentMode: "report" });
+    deck.slides[0] = {
+      id: "structured-text",
+      title: "確認メモ",
+      layout: "structured-text",
+      elements: [
+        { id: "title", type: "text", role: "title", text: "確認メモ", x: 0.8, y: 0.5, w: 8, h: 0.5, fontSize: 28, color: "#0f172a", contrastBackground: "#ffffff", bold: true, decorative: false, readingOrder: 1 },
+        { id: "lead", type: "text", role: "subtitle", text: "文章で読むこと自体が目的のスライド。", x: 0.9, y: 1.25, w: 9, h: 0.38, fontSize: 18, color: "#334155", contrastBackground: "#ffffff", bold: false, decorative: false, readingOrder: 2 },
+        { id: "h1", type: "text", role: "callout", text: "1. 先に見ること", x: 1.05, y: 2.0, w: 4.2, h: 0.35, fontSize: 16, color: "#0f766e", contrastBackground: "#ffffff", bold: true, decorative: false, readingOrder: 3 },
+        { id: "b1", type: "text", role: "body", text: "公式条件、対象月齢、キャンセル条件を同じ質問でそろえる。", x: 1.32, y: 2.42, w: 9.4, h: 0.38, fontSize: 14.5, color: "#334155", contrastBackground: "#ffffff", bold: false, decorative: false, readingOrder: 4 },
+        { id: "h2", type: "text", role: "callout", text: "2. 比較するときの注意", x: 1.05, y: 3.15, w: 4.2, h: 0.35, fontSize: 16, color: "#0f766e", contrastBackground: "#ffffff", bold: true, decorative: false, readingOrder: 5 },
+        { id: "b2", type: "text", role: "body", text: "価格だけではなく、家族同泊・夜間預かり・交通の負担を分けて見る。", x: 1.32, y: 3.57, w: 9.4, h: 0.38, fontSize: 14.5, color: "#334155", contrastBackground: "#ffffff", bold: false, decorative: false, readingOrder: 6 }
+      ]
+    };
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "visual.richness-missing")).toBe(false);
+  });
+
+  it("allows text-rich layout marker as an intentional prose slide", () => {
+    const deck = createSampleDeck("en-US", { slideCount: 1, contentMode: "report" });
+    deck.slides[0] = {
+      id: "text-rich",
+      title: "Decision Notes",
+      layout: "text-rich",
+      elements: [
+        { id: "title", type: "text", role: "title", text: "Decision Notes", x: 0.8, y: 0.5, w: 8, h: 0.5, fontSize: 28, color: "#0f172a", contrastBackground: "#ffffff", bold: true, decorative: false, readingOrder: 1 },
+        { id: "lead", type: "text", role: "subtitle", text: "Use this slide when reading the text is the point.", x: 0.9, y: 1.25, w: 9, h: 0.38, fontSize: 18, color: "#334155", contrastBackground: "#ffffff", bold: false, decorative: false, readingOrder: 2 },
+        { id: "h1", type: "text", role: "callout", text: "1. Decision", x: 1.05, y: 2.0, w: 4.2, h: 0.35, fontSize: 16, color: "#0f766e", contrastBackground: "#ffffff", bold: true, decorative: false, readingOrder: 3 },
+        { id: "b1", type: "text", role: "body", text: "Keep the explanation short, indented, and supported by clear emphasis.", x: 1.32, y: 2.42, w: 9.4, h: 0.38, fontSize: 14.5, color: "#334155", contrastBackground: "#ffffff", bold: false, decorative: false, readingOrder: 4 }
+      ]
+    };
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.some((issue) => issue.code === "visual.richness-missing")).toBe(false);
+  });
+
   it("allows sparse cover or section slides without forcing decoration", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1, contentMode: "presentation" });
     deck.slides[0] = {
