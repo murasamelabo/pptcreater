@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.5.44 - 2026-06-28
+
+- **Fixed stretched image/illustration visuals.** Message-map side-image SVG assets are now fitted inside their image panel with the source aspect ratio preserved instead of filling the whole panel.
+- **Preserved aspect ratio during PPTX rendering.** Non-decorative SVG and `image.dataUri` elements are contained within their requested frame using intrinsic image dimensions; decorative full-slide backgrounds still stretch by design.
+- Added RED/GREEN regression coverage for side-image SVG bounds and PPTX picture extents.
+
 ## v0.5.43 - 2026-06-28
 
 - **Added OCR-derived slide craft rules.** Local OCR of representative pages from the user's PowerPoint knowledge PDFs confirmed and added explicit guidance for audience-first messaging, deciding the message before opening PowerPoint, whitespace as a designed element, eye-flow/axis planning, and avoiding text that reads as a black block.
