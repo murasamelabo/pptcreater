@@ -237,6 +237,21 @@ function pngDimensions(png: Buffer): { width: number; height: number } {
   };
 }
 
+function firstPictureTransform(slideXml: string): { x: number; y: number; w: number; h: number } {
+  const picture = /<p:pic\b[\s\S]*?<\/p:pic>/.exec(slideXml)?.[0];
+  const transform = picture?.match(/<a:off x="(\d+)" y="(\d+)"\/>\s*<a:ext cx="(\d+)" cy="(\d+)"\/>/);
+  if (!transform) {
+    throw new Error("No picture transform found in slide XML.");
+  }
+
+  return {
+    x: Number(transform[1]),
+    y: Number(transform[2]),
+    w: Number(transform[3]),
+    h: Number(transform[4])
+  };
+}
+
 describe("PPTX renderer", () => {
   it("renders a comprehensive pattern gallery deck without blocking lint errors", async () => {
     const deck = applyRealSchematicRendererOutput(parseDeckSpec(createComprehensivePatternDeck("ja-JP")));
@@ -531,6 +546,50 @@ describe("PPTX renderer", () => {
     const mediaNames = Object.keys(zip.files).filter((name) => name.startsWith("ppt/media/") && name.endsWith(".png"));
     const png = await zip.file(mediaNames[0])?.async("nodebuffer");
     expect(pngDimensions(png!)).toEqual({ width: 200, height: 100 });
+  });
+
+  it("contains non-background SVG elements instead of stretching them to mismatched frames", async () => {
+    const deck = {
+      version: "0.1" as const,
+      title: "Contained SVG",
+      locale: "en-US" as const,
+      template: "modern-simple",
+      slides: [
+        {
+          id: "s1",
+          title: "Contained SVG",
+          elements: [
+            {
+              id: "contained-svg",
+              type: "svg" as const,
+              svg: '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100"><rect width="200" height="100" fill="#eff6ff"/></svg>',
+              altText: "Contained SVG",
+              x: 1,
+              y: 1,
+              w: 4,
+              h: 4,
+              readingOrder: 1,
+              decorative: false
+            }
+          ]
+        }
+      ],
+      metadata: { keywords: [], sources: [], contentMode: "presentation" as const }
+    };
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-render-"));
+    const outputPath = join(outputDir, "contained-svg.pptx");
+
+    await renderDeckToPptx(deck, outputPath);
+
+    const zip = await JSZip.loadAsync(await readFile(outputPath));
+    const slideXml = await zip.file("ppt/slides/slide1.xml")?.async("string");
+    const transform = firstPictureTransform(slideXml!);
+    expect(transform).toEqual({
+      x: 914400,
+      y: 1828800,
+      w: 3657600,
+      h: 1828800
+    });
   });
 
   it("ignores nested viewBox attributes when root SVG has width and height", async () => {
