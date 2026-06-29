@@ -346,7 +346,9 @@ function compactLabel(value: string, maxLength: number): string {
   if (normalized.length <= maxLength) {
     return normalized;
   }
-  return Array.from(normalized).slice(0, Math.max(1, maxLength)).join("").trimEnd();
+  const clipped = Array.from(normalized).slice(0, Math.max(1, maxLength)).join("").trimEnd();
+  const wordSafe = !hasJapanese(normalized) ? clipped.replace(/[A-Za-z0-9]+$/u, "").trimEnd() : clipped;
+  return (wordSafe || clipped).replace(/[、,，・／/\s]+$/u, "").trimEnd();
 }
 
 function topicLabel(value: string): string {
@@ -396,10 +398,27 @@ function pointLabel(value: string): string {
 function visibleSentence(value: string): string {
   const text = value.trim();
   if (!text) return text;
+  if (/^(対象|観点|表現|口調)\s*[:：]/u.test(text) || /、/.test(text) || text.length <= 14) {
+    return text;
+  }
   if (/[。.!?！？]$/u.test(text) || /(する|した|できる|ある|いる|なる|進める|示す|伝える|確認する|選ぶ)$/u.test(text)) {
     return text;
   }
   return hasJapanese(text) ? `${text}を確認する。` : `${text} matters.`;
+}
+
+function coverTitleText(value: string): string {
+  if (!hasJapanese(value) || value.includes("\n")) {
+    return value;
+  }
+    const breakPoints = ["するための", "するため", "に向けた", "のための", "ための"];
+  for (const point of breakPoints) {
+    const index = value.indexOf(point);
+    if (index > 3) {
+      return `${value.slice(0, index + point.length)}\n${value.slice(index + point.length)}`;
+    }
+  }
+  return value;
 }
 
 function visualAssetElement(
@@ -901,7 +920,7 @@ function visualForIntent(theme: Theme, intent: SlideIntent, locale: Locale): [Me
 }
 
 function createCover(theme: Theme, title: string, messageMap: DeckMessageMap): Slide {
-  const displayTitle = titleLabel(title);
+  const displayTitle = coverTitleText(titleLabel(title));
   return {
     id: "cover",
     title: displayTitle,

@@ -317,10 +317,9 @@ function escapeSvg(value) {
 }
 
 function titleForTopic(topic, profile = { titleMax: 36 }) {
-  return String(topic)
+  return trimTrailingFragment(shorten(String(topic)
     .replace(/[-_]+/g, " ")
-    .replace(/^\w/, (match) => match.toUpperCase())
-    .slice(0, profile.titleMax ?? 36);
+    .replace(/^\w/, (match) => match.toUpperCase()), profile.titleMax ?? 36));
 }
 
 function messageForTopic(topic, scenario, profile) {
@@ -591,6 +590,17 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
     });
   }
 
+  const badLineBreaks = lintIssuesByCode(finalizeJson, reviewJson, "layout.bad-line-break");
+  if (badLineBreaks.length > 0) {
+    patchRequests.push({
+      severity: "medium",
+      problem: "Generated slides contain broken line breaks or visually cut-off text.",
+      evidence: badLineBreaks.slice(0, 6).map((issue) => `${issue.path ?? "unknown"}: ${issue.message ?? issue.code}`).join(" | "),
+      expected: "Evaluator should fail slides whose visible text breaks into orphan particles, dangling continuations, or cutoff-looking lines.",
+      suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/layout.ts", "scripts/run-dev-loop.mjs"]
+    });
+  }
+
   const requiredTools = new Set(scenario.requiredTools ?? []);
   const commandText = commands.map((command) => command.command).join("\n");
   const missingRequiredTools = [...requiredTools].filter((tool) => !toolCovered(tool, commandText));
@@ -776,6 +786,27 @@ function summarizeJson(value) {
     blockingErrors: Array.isArray(value.blockingErrors) ? value.blockingErrors.length : undefined,
     polishFixable: Array.isArray(value.polishFixable) ? value.polishFixable.length : undefined
   };
+}
+
+function lintIssuesByCode(...args) {
+  const code = args.pop();
+  const reports = args.filter(Boolean);
+  const issues = [];
+  for (const report of reports) {
+    for (const key of ["blockingErrors", "blocking", "blockingIssues", "polishFixable", "warnings", "renderWarnings"]) {
+      const entries = Array.isArray(report?.[key]) ? report[key] : [];
+      for (const entry of entries) {
+        if (typeof entry === "string") {
+          if (entry.includes(code)) {
+            issues.push({ code, message: entry });
+          }
+        } else if (entry?.code === code) {
+          issues.push(entry);
+        }
+      }
+    }
+  }
+  return issues;
 }
 
 function toolCovered(tool, commandText) {
