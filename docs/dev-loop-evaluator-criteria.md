@@ -13,6 +13,8 @@ Evaluator は次のことを行わない。
 - ループ停止可否を決めない。停止判断は QA Gatekeeper が行う。
 - モデルの印象だけで blocking / non-blocking を決めない。
 
+Evaluator は点数だけで品質判断を終えてはならない。各シナリオの全スライドに対して、必ず文章コメントを残す。コメントには、現在のスライドがどう見えるかに加えて、`ここがこうなっていたらもっと良い` という具体的な改善仮説を1つ以上含める。スコアは集計用であり、Dev Lead が次の大きな改修を考える主材料はスライド単位のコメントである。
+
 ## 評価を開始する条件
 
 Evaluator は、原則として次の入力がそろったときに評価を開始する。
@@ -48,6 +50,8 @@ Evaluator は次の軸で評価する。各軸は 0-5 点で採点し、3 点未
 | `standaloneClarity` | 作成スクリプトやscenarioを読まず、スライドに見えている情報だけで意味が分かるか | 各スライドが、見出し・主張・根拠・視覚情報だけで読み手に伝わり、短縮されすぎた断片がない | おおむね分かるが、いくつかのスライドは話者補足や前後文脈が必要 | ラベルが短すぎる、文が途中で終わる、見えている語だけでは何の話か分からない |
 | `visualFit` | レイアウト、視線誘導、密度、表現選択、読みやすさ | 情報構造と視覚表現が一致し、3秒で主張が分かる | 読めるが密度・余白・視線誘導に弱さがある | 重なり、過密、表現ミスマッチ、主要情報が見えない |
 | `expressionCraft` | 表現の強さ、シナリオ固有性、視覚的な語り方の幅 | サンプルに見られるように、写真・数値・空間モデル・大胆な同型反復・章扉などを内容に合わせて使い分け、シナリオが変わると見た目の作戦も変わる | 表現は破綻していないが、カード/表/flowの置換に留まり、どのシナリオでも似た見え方になる | ほぼ同じテンプレートの繰り返し、主役不在、表現が内容の温度や文脈を伝えていない |
+| `informationDensity` | 見えている文章・根拠・補足の量と実用性 | 各スライドに主張、補足、根拠、次の行動が見えており、参照デッキのように1枚で判断材料が残る | 主張は見えるが、補足や根拠が薄く、話者説明がないと物足りない | 短いラベルや抽象語だけで、情報量が少なすぎる |
+| `designAmbition` | 美しさ、図解の大胆さ、視覚の主役、挑戦度 | 写真主役・巨大数値・大きな形・人物/現場感・空間モデルなどを内容に合わせて挑戦し、退屈な安全策に留まらない | 読めるが無難で、図解やカードが代わり映えしない | ほぼテンプレート的で、印象に残る主役やスタイルがない |
 | `editability` | PowerPoint上で編集できるか、native objects を使っているか | 期待される図解・ラベル・カードが編集可能な native elements | 一部が画像化されているが、実務上の修正は可能 | 技術図・表・ラベルが不必要に flattened SVG / image になっている |
 | `accessibility` | contrast、font size、alt text、reading order、低視認性 | lint / review 上も実見上も読みやすく、代替情報がある | 警告はあるが、主要情報は読める | 低コントラスト、極小文字、読順破綻、alt不足が判断を妨げる |
 | `toolDiscipline` | requiredTools、figure selection、template、review gate、source handling | ScenarioSpec の requiredTools を使い、ledger と成果物が一致する | 主要ツールは使ったが、一部が手作業・証跡不足 | requiredTools 未使用、review/finalize未実行、手作りscriptで回避 |
@@ -55,6 +59,8 @@ Evaluator は次の軸で評価する。各軸は 0-5 点で採点し、3 点未
 ## 表現力の評価観点
 
 Evaluator は、提示された実例（FABRIC TOKYO会社紹介、SUPER STUDIO 1on1変化、ENEOSアプリ事業デザイン、STORES Company Slide）を、コピーする対象ではなく評価語彙の参照として扱う。良い表現は装飾量ではなく、内容の見え方を変える設計判断として評価する。
+
+Dev-loop は軽微なバグ修正だけでなく、参照例に近づくための挑戦的な品質改善案を出す。例えば、情報密度を上げる、写真/画像主役に寄せる、巨大数値を使う、巨大図形でスケール差を見せる、カード反復を大胆にする、といった案を試す。数ループ試しても `informationDensity` / `designAmbition` / `expressionCraft` が改善しない場合は、その実験を撤回して別案へ切り替える。
 
 | 観点 | サンプルから抽出した要点 | 評価で見るもの |
 | --- | --- | --- |
@@ -66,6 +72,19 @@ Evaluator は、提示された実例（FABRIC TOKYO会社紹介、SUPER STUDIO 
 | `brandMateriality` | 各サンプルが色・余白・書体・写真トーンで固有の空気を持つ | テンプレート色を塗っただけでなく、subject/audienceに合う質感・余白・トーンがあるか。 |
 
 `expressionCraft` が 3 点未満の場合、Evaluator は `visual.expression-craft-low` の PatchRequest を出す。証拠には、少なくとも「同一layoutの支配率」「写真/大きなvisualの有無」「空間モデル/大胆な反復/数値主役の有無」「どのサンプル由来の観点が欠けているか」を含める。
+
+## スライド単位コメント
+
+Evaluator は `eval-report.json` と `eval-summary.md` に `slideComments` を必ず含める。対象は cover / closing / references を含む全スライドである。コメントは、スコアの説明ではなく、成果物を見た人が次の改善方向を想像できる短い批評として書く。
+
+各 `slideComments[]` は次を含める。
+
+- `slideIndex`, `slideId`, `title`, `layout`
+- `comment`: アウトプットだけを見たときの批評。
+- `wouldBeBetterIf`: `ここがこうなっていたらもっと良い` に相当する具体案。
+- `evidence`: layout、visibleChars、finding code など、コメントの根拠。
+
+コメントでは、合格スライドにも必ず改善余地を書く。たとえば「情報整理として成立しているが、視線の入口になる主役要素がない」「写真はあるが、何を見るべきかの注釈が弱い」「ステップは読めるが、1つだけ大きな主役カードを作ると記憶に残る」など、次の図解改修に接続できる粒度にする。
 
 ## Deterministic gate の扱い
 
@@ -144,10 +163,23 @@ Evaluator は必ず次のJSON形で返す。
     "standaloneClarity": 0,
     "visualFit": 0,
     "expressionCraft": 0,
+    "informationDensity": 0,
+    "designAmbition": 0,
     "editability": 0,
     "accessibility": 0,
     "toolDiscipline": 0
   },
+  "slideComments": [
+    {
+      "slideIndex": 1,
+      "slideId": "cover",
+      "title": "...",
+      "layout": "cover",
+      "comment": "...",
+      "wouldBeBetterIf": "...",
+      "evidence": "..."
+    }
+  ],
   "patchRequests": [
     {
       "severity": "low | medium | high | critical",

@@ -246,20 +246,27 @@ function messageMapForScenario(scenario, loopNumber, improvementState) {
 function qualityProfile(loopNumber, improvementState) {
   const compactCopyLevel = Math.max(loopNumber >= 2 ? 1 : 0, improvementState.compactCopyLevel ?? 0);
   const expressionPolishLevel = improvementState.expressionPolishLevel ?? 0;
+  const informationDensityLevel = improvementState.informationDensityLevel ?? 0;
+  const designAmbitionLevel = improvementState.designAmbitionLevel ?? 0;
+  const baseEvidenceMax = compactCopyLevel >= 2 ? 2 : compactCopyLevel >= 1 ? 3 : 4;
   return {
     name: [
       loopNumber <= 1 ? "baseline" : "adaptive",
       compactCopyLevel > 0 ? "compact-copy" : null,
       improvementState.forceExecutiveSummary ? "executive-summary" : null,
       improvementState.safeContrast ? "safe-contrast" : null,
-      expressionPolishLevel > 0 ? `expression-polish-${expressionPolishLevel}` : null
+      expressionPolishLevel > 0 ? `expression-polish-${expressionPolishLevel}` : null,
+      informationDensityLevel > 0 ? `information-density-${informationDensityLevel}` : null,
+      designAmbitionLevel > 0 ? `design-ambition-${designAmbitionLevel}` : null
     ].filter(Boolean).join("+"),
     includeExecutiveSummary: loopNumber >= 2 || Boolean(improvementState.forceExecutiveSummary),
     compactCopy: compactCopyLevel > 0,
     compactCopyLevel,
-    evidenceMax: compactCopyLevel >= 2 ? 2 : compactCopyLevel >= 1 ? 3 : 4,
-    titleMax: improvementState.shortenTitles ? 18 : compactCopyLevel > 0 ? 22 : 36,
-    topicLimit: improvementState.reduceSlideDensity ? 7 : 10,
+    informationDensityLevel,
+    designAmbitionLevel,
+    evidenceMax: Math.min(6, Math.max(baseEvidenceMax, 3 + informationDensityLevel)),
+    titleMax: improvementState.shortenTitles ? 18 : compactCopyLevel > 0 ? 24 : 36,
+    topicLimit: improvementState.reduceSlideDensity && informationDensityLevel === 0 ? 7 : 10,
     safeContrast: Boolean(improvementState.safeContrast),
     expressionPolishLevel
   };
@@ -278,6 +285,16 @@ function normalizeTopics(scenario, profile) {
 function visualTypeForExpression(expression, index, profile = {}, scenario = {}, topic = "") {
   const value = String(expression).toLowerCase();
   const context = [scenario.userRequest, scenario.purpose, scenario.audience, topic, value].filter(Boolean).join(" ").toLowerCase();
+  if ((profile.designAmbitionLevel ?? 0) >= 1) {
+    const slot = (index + (profile.designAmbitionLevel ?? 0)) % 7;
+    if (value.includes("section") || value.includes("chapter")) return "section";
+    if (/写真|現場|顧客|事例|採用|会社|患者|家族|旅館|office|customer|case|recruit|photo/.test(context) || slot === 1) return "image";
+    if (/kpi|roi|売上|数字|指標|実績|成果|効果|予算|費用|gmv|budget|finance|traction|impact/.test(context) || slot === 2) return "summary";
+    if (/関係|体験|循環|journey|concept|system|portfolio/.test(context) || slot === 3) return "cycle";
+    if (/プロセス|構造|アーキテクチャ|移行|ロードマップ|workflow|architecture|roadmap|migration/.test(context) || slot === 4) return "native-diagram";
+    if (slot === 5) return "matrix";
+    if (slot === 6) return "flow";
+  }
   if ((profile.expressionPolishLevel ?? 0) >= 1) {
     if (/採用|会社|事例|顧客|支援者|寄付|患者|家族|旅館|現場|office|customer|case|recruit|community|patient|family/.test(context) && index % 4 === 1) return "image";
     if (/kpi|roi|売上|数字|実績|成果|効果|予算|費用|gmv|budget|finance|traction|impact/.test(context) && index % 3 === 0) return "summary";
@@ -327,6 +344,12 @@ function messageForTopic(topic, scenario, profile) {
   if (String(topic).toLowerCase().includes("executive")) {
     return "結論、重要性、次の判断を先に示す。";
   }
+  if ((profile.informationDensityLevel ?? 0) >= 2) {
+    return `${subject}について、判断材料・リスク・次の行動を同時に示す。`;
+  }
+  if ((profile.informationDensityLevel ?? 0) >= 1) {
+    return `${subject}の論点、根拠、次の行動を示す。`;
+  }
   if (profile.expressionPolishLevel >= 2) {
     return `${subject}の要点と判断軸を示す。`;
   }
@@ -339,6 +362,16 @@ function messageForTopic(topic, scenario, profile) {
 function evidenceForTopic(topic, scenario, expression, profile) {
   const audience = trimTrailingFragment(profile.compactCopyLevel >= 2 ? audienceLabel(scenario.audience) : shorten(scenario.audience ?? "対象者", profile.compactCopy ? 18 : 28));
   const tone = trimTrailingFragment(shorten(scenario.tone ?? "標準", profile.compactCopy ? 12 : 20));
+  const point = trimTrailingFragment(shorten(topic, profile.compactCopy ? 20 : 28));
+  if ((profile.informationDensityLevel ?? 0) >= 1) {
+    return [
+      `材料: ${point}`,
+      `読み手: ${audience}`,
+      `行動: ${trimTrailingFragment(shorten(scenario.purpose ?? "判断", 24))}`,
+      `表現: ${expressionLabel(expression)}`,
+      `トーン: ${tone}`
+    ].slice(0, profile.evidenceMax ?? 5);
+  }
   return [
     `対象: ${audience}`,
     `観点: ${trimTrailingFragment(shorten(topic, profile.compactCopy ? 18 : 24))}`,
@@ -358,12 +391,26 @@ function audienceLabel(audience) {
   return shorten(audience ?? "対象者", 14);
 }
 
+function expressionLabel(expression) {
+  const value = String(expression).toLowerCase();
+  if (value.includes("competitive")) return "競合比較";
+  if (value.includes("roadmap") || value.includes("timeline")) return "ロードマップ";
+  if (value.includes("dashboard") || value.includes("kpi")) return "KPI";
+  if (value.includes("funnel")) return "ファネル";
+  if (value.includes("persona")) return "ペルソナ";
+  if (value.includes("source")) return "出典確認";
+  if (value.includes("table")) return "表";
+  if (value.includes("matrix")) return "マトリクス";
+  if (value.includes("card")) return "カード";
+  return trimTrailingFragment(shorten(expression, 12));
+}
+
 function shorten(value, maxLength) {
   const text = String(value).replace(/\s+/g, " ").trim();
   if (text.length <= maxLength) {
     return text;
   }
-  const candidate = text.slice(0, Math.max(1, maxLength)).trimEnd();
+  const candidate = clipTextAtSemanticBoundary(text, maxLength);
   if (/^[\p{Script=Latin}0-9 _-]+$/u.test(text)) {
     const words = candidate.split(/[ _-]+/).filter(Boolean);
     if (words.length > 1) {
@@ -374,7 +421,35 @@ function shorten(value, maxLength) {
 }
 
 function trimTrailingFragment(value) {
-  return String(value).replace(/[、,，・／/\s]+$/u, "").trim();
+  return trimJapaneseDanglingEnd(String(value));
+}
+
+function clipTextAtSemanticBoundary(value, maxLength) {
+  const chars = Array.from(value);
+  const clipped = chars.slice(0, Math.max(1, maxLength)).join("").trimEnd();
+  if (!/[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(value)) {
+    return clipped;
+  }
+
+  const punctuationIndex = Math.max(clipped.lastIndexOf("、"), clipped.lastIndexOf("，"), clipped.lastIndexOf("・"), clipped.lastIndexOf("/"), clipped.lastIndexOf("／"));
+  if (punctuationIndex >= 4) {
+    return trimJapaneseDanglingEnd(clipped.slice(0, punctuationIndex));
+  }
+
+  const particlePattern = /[をにへでとがはの]/gu;
+  let lastParticle = -1;
+  for (const match of clipped.matchAll(particlePattern)) {
+    lastParticle = match.index ?? -1;
+  }
+  if (lastParticle >= 4) {
+    return trimJapaneseDanglingEnd(clipped.slice(0, lastParticle));
+  }
+
+  return trimJapaneseDanglingEnd(clipped);
+}
+
+function trimJapaneseDanglingEnd(value) {
+  return String(value).replace(/[、,，・／/\s]+$/u, "").replace(/[をにへでとがはの]$/u, "").trim();
 }
 
 function slug(value) {
@@ -540,6 +615,8 @@ function runScenario(scenario, loopNumber, loopDir, improvementState) {
     patchRequestCount: evalReport.patchRequests.length,
     highOrCriticalCount: evalReport.patchRequests.filter((request) => request.severity === "critical" || request.severity === "high").length,
     expressionCraft: evalReport.scores.expressionCraft,
+    informationDensity: evalReport.scores.informationDensity,
+    designAmbition: evalReport.scores.designAmbition,
     expressionFingerprint: evalReport.deterministic.expressionCraft?.fingerprint,
     hashes
   };
@@ -577,7 +654,11 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
   const reviewJson = lastJsonForCommand(commands, "review");
   const deckJson = loadJsonIfExists(findScenarioArtifact(commands, "from-message-map", "deck.json"));
   const expressionCraft = evaluateExpressionCraft(deckJson, scenario);
+  const informationDensity = evaluateInformationDensity(deckJson);
+  const designAmbition = evaluateDesignAmbition(deckJson, scenario);
   const standaloneClarity = evaluateStandaloneClarity(deckJson);
+  const textCompleteness = evaluateTextCompleteness(deckJson);
+  const slideComments = buildSlideComments(deckJson, scenario, finalizeJson, reviewJson);
   const reviewBlocking = reviewJson?.blocking?.length ?? reviewJson?.blockingIssues?.length ?? 0;
   const reviewOk = reviewJson?.ok ?? (reviewBlocking === 0);
   if (!reviewOk || reviewBlocking > 0) {
@@ -636,6 +717,26 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
     });
   }
 
+  if (informationDensity.score < 3) {
+    patchRequests.push({
+      severity: "medium",
+      problem: "Generated deck is too thin in visible information density.",
+      evidence: informationDensity.evidence,
+      expected: "Slides should carry enough visible context, evidence, and next-action information to feel substantive, like the reference decks that combine claim, support, and visual proof on one slide.",
+      suggestedScope: ["scripts/run-dev-loop.mjs", "packages/core/src/messageDeck.ts", "docs/dev-loop-evaluator-criteria.md"]
+    });
+  }
+
+  if (designAmbition.score < 3) {
+    patchRequests.push({
+      severity: "medium",
+      problem: "Generated deck is visually safe but not ambitious enough.",
+      evidence: designAmbition.evidence,
+      expected: "The loop should attempt bolder visual strategies such as photo-led spreads, oversized proof numbers, strong spatial models, deliberate repetition, and dramatic scale contrast; ineffective attempts should be reverted after comparison.",
+      suggestedScope: ["scripts/run-dev-loop.mjs", "packages/core/src/messageDeck.ts", "docs/dev-loop-evaluator-criteria.md"]
+    });
+  }
+
   if (standaloneClarity.score < 3) {
     patchRequests.push({
       severity: "medium",
@@ -643,6 +744,16 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
       evidence: standaloneClarity.evidence,
       expected: "Each slide should be understandable from visible title, message, labels, and visual content without reading generation scripts, scenario files, speaker notes, or quiet metadata.",
       suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/content.ts", "docs/dev-loop-evaluator-criteria.md"]
+    });
+  }
+
+  if (textCompleteness.score < 5) {
+    patchRequests.push({
+      severity: "medium",
+      problem: "Generated visible text contains incomplete or meaning-breaking fragments.",
+      evidence: textCompleteness.evidence,
+      expected: "Every visible text element, including cover titles and labels, should read as a complete understandable phrase or sentence rather than ending mid-word, mid-phrase, or after dangling punctuation.",
+      suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/layout.ts", "scripts/run-dev-loop.mjs"]
     });
   }
 
@@ -663,19 +774,26 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
       zip,
       hashes,
       expressionCraft,
+      informationDensity,
+      designAmbition,
       standaloneClarity,
+      textCompleteness,
+      slideCommentCount: slideComments.length,
       finalize: summarizeJson(finalizeJson),
       review: summarizeJson(reviewJson)
     },
     scores: {
       messageFit: reviewScore,
-      standaloneClarity: standaloneClarity.score,
+      standaloneClarity: Math.min(standaloneClarity.score, textCompleteness.score),
       visualFit: reviewScore,
-      expressionCraft: expressionCraft.score,
+      expressionCraft: Math.min(expressionCraft.score, designAmbition.score),
+      informationDensity: informationDensity.score,
+      designAmbition: designAmbition.score,
       editability: Math.min(reviewScore, zipScore),
       accessibility: reviewJson?.scores?.accessibility ? Math.round(reviewJson.scores.accessibility / 20) : reviewScore,
       toolDiscipline: Math.min(toolCoverage, commandScore)
     },
+    slideComments,
     patchRequests,
     residualRisks: patchRequests.length === 0 ? [] : ["Review generated artifacts manually in PowerPoint/Studio before accepting visual quality."]
   };
@@ -741,6 +859,218 @@ function evaluateExpressionCraft(deck, scenario) {
   };
 }
 
+function evaluateInformationDensity(deck) {
+  if (!deck?.slides) {
+    return { score: 1, evidence: "deck.json was not available for information density evaluation." };
+  }
+  const bodySlides = deck.slides.filter((slide) => !["cover", "title", "section", "divider", "closing", "references"].includes(slide.layout ?? ""));
+  const slideCount = Math.max(1, bodySlides.length);
+  const textElements = bodySlides.flatMap((slide) => (slide.elements ?? []).filter((element) => element.type === "text"));
+  const visibleChars = textElements.reduce((sum, element) => sum + String(element.text ?? "").replace(/\s+/g, "").length, 0);
+  const avgCharsPerSlide = visibleChars / slideCount;
+  const avgTextElementsPerSlide = textElements.length / slideCount;
+  const contentBearingSlides = bodySlides.filter((slide) => {
+    const chars = (slide.elements ?? []).filter((element) => element.type === "text").reduce((sum, element) => sum + String(element.text ?? "").replace(/\s+/g, "").length, 0);
+    return chars >= 85 || hasFocalProof(slide) || hasLargeMedia(slide);
+  }).length;
+
+  let score = 1;
+  if (avgCharsPerSlide >= 85) score += 1;
+  if (avgCharsPerSlide >= 115) score += 1;
+  if (avgTextElementsPerSlide >= 8) score += 1;
+  if (contentBearingSlides / slideCount >= 0.65) score += 1;
+  score = Math.max(1, Math.min(5, score));
+
+  return {
+    score,
+    evidence: `informationDensity=${score}/5; avgCharsPerSlide=${avgCharsPerSlide.toFixed(1)}; avgTextElementsPerSlide=${avgTextElementsPerSlide.toFixed(1)}; contentBearingSlides=${contentBearingSlides}/${slideCount}`
+  };
+}
+
+function evaluateDesignAmbition(deck, scenario) {
+  if (!deck?.slides) {
+    return { score: 1, evidence: "deck.json was not available for design ambition evaluation." };
+  }
+  const bodySlides = deck.slides.filter((slide) => !["cover", "title", "section", "divider", "closing", "references"].includes(slide.layout ?? ""));
+  const slideCount = Math.max(1, bodySlides.length);
+  const largeMedia = bodySlides.filter(hasLargeMedia).length;
+  const focalProof = bodySlides.filter(hasFocalProof).length;
+  const spatialModel = bodySlides.filter(hasSpatialModel).length;
+  const deliberateRepetition = bodySlides.filter(hasDeliberateRepetition).length;
+  const dramaticScale = bodySlides.filter(hasDramaticScaleContrast).length;
+  const layouts = new Set(bodySlides.map((slide) => slide.layout ?? "unknown"));
+  const scenarioText = [scenario.purpose, scenario.audience, scenario.userRequest, ...(scenario.requiredExpressions ?? [])].join(" ").toLowerCase();
+  const wantsMedia = /採用|会社|事例|顧客|製品|現場|office|customer|product|case|recruit|community/.test(scenarioText);
+  const wantsProof = /kpi|roi|売上|数字|指標|実績|効果|比較|データ|予算|費用|gmv|budget|finance|traction|impact/.test(scenarioText);
+
+  let score = 1;
+  if (layouts.size >= Math.min(5, slideCount)) score += 1;
+  if (largeMedia >= Math.max(1, Math.ceil(slideCount * 0.2)) || !wantsMedia) score += 1;
+  if (focalProof > 0 || !wantsProof) score += 1;
+  if (spatialModel >= Math.min(4, slideCount)) score += 1;
+  if (deliberateRepetition >= 2 && dramaticScale >= 2) score += 1;
+  score = Math.max(1, Math.min(5, score));
+
+  const missing = [];
+  if (wantsMedia && largeMedia === 0) missing.push("no photo/product/customer-scale visual");
+  if (wantsProof && focalProof === 0) missing.push("no oversized proof number");
+  if (dramaticScale === 0) missing.push("no dramatic scale contrast like large blob/oversized figure");
+  if (deliberateRepetition === 0) missing.push("no strong repeated card rhythm");
+  return {
+    score,
+    evidence: `designAmbition=${score}/5; layouts=${layouts.size}; largeMedia=${largeMedia}; focalProof=${focalProof}; spatialModel=${spatialModel}; deliberateRepetition=${deliberateRepetition}; dramaticScale=${dramaticScale}; missing=${missing.join("; ") || "none"}`
+  };
+}
+
+function buildSlideComments(deck, scenario, ...reports) {
+  if (!deck?.slides) {
+    return [
+      {
+        slideIndex: 0,
+        slideId: "deck-missing",
+        title: "Deck unavailable",
+        layout: "unknown",
+        comment: "deck.jsonが取得できないため、スライド単位の評価コメントを作れません。",
+        wouldBeBetterIf: "生成後のdeck.jsonを必ず保存し、評価者が最終アウトプットだけを見て各スライドを確認できる状態にするとよいです。",
+        evidence: "deckJson=null"
+      }
+    ];
+  }
+
+  return deck.slides.map((slide, index) => {
+    const textElements = (slide.elements ?? []).filter((element) => element.type === "text");
+    const visibleChars = textElements.reduce((sum, element) => sum + String(element.text ?? "").replace(/\s+/g, "").length, 0);
+    const issueHints = issuesForSlide(index, reports);
+    const title = slide.title || textElements.find((element) => element.role === "title")?.text || slide.id || `Slide ${index + 1}`;
+    const layout = slide.layout ?? "unknown";
+    const comment = slideCommentFor({ slide, index, title, layout, visibleChars, textCount: textElements.length, issueHints, scenario });
+    return {
+      slideIndex: index + 1,
+      slideId: slide.id ?? `slide-${index + 1}`,
+      title,
+      layout,
+      comment: comment.comment,
+      wouldBeBetterIf: comment.wouldBeBetterIf,
+      evidence: comment.evidence
+    };
+  });
+}
+
+function slideCommentFor({ slide, index, title, layout, visibleChars, textCount, issueHints, scenario }) {
+  const topic = trimTrailingFragment(shorten(title, 22));
+  const blockingHints = issueHints.filter(isBlockingSlideIssue);
+  const issueSummary = blockingHints.slice(0, 2).map((issue) => `${issue.code ?? "issue"}: ${issue.message ?? issue.path ?? "review finding"}`).join(" / ");
+  const hasBlockingIssue = blockingHints.length > 0;
+  const largeMedia = hasLargeMedia(slide);
+  const focalProof = hasFocalProof(slide);
+  const spatialModel = hasSpatialModel(slide);
+  const dramaticScale = hasDramaticScaleContrast(slide);
+  const cards = (slide.elements ?? []).filter((element) => element.type === "shape" && ["roundRect", "roundedRect", "rect"].includes(element.shape) && element.w >= 1.5 && element.h >= 0.8).length;
+  const scenarioNeed = [scenario.userRequest, scenario.purpose, scenario.audience, ...(scenario.requiredExpressions ?? [])].filter(Boolean).join(" ").toLowerCase();
+
+  if (hasBlockingIssue) {
+    return {
+      comment: `${topic}は重大な表示品質の問題があり、読者が内容へ入る前に可読性や信頼感で止まる可能性があります。`,
+      wouldBeBetterIf: `該当箇所を修正したうえで、同じスライドに主張・根拠・次の判断が一目で残るように再配置するともっと良くなります。`,
+      evidence: `${blockingHints.length} blocking-like issue(s): ${issueSummary}`
+    };
+  }
+
+  if (layout === "cover") {
+    return {
+      comment: `表紙はテーマを示していますが、聞き手が最初の3秒で期待値を持つには、読者と到達行動の見せ方がまだ控えめです。`,
+      wouldBeBetterIf: `タイトルの横に「誰が何を判断する資料か」を短いタグで置き、表紙から会議の緊張感や用途が伝わるともっと良くなります。`,
+      evidence: `layout=${layout}; visibleChars=${visibleChars}; textElements=${textCount}`
+    };
+  }
+
+  if (layout === "closing") {
+    return {
+      comment: `締めスライドは行動を促していますが、実務で次に動くための期限・担当・確認物が見えるとさらに強くなります。`,
+      wouldBeBetterIf: `次アクションを「担当、期限、確認する資料」の3点で小さく分解し、会議後にそのまま使えるチェックにするともっと良くなります。`,
+      evidence: `layout=${layout}; visibleChars=${visibleChars}; textElements=${textCount}`
+    };
+  }
+
+  if (visibleChars < 70 && !largeMedia && !focalProof) {
+    return {
+      comment: `${topic}は読みやすい一方で、スライド単体で判断するには情報量が薄く、要点だけが置かれている印象です。`,
+      wouldBeBetterIf: `主張の下に「根拠、反証リスク、次の判断」のうち最低2つを足し、短いが中身のあるスライドにするともっと良くなります。`,
+      evidence: `visibleChars=${visibleChars}; textElements=${textCount}; largeMedia=${largeMedia}; focalProof=${focalProof}`
+    };
+  }
+
+  if (/message-statement|message-table|message-flow|message-steps/u.test(layout) && cards >= 3) {
+    return {
+      comment: `${topic}は情報整理として成立していますが、見慣れたカードやステップの並びに寄っており、発見や驚きは弱めです。`,
+      wouldBeBetterIf: `1つだけ大きな主役カードを作る、または写真・大きな数値・対立構図のどれかを加えて視線の入口を作るともっと良くなります。`,
+      evidence: `layout=${layout}; cards=${cards}; dramaticScale=${dramaticScale}; spatialModel=${spatialModel}`
+    };
+  }
+
+  if (/message-matrix|message-hub-map|message-concept|message-before-after/u.test(layout)) {
+    return {
+      comment: `${topic}は構造を図解で示せていますが、図の軸や関係がさらに鋭くなる余地があります。`,
+      wouldBeBetterIf: `単なる分類ではなく、「どこを選ぶべきか」「何が対立しているか」「どこで判断が分かれるか」を図の中に1つ強調するともっと良くなります。`,
+      evidence: `layout=${layout}; spatialModel=${spatialModel}; visibleChars=${visibleChars}`
+    };
+  }
+
+  if (largeMedia || /photo|image|customer|case|旅館|顧客|採用/u.test(scenarioNeed)) {
+    return {
+      comment: `${topic}は視覚の入口がありますが、画像や場面が資料の論点とより強く結びつく余地があります。`,
+      wouldBeBetterIf: `画像の上に短いキャプションや注目点を重ね、読者が「何を見ればよいか」まで分かる写真主役スライドにするともっと良くなります。`,
+      evidence: `layout=${layout}; largeMedia=${largeMedia}; visibleChars=${visibleChars}`
+    };
+  }
+
+  if (focalProof || /kpi|roi|売上|数字|指標|実績|効果|比較|予算|費用|gmv|budget|finance/u.test(scenarioNeed)) {
+    return {
+      comment: `${topic}は判断材料を示していますが、数字や比較の見せ方をさらに主役化できます。`,
+      wouldBeBetterIf: `最も重要な数値を1つだけ大きく置き、その横に「なぜ重要か」を短く添えると、記憶に残るスライドになります。`,
+      evidence: `layout=${layout}; focalProof=${focalProof}; dramaticScale=${dramaticScale}`
+    };
+  }
+
+  return {
+    comment: `${topic}は主張と最低限の根拠が見えますが、まだ無難な構成に収まっています。`,
+    wouldBeBetterIf: `読み手が思わず立ち止まる主役要素を1つ決め、写真・数値・比喩図・章扉のどれかへ大胆に寄せるともっと良くなります。`,
+    evidence: `layout=${layout}; visibleChars=${visibleChars}; textElements=${textCount}; largeMedia=${largeMedia}; focalProof=${focalProof}; spatialModel=${spatialModel}`
+  };
+}
+
+function issuesForSlide(slideIndex, reports) {
+  const prefix = `slides.${slideIndex}`;
+  const issues = [];
+  for (const report of reports.filter(Boolean)) {
+    for (const key of ["blockingErrors", "blocking", "blockingIssues", "polishFixable", "warnings", "renderWarnings", "advisory"]) {
+      for (const entry of Array.isArray(report?.[key]) ? report[key] : []) {
+        if (typeof entry === "string") {
+          if (entry.includes(prefix)) issues.push({ code: key, message: entry, path: prefix });
+        } else if (String(entry?.path ?? "").startsWith(prefix)) {
+          issues.push(entry);
+        }
+      }
+    }
+  }
+  return issues;
+}
+
+function isBlockingSlideIssue(issue) {
+  const code = String(issue?.code ?? "");
+  const disposition = String(issue?.disposition ?? "");
+  const severity = String(issue?.severity ?? "");
+  if (disposition === "blocking" || severity === "error") return true;
+  return [
+    "text.low-contrast",
+    "visual.truncated-text",
+    "layout.bad-line-break",
+    "layout.compact-label-wrap",
+    "diagram.native-connectors",
+    "element.reading-order-duplicate"
+  ].includes(code);
+}
+
 function countBy(values) {
   return values.reduce((counts, value) => {
     counts[value] = (counts[value] ?? 0) + 1;
@@ -767,6 +1097,15 @@ function hasSpatialModel(slide) {
 function hasDeliberateRepetition(slide) {
   const cards = (slide.elements ?? []).filter((element) => element.type === "shape" && ["roundRect", "roundedRect", "rect"].includes(element.shape) && element.w >= 1.5 && element.h >= 0.8);
   return cards.length >= 3;
+}
+
+function hasDramaticScaleContrast(slide) {
+  return (slide.elements ?? []).some((element) => {
+    if (element.type === "text" && (element.fontSize ?? 0) >= 40) return true;
+    if (element.type === "shape" && element.w >= 5.5 && element.h >= 3.0) return true;
+    if (["image", "svg", "diagram"].includes(element.type) && element.w >= 5.5 && element.h >= 3.0 && !element.decorative) return true;
+    return false;
+  });
 }
 
 function lastJsonForCommand(commands, name) {
@@ -879,6 +1218,14 @@ function evalSummaryMarkdown(report) {
   for (const [key, value] of Object.entries(report.scores)) {
     lines.push(`- ${key}: ${value}/5`);
   }
+  lines.push("", "## Slide Comments", "");
+  for (const comment of report.slideComments ?? []) {
+    lines.push(`### Slide ${comment.slideIndex}: ${comment.title}`);
+    lines.push(`- Comment: ${comment.comment}`);
+    lines.push(`- Would be better if: ${comment.wouldBeBetterIf}`);
+    lines.push(`- Evidence: ${comment.evidence}`);
+    lines.push("");
+  }
   lines.push("", "## Patch Requests", "");
   if (report.patchRequests.length === 0) {
     lines.push("- None");
@@ -898,6 +1245,12 @@ function createLoopQaReport(loopNumber, maxLoops, scenarioResults) {
   const patchRequests = scenarioResults.reduce((sum, result) => sum + result.patchRequestCount, 0);
   const expressionCraftAverage = scenarioResults.length
     ? scenarioResults.reduce((sum, result) => sum + (result.expressionCraft ?? 0), 0) / scenarioResults.length
+    : 0;
+  const informationDensityAverage = scenarioResults.length
+    ? scenarioResults.reduce((sum, result) => sum + (result.informationDensity ?? 0), 0) / scenarioResults.length
+    : 0;
+  const designAmbitionAverage = scenarioResults.length
+    ? scenarioResults.reduce((sum, result) => sum + (result.designAmbition ?? 0), 0) / scenarioResults.length
     : 0;
   const fingerprintCounts = countBy(scenarioResults.map((result) => result.expressionFingerprint).filter(Boolean));
   const repeatedFingerprintCount = Object.values(fingerprintCounts).filter((count) => count > 1).reduce((sum, count) => sum + count, 0);
@@ -922,6 +1275,8 @@ function createLoopQaReport(loopNumber, maxLoops, scenarioResults) {
       repeatedFingerprintShare: Number(repeatedFingerprintShare.toFixed(2)),
       repeatedFingerprints: Object.fromEntries(Object.entries(fingerprintCounts).filter(([, count]) => count > 1))
     },
+    informationDensity: { average: Number(informationDensityAverage.toFixed(2)) },
+    designAmbition: { average: Number(designAmbitionAverage.toFixed(2)) },
     requiredNextWork: decision === "stop" ? [] : ["Apply dev-lead-plan.json to the next loop generation profile."],
     acceptedRisks: [
       ...(decision === "stop" && patchRequests > 0 ? ["Exit criterion is count-only for this run; outstanding PatchRequests remain for later development review."] : []),
@@ -1012,6 +1367,9 @@ function initialImprovementState() {
     shortenTitles: false,
     reduceSlideDensity: false,
     expressionPolishLevel: 0,
+    informationDensityLevel: 0,
+    designAmbitionLevel: 0,
+    experiments: {},
     appliedActions: []
   };
 }
@@ -1031,12 +1389,66 @@ function collectBlockingCodes(loopDir) {
   return Object.fromEntries([...counts.entries()].sort(([a], [b]) => a.localeCompare(b)));
 }
 
+function collectQualityScores(loopDir) {
+  const scores = [];
+  for (const scenarioDir of readdirDirectories(loopDir)) {
+    const reportPath = path.join(scenarioDir, "eval-report.json");
+    if (!existsSync(reportPath)) continue;
+    const report = JSON.parse(readFileSync(reportPath, "utf8"));
+    scores.push({
+      informationDensity: report.deterministic?.informationDensity?.score ?? report.scores?.informationDensity ?? 0,
+      designAmbition: report.deterministic?.designAmbition?.score ?? report.scores?.designAmbition ?? 0,
+      expressionCraft: report.scores?.expressionCraft ?? 0
+    });
+  }
+  return {
+    informationDensityAverage: average(scores.map((score) => score.informationDensity)),
+    designAmbitionAverage: average(scores.map((score) => score.designAmbition)),
+    expressionCraftAverage: average(scores.map((score) => score.expressionCraft))
+  };
+}
+
+function average(values) {
+  const usable = values.filter((value) => Number.isFinite(value));
+  return usable.length ? Number((usable.reduce((sum, value) => sum + value, 0) / usable.length).toFixed(2)) : 0;
+}
+
+function shouldTryExperiment(state, id) {
+  const experiment = state.experiments?.[id];
+  return !experiment || experiment.status === "accepted" || (experiment.status === "active" && (experiment.loopsTried ?? 0) < 2);
+}
+
+function shouldRevertExperiment(state, id, currentScore) {
+  const experiment = state.experiments?.[id];
+  return experiment?.status === "active" && (experiment.loopsTried ?? 0) >= 2 && currentScore <= (experiment.startScore ?? 0) + 0.25;
+}
+
+function markExperiment(state, id, loopNumber, startScore) {
+  const experiments = { ...(state.experiments ?? {}) };
+  const existing = experiments[id];
+  experiments[id] = {
+    id,
+    status: "active",
+    startedAtLoop: existing?.startedAtLoop ?? loopNumber,
+    startScore: existing?.status === "active" ? existing.startScore : startScore,
+    loopsTried: (existing?.status === "active" ? existing.loopsTried ?? 0 : 0) + 1
+  };
+  return experiments;
+}
+
+function closeExperiment(state, id, status) {
+  const experiments = { ...(state.experiments ?? {}) };
+  experiments[id] = { ...(experiments[id] ?? { id }), status };
+  return experiments;
+}
+
 function readdirDirectories(dir) {
   return existsSync(dir) ? readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => path.join(dir, entry.name)) : [];
 }
 
 function createDevLeadPlan(loopNumber, maxLoops, loopDir, qa, currentState) {
   const blockingCodes = collectBlockingCodes(loopDir);
+  const qualitySummary = collectQualityScores(loopDir);
   const actions = [];
 
   if ((blockingCodes["business.executive-summary-missing"] ?? 0) > 0 && !currentState.forceExecutiveSummary) {
@@ -1078,6 +1490,52 @@ function createDevLeadPlan(loopNumber, maxLoops, loopDir, qa, currentState) {
     });
   }
 
+  if (qualitySummary.informationDensityAverage < 4.5 && shouldTryExperiment(currentState, "raise-information-density")) {
+    actions.push({
+      id: "raise-information-density",
+      kind: "challenging-quality-experiment",
+      reason: "Reference decks carry more visible substance per slide: claim, supporting detail, and next action. Try richer evidence and less over-compression.",
+      changes: {
+        informationDensityLevel: Math.min(2, (currentState.informationDensityLevel ?? 0) + 1),
+        reduceSlideDensity: false,
+        experiments: markExperiment(currentState, "raise-information-density", loopNumber, qualitySummary.informationDensityAverage)
+      }
+    });
+  } else if (shouldRevertExperiment(currentState, "raise-information-density", qualitySummary.informationDensityAverage)) {
+    actions.push({
+      id: "revert-information-density-experiment",
+      kind: "experiment-revert",
+      reason: "Information-density experiment did not improve after repeated loops; revert to the previous density level.",
+      changes: {
+        informationDensityLevel: Math.max(0, (currentState.informationDensityLevel ?? 0) - 1),
+        experiments: closeExperiment(currentState, "raise-information-density", "reverted")
+      }
+    });
+  }
+
+  if (qualitySummary.designAmbitionAverage < 4.75 && shouldTryExperiment(currentState, "raise-design-ambition")) {
+    actions.push({
+      id: "raise-design-ambition",
+      kind: "challenging-quality-experiment",
+      reason: "Reference decks use bolder moves: photo-led spreads, oversized proof numbers, dramatic scale contrast, and spatial metaphors. Try a more ambitious visual strategy next loop.",
+      changes: {
+        designAmbitionLevel: Math.min(3, (currentState.designAmbitionLevel ?? 0) + 1),
+        expressionPolishLevel: Math.min(5, Math.max(currentState.expressionPolishLevel ?? 0, 3)),
+        experiments: markExperiment(currentState, "raise-design-ambition", loopNumber, qualitySummary.designAmbitionAverage)
+      }
+    });
+  } else if (shouldRevertExperiment(currentState, "raise-design-ambition", qualitySummary.designAmbitionAverage)) {
+    actions.push({
+      id: "revert-design-ambition-experiment",
+      kind: "experiment-revert",
+      reason: "Design-ambition experiment did not improve after repeated loops; revert rather than compounding ineffective stylistic churn.",
+      changes: {
+        designAmbitionLevel: Math.max(0, (currentState.designAmbitionLevel ?? 0) - 1),
+        experiments: closeExperiment(currentState, "raise-design-ambition", "reverted")
+      }
+    });
+  }
+
   actions.push({
     id: "increase-expression-polish",
     kind: "expression-improvement",
@@ -1092,6 +1550,7 @@ function createDevLeadPlan(loopNumber, maxLoops, loopDir, qa, currentState) {
     qaDecision: qa.decision,
     exitCriteriaMet: qa.exitCriteria.met,
     blockingCodes,
+    qualitySummary,
     actions,
     nextLoopWillApply: loopNumber < maxLoops,
     risks: actions.length === 0 ? ["No automatic improvement actions were selected."] : []
@@ -1104,7 +1563,14 @@ function applyDevLeadPlan(currentState, plan) {
     appliedActions: [...(currentState.appliedActions ?? [])]
   };
   for (const action of plan.actions ?? []) {
-    Object.assign(nextState, action.changes ?? {});
+    const changes = action.changes ?? {};
+    if (changes.experiments) {
+      nextState.experiments = { ...(nextState.experiments ?? {}), ...changes.experiments };
+      const { experiments, ...rest } = changes;
+      Object.assign(nextState, rest);
+    } else {
+      Object.assign(nextState, changes);
+    }
     nextState.appliedActions.push({ loop: plan.loop, id: action.id, kind: action.kind, changes: action.changes });
   }
   return nextState;
@@ -1152,4 +1618,64 @@ function evaluateStandaloneClarity(deck) {
     score,
     evidence: `standaloneClarity=${score}/5; bodySlides=${bodySlides.length}; weakSlides=${weakSlides.length}; weakShare=${weakShare.toFixed(2)}; examples=${weakSlides.slice(0, 6).join(", ") || "none"}`
   };
+}
+
+function evaluateTextCompleteness(deck) {
+  if (!deck?.slides) {
+    return { score: 1, evidence: "deck.json was not available for text completeness evaluation." };
+  }
+
+  const problems = [];
+  for (const slide of deck.slides ?? []) {
+    for (const element of slide.elements ?? []) {
+      if (element.type !== "text") continue;
+      const text = String(element.text ?? "").trim();
+      if (!text) continue;
+      const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      const lineIssue = lines.some((line, index) => hasIncompleteLineText(line, { isLast: index === lines.length - 1 }));
+      if (hasIncompleteVisibleText(text) || lineIssue) {
+        problems.push(`${slide.id}:${element.id}:${text.replace(/\s+/g, " ")}`);
+      }
+    }
+  }
+
+  const score = problems.length === 0 ? 5 : problems.length <= 2 ? 3 : 1;
+  return {
+    score,
+    evidence: `textCompleteness=${score}/5; problemTexts=${problems.length}; examples=${problems.slice(0, 6).join(" | ") || "none"}`
+  };
+}
+
+function hasIncompleteVisibleText(text) {
+  const normalized = normalizeVisibleTextForCompleteness(text);
+  if (!normalized) return false;
+  if (isStructuredLabelList(normalized)) return false;
+  if (/…|\.\.\./u.test(normalized)) return true;
+  if (/[、,，・／/:：]$/u.test(normalized)) return true;
+  if (/[をにのへでがはと]$/u.test(normalized) && normalized.length > 4) return true;
+  if (/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]$/u.test(normalized) && /[、,，]/u.test(normalized) && normalized.length <= 24 && !/[。.!?！？]$/u.test(normalized)) {
+    return /[経予承判移計検確対候施研責]$/u.test(normalized) && !/(計画|判断|承認|移行|検討|確認|候補|施策|研究|責任者)$/u.test(normalized);
+  }
+  return false;
+}
+
+function hasIncompleteLineText(text, options = {}) {
+  const normalized = normalizeVisibleTextForCompleteness(text);
+  if (!normalized) return false;
+  if (isStructuredLabelList(normalized)) return false;
+  if (/…|\.\.\./u.test(normalized)) return true;
+  if (/[・／/:：]$/u.test(normalized)) return true;
+  if (options.isLast && /[、,，]$/u.test(normalized)) return true;
+  return false;
+}
+
+function normalizeVisibleTextForCompleteness(text) {
+  return String(text)
+    .trim()
+    .replace(/([\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}])\s+([\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}])/gu, "$1$2");
+}
+
+function isStructuredLabelList(text) {
+  const normalized = String(text).replace(/\s+/g, " ").trim();
+  return /[、,，・／/]/u.test(normalized) && /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}A-Za-z0-9]{2,}/u.test(normalized);
 }

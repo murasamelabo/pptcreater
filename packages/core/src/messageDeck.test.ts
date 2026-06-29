@@ -143,6 +143,41 @@ describe("message map deck generator", () => {
     expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
   });
 
+  it("renders card and detail intents as a dedicated editorial-board archetype", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "実務で使う判断材料を整理する",
+        audience: "意思決定者と実務担当者",
+        desiredAction: "次の打ち手を選ぶ",
+        intents: [
+          {
+            slideId: "detail-board",
+            title: "判断材料",
+            message: "主張と根拠を同じ画面で確認する。",
+            evidence: ["根拠", "リスク", "次の判断", "確認資料"],
+            quietInfo: [],
+            visualType: "detail",
+            emphasis: "判断材料"
+          },
+          {
+            slideId: "card-board",
+            title: "改善余地",
+            message: "改善点を見える形で比較する。",
+            evidence: ["写真", "数値", "章扉", "コンセプト図"],
+            quietInfo: [],
+            visualType: "cards",
+            emphasis: "改善余地"
+          }
+        ]
+      },
+      { title: "編集ボードサンプル", locale: "ja-JP", contentMode: "presentation" }
+    );
+
+    expect(deck.slides.map((slide) => slide.layout)).toContain("message-editorial-board");
+    expect(archetypeForIntent(deck.metadata.messageMap?.intents[0] as DeckMessageMap["intents"][number])).toBe("editorial-board");
+    expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
+  });
+
   it("generates review-clean slides for long Japanese user-request topics", () => {
     const deck = createDeckFromMessageMap(
       {
@@ -180,6 +215,36 @@ describe("message map deck generator", () => {
     expect([...issueCodes]).not.toContain("content.title-too-long");
     expect([...issueCodes]).not.toContain("visual.truncated-text");
     expect([...issueCodes]).not.toContain("layout.compact-label-wrap");
+  });
+
+  it("does not leave cover titles ending with incomplete Japanese fragments", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "移行計画と初期予算の承認を得る",
+        audience: "経営層、IT責任者、財務責任者",
+        desiredAction: "移行計画と初期予算の承認を得る",
+        intents: [
+          {
+            slideId: "current-state",
+            title: "current state",
+            message: "Current stateを判断に使える形にする。",
+            evidence: ["対象: 経営層、IT責任者、財務責任者", "観点: current state"],
+            quietInfo: [],
+            visualType: "summary",
+            emphasis: "current state"
+          }
+        ]
+      },
+      { title: "オンプレ環境からクラウドへ移行する計画を、経営会議で承認する", locale: "ja-JP", contentMode: "decision" }
+    );
+
+    const coverTitle = deck.slides[0]?.elements.find((element) => element.type === "text" && element.id === "cover-title");
+    expect(coverTitle).toMatchObject({ type: "text" });
+    const coverTitleText = coverTitle?.type === "text" ? coverTitle.text : "";
+    expect(coverTitleText).not.toMatch(/[、,，・／\s]$/u);
+    expect(coverTitleText).not.toMatch(/[、,，・／\s]\n/u);
+    expect(coverTitleText).not.toMatch(/[経予承判移計をにのへ、]$/u);
+    expect(coverTitleText).not.toContain("、経");
   });
 
   it("turns SlideIntent entries into varied editable visual archetypes", () => {

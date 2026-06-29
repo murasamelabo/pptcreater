@@ -76,6 +76,11 @@ representative scenarios.
 The Evaluator turns generated artifacts into concrete development feedback.
 Detailed scoring rules, required evidence, severity, and PatchRequest criteria are defined in
 [`dev-loop-evaluator-criteria.md`](dev-loop-evaluator-criteria.md).
+In addition to numeric scores, every EvalReport must include `slideComments` for every slide. These
+comments are intentionally generative critique: each slide gets a written observation plus one
+"would be better if" suggestion, even when the slide has no blocking issue. The comments are the main
+input for larger tool changes such as adding or reshaping visual archetypes; scores are only the
+aggregate signal.
 
 ```json
 {
@@ -91,6 +96,17 @@ Detailed scoring rules, required evidence, severity, and PatchRequest criteria a
     "editability": 5,
     "toolDiscipline": 2
   },
+  "slideComments": [
+    {
+      "slideIndex": 4,
+      "slideId": "architecture",
+      "title": "Architecture",
+      "layout": "message-hub-map",
+      "comment": "The slide explains structure, but the visual still reads like a generic grouped panel.",
+      "wouldBeBetterIf": "It would be stronger if one decision point or tradeoff were made visually dominant.",
+      "evidence": "layout=message-hub-map; spatialModel=true"
+    }
+  ],
   "patchRequests": [
     {
       "severity": "high",
@@ -169,13 +185,15 @@ flowchart LR
 The deterministic runner records this cycle as:
 
 - `input-improvement-state.json`: generation strategy used for the current loop.
+- `eval-report.json` / `eval-summary.md`: scenario evaluation, including mandatory per-slide written comments.
 - `dev-lead-plan.json` / `dev-lead-plan.md`: fixes and expression improvements selected after evaluation.
 - `next-improvement-state.json`: strategy applied to the next loop.
 
 The runner's automatic plan is intentionally conservative. It can change generation profile, copy
 density, style safety, title length, slide density, and expression polish between loops. A human or
-agent Dev Lead may still make source-code patches when the PatchRequests point to root-cause bugs in
-the tool.
+agent Dev Lead should use the slideComments to identify bigger tool changes, such as adding a new
+visual archetype or replacing a stale diagram grammar, when the loop is merely swapping familiar
+patterns without improving the artifacts.
 
 ## Deterministic Gates
 

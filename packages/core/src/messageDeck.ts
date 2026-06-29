@@ -32,6 +32,7 @@ export const MESSAGE_DECK_ARCHETYPES = [
   "focal-proof",
   "section-break",
   "concept",
+  "editorial-board",
   "steps"
 ] as const;
 
@@ -335,7 +336,7 @@ function hasJapanese(value: string): boolean {
 
 function compactLabel(value: string, maxLength: number): string {
   const normalized = value
-    .replace(/^\s*(?:対象|観点|表現|口調|tone|profile)\s*[:：]\s*/iu, "")
+    .replace(/^\s*(?:対象|観点|表現|口調|材料|読み手|行動|トーン|tone|profile)\s*[:：]\s*/iu, "")
     .replace(/adaptive\+|compact-copy\+|executive-summary\+|safe-contrast\+|expression-polish-\d+/giu, "")
     .replace(/[-_]+/g, " ")
     .replace(/\s+/g, " ")
@@ -344,11 +345,39 @@ function compactLabel(value: string, maxLength: number): string {
     return value.trim();
   }
   if (normalized.length <= maxLength) {
-    return normalized;
+    return trimJapaneseDanglingEnd(normalized);
   }
-  const clipped = Array.from(normalized).slice(0, Math.max(1, maxLength)).join("").trimEnd();
+  const clipped = clipTextAtSemanticBoundary(normalized, maxLength);
   const wordSafe = !hasJapanese(normalized) ? clipped.replace(/[A-Za-z0-9]+$/u, "").trimEnd() : clipped;
   return (wordSafe || clipped).replace(/[、,，・／/\s]+$/u, "").trimEnd();
+}
+
+function clipTextAtSemanticBoundary(value: string, maxLength: number): string {
+  const chars = Array.from(value);
+  const clipped = chars.slice(0, Math.max(1, maxLength)).join("").trimEnd();
+  if (!hasJapanese(value)) {
+    return clipped;
+  }
+
+  const punctuationIndex = Math.max(clipped.lastIndexOf("、"), clipped.lastIndexOf("，"), clipped.lastIndexOf("・"));
+  if (punctuationIndex >= 4) {
+    return trimJapaneseDanglingEnd(clipped.slice(0, punctuationIndex));
+  }
+
+  const particlePattern = /[をにへでとがはの]/gu;
+  let lastParticle = -1;
+  for (const match of clipped.matchAll(particlePattern)) {
+    lastParticle = match.index ?? -1;
+  }
+  if (lastParticle >= 4) {
+    return trimJapaneseDanglingEnd(clipped.slice(0, lastParticle));
+  }
+
+  return trimJapaneseDanglingEnd(clipped);
+}
+
+function trimJapaneseDanglingEnd(value: string): string {
+  return value.replace(/[、,，・／/\s]+$/u, "").replace(/[をにへでとがはの]$/u, "").trimEnd();
 }
 
 function topicLabel(value: string): string {
@@ -398,7 +427,7 @@ function pointLabel(value: string): string {
 function visibleSentence(value: string): string {
   const text = value.trim();
   if (!text) return text;
-  if (/^(対象|観点|表現|口調)\s*[:：]/u.test(text) || /、/.test(text) || text.length <= 14) {
+  if (/^(対象|観点|表現|口調|材料|読み手|行動|トーン)\s*[:：]/u.test(text) || /[、/／]/.test(text) || text.length <= 18) {
     return text;
   }
   if (/[。.!?！？]$/u.test(text) || /(する|した|できる|ある|いる|なる|進める|示す|伝える|確認する|選ぶ)$/u.test(text)) {
@@ -553,12 +582,13 @@ function statementVisual(theme: Theme, intent: SlideIntent, id: string): SlideEl
 function flowVisual(theme: Theme, intent: SlideIntent, id: string): SlideElement[] {
   const items = evidenceItems(intent, 4).slice(0, 4);
   const elements: SlideElement[] = [];
-  const startX = 0.95;
-  const nodeW = 2.35;
-  const gap = 0.68;
+  const startX = 0.78;
+  const nodeW = 2.48;
+  const gap = 0.6;
   items.forEach((item, index) => {
     const x = startX + index * (nodeW + gap);
     const order = 10 + index * 5;
+    const label = pointLabel(item);
     elements.push(shape(`${id}-flow-node-${index}`, "roundRect", x, 2.9, nodeW, 1.42, order, index === 0 ? theme.accent : theme.surface, index === 0 ? theme.accent : theme.line, { radius: 0.2 }));
     elements.push(icon(`${id}-flow-icon-${index}`, iconForEvidence(item, index), x + nodeW / 2 - 0.17, 3.05, 0.34, order + 1, theme, {
       color: index === 0 ? theme.inkOnAccent : theme.accent,
@@ -571,7 +601,7 @@ function flowVisual(theme: Theme, intent: SlideIntent, id: string): SlideElement
       bold: true,
       align: "center"
     }));
-    elements.push(text(`${id}-flow-text-${index}`, "body", visibleSentence(item), x + 0.22, 3.75, nodeW - 0.44, 0.34, order + 3, theme, {
+    elements.push(text(`${id}-flow-text-${index}`, "body", label, x + 0.18, 3.72, nodeW - 0.36, 0.46, order + 3, theme, {
       color: index === 0 ? theme.inkOnAccent : theme.text,
       bg: index === 0 ? theme.accent : theme.surface,
       fontSize: 17,
@@ -684,24 +714,54 @@ function sectionBreakVisual(theme: Theme, intent: SlideIntent, id: string): Slid
 
 function conceptVisual(theme: Theme, intent: SlideIntent, id: string): SlideElement[] {
   const items = evidenceItems(intent, 4).slice(0, 4);
-  const cx = 6.55;
-  const cy = 4.05;
   const positions = [
-    [2.3, 2.35],
-    [9.25, 2.35],
-    [9.25, 5.28],
-    [2.3, 5.28]
+    [1.08, 2.18],
+    [8.78, 2.18],
+    [8.78, 5.0],
+    [1.08, 5.0]
   ] as const;
   const elements: SlideElement[] = [
-    shape(`${id}-concept-center`, "ellipse", cx - 0.88, cy - 0.88, 1.76, 1.76, 10, theme.accent, theme.accent),
-    text(`${id}-concept-center-text`, "caption", topicLabel(intent.emphasis ?? intent.title), cx - 0.68, cy - 0.13, 1.36, 0.28, 11, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 13, bold: true, align: "center" })
+    shape(`${id}-concept-stage`, "roundRect", 0.82, 1.88, 11.7, 4.92, 10, theme.surface, theme.line, { radius: 0.18 }),
+    shape(`${id}-concept-field`, "ellipse", 4.84, 2.42, 3.65, 3.65, 11, theme.accentSoft, theme.accentSoft, { fillOpacity: 0.82 }),
+    shape(`${id}-concept-core-shadow`, "roundRect", 4.72, 3.32, 3.9, 1.52, 12, mix(theme.accent, theme.background, 0.32), mix(theme.accent, theme.background, 0.32), { radius: 0.24 }),
+    shape(`${id}-concept-core`, "roundRect", 4.48, 3.08, 3.9, 1.52, 13, theme.accent, theme.accent, { radius: 0.24 }),
+    text(`${id}-concept-kicker`, "caption", "CONCEPT MODEL", 4.9, 3.36, 3.1, 0.18, 14, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true, align: "center" }),
+    text(`${id}-concept-center-text`, "callout", topicLabel(intent.emphasis ?? intent.title), 4.92, 3.76, 3.02, 0.38, 15, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 20, bold: true, align: "center" })
   ];
   items.forEach((item, index) => {
     const [x, y] = positions[index];
-    const order = 20 + index * 5;
-    elements.push(shape(`${id}-concept-node-${index}`, "roundRect", x, y, 2.25, 0.84, order, index % 2 === 0 ? theme.surface : theme.accentSoft, theme.line, { radius: 0.18 }));
-    elements.push(text(`${id}-concept-label-${index}`, "body", item, x + 0.18, y + 0.2, 1.88, 0.28, order + 1, theme, { bg: index % 2 === 0 ? theme.surface : theme.accentSoft, color: theme.text, fontSize: 15, align: "center" }));
-    elements.push(shape(`${id}-concept-link-${index}`, "line", Math.min(cx, x + 1.12), Math.min(cy, y + 0.42), Math.abs(cx - (x + 1.12)), Math.abs(cy - (y + 0.42)), order + 2, "none", theme.accent, { width: 1.1, endArrow: true }));
+    const order = 24 + index * 4;
+    const fill = index % 2 === 0 ? theme.background : theme.accentSoft;
+    const label = compactLabel(item, 12);
+    elements.push(shape(`${id}-concept-node-${index}`, "roundRect", x, y, 3.48, 1.16, order, fill, theme.line, { radius: 0.16 }));
+    elements.push(shape(`${id}-concept-node-accent-${index}`, "rect", x, y, 0.12, 1.16, order + 1, theme.accent, theme.accent, { radius: 0 }));
+    elements.push(text(`${id}-concept-index-${index}`, "caption", String(index + 1).padStart(2, "0"), x + 0.32, y + 0.26, 0.48, 0.18, order + 2, theme, { bg: fill, color: theme.accent, fontSize: 12, bold: true }));
+    elements.push(text(`${id}-concept-label-${index}`, "body", label, x + 0.9, y + 0.24, 2.22, 0.44, order + 3, theme, { bg: fill, color: theme.text, fontSize: 15, align: "left" }));
+  });
+  return elements;
+}
+
+function editorialBoardVisual(theme: Theme, intent: SlideIntent, id: string): SlideElement[] {
+  const items = evidenceItems(intent, 4).slice(0, 4);
+  const hero = intent.emphasis ?? intent.title;
+  const elements: SlideElement[] = [
+    shape(`${id}-editorial-backdrop`, "roundRect", 0.82, 1.88, 11.7, 4.92, 10, theme.surface, theme.line, { radius: 0.18 }),
+    shape(`${id}-editorial-hero`, "roundRect", 1.12, 2.24, 4.4, 3.95, 11, theme.accent, theme.accent, { radius: 0.2 }),
+    text(`${id}-editorial-kicker`, "caption", "KEY IDEA", 1.48, 2.62, 2.5, 0.22, 12, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true }),
+    text(`${id}-editorial-hero-title`, "title", topicLabel(hero), 1.45, 3.08, 3.58, 0.78, 13, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 32 }),
+    text(`${id}-editorial-hero-body`, "body", visibleSentence(intent.message), 1.48, 4.22, 3.55, 0.92, 14, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 18 }),
+    shape(`${id}-editorial-rule`, "rect", 1.48, 5.42, 1.75, 0.06, 15, theme.inkOnAccent, theme.inkOnAccent, { radius: 0 })
+  ];
+
+  items.forEach((item, index) => {
+    const x = 6.0 + (index % 2) * 3.02;
+    const y = 2.18 + Math.floor(index / 2) * 2.06;
+    const order = 24 + index * 5;
+    const fill = index % 2 === 0 ? theme.background : theme.accentSoft;
+    elements.push(shape(`${id}-editorial-card-${index}`, "roundRect", x, y, 2.66, 1.54, order, fill, theme.line, { radius: 0.14 }));
+    elements.push(icon(`${id}-editorial-icon-${index}`, iconForEvidence(item, index), x + 0.24, y + 0.24, 0.3, order + 1, theme, { color: theme.accent, decorative: true }));
+    elements.push(text(`${id}-editorial-card-number-${index}`, "caption", String(index + 1).padStart(2, "0"), x + 2.02, y + 0.22, 0.38, 0.18, order + 2, theme, { bg: fill, color: theme.accent, fontSize: 12, bold: true, align: "right" }));
+    elements.push(text(`${id}-editorial-card-text-${index}`, "body", item, x + 0.24, y + 0.68, 2.15, 0.52, order + 3, theme, { bg: fill, color: theme.text, fontSize: 15 }));
   });
   return elements;
 }
@@ -747,7 +807,7 @@ function matrixVisual(theme: Theme, intent: SlideIntent, id: string): SlideEleme
   items.forEach((item, index) => {
     const [x, y] = points[index];
     elements.push(shape(`${id}-point-${index}`, "ellipse", x, y, 0.32, 0.32, 20 + index * 3, theme.accent, theme.accent));
-    elements.push(text(`${id}-point-label-${index}`, "caption", visibleSentence(pointLabel(item)), x + 0.42, y - 0.08, 1.92, 0.38, 21 + index * 3, theme, { bg: theme.surface, fontSize: 12, color: theme.text }));
+    elements.push(text(`${id}-point-label-${index}`, "caption", visibleSentence(pointLabel(item)), x + 0.4, y - 0.1, 2.18, 0.48, 21 + index * 3, theme, { bg: theme.surface, fontSize: 12, color: theme.text }));
   });
   return elements;
 }
@@ -878,8 +938,7 @@ export function archetypeForIntent(intent: SlideIntent): MessageDeckArchetype {
     case "cards":
     case "visual-scaffold":
     case "detail":
-    case "cycle":
-    case "section":
+      return "editorial-board";
     default:
       return "statement";
   }
@@ -911,6 +970,8 @@ function visualForIntent(theme: Theme, intent: SlideIntent, locale: Locale): [Me
       return [archetype, sectionBreakVisual(theme, intent, id)];
     case "concept":
       return [archetype, conceptVisual(theme, intent, id)];
+    case "editorial-board":
+      return [archetype, editorialBoardVisual(theme, intent, id)];
     case "steps":
       return [archetype, stepsVisual(theme, intent, id)];
     case "statement":
