@@ -25,6 +25,7 @@ const validVisualTypes = new Set([
   "native-diagram",
   "detail",
   "visual-scaffold",
+  "image",
   "cards"
 ]);
 
@@ -175,7 +176,7 @@ function messageMapForScenario(scenario, loopNumber, improvementState) {
     desiredAction: scenario.purpose,
     intents: topics.map((topic, index) => {
       const expression = expressions[index % expressions.length];
-      const visualType = visualTypeForExpression(expression, index, profile);
+      const visualType = visualTypeForExpression(expression, index, profile, scenario, topic);
       if (!validVisualTypes.has(visualType)) {
         throw new Error(`Internal visualType mapping produced invalid value: ${visualType}`);
       }
@@ -186,6 +187,7 @@ function messageMapForScenario(scenario, loopNumber, improvementState) {
         evidence: evidenceForTopic(topic, scenario, expression, profile),
         quietInfo: [shorten(`tone: ${scenario.tone ?? "not specified"}`, 42), `loop: ${loopNumber}`, `profile: ${profile.name}`],
         visualType,
+        visualAsset: visualType === "image" ? visualAssetForScenario(scenario, topic, index) : undefined,
         emphasis: titleForTopic(topic, profile)
       };
     })
@@ -224,8 +226,14 @@ function normalizeTopics(scenario, profile) {
   return topics;
 }
 
-function visualTypeForExpression(expression, index, profile = {}) {
+function visualTypeForExpression(expression, index, profile = {}, scenario = {}, topic = "") {
   const value = String(expression).toLowerCase();
+  const context = [scenario.userRequest, scenario.purpose, scenario.audience, topic, value].filter(Boolean).join(" ").toLowerCase();
+  if ((profile.expressionPolishLevel ?? 0) >= 1) {
+    if (/採用|会社|事例|顧客|支援者|寄付|患者|家族|旅館|現場|office|customer|case|recruit|community|patient|family/.test(context) && index % 4 === 1) return "image";
+    if (/kpi|roi|売上|数字|実績|成果|効果|予算|費用|gmv|budget|finance|traction|impact/.test(context) && index % 3 === 0) return "summary";
+    if (/関係|構造|体験|journey|workflow|architecture|roadmap|migration|プロセス|ロードマップ|移行/.test(context)) return index % 2 === 0 ? "native-diagram" : "flow";
+  }
   if ((profile.expressionPolishLevel ?? 0) >= 3 && (value.includes("structured") || value.includes("faq") || value.includes("detail"))) return "cards";
   if (value.includes("summary") || value.includes("overview") || value.includes("hero")) return "summary";
   if (value.includes("roi") || value.includes("kpi") || value.includes("table") || value.includes("dashboard") || value.includes("budget") || value.includes("cost") || value.includes("source")) return "table";
@@ -238,6 +246,25 @@ function visualTypeForExpression(expression, index, profile = {}) {
   if (value.includes("detail") || value.includes("structured") || value.includes("faq")) return "detail";
   const rotation = ["summary", "flow", "table", "matrix", "step", "cards"];
   return rotation[index % rotation.length];
+}
+
+function visualAssetForScenario(scenario, topic, index) {
+  const title = shorten(topic, 28);
+  const audience = audienceLabel(scenario.audience);
+  const colors = ["#dbeafe", "#dcfce7", "#fef3c7", "#fce7f3", "#ede9fe"];
+  const fill = colors[index % colors.length];
+  const accent = ["#1860c5", "#0f7a43", "#8a5a0c", "#be185d", "#6d28d9"][index % 5];
+  return {
+    type: "svg",
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640"><rect width="960" height="640" rx="44" fill="${fill}"/><circle cx="760" cy="140" r="92" fill="${accent}" opacity="0.16"/><rect x="96" y="104" width="430" height="318" rx="34" fill="#fff" opacity="0.86"/><rect x="568" y="344" width="268" height="132" rx="28" fill="${accent}" opacity="0.9"/><path d="M130 478c126-98 214-18 326-92 98-65 168-142 326-84" fill="none" stroke="${accent}" stroke-width="20" stroke-linecap="round" opacity="0.45"/><text x="130" y="194" font-family="Yu Gothic, Meiryo, sans-serif" font-size="42" font-weight="700" fill="#111827">${escapeSvg(title)}</text><text x="130" y="260" font-family="Yu Gothic, Meiryo, sans-serif" font-size="28" fill="#374151">${escapeSvg(audience)}</text><text x="604" y="425" font-family="Yu Gothic, Meiryo, sans-serif" font-size="38" font-weight="700" fill="#fff">Scene</text></svg>`,
+    altText: `${title} contextual visual`,
+    placement: index % 2 === 0 ? "right" : "left",
+    caption: `${title} / ${audience}`
+  };
+}
+
+function escapeSvg(value) {
+  return String(value).replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]);
 }
 
 function titleForTopic(topic, profile = { titleMax: 36 }) {
