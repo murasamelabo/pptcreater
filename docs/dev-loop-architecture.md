@@ -209,6 +209,12 @@ Dev Lead must treat these candidates as product feedback, not as decorative comm
 comment pattern appears across multiple scenarios, the next step is to decide whether it warrants a
 code or guidance change and send that scoped work back through the development loop.
 
+By default, the deterministic runner now stops after a loop when `feature-extension` actions are
+present. This prevents a misleading run where loop 2, 3, and later iterations only tweak generation
+state while the required pptcreater source change has not happened. The loop may be forced to keep
+going with `--continue-with-feature-actions`, but that mode is diagnostic only and must not be
+described as a true Dev Lead implementation loop.
+
 ## Deterministic Gates
 
 Every iteration should run the cheapest relevant gates first, then widen.

@@ -143,6 +143,53 @@ describe("message map deck generator", () => {
     expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
   });
 
+  it("routes repeated slide-comment feature requests into richer generated layouts", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "役員がクラウド移行の初期投資を判断する",
+        audience: "経営層、IT責任者、財務責任者",
+        desiredAction: "移行計画と初期予算の承認を得る",
+        intents: [
+          {
+            slideId: "executive-summary",
+            title: "要約",
+            message: "移行判断に必要な投資効果とリスクを先に示す。",
+            evidence: ["投資対効果", "リスク低減", "承認論点"],
+            quietInfo: [],
+            visualType: "image",
+            visualAsset: {
+              type: "svg",
+              svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640"><rect width="960" height="640" fill="#dbeafe"/><path d="M140 440h680" stroke="#1f4e79" stroke-width="28"/><circle cx="260" cy="340" r="90" fill="#4f81bd"/><circle cx="520" cy="260" r="120" fill="#ffffff"/><circle cx="735" cy="345" r="80" fill="#548235"/></svg>',
+              altText: "Cloud migration decision scene",
+              placement: "left",
+              caption: "投資判断の全体像"
+            },
+            emphasis: "投資判断"
+          }
+        ]
+      },
+      { title: "クラウド移行判断", locale: "ja-JP", contentMode: "decision" }
+    );
+
+    const cover = deck.slides.find((slide) => slide.id === "cover");
+    expect(cover?.elements.some((element) => element.id === "cover-audience-chip")).toBe(true);
+    expect(cover?.elements.some((element) => element.id === "cover-action-chip")).toBe(true);
+
+    const photo = deck.slides.find((slide) => slide.id === "executive-summary");
+    expect(photo?.layout).toBe("message-photo-hero");
+    expect(photo?.elements.some((element) => element.id === "executive-summary-photo-annotation")).toBe(true);
+    expect(photo?.elements.some((element) => element.id === "executive-summary-photo-caption-rail")).toBe(true);
+    expect(photo?.elements.some((element) => element.type === "text" && /注目|Focus/u.test(element.text))).toBe(true);
+
+    const closing = deck.slides.find((slide) => slide.id === "closing");
+    expect(closing?.elements.filter((element) => element.id.startsWith("closing-check-") && element.type === "shape")).toHaveLength(3);
+    expect(closing?.elements.some((element) => element.type === "text" && element.text === "担当")).toBe(true);
+    expect(closing?.elements.some((element) => element.type === "text" && element.text === "期限")).toBe(true);
+    expect(closing?.elements.some((element) => element.type === "text" && element.text === "確認物")).toBe(true);
+
+    expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
+  });
+
   it("renders card and detail intents as a dedicated editorial-board archetype", () => {
     const deck = createDeckFromMessageMap(
       {

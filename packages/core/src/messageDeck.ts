@@ -450,6 +450,44 @@ function coverTitleText(value: string): string {
   return value;
 }
 
+function audienceChipLabel(messageMap: DeckMessageMap): string {
+  const audience = messageMap.audience ?? "Audience";
+  return hasJapanese(audience) ? `対象: ${compactLabel(audience, 14)}` : `Audience: ${compactLabel(audience, 18)}`;
+}
+
+function actionChipLabel(messageMap: DeckMessageMap): string {
+  const action = messageMap.desiredAction ?? "Next decision";
+  return hasJapanese(action) ? `行動: ${compactLabel(action, 14)}` : `Action: ${compactLabel(action, 18)}`;
+}
+
+function annotationLabel(intent: SlideIntent): string {
+  const candidate = intent.visualAsset?.caption ?? intent.emphasis ?? intent.evidence[0] ?? intent.title;
+  return hasJapanese(candidate) ? `注目: ${compactLabel(candidate, 14)}` : `Focus: ${compactLabel(candidate, 18)}`;
+}
+
+function captionRailText(intent: SlideIntent): string {
+  const first = intent.evidence[0] ?? intent.emphasis ?? intent.title;
+  const second = intent.evidence[1] ?? intent.message;
+  return `${compactLabel(first, 18)} / ${compactLabel(second, 18)}`;
+}
+
+function closingChecklist(messageMap: DeckMessageMap): { label: string; value: string; icon: IconKey }[] {
+  const action = messageMap.desiredAction ?? "次の判断へ進む";
+  const audience = messageMap.audience ?? "担当者";
+  const isJapanese = hasJapanese([action, audience, messageMap.objective ?? ""].join(" "));
+  return isJapanese
+    ? [
+        { label: "担当", value: compactLabel(audience, 18), icon: "clipboard" },
+        { label: "期限", value: "次回会議まで", icon: "calendar" },
+        { label: "確認物", value: compactLabel(action, 18), icon: "check" }
+      ]
+    : [
+        { label: "Owner", value: compactLabel(audience, 18), icon: "clipboard" },
+        { label: "Due", value: "Before next review", icon: "calendar" },
+        { label: "Item", value: compactLabel(action, 18), icon: "check" }
+      ];
+}
+
 function visualAssetElement(
   asset: SlideVisualAsset | undefined,
   theme: Theme,
@@ -681,6 +719,11 @@ function photoHeroVisual(theme: Theme, intent: SlideIntent, id: string): SlideEl
   return [
     shape(`${id}-photo-bg`, "rect", 0.72, 1.72, 11.9, 5.3, 10, theme.accentSoft, theme.line, { radius: 0.2 }),
     visualAssetElement(visualAsset, theme, intent, `${id}-photo`, 0.92, 1.92, 6.35, 4.85, 11),
+    shape(`${id}-photo-annotation`, "roundRect", 1.24, 2.28, 3.0, 0.58, 12, theme.accent, theme.accent, { radius: 0.18, fillOpacity: 0.94 }),
+    icon(`${id}-photo-annotation-icon`, iconForEvidence(intent.emphasis ?? intent.message, 0), 1.42, 2.42, 0.24, 13, theme, { color: theme.inkOnAccent, decorative: true }),
+    text(`${id}-photo-annotation-text`, "caption", annotationLabel(intent), 1.78, 2.39, 2.2, 0.18, 14, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true }),
+    shape(`${id}-photo-caption-rail`, "roundRect", 1.24, 6.08, 5.55, 0.42, 15, theme.surface, theme.line, { radius: 0.14, fillOpacity: 0.9 }),
+    text(`${id}-photo-caption-rail-text`, "caption", captionRailText(intent), 1.52, 6.2, 5.0, 0.16, 16, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 12, bold: true, align: "center" }),
     shape(`${id}-caption-panel`, "roundRect", 7.55, 2.18, 4.58, 3.95, 20, theme.surface, theme.line, { radius: 0.22 }),
     text(`${id}-caption-kicker`, "caption", "SCENE", 7.95, 2.52, 1.4, 0.22, 21, theme, { bg: theme.surface, color: theme.accent, bold: true, fontSize: 12 }),
     text(`${id}-caption-title`, "callout", topicLabel(intent.emphasis ?? intent.title), 7.95, 2.92, 3.72, 0.46, 22, theme, { bg: theme.surface, color: theme.text, fontSize: 25 }),
@@ -1003,7 +1046,11 @@ function createCover(theme: Theme, title: string, messageMap: DeckMessageMap): S
         color: theme.mutedText,
         fontSize: 20
       }),
-      text("cover-action", "callout", messageMap.desiredAction ?? "次の判断へ進む", 0.8, 5.48, 5.55, 0.54, 11, theme, { color: theme.accent, fontSize: 21 })
+      shape("cover-audience-chip", "roundRect", 0.82, 4.95, 2.68, 0.4, 11, theme.accentSoft, theme.line, { radius: 0.14 }),
+      text("cover-audience-chip-text", "caption", audienceChipLabel(messageMap), 1.02, 5.06, 2.28, 0.16, 12, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 12, bold: true, align: "center" }),
+      shape("cover-action-chip", "roundRect", 3.72, 4.95, 2.84, 0.4, 13, theme.surface, theme.line, { radius: 0.14 }),
+      text("cover-action-chip-text", "caption", actionChipLabel(messageMap), 3.92, 5.06, 2.44, 0.16, 14, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true, align: "center" }),
+      text("cover-action", "callout", messageMap.desiredAction ?? "次の判断へ進む", 0.8, 5.62, 5.55, 0.54, 15, theme, { color: theme.accent, fontSize: 21 })
     ]
   };
 }
@@ -1012,6 +1059,7 @@ function createClosing(theme: Theme, messageMap: DeckMessageMap): Slide {
   const action = messageMap.desiredAction ?? "次に確認する";
   const isJapanese = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(action);
   const title = isJapanese ? "実行確認" : "Action check";
+  const checklist = closingChecklist(messageMap);
   return {
     id: "closing",
     title,
@@ -1028,6 +1076,16 @@ function createClosing(theme: Theme, messageMap: DeckMessageMap): Slide {
         bg: theme.accent,
         color: theme.inkOnAccent,
         fontSize: 20
+      }),
+      ...checklist.flatMap((item, index) => {
+        const x = 0.9 + index * 3.72;
+        const order = 10 + index * 5;
+        return [
+          shape(`closing-check-${index}`, "roundRect", x, 5.58, 3.28, 0.68, order, theme.inkOnAccent, theme.inkOnAccent, { radius: 0.14, fillOpacity: 0.18 }),
+          icon(`closing-check-icon-${index}`, item.icon, x + 0.24, 5.76, 0.28, order + 1, theme, { color: theme.inkOnAccent, decorative: true }),
+          text(`closing-check-label-${index}`, "caption", item.label, x + 0.66, 5.72, 0.9, 0.18, order + 2, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true }),
+          text(`closing-check-value-${index}`, "caption", item.value, x + 1.54, 5.72, 1.42, 0.2, order + 3, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12 })
+        ];
       })
     ]
   };

@@ -20,6 +20,9 @@ Read `docs/dev-loop-architecture.md` before starting a development-loop run.
 - Do not ask the User Simulator, Evaluator, or QA Gatekeeper to edit production code.
 - Treat expression quality as part of the product, not as cosmetic cleanup. If outputs are correct
   but visually weak, too dense, repetitive, or hard to scan, propose an improvement action.
+- If `dev-lead-plan.json` contains `feature-extension` actions or `requiresProgramChange: true`, do
+  not keep asking the User Simulator for more loops. Implement or deliberately reject the source
+  change first, then run the next loop.
 
 ## Workflow
 

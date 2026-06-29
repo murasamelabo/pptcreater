@@ -34,7 +34,8 @@ function parseArgs(argv) {
     loops: 1,
     scenarios: "all",
     output: path.join("generated", "dev-loop-runs", `run-${timestampForPath(new Date())}`),
-    force: false
+    force: false,
+    stopOnFeatureActions: true
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -47,6 +48,8 @@ function parseArgs(argv) {
       options.output = argv[++index];
     } else if (arg === "--force") {
       options.force = true;
+    } else if (arg === "--continue-with-feature-actions") {
+      options.stopOnFeatureActions = false;
     } else if (arg === "--help" || arg === "-h") {
       printHelp();
       process.exit(0);
@@ -63,7 +66,7 @@ function parseArgs(argv) {
 }
 
 function printHelp() {
-  console.log(`Usage: node scripts/run-dev-loop.mjs [options]\n\nOptions:\n  --loops <n>        Number of loop iterations to run (default: 1)\n  --scenarios <sel>  all | first:N | comma-separated scenario ids (default: all)\n  --output <dir>     Output run directory (default: generated/dev-loop-runs/run-<timestamp>)\n  --force            Overwrite an existing output directory\n  -h, --help         Show this help`);
+  console.log(`Usage: node scripts/run-dev-loop.mjs [options]\n\nOptions:\n  --loops <n>                       Number of loop iterations to run (default: 1)\n  --scenarios <sel>                 all | first:N | comma-separated scenario ids (default: all)\n  --output <dir>                    Output run directory (default: generated/dev-loop-runs/run-<timestamp>)\n  --force                           Overwrite an existing output directory\n  --continue-with-feature-actions   Continue loops even when Dev Lead identifies program-level feature-extension work\n  -h, --help                        Show this help`);
 }
 
 function timestampForPath(date) {
@@ -977,6 +980,13 @@ function slideCommentFor({ slide, index, title, layout, visibleChars, textCount,
   }
 
   if (layout === "cover") {
+    if (hasCoverAudienceActionStrip(slide)) {
+      return {
+        comment: `表紙はテーマに加えて読者と行動が見えるため、会議の用途が初見で伝わりやすくなっています。`,
+        wouldBeBetterIf: `次は背景ビジュアルや右側モチーフもシナリオ固有にすると、さらに記憶に残る表紙になります。`,
+        evidence: `layout=${layout}; audienceActionStrip=true; visibleChars=${visibleChars}; textElements=${textCount}`
+      };
+    }
     return {
       comment: `表紙はテーマを示していますが、聞き手が最初の3秒で期待値を持つには、読者と到達行動の見せ方がまだ控えめです。`,
       wouldBeBetterIf: `タイトルの横に「誰が何を判断する資料か」を短いタグで置き、表紙から会議の緊張感や用途が伝わるともっと良くなります。`,
@@ -985,6 +995,13 @@ function slideCommentFor({ slide, index, title, layout, visibleChars, textCount,
   }
 
   if (layout === "closing") {
+    if (hasClosingActionChecklist(slide)) {
+      return {
+        comment: `締めスライドは次の行動を担当・期限・確認物に分けており、会議後の実行に移しやすくなっています。`,
+        wouldBeBetterIf: `実データがある場合は担当名や日付をScenarioSpecから埋めると、さらに実務に近いクロージングになります。`,
+        evidence: `layout=${layout}; actionChecklist=true; visibleChars=${visibleChars}; textElements=${textCount}`
+      };
+    }
     return {
       comment: `締めスライドは行動を促していますが、実務で次に動くための期限・担当・確認物が見えるとさらに強くなります。`,
       wouldBeBetterIf: `次アクションを「担当、期限、確認する資料」の3点で小さく分解し、会議後にそのまま使えるチェックにするともっと良くなります。`,
@@ -1003,7 +1020,7 @@ function slideCommentFor({ slide, index, title, layout, visibleChars, textCount,
   if (/message-statement|message-table|message-flow|message-steps/u.test(layout) && cards >= 3) {
     return {
       comment: `${topic}は情報整理として成立していますが、見慣れたカードやステップの並びに寄っており、発見や驚きは弱めです。`,
-      wouldBeBetterIf: `1つだけ大きな主役カードを作る、または写真・大きな数値・対立構図のどれかを加えて視線の入口を作るともっと良くなります。`,
+      wouldBeBetterIf: `1つだけ大きな主役カードを作る、または大きな数値・対立構図・比喩図のどれかを加えて視線の入口を作るともっと良くなります。`,
       evidence: `layout=${layout}; cards=${cards}; dramaticScale=${dramaticScale}; spatialModel=${spatialModel}`
     };
   }
@@ -1016,7 +1033,14 @@ function slideCommentFor({ slide, index, title, layout, visibleChars, textCount,
     };
   }
 
-  if (largeMedia || /photo|image|customer|case|旅館|顧客|採用/u.test(scenarioNeed)) {
+  if (largeMedia) {
+    if (hasPhotoAnnotationOverlay(slide)) {
+      return {
+        comment: `${topic}は画像に注目点とキャプションが重なり、視覚の入口と論点が結びついています。`,
+        wouldBeBetterIf: `次は注釈を1つの根拠数値や判断ラベルと連動させると、写真主役スライドの説得力がさらに上がります。`,
+        evidence: `layout=${layout}; photoAnnotation=true; largeMedia=${largeMedia}; visibleChars=${visibleChars}`
+      };
+    }
     return {
       comment: `${topic}は視覚の入口がありますが、画像や場面が資料の論点とより強く結びつく余地があります。`,
       wouldBeBetterIf: `画像の上に短いキャプションや注目点を重ね、読者が「何を見ればよいか」まで分かる写真主役スライドにするともっと良くなります。`,
@@ -1034,7 +1058,7 @@ function slideCommentFor({ slide, index, title, layout, visibleChars, textCount,
 
   return {
     comment: `${topic}は主張と最低限の根拠が見えますが、まだ無難な構成に収まっています。`,
-    wouldBeBetterIf: `読み手が思わず立ち止まる主役要素を1つ決め、写真・数値・比喩図・章扉のどれかへ大胆に寄せるともっと良くなります。`,
+    wouldBeBetterIf: `読み手が思わず立ち止まる主役要素を1つ決め、数値・比喩図・章扉・対立構図のどれかへ大胆に寄せるともっと良くなります。`,
     evidence: `layout=${layout}; visibleChars=${visibleChars}; textElements=${textCount}; largeMedia=${largeMedia}; focalProof=${focalProof}; spatialModel=${spatialModel}`
   };
 }
@@ -1106,6 +1130,19 @@ function hasDramaticScaleContrast(slide) {
     if (["image", "svg", "diagram"].includes(element.type) && element.w >= 5.5 && element.h >= 3.0 && !element.decorative) return true;
     return false;
   });
+}
+
+function hasPhotoAnnotationOverlay(slide) {
+  return (slide.elements ?? []).some((element) => /photo-annotation|photo-caption-rail/u.test(element.id ?? ""));
+}
+
+function hasCoverAudienceActionStrip(slide) {
+  const ids = new Set((slide.elements ?? []).map((element) => element.id));
+  return ids.has("cover-audience-chip") && ids.has("cover-action-chip");
+}
+
+function hasClosingActionChecklist(slide) {
+  return (slide.elements ?? []).filter((element) => /^closing-check-\d+$/u.test(element.id ?? "")).length >= 3;
 }
 
 function lastJsonForCommand(commands, name) {
@@ -1321,7 +1358,20 @@ function main() {
     const scenarioResults = scenarios.map((scenario) => runScenario(scenario, loop, loopDir, improvementState));
     const qa = createLoopQaReport(loop, options.loops, scenarioResults);
     const devLeadPlan = createDevLeadPlan(loop, options.loops, loopDir, qa, improvementState);
-    const nextImprovementState = loop < options.loops ? applyDevLeadPlan(improvementState, devLeadPlan) : improvementState;
+    const featureActions = (devLeadPlan.actions ?? []).filter((action) => action.kind === "feature-extension");
+    const requiresProgramChange = options.stopOnFeatureActions && loop < options.loops && featureActions.length > 0;
+    if (requiresProgramChange) {
+      devLeadPlan.nextLoopWillApply = false;
+      devLeadPlan.requiresProgramChange = true;
+      devLeadPlan.stopReason = "feature-extension actions require pptcreater source changes before another generation loop.";
+      devLeadPlan.requiredProgramChanges = featureActions.map((action) => ({
+        id: action.id,
+        reason: action.reason,
+        suggestedScope: action.suggestedScope,
+        developmentAgentPrompt: action.developmentAgentPrompt
+      }));
+    }
+    const nextImprovementState = !requiresProgramChange && loop < options.loops ? applyDevLeadPlan(improvementState, devLeadPlan) : improvementState;
     writeJson(path.join(loopDir, "qa-report.json"), qa);
     writeJson(path.join(loopDir, "dev-lead-plan.json"), devLeadPlan);
     writeText(path.join(loopDir, "dev-lead-plan.md"), devLeadPlanMarkdown(devLeadPlan));
@@ -1330,6 +1380,10 @@ function main() {
     loopSummaries.push({ loop, scenarioResults, qa, devLeadPlan, nextImprovementState });
     improvementState = nextImprovementState;
     console.log(`Loop ${loop}/${options.loops}: ${scenarioResults.length} scenarios, patches=${qa.patchRequestCount}, highOrCritical=${qa.highOrCriticalCount}, decision=${qa.decision}, actions=${devLeadPlan.actions.length}`);
+    if (requiresProgramChange) {
+      console.log(`Stopped after loop ${loop}: ${featureActions.length} feature-extension action(s) require Dev Lead source changes before continuing. Use --continue-with-feature-actions only for diagnostic runs.`);
+      break;
+    }
   }
 
   const finalQa = loopSummaries.at(-1)?.qa ?? null;
@@ -1481,7 +1535,7 @@ function slideCommentThemes() {
     {
       id: "cover-audience-action-strip",
       title: "Cover slides need audience/action intent chips",
-      pattern: /表紙|期待値|誰が何を判断|会議の緊張感|用途/u,
+      pattern: /期待値|誰が何を判断|会議の緊張感/u,
       problemPattern: "Cover slides state the topic but do not make the audience, decision, or desired action visible in the first few seconds.",
       proposedCapability: "Add a cover/title-slide composition that extracts audience + desired action from ScenarioSpec/message-map and renders them as compact chips near the title.",
       suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/messageDeck.test.ts", "scripts/run-dev-loop.mjs"]
@@ -1529,7 +1583,7 @@ function slideCommentThemes() {
     {
       id: "closing-action-checklist",
       title: "Closing slides need owner/date/artifact next-action checklists",
-      pattern: /締めスライド|期限・担当|確認物|次アクション|会議後/u,
+      pattern: /期限・担当|確認物が見える|次アクションを「担当|会議後にそのまま使えるチェック/u,
       problemPattern: "Closing slides ask for action but do not always expose owner, due date, and artifact/checkpoint structure.",
       proposedCapability: "Add a closing/action slide pattern that renders next actions as owner/date/artifact checklist rows when the deck has decision or business-plan intent.",
       suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/messageDeck.test.ts"]
