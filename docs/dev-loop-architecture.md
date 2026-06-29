@@ -67,7 +67,7 @@ representative scenarios.
   "contentMode": "technical",
   "requiredExpressions": ["architecture", "timeline", "table", "structured-text"],
   "requiredTools": ["recommend_figure", "generate_native_diagram", "finalize", "review"],
-  "expectedArtifacts": ["deck.json", "pptx", "studio.html", "review.txt", "finalize.txt"]
+  "expectedArtifacts": ["deck.json", "pptx", "studio.html", "visual-snapshots/contact-sheet.html", "visual-snapshots/slide-XX.svg", "review.txt", "finalize.txt"]
 }
 ```
 
@@ -88,7 +88,13 @@ aggregate signal.
   "deterministic": {
     "finalizeBlockingErrors": 0,
     "reviewBlockingIssues": 0,
-    "zipZeroNonDir": 0
+    "zipZeroNonDir": 0,
+    "visualImageReview": {
+      "score": 5,
+      "contactSheet": "generated/dev-loop-runs/.../visual-snapshots/contact-sheet.html",
+      "blockingIssues": [],
+      "sampleQualityIssues": []
+    }
   },
   "modelReview": {
     "messageFit": 4,
@@ -186,6 +192,7 @@ The deterministic runner records this cycle as:
 
 - `input-improvement-state.json`: generation strategy used for the current loop.
 - `eval-report.json` / `eval-summary.md`: scenario evaluation, including mandatory per-slide written comments.
+- `visual-snapshots/contact-sheet.html` and `visual-snapshots/slide-XX.svg`: rendered-image evidence used to catch overlap, clipping, crowding, and sample-quality gaps that DeckSpec object checks miss.
 - `dev-lead-plan.json` / `dev-lead-plan.md`: fixes and expression improvements selected after evaluation.
 - `next-improvement-state.json`: strategy applied to the next loop.
 
@@ -237,6 +244,7 @@ Required for generated deck artifacts:
 
 - `pptcreater finalize <deck.json> --output <deck.pptx>` with `Blocking errors: 0`
 - `pptcreater review <polished.deck.json>` with `Ready to finalize: no blocking issues`
+- rendered-image evidence exists: `visual-snapshots/contact-sheet.html` and per-slide SVG snapshots, or equivalent screenshots
 - PPTX zip check: zero-length non-directory entries must be `0`
 - source/reference checks when external URLs are used
 

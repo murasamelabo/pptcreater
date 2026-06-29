@@ -28,6 +28,7 @@ All applicable criteria must be satisfied:
 - `npm run build` passes,
 - representative decks finalize with zero blocking errors,
 - representative decks review with no blocking issues,
+- rendered-image evidence exists and visual image review has no overlap, clipping, crowding, or sample-quality blockers,
 - PPTX zip checks have `zeroNonDir = 0`,
 - no open FixRequests remain,
 - residual risks are explicitly accepted.

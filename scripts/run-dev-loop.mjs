@@ -608,13 +608,15 @@ function runScenario(scenario, loopNumber, loopDir, improvementState) {
     studioFile
   ], path.join(scenarioDir, "studio.txt")));
 
+  const visualEvidence = writeVisualSnapshots(reviewTarget, scenarioDir);
+
   const zip = existsSync(pptxFile) ? inspectZip(pptxFile) : { exists: false, zeroNonDir: null, entries: 0 };
   const hashes = {
     deckJson: fileHashIfExists(deckFile),
     polishedDeckJson: fileHashIfExists(polishedFile),
     pptx: fileHashIfExists(pptxFile)
   };
-  const evalReport = evaluateScenario(scenario, loopNumber, commands, zip, hashes);
+  const evalReport = evaluateScenario(scenario, loopNumber, commands, zip, hashes, visualEvidence);
   const userReport = {
     role: "User Simulator",
     scenarioId: scenario.id,
@@ -646,11 +648,283 @@ function runScenario(scenario, loopNumber, loopDir, improvementState) {
 }
 
 function artifactList(dir) {
-  const files = ["scenario.json", "message-map.json", "source-check.txt", "deck.json", "polished.deck.json", "deck.pptx", "studio.html", "review.txt", "finalize.txt", "tool-ledger.json", "eval-report.json"];
+  const files = ["scenario.json", "message-map.json", "source-check.txt", "deck.json", "polished.deck.json", "deck.pptx", "studio.html", "visual-snapshots/contact-sheet.html", "visual-snapshots/visual-report.json", "review.txt", "finalize.txt", "tool-ledger.json", "eval-report.json"];
   return files.filter((file) => existsSync(path.join(dir, file))).map((file) => toPosixRelative(path.join(dir, file)));
 }
 
-function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
+function writeVisualSnapshots(deckFile, scenarioDir) {
+  const deck = loadJsonIfExists(deckFile);
+  const snapshotDir = path.join(scenarioDir, "visual-snapshots");
+  ensureDirectory(snapshotDir);
+  const reportFile = path.join(snapshotDir, "visual-report.json");
+  if (!deck?.slides) {
+    const result = {
+      available: false,
+      evidence: `No DeckSpec available for visual snapshots: ${toPosixRelative(deckFile)}`,
+      directory: toPosixRelative(snapshotDir),
+      contactSheet: null,
+      slideImages: [],
+      audit: { score: 1, blockingIssues: [], sampleQualityIssues: [] }
+    };
+    writeJson(reportFile, result);
+    return result;
+  }
+
+  const slideImages = deck.slides.map((slide, index) => {
+    const file = path.join(snapshotDir, `slide-${String(index + 1).padStart(2, "0")}.svg`);
+    writeText(file, renderSlideSnapshotSvg(slide, index));
+    return {
+      slideIndex: index + 1,
+      slideId: slide.id ?? `slide-${index + 1}`,
+      title: slide.title ?? slide.id ?? `Slide ${index + 1}`,
+      image: toPosixRelative(file)
+    };
+  });
+  const audit = auditVisualSnapshots(deck, slideImages);
+  const contactSheet = path.join(snapshotDir, "contact-sheet.html");
+  writeText(contactSheet, renderVisualContactSheet(deck, slideImages, audit));
+  const result = {
+    available: true,
+    evidence: `Visual snapshots generated: ${slideImages.length} SVG slide images plus contact sheet.`,
+    directory: toPosixRelative(snapshotDir),
+    contactSheet: toPosixRelative(contactSheet),
+    slideImages,
+    audit
+  };
+  writeJson(reportFile, result);
+  return result;
+}
+
+function renderSlideSnapshotSvg(slide, index) {
+  const width = 13.333;
+  const height = 7.5;
+  const background = slide.background?.color ?? "#ffffff";
+  const elements = [...(slide.elements ?? [])].sort((a, b) => (a.readingOrder ?? 0) - (b.readingOrder ?? 0));
+  const body = elements.map(renderSnapshotElement).join("\n");
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 ${width} ${height}">
+  <rect x="0" y="0" width="${width}" height="${height}" fill="${escapeXml(background)}"/>
+  <text x="0.18" y="0.28" font-family="Segoe UI, Yu Gothic, Meiryo, sans-serif" font-size="0.13" fill="#6b7280">visual snapshot slide ${index + 1}: ${escapeXml(slide.title ?? slide.id ?? "untitled")}</text>
+${body}
+</svg>\n`;
+}
+
+function renderSnapshotElement(element) {
+  if (element.type === "shape") return renderSnapshotShape(element);
+  if (element.type === "text") return renderSnapshotText(element);
+  if (element.type === "svg" || element.type === "diagram") return renderSnapshotSvgImage(element.svg, element, element.type);
+  if (element.type === "image") return renderSnapshotImage(element);
+  return `  <rect x="${num(element.x)}" y="${num(element.y)}" width="${num(element.w)}" height="${num(element.h)}" fill="none" stroke="#9ca3af" stroke-dasharray="0.06 0.06"/>`;
+}
+
+function renderSnapshotShape(element) {
+  const fill = element.fill === "none" ? "none" : escapeXml(element.fill ?? "none");
+  const stroke = escapeXml(element.line?.color ?? element.fill ?? "#d1d5db");
+  const opacity = element.fillOpacity == null ? "" : ` fill-opacity="${num(element.fillOpacity)}"`;
+  if (element.shape === "line") {
+    return `  <line x1="${num(element.x)}" y1="${num(element.y)}" x2="${num(element.x + element.w)}" y2="${num(element.y + element.h)}" stroke="${stroke}" stroke-width="${num((element.line?.width ?? 1) / 72)}"/>`;
+  }
+  if (element.shape === "ellipse" || element.shape === "oval") {
+    return `  <ellipse cx="${num(element.x + element.w / 2)}" cy="${num(element.y + element.h / 2)}" rx="${num(element.w / 2)}" ry="${num(element.h / 2)}" fill="${fill}" stroke="${stroke}" stroke-width="0.01"${opacity}/>`;
+  }
+  if (element.shape === "rightArrow" || element.shape === "arrow") {
+    const x = element.x;
+    const y = element.y;
+    const w = element.w;
+    const h = element.h;
+    const points = `${num(x)},${num(y)} ${num(x + w * 0.72)},${num(y)} ${num(x + w)},${num(y + h / 2)} ${num(x + w * 0.72)},${num(y + h)} ${num(x)},${num(y + h)}`;
+    return `  <polygon points="${points}" fill="${fill}" stroke="${stroke}" stroke-width="0.01"${opacity}/>`;
+  }
+  const radius = element.radius ?? 0.06;
+  return `  <rect x="${num(element.x)}" y="${num(element.y)}" width="${num(element.w)}" height="${num(element.h)}" rx="${num(radius)}" fill="${fill}" stroke="${stroke}" stroke-width="0.01"${opacity}/>`;
+}
+
+function renderSnapshotText(element) {
+  const fontSize = element.fontSize ?? (element.role === "title" ? 31 : element.role === "caption" ? 12 : 18);
+  const fontInches = fontSize / 72;
+  const lineHeight = fontInches * 1.18;
+  const lines = snapshotTextLines(element, fontSize);
+  const align = element.align === "center" ? "middle" : element.align === "right" ? "end" : "start";
+  const x = element.align === "center" ? element.x + element.w / 2 : element.align === "right" ? element.x + element.w : element.x;
+  const y = element.y + fontInches;
+  const weight = element.bold ? "700" : "400";
+  const color = escapeXml(element.color ?? "#111827");
+  const tspans = lines.map((line, index) => `<tspan x="${num(x)}" dy="${index === 0 ? 0 : num(lineHeight)}">${escapeXml(line)}</tspan>`).join("");
+  return [
+    `  <clipPath id="clip-${escapeXml(element.id)}"><rect x="${num(element.x)}" y="${num(element.y)}" width="${num(element.w)}" height="${num(element.h)}"/></clipPath>`,
+    `  <text clip-path="url(#clip-${escapeXml(element.id)})" x="${num(x)}" y="${num(y)}" font-family="Segoe UI, Yu Gothic, Meiryo, sans-serif" font-size="${num(fontInches)}" font-weight="${weight}" text-anchor="${align}" fill="${color}">${tspans}</text>`
+  ].join("\n");
+}
+
+function renderSnapshotSvgImage(svg, element, label) {
+  if (!svg) {
+    return renderSnapshotPlaceholder(element, label);
+  }
+  const href = `data:image/svg+xml;base64,${Buffer.from(String(svg), "utf8").toString("base64")}`;
+  return `  <image x="${num(element.x)}" y="${num(element.y)}" width="${num(element.w)}" height="${num(element.h)}" href="${href}" preserveAspectRatio="xMidYMid meet"/>`;
+}
+
+function renderSnapshotImage(element) {
+  if (element.dataUri) {
+    return `  <image x="${num(element.x)}" y="${num(element.y)}" width="${num(element.w)}" height="${num(element.h)}" href="${escapeXml(element.dataUri)}" preserveAspectRatio="xMidYMid meet"/>`;
+  }
+  return renderSnapshotPlaceholder(element, "image");
+}
+
+function renderSnapshotPlaceholder(element, label) {
+  return [
+    `  <rect x="${num(element.x)}" y="${num(element.y)}" width="${num(element.w)}" height="${num(element.h)}" fill="#f3f4f6" stroke="#9ca3af" stroke-dasharray="0.06 0.06"/>`,
+    `  <text x="${num(element.x + element.w / 2)}" y="${num(element.y + element.h / 2)}" font-family="Segoe UI, sans-serif" font-size="0.16" text-anchor="middle" fill="#6b7280">${escapeXml(label)}</text>`
+  ].join("\n");
+}
+
+function renderVisualContactSheet(deck, slideImages, audit) {
+  const cards = slideImages.map((image) => {
+    const issues = [...audit.blockingIssues, ...audit.sampleQualityIssues].filter((issue) => issue.slideId === image.slideId);
+    const issueList = issues.length ? `<ul>${issues.map((issue) => `<li>${escapeHtml(issue.kind)}: ${escapeHtml(issue.message)}</li>`).join("")}</ul>` : "<p>No image-audit issues.</p>";
+    return `<section><h2>${image.slideIndex}. ${escapeHtml(image.title)}</h2><img src="${path.basename(image.image)}" alt="${escapeHtml(image.title)} visual snapshot"/>${issueList}</section>`;
+  }).join("\n");
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Visual snapshot contact sheet</title><style>body{font-family:Segoe UI,Yu Gothic,sans-serif;margin:24px;background:#f8fafc;color:#111827}section{break-inside:avoid;background:white;border:1px solid #d1d5db;border-radius:8px;margin:0 0 18px;padding:14px;box-shadow:0 1px 2px #0001}img{width:640px;max-width:100%;border:1px solid #e5e7eb}li{margin:4px 0}</style></head><body><h1>${escapeHtml(deck.title ?? "Deck")} visual snapshot contact sheet</h1>${cards}</body></html>\n`;
+}
+
+function evaluateVisualImageEvidence(deck, visualEvidence) {
+  if (visualEvidence?.audit) {
+    return {
+      available: Boolean(visualEvidence.available),
+      evidence: visualEvidence.evidence ?? "visual evidence unavailable",
+      score: visualEvidence.audit.score,
+      contactSheet: visualEvidence.contactSheet,
+      blockingIssues: visualEvidence.audit.blockingIssues ?? [],
+      sampleQualityIssues: visualEvidence.audit.sampleQualityIssues ?? []
+    };
+  }
+  if (!deck?.slides) {
+    return { available: false, evidence: "No deck or visual snapshots were available.", score: 1, contactSheet: null, blockingIssues: [], sampleQualityIssues: [] };
+  }
+  const audit = auditVisualSnapshots(deck, []);
+  return { available: false, evidence: "No generated visual snapshot artifacts were available.", score: audit.score, contactSheet: null, blockingIssues: audit.blockingIssues, sampleQualityIssues: audit.sampleQualityIssues };
+}
+
+function auditVisualSnapshots(deck, slideImages) {
+  const imageBySlide = new Map(slideImages.map((image) => [image.slideId, image.image]));
+  const blockingIssues = [];
+  const sampleQualityIssues = [];
+  for (const [index, slide] of (deck.slides ?? []).entries()) {
+    const slideId = slide.id ?? `slide-${index + 1}`;
+    const image = imageBySlide.get(slideId) ?? `visual-snapshots/slide-${String(index + 1).padStart(2, "0")}.svg`;
+    const textElements = (slide.elements ?? []).filter((element) => element.type === "text" && !element.decorative);
+    for (const element of textElements) {
+      const overflow = estimateSnapshotTextOverflow(element);
+      if (overflow.overflows) {
+        blockingIssues.push({ kind: "overflow", slideId, image, message: `Text "${shorten(String(element.text ?? ""), 34)}" is likely clipped or wrapped beyond its visible box (${overflow.estimatedLines}/${overflow.maxLines} lines).` });
+      }
+      if ((element.fontSize ?? 12) < 11.5 && String(element.text ?? "").length > 8) {
+        blockingIssues.push({ kind: "tiny-text", slideId, image, message: `Text "${shorten(String(element.text ?? ""), 34)}" is visually too small for reliable screenshot reading.` });
+      }
+    }
+    for (const issue of overlappingTextIssues(textElements, slideId, image)) {
+      blockingIssues.push(issue);
+    }
+    if (!isNonBodySlide(slide)) {
+      const largeMedia = hasLargeMedia(slide);
+      const focalProof = hasFocalProof(slide);
+      const spatialModel = hasSpatialModel(slide);
+      const dominant = hasDominantFocalElement(slide);
+      const textCount = textElements.length;
+      if (!largeMedia && !focalProof && !dominant && !(spatialModel && hasDramaticScaleContrast(slide))) {
+        sampleQualityIssues.push({ kind: "no-focal-visual", slideId, image, message: "Rendered snapshot lacks a clear visual focal point; it reads like generic text/cards rather than a sample-grade slide." });
+      }
+      if (textCount >= 14 && !largeMedia && !focalProof) {
+        sampleQualityIssues.push({ kind: "crowded", slideId, image, message: `Rendered snapshot has ${textCount} text elements without a strong visual anchor, making it hard to scan.` });
+      }
+      const equalCards = equalCardCount(slide);
+      if (equalCards >= 5 && !dominant) {
+        sampleQualityIssues.push({ kind: "equal-card-grid", slideId, image, message: `Rendered snapshot uses ${equalCards} similarly sized cards without a dominant card or visual hierarchy.` });
+      }
+    }
+  }
+  const score = blockingIssues.length > 0 ? 2 : sampleQualityIssues.length > 0 ? 3 : 5;
+  return { score, blockingIssues, sampleQualityIssues };
+}
+
+function isNonBodySlide(slide) {
+  return ["cover", "title", "section", "divider", "closing", "references"].includes(slide.layout ?? "");
+}
+
+function estimateSnapshotTextOverflow(element) {
+  const fontSize = element.fontSize ?? (element.role === "title" ? 31 : element.role === "caption" ? 12 : 18);
+  const lines = snapshotTextLines(element, fontSize);
+  const maxLines = Math.max(1, Math.floor((element.h * 72) / (fontSize * 1.18)));
+  return { overflows: lines.length > maxLines, estimatedLines: lines.length, maxLines };
+}
+
+function snapshotTextLines(element, fontSize) {
+  const maxUnits = Math.max(2, (element.w * 72) / (fontSize * 0.54));
+  const result = [];
+  for (const hardLine of String(element.text ?? "").split(/\r?\n/)) {
+    let current = "";
+    let units = 0;
+    for (const char of Array.from(hardLine)) {
+      const charUnits = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(char) ? 1.0 : /\s/u.test(char) ? 0.35 : 0.56;
+      if (current && units + charUnits > maxUnits) {
+        result.push(current);
+        current = char;
+        units = charUnits;
+      } else {
+        current += char;
+        units += charUnits;
+      }
+    }
+    result.push(current || " ");
+  }
+  return result;
+}
+
+function overlappingTextIssues(textElements, slideId, image) {
+  const issues = [];
+  for (let leftIndex = 0; leftIndex < textElements.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < textElements.length; rightIndex += 1) {
+      const left = textElements[leftIndex];
+      const right = textElements[rightIndex];
+      if (isTinyGeneratedLabel(left) || isTinyGeneratedLabel(right)) continue;
+      const area = intersectionArea(left, right);
+      const smaller = Math.max(0.01, Math.min(left.w * left.h, right.w * right.h));
+      if (area / smaller > 0.18) {
+        issues.push({ kind: "overlap", slideId, image, message: `Text "${shorten(left.text, 24)}" visually overlaps "${shorten(right.text, 24)}" in the rendered snapshot.` });
+      }
+    }
+  }
+  return issues;
+}
+
+function isTinyGeneratedLabel(element) {
+  return /eyebrow|kicker|index|number|step-label|flow-label|focal-label|relation/u.test(element.id ?? "") || /^(SLIDE|STEP|FOCUS|SCENE|NEXT ACTION|FIRST DECISION|FOCAL PROOF)/iu.test(String(element.text ?? ""));
+}
+
+function intersectionArea(a, b) {
+  const x = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
+  const y = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+  return x * y;
+}
+
+function equalCardCount(slide) {
+  const cards = (slide.elements ?? []).filter((element) => element.type === "shape" && ["roundRect", "roundedRect", "rect"].includes(element.shape) && element.w >= 1.3 && element.h >= 0.55);
+  const buckets = countBy(cards.map((card) => `${Math.round(card.w * 10)}x${Math.round(card.h * 10)}`));
+  return Math.max(0, ...Object.values(buckets));
+}
+
+function escapeXml(value) {
+  return String(value ?? "").replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]);
+}
+
+function escapeHtml(value) {
+  return escapeXml(value);
+}
+
+function num(value) {
+  return Number(value).toFixed(3).replace(/0+$/u, "").replace(/\.$/u, "");
+}
+
+function evaluateScenario(scenario, loopNumber, commands, zip, hashes, visualEvidence) {
   const fixRequests = [];
   const failedCommands = commands.filter((command) => command.exitCode !== 0 && !isExpectedStructuredNonZero(command));
   for (const failed of failedCommands) {
@@ -680,6 +954,7 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
   const sampleQuality = evaluateSampleQuality(deckJson, scenario);
   const standaloneClarity = evaluateStandaloneClarity(deckJson);
   const textCompleteness = evaluateTextCompleteness(deckJson);
+  const visualImageReview = evaluateVisualImageEvidence(deckJson, visualEvidence);
   const slideComments = buildSlideComments(deckJson, scenario, finalizeJson, reviewJson);
   const reviewBlocking = reviewJson?.blocking?.length ?? reviewJson?.blockingIssues?.length ?? 0;
   const reviewOk = reviewJson?.ok ?? (reviewBlocking === 0);
@@ -699,6 +974,33 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
       evidence: badLineBreaks.slice(0, 6).map((issue) => `${issue.path ?? "unknown"}: ${issue.message ?? issue.code}`).join(" | "),
       expected: "Evaluator should fail slides whose visible text breaks into orphan particles, dangling continuations, or cutoff-looking lines.",
       suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/layout.ts", "scripts/run-dev-loop.mjs"]
+    });
+  }
+
+  if (!visualImageReview.available) {
+    fixRequests.push({
+      problem: "Rendered slide images were not available for visual evaluation.",
+      evidence: visualImageReview.evidence,
+      expected: "Evaluator must inspect rendered slide images or visual snapshots, not only DeckSpec object presence, before accepting visual quality.",
+      suggestedScope: ["scripts/run-dev-loop.mjs", "packages/studio", "packages/render-pptx"]
+    });
+  }
+
+  if (visualImageReview.blockingIssues.length > 0) {
+    fixRequests.push({
+      problem: "Rendered slide images show readability blockers such as overlap, overflow, clipping, or visually crowded text.",
+      evidence: visualImageReview.blockingIssues.slice(0, 8).map((issue) => `${issue.slideId}: ${issue.message} (${issue.image})`).join(" | "),
+      expected: "Any visible overlap, clipping, text overflow, or hard-to-read crowding seen in rendered images must be treated as a required fix.",
+      suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/layout.ts", "scripts/run-dev-loop.mjs"]
+    });
+  }
+
+  if (visualImageReview.sampleQualityIssues.length > 0) {
+    fixRequests.push({
+      problem: "Rendered slide images do not look close enough to sample-slide quality.",
+      evidence: visualImageReview.sampleQualityIssues.slice(0, 8).map((issue) => `${issue.slideId}: ${issue.message} (${issue.image})`).join(" | "),
+      expected: "Rendered images should show professional hierarchy, intentional visual focal points, varied compositions, and enough polish to avoid generic template feel.",
+      suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/templates.ts", "design-packs", "scripts/run-dev-loop.mjs"]
     });
   }
 
@@ -799,6 +1101,7 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
       informationDensity,
       designAmbition,
       sampleQuality,
+      visualImageReview,
       standaloneClarity,
       textCompleteness,
       slideCommentCount: slideComments.length,
@@ -812,7 +1115,7 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
       expressionCraft: Math.min(expressionCraft.score, designAmbition.score),
       informationDensity: informationDensity.score,
       designAmbition: designAmbition.score,
-      sampleQuality: sampleQuality.score,
+      sampleQuality: Math.min(sampleQuality.score, visualImageReview.score),
       editability: Math.min(reviewScore, zipScore),
       accessibility: reviewJson?.scores?.accessibility ? Math.round(reviewJson.scores.accessibility / 20) : reviewScore,
       toolDiscipline: Math.min(toolCoverage, commandScore)
