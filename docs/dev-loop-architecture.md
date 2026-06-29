@@ -195,6 +195,20 @@ agent Dev Lead should use the slideComments to identify bigger tool changes, suc
 visual archetype or replacing a stale diagram grammar, when the loop is merely swapping familiar
 patterns without improving the artifacts.
 
+The deterministic runner also aggregates `slideComments` into reusable feature-extension candidates.
+The aggregation is written into each loop's `dev-lead-plan.json` as:
+
+- `slideCommentSynthesis`: repeated comment patterns across scenarios.
+- `featureExtensionCandidates`: concrete capability gaps such as cover audience/action chips,
+  annotated photo-hero slides, focal-card hierarchy, decision-axis emphasis, oversized proof
+  numbers, or closing action checklists.
+- `developmentAgentHandoff`: ready-to-use prompts for `pptcreater Dev Lead`, including problem
+  pattern, proposed capability, suggested source scope, and scenario evidence.
+
+Dev Lead must treat these candidates as product feedback, not as decorative comments. If the same
+comment pattern appears across multiple scenarios, the next step is to decide whether it warrants a
+code or guidance change and send that scoped work back through the development loop.
+
 ## Deterministic Gates
 
 Every iteration should run the cheapest relevant gates first, then widen.

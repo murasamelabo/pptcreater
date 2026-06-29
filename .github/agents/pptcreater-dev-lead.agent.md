@@ -30,10 +30,13 @@ Read `docs/dev-loop-architecture.md` before starting a development-loop run.
 5. Ask the User Simulator to create representative pptcreater artifacts.
 6. Ask the Evaluator to convert artifact issues into PatchRequests.
 7. Aggregate EvalReports and QA output into `dev-lead-plan.json`.
-8. Include both bug fixes and expression improvements, such as shorter copy, safer contrast,
+8. Integrate `slideComments` across scenarios. Repeated comments are feature feedback: convert
+  them into `featureExtensionCandidates` and `developmentAgentHandoff` prompts instead of leaving
+  them as unacted advisory notes.
+9. Include both bug fixes and expression improvements, such as shorter copy, safer contrast,
    clearer title hierarchy, better figure routing, visual diversity, and lower slide density.
-9. Apply the plan before the next User Simulator loop.
-10. Ask the QA Gatekeeper for stop/continue judgement.
+10. Apply the plan before the next User Simulator loop.
+11. Ask the QA Gatekeeper for stop/continue judgement.
 
 ## Required Output
 
@@ -52,6 +55,13 @@ Return a concise development ledger:
         "kind": "bugfix+expression-improvement",
         "reason": "...",
         "changes": {}
+      },
+      {
+        "id": "feature-photo-annotation-overlay",
+        "kind": "feature-extension",
+        "reason": "Repeated slideComments say photo-led slides need visible annotation overlays.",
+        "suggestedScope": ["packages/core/src/messageDeck.ts"],
+        "developmentAgentPrompt": "Implement feature extension: ..."
       }
     ]
   },

@@ -1408,6 +1408,148 @@ function collectQualityScores(loopDir) {
   };
 }
 
+function collectSlideCommentSynthesis(loopDir) {
+  const comments = [];
+  for (const scenarioDir of readdirDirectories(loopDir)) {
+    const reportPath = path.join(scenarioDir, "eval-report.json");
+    if (!existsSync(reportPath)) continue;
+    const report = JSON.parse(readFileSync(reportPath, "utf8"));
+    for (const comment of report.slideComments ?? []) {
+      comments.push({
+        scenarioId: report.scenarioId ?? path.basename(scenarioDir),
+        slideIndex: comment.slideIndex,
+        slideId: comment.slideId,
+        title: comment.title,
+        layout: comment.layout,
+        comment: comment.comment,
+        wouldBeBetterIf: comment.wouldBeBetterIf,
+        evidence: comment.evidence
+      });
+    }
+  }
+
+  const scenarioIds = new Set(comments.map((comment) => comment.scenarioId));
+  const candidates = slideCommentThemes().map((theme) => {
+    const matches = comments.filter((comment) => theme.pattern.test(slideCommentText(comment)));
+    const scenarios = [...new Set(matches.map((comment) => comment.scenarioId))];
+    return {
+      id: theme.id,
+      kind: "feature-extension",
+      title: theme.title,
+      priority: scenarios.length >= 5 || matches.length >= 10 ? "high" : matches.length >= 3 ? "medium" : "low",
+      commentCount: matches.length,
+      scenarioCount: scenarios.length,
+      scenarioIds: scenarios.slice(0, 8),
+      problemPattern: theme.problemPattern,
+      proposedCapability: theme.proposedCapability,
+      suggestedScope: theme.suggestedScope,
+      developmentAgentPrompt: buildDevelopmentAgentPrompt(theme, matches),
+      evidence: matches.slice(0, 5).map((comment) => ({
+        scenarioId: comment.scenarioId,
+        slideIndex: comment.slideIndex,
+        slideId: comment.slideId,
+        title: comment.title,
+        comment: comment.comment,
+        wouldBeBetterIf: comment.wouldBeBetterIf
+      }))
+    };
+  }).filter((candidate) => candidate.commentCount > 0)
+    .sort((a, b) => b.scenarioCount - a.scenarioCount || b.commentCount - a.commentCount || a.id.localeCompare(b.id));
+
+  return {
+    totalComments: comments.length,
+    scenarioCount: scenarioIds.size,
+    topCommentPatterns: candidates.slice(0, 6).map((candidate) => ({
+      id: candidate.id,
+      title: candidate.title,
+      priority: candidate.priority,
+      commentCount: candidate.commentCount,
+      scenarioCount: candidate.scenarioCount,
+      scenarioIds: candidate.scenarioIds
+    })),
+    featureExtensionCandidates: candidates.slice(0, 6),
+    sampleComments: comments.slice(0, 10)
+  };
+}
+
+function slideCommentText(comment) {
+  return [comment.title, comment.layout, comment.comment, comment.wouldBeBetterIf, comment.evidence].filter(Boolean).join("\n");
+}
+
+function slideCommentThemes() {
+  return [
+    {
+      id: "cover-audience-action-strip",
+      title: "Cover slides need audience/action intent chips",
+      pattern: /表紙|期待値|誰が何を判断|会議の緊張感|用途/u,
+      problemPattern: "Cover slides state the topic but do not make the audience, decision, or desired action visible in the first few seconds.",
+      proposedCapability: "Add a cover/title-slide composition that extracts audience + desired action from ScenarioSpec/message-map and renders them as compact chips near the title.",
+      suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/messageDeck.test.ts", "scripts/run-dev-loop.mjs"]
+    },
+    {
+      id: "photo-annotation-overlay",
+      title: "Photo-led slides need visible annotation overlays",
+      pattern: /画像|写真|場面|何を見れば|写真主役|注目点/u,
+      problemPattern: "Image/photo slides provide a visual entry point, but the image is not anchored to the argument with visible labels or captions.",
+      proposedCapability: "Enhance photo-hero/focal-proof image layouts with an optional annotation badge, caption rail, or callout overlay derived from slide message/evidence.",
+      suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/messageDeck.test.ts", "packages/core/src/layout.ts"]
+    },
+    {
+      id: "claim-evidence-action-density",
+      title: "Thin slides need claim/evidence/action scaffolds",
+      pattern: /情報量が薄|要点だけ|判断するには|根拠、反証リスク、次の判断|中身のある/u,
+      problemPattern: "Some slides are readable but too thin to support a decision on their own.",
+      proposedCapability: "Introduce a compact claim/evidence/action scaffold for slides with low visible character density and no focal proof or large media.",
+      suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/content.ts", "packages/core/src/messageDeck.test.ts"]
+    },
+    {
+      id: "focal-card-hierarchy",
+      title: "Card grids need one dominant focal card",
+      pattern: /見慣れたカード|ステップの並び|大きな主役カード|視線の入口|無難な構成/u,
+      problemPattern: "Card/step slides are structurally correct but visually generic because all cards have equal weight.",
+      proposedCapability: "Add a focal-card variant that promotes one evidence or recommendation card to a larger dominant element while keeping supporting cards secondary.",
+      suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/visualQuality.ts", "packages/core/src/messageDeck.test.ts"]
+    },
+    {
+      id: "decision-axis-emphasis",
+      title: "Structural diagrams need explicit decision emphasis",
+      pattern: /構造を図解|図の軸|関係がさらに鋭く|どこを選ぶべき|何が対立|判断が分かれる/u,
+      problemPattern: "Matrix/map/flow slides show structure, but the decisive axis or choice point is not highlighted enough.",
+      proposedCapability: "Route structural visuals through a decision-emphasis layer that highlights the recommended zone, conflict line, or choice node with a visible label.",
+      suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/figureSelector.ts", "packages/diagram/src/index.ts"]
+    },
+    {
+      id: "oversized-proof-number",
+      title: "Evidence slides need oversized proof numbers",
+      pattern: /数字|数値|比較|主役化|大きく置き|記憶に残る/u,
+      problemPattern: "KPI/comparison slides mention evidence but do not consistently create a memorable proof-number focal point.",
+      proposedCapability: "Add or strengthen a focal-proof layout that selects the strongest numeric evidence and renders it as an oversized proof number with a short why-it-matters note.",
+      suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/messageDeck.test.ts", "docs/dev-loop-evaluator-criteria.md"]
+    },
+    {
+      id: "closing-action-checklist",
+      title: "Closing slides need owner/date/artifact next-action checklists",
+      pattern: /締めスライド|期限・担当|確認物|次アクション|会議後/u,
+      problemPattern: "Closing slides ask for action but do not always expose owner, due date, and artifact/checkpoint structure.",
+      proposedCapability: "Add a closing/action slide pattern that renders next actions as owner/date/artifact checklist rows when the deck has decision or business-plan intent.",
+      suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/messageDeck.test.ts"]
+    }
+  ];
+}
+
+function buildDevelopmentAgentPrompt(theme, matches) {
+  const examples = matches.slice(0, 3).map((comment) => `- ${comment.scenarioId} slide ${comment.slideIndex} (${comment.title}): ${comment.wouldBeBetterIf}`).join("\n") || "- No concrete examples captured.";
+  return [
+    `Implement feature extension: ${theme.title}.`,
+    `Problem pattern: ${theme.problemPattern}`,
+    `Desired capability: ${theme.proposedCapability}`,
+    `Suggested scope: ${theme.suggestedScope.join(", ")}`,
+    "Evidence from scenario slide comments:",
+    examples,
+    "Add or update focused tests that fail before the change, then run the dev-loop smoke for the affected scenario family."
+  ].join("\n");
+}
+
 function average(values) {
   const usable = values.filter((value) => Number.isFinite(value));
   return usable.length ? Number((usable.reduce((sum, value) => sum + value, 0) / usable.length).toFixed(2)) : 0;
@@ -1449,6 +1591,7 @@ function readdirDirectories(dir) {
 function createDevLeadPlan(loopNumber, maxLoops, loopDir, qa, currentState) {
   const blockingCodes = collectBlockingCodes(loopDir);
   const qualitySummary = collectQualityScores(loopDir);
+  const slideCommentSynthesis = collectSlideCommentSynthesis(loopDir);
   const actions = [];
 
   if ((blockingCodes["business.executive-summary-missing"] ?? 0) > 0 && !currentState.forceExecutiveSummary) {
@@ -1543,6 +1686,32 @@ function createDevLeadPlan(loopNumber, maxLoops, loopDir, qa, currentState) {
     changes: { expressionPolishLevel: Math.min(5, (currentState.expressionPolishLevel ?? 0) + 1) }
   });
 
+  for (const candidate of slideCommentSynthesis.featureExtensionCandidates.filter((item) => item.priority !== "low").slice(0, 3)) {
+    actions.push({
+      id: `feature-${candidate.id}`,
+      kind: "feature-extension",
+      reason: `${candidate.title}: ${candidate.commentCount} slide comments across ${candidate.scenarioCount} scenarios indicate a reusable tool capability gap, not a one-off deck issue.`,
+      changes: {},
+      suggestedScope: candidate.suggestedScope,
+      developmentAgentPrompt: candidate.developmentAgentPrompt,
+      evidence: candidate.evidence.slice(0, 3)
+    });
+  }
+
+  const developmentAgentHandoff = {
+    targetAgent: "pptcreater Dev Lead",
+    purpose: "Convert repeated scenario slide comments into concrete pptcreater feature-extension work items.",
+    featureExtensionCandidates: slideCommentSynthesis.featureExtensionCandidates.slice(0, 5).map((candidate) => ({
+      id: candidate.id,
+      priority: candidate.priority,
+      title: candidate.title,
+      commentCount: candidate.commentCount,
+      scenarioCount: candidate.scenarioCount,
+      suggestedScope: candidate.suggestedScope,
+      developmentAgentPrompt: candidate.developmentAgentPrompt
+    }))
+  };
+
   return {
     role: "Development Lead",
     loop: loopNumber,
@@ -1551,6 +1720,9 @@ function createDevLeadPlan(loopNumber, maxLoops, loopDir, qa, currentState) {
     exitCriteriaMet: qa.exitCriteria.met,
     blockingCodes,
     qualitySummary,
+    slideCommentSynthesis,
+    featureExtensionCandidates: slideCommentSynthesis.featureExtensionCandidates,
+    developmentAgentHandoff,
     actions,
     nextLoopWillApply: loopNumber < maxLoops,
     risks: actions.length === 0 ? ["No automatic improvement actions were selected."] : []
@@ -1589,6 +1761,32 @@ function devLeadPlanMarkdown(plan) {
   lines.push("", "## Actions", "");
   for (const action of plan.actions ?? []) {
     lines.push(`- **${action.kind}** \`${action.id}\`: ${action.reason}`);
+    if (action.developmentAgentPrompt) {
+      lines.push(`  - Dev handoff: ${action.developmentAgentPrompt.split("\n")[0]}`);
+    }
+  }
+  lines.push("", "## Slide Comment Synthesis", "");
+  const patterns = plan.slideCommentSynthesis?.topCommentPatterns ?? [];
+  if (patterns.length === 0) {
+    lines.push("- none");
+  } else {
+    for (const pattern of patterns) {
+      lines.push(`- **${pattern.priority}** \`${pattern.id}\`: ${pattern.commentCount} comments / ${pattern.scenarioCount} scenarios`);
+    }
+  }
+  lines.push("", "## Development Agent Handoff", "");
+  const candidates = plan.developmentAgentHandoff?.featureExtensionCandidates ?? [];
+  if (candidates.length === 0) {
+    lines.push("- none");
+  } else {
+    for (const candidate of candidates) {
+      lines.push(`### ${candidate.id}`);
+      lines.push("");
+      lines.push("```text");
+      lines.push(candidate.developmentAgentPrompt);
+      lines.push("```");
+      lines.push("");
+    }
   }
   lines.push("", `Next loop will apply: ${plan.nextLoopWillApply}`, "");
   return `${lines.join("\n")}\n`;
