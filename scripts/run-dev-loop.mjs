@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -165,53 +165,68 @@ function parseJsonOutput(output) {
   }
 }
 
-function messageMapForScenario(scenario, loopNumber) {
-  const topics = normalizeTopics(scenario);
+function messageMapForScenario(scenario, loopNumber, improvementState) {
   const expressions = Array.isArray(scenario.requiredExpressions) && scenario.requiredExpressions.length > 0 ? scenario.requiredExpressions : ["summary", "table", "step"];
-  const profile = qualityProfile(loopNumber);
+  const profile = qualityProfile(loopNumber, improvementState);
+  const topics = normalizeTopics(scenario, profile);
   return {
     objective: scenario.purpose,
     audience: scenario.audience,
     desiredAction: scenario.purpose,
     intents: topics.map((topic, index) => {
       const expression = expressions[index % expressions.length];
-      const visualType = visualTypeForExpression(expression, index);
+      const visualType = visualTypeForExpression(expression, index, profile);
       if (!validVisualTypes.has(visualType)) {
         throw new Error(`Internal visualType mapping produced invalid value: ${visualType}`);
       }
       return {
         slideId: `s${String(index + 1).padStart(2, "0")}-${slug(topic)}`,
-        title: titleForTopic(topic),
+        title: titleForTopic(topic, profile),
         message: messageForTopic(topic, scenario, profile),
         evidence: evidenceForTopic(topic, scenario, expression, profile),
         quietInfo: [shorten(`tone: ${scenario.tone ?? "not specified"}`, 42), `loop: ${loopNumber}`, `profile: ${profile.name}`],
         visualType,
-        emphasis: titleForTopic(topic)
+        emphasis: titleForTopic(topic, profile)
       };
     })
   };
 }
 
-function qualityProfile(loopNumber) {
+function qualityProfile(loopNumber, improvementState) {
+  const compactCopyLevel = Math.max(loopNumber >= 2 ? 1 : 0, improvementState.compactCopyLevel ?? 0);
+  const expressionPolishLevel = improvementState.expressionPolishLevel ?? 0;
   return {
-    name: loopNumber <= 1 ? "baseline" : "executive-compact-copy",
-    includeExecutiveSummary: loopNumber >= 2,
-    compactCopy: loopNumber >= 2
+    name: [
+      loopNumber <= 1 ? "baseline" : "adaptive",
+      compactCopyLevel > 0 ? "compact-copy" : null,
+      improvementState.forceExecutiveSummary ? "executive-summary" : null,
+      improvementState.safeContrast ? "safe-contrast" : null,
+      expressionPolishLevel > 0 ? `expression-polish-${expressionPolishLevel}` : null
+    ].filter(Boolean).join("+"),
+    includeExecutiveSummary: loopNumber >= 2 || Boolean(improvementState.forceExecutiveSummary),
+    compactCopy: compactCopyLevel > 0,
+    compactCopyLevel,
+    evidenceMax: compactCopyLevel >= 2 ? 2 : compactCopyLevel >= 1 ? 3 : 4,
+    titleMax: improvementState.shortenTitles ? 18 : compactCopyLevel > 0 ? 22 : 36,
+    topicLimit: improvementState.reduceSlideDensity ? 7 : 10,
+    safeContrast: Boolean(improvementState.safeContrast),
+    expressionPolishLevel
   };
 }
 
-function normalizeTopics(scenario) {
+function normalizeTopics(scenario, profile) {
   const mustCover = Array.isArray(scenario.mustCover) ? scenario.mustCover.filter(Boolean) : [];
-  const topics = mustCover.length >= 4 ? mustCover.slice(0, 10) : [...mustCover, "Overview", "Why it matters", "Options", "Next actions"].slice(0, 6);
+  const topics = mustCover.length >= 4 ? mustCover.slice(0, profile.topicLimit) : [...mustCover, "Overview", "Why it matters", "Options", "Next actions"].slice(0, Math.min(6, profile.topicLimit));
   const needsSummary = scenario.contentMode === "decision" || (scenario.requiredTools ?? []).includes("plan_business_deck");
-  if (needsSummary && !topics.some((topic) => String(topic).toLowerCase().includes("executive"))) {
-    return ["Executive Summary", ...topics].slice(0, 10);
+  if ((needsSummary || profile.includeExecutiveSummary) && !topics.some((topic) => String(topic).toLowerCase().includes("executive"))) {
+    return ["Executive Summary", ...topics].slice(0, profile.topicLimit);
   }
   return topics;
 }
 
-function visualTypeForExpression(expression, index) {
+function visualTypeForExpression(expression, index, profile = {}) {
   const value = String(expression).toLowerCase();
+  if ((profile.expressionPolishLevel ?? 0) >= 3 && (value.includes("structured") || value.includes("faq") || value.includes("detail"))) return "cards";
   if (value.includes("summary") || value.includes("overview") || value.includes("hero")) return "summary";
   if (value.includes("roi") || value.includes("kpi") || value.includes("table") || value.includes("dashboard") || value.includes("budget") || value.includes("cost") || value.includes("source")) return "table";
   if (value.includes("matrix") || value.includes("risk") || value.includes("comparison") || value.includes("competitive") || value.includes("radar") || value.includes("ranking") || value.includes("persona")) return "matrix";
@@ -225,16 +240,19 @@ function visualTypeForExpression(expression, index) {
   return rotation[index % rotation.length];
 }
 
-function titleForTopic(topic) {
+function titleForTopic(topic, profile = { titleMax: 36 }) {
   return String(topic)
     .replace(/[-_]+/g, " ")
     .replace(/^\w/, (match) => match.toUpperCase())
-    .slice(0, 36);
+    .slice(0, profile.titleMax ?? 36);
 }
 
 function messageForTopic(topic, scenario, profile) {
   if (String(topic).toLowerCase().includes("executive")) {
     return "結論、重要性、次の判断を先に示す。";
+  }
+  if (profile.expressionPolishLevel >= 2) {
+    return `${shorten(topic, 12)}の見方を一目で伝える。`;
   }
   if (profile.compactCopy) {
     return `${shorten(topic, 14)}を判断に使える形にする。`;
@@ -243,14 +261,25 @@ function messageForTopic(topic, scenario, profile) {
 }
 
 function evidenceForTopic(topic, scenario, expression, profile) {
-  const audience = shorten(scenario.audience ?? "対象者", profile.compactCopy ? 18 : 28);
+  const audience = profile.compactCopyLevel >= 2 ? audienceLabel(scenario.audience) : shorten(scenario.audience ?? "対象者", profile.compactCopy ? 18 : 28);
   const tone = shorten(scenario.tone ?? "標準", profile.compactCopy ? 12 : 20);
   return [
     `対象: ${audience}`,
-    `観点: ${shorten(topic, profile.compactCopy ? 16 : 24)}`,
+    `観点: ${shorten(topic, profile.compactCopy ? 18 : 24)}`,
     `表現: ${shorten(expression, 18)}`,
     `口調: ${tone}`
-  ];
+  ].slice(0, profile.evidenceMax ?? 4);
+}
+
+function audienceLabel(audience) {
+  const text = String(audience ?? "対象者").toLowerCase();
+  if (/エンジニア|開発|developer|engineer/.test(text)) return "エンジニア";
+  if (/経営|役員|意思決定|decision|executive/.test(text)) return "意思決定者";
+  if (/営業|sales/.test(text)) return "営業";
+  if (/自治体|行政|public sector/.test(text)) return "自治体";
+  if (/投資|investor|vc/.test(text)) return "投資家";
+  if (/顧客|customer/.test(text)) return "顧客";
+  return shorten(audience ?? "対象者", 14);
 }
 
 function shorten(value, maxLength) {
@@ -270,12 +299,16 @@ function slug(value) {
   return normalized || "topic";
 }
 
-function titleForScenario(scenario, loopNumber) {
-  const base = String(scenario.userRequest ?? scenario.id).split("。")[0].replace(/を作ってください$/, "").slice(0, 54);
+function titleForScenario(scenario, loopNumber, profile = {}) {
+  const maxLength = profile.shortenTitles ? 30 : profile.compactCopy ? 42 : 54;
+  const base = String(scenario.userRequest ?? scenario.id).split("。")[0].replace(/を作ってください$/, "").slice(0, maxLength);
   return `L${String(loopNumber).padStart(2, "0")} ${base}`;
 }
 
-function styleForContentMode(contentMode) {
+function styleForContentMode(contentMode, profile = {}) {
+  if (profile.safeContrast) {
+    return "report";
+  }
   switch (contentMode) {
     case "presentation":
       return "presentation";
@@ -290,7 +323,7 @@ function styleForContentMode(contentMode) {
   }
 }
 
-function runScenario(scenario, loopNumber, loopDir) {
+function runScenario(scenario, loopNumber, loopDir, improvementState) {
   const scenarioDir = path.join(loopDir, scenario.id);
   ensureDirectory(scenarioDir);
 
@@ -301,7 +334,8 @@ function runScenario(scenario, loopNumber, loopDir) {
   const pptxFile = path.join(scenarioDir, "deck.pptx");
   const studioFile = path.join(scenarioDir, "studio.html");
 
-  const messageMap = messageMapForScenario(scenario, loopNumber);
+  const messageMap = messageMapForScenario(scenario, loopNumber, improvementState);
+  const profile = qualityProfile(loopNumber, improvementState);
   writeJson(scenarioFile, scenario);
   writeJson(messageMapFile, messageMap);
 
@@ -328,7 +362,7 @@ function runScenario(scenario, loopNumber, loopDir) {
       "--locale",
       "ja-JP",
       "--topic",
-      titleForScenario(scenario, loopNumber),
+      titleForScenario(scenario, loopNumber, profile),
       "--purpose",
       scenario.purpose ?? scenario.userRequest,
       "--audience",
@@ -348,13 +382,13 @@ function runScenario(scenario, loopNumber, loopDir) {
     "from-message-map",
     messageMapFile,
     "--title",
-    titleForScenario(scenario, loopNumber),
+    titleForScenario(scenario, loopNumber, profile),
     "--locale",
     "ja-JP",
     "--content-mode",
     scenario.contentMode ?? "report",
     "--style",
-    styleForContentMode(scenario.contentMode),
+    styleForContentMode(scenario.contentMode, profile),
     "--output",
     deckFile,
     "--json"
@@ -407,6 +441,7 @@ function runScenario(scenario, loopNumber, loopDir) {
   writeJson(path.join(scenarioDir, "user-report.json"), userReport);
   writeJson(path.join(scenarioDir, "eval-report.json"), evalReport);
   writeText(path.join(scenarioDir, "eval-summary.md"), evalSummaryMarkdown(evalReport));
+  writeJson(path.join(scenarioDir, "improvement-state.json"), improvementState);
 
   return {
     scenarioId: scenario.id,
@@ -637,7 +672,7 @@ function createLoopQaReport(loopNumber, maxLoops, scenarioResults) {
     reasons: decision === "stop" ? [`Loop count reached ${maxLoops}.`] : [`Loop count ${loopNumber}/${maxLoops}; continue.`],
     patchRequestCount: patchRequests,
     highOrCriticalCount: highOrCritical,
-    requiredNextWork: decision === "stop" ? [] : ["Review eval-report.json files and decide whether Dev Lead should patch tool behavior before the next loop."],
+    requiredNextWork: decision === "stop" ? [] : ["Apply dev-lead-plan.json to the next loop generation profile."],
     acceptedRisks: decision === "stop" && patchRequests > 0 ? ["Exit criterion is count-only for this run; outstanding PatchRequests remain for later development review."] : []
   };
 }
@@ -662,6 +697,7 @@ function main() {
 
   const runStartedAt = new Date().toISOString();
   const loopSummaries = [];
+  let improvementState = initialImprovementState();
   writeJson(path.join(runDir, "run-config.json"), {
     startedAt: runStartedAt,
     loops: options.loops,
@@ -673,12 +709,19 @@ function main() {
   for (let loop = 1; loop <= options.loops; loop += 1) {
     const loopDir = path.join(runDir, `loop-${String(loop).padStart(2, "0")}`);
     ensureDirectory(loopDir);
-    const scenarioResults = scenarios.map((scenario) => runScenario(scenario, loop, loopDir));
+    writeJson(path.join(loopDir, "input-improvement-state.json"), improvementState);
+    const scenarioResults = scenarios.map((scenario) => runScenario(scenario, loop, loopDir, improvementState));
     const qa = createLoopQaReport(loop, options.loops, scenarioResults);
+    const devLeadPlan = createDevLeadPlan(loop, options.loops, loopDir, qa, improvementState);
+    const nextImprovementState = loop < options.loops ? applyDevLeadPlan(improvementState, devLeadPlan) : improvementState;
     writeJson(path.join(loopDir, "qa-report.json"), qa);
-    writeJson(path.join(loopDir, "loop-summary.json"), { loop, scenarioResults, qa });
-    loopSummaries.push({ loop, scenarioResults, qa });
-    console.log(`Loop ${loop}/${options.loops}: ${scenarioResults.length} scenarios, patches=${qa.patchRequestCount}, highOrCritical=${qa.highOrCriticalCount}, decision=${qa.decision}`);
+    writeJson(path.join(loopDir, "dev-lead-plan.json"), devLeadPlan);
+    writeText(path.join(loopDir, "dev-lead-plan.md"), devLeadPlanMarkdown(devLeadPlan));
+    writeJson(path.join(loopDir, "next-improvement-state.json"), nextImprovementState);
+    writeJson(path.join(loopDir, "loop-summary.json"), { loop, scenarioResults, qa, devLeadPlan, nextImprovementState });
+    loopSummaries.push({ loop, scenarioResults, qa, devLeadPlan, nextImprovementState });
+    improvementState = nextImprovementState;
+    console.log(`Loop ${loop}/${options.loops}: ${scenarioResults.length} scenarios, patches=${qa.patchRequestCount}, highOrCritical=${qa.highOrCriticalCount}, decision=${qa.decision}, actions=${devLeadPlan.actions.length}`);
   }
 
   const finalQa = loopSummaries.at(-1)?.qa ?? null;
@@ -687,7 +730,8 @@ function main() {
     startedAt: runStartedAt,
     finishedAt: new Date().toISOString(),
     loops: loopSummaries,
-    finalQa
+    finalQa,
+    finalImprovementState: improvementState
   });
   writeRunIndex(runDir, loopSummaries);
   console.log(`Run artifacts written to ${toPosixRelative(runDir)}`);
@@ -705,4 +749,128 @@ function isExpectedStructuredNonZero(command) {
     return false;
   }
   return command.command.includes(" review ") || command.command.includes(" finalize ");
+}
+
+function initialImprovementState() {
+  return {
+    forceExecutiveSummary: false,
+    compactCopyLevel: 0,
+    safeContrast: false,
+    shortenTitles: false,
+    reduceSlideDensity: false,
+    expressionPolishLevel: 0,
+    appliedActions: []
+  };
+}
+
+function collectBlockingCodes(loopDir) {
+  const counts = new Map();
+  for (const scenarioDir of readdirDirectories(loopDir)) {
+    const reviewPath = path.join(scenarioDir, "review.txt");
+    if (!existsSync(reviewPath)) {
+      continue;
+    }
+    const review = parseJsonOutput(readFileSync(reviewPath, "utf8"));
+    for (const issue of [...(review?.blocking ?? []), ...(review?.blockingIssues ?? [])]) {
+      counts.set(issue.code, (counts.get(issue.code) ?? 0) + 1);
+    }
+  }
+  return Object.fromEntries([...counts.entries()].sort(([a], [b]) => a.localeCompare(b)));
+}
+
+function readdirDirectories(dir) {
+  return existsSync(dir) ? readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => path.join(dir, entry.name)) : [];
+}
+
+function createDevLeadPlan(loopNumber, maxLoops, loopDir, qa, currentState) {
+  const blockingCodes = collectBlockingCodes(loopDir);
+  const actions = [];
+
+  if ((blockingCodes["business.executive-summary-missing"] ?? 0) > 0 && !currentState.forceExecutiveSummary) {
+    actions.push({
+      id: "force-executive-summary",
+      kind: "bugfix",
+      reason: "Business review repeatedly expects an early executive summary for important decks.",
+      changes: { forceExecutiveSummary: true }
+    });
+  }
+
+  if ((blockingCodes["visual.truncated-text"] ?? 0) > 0 || (blockingCodes["layout.compact-label-wrap"] ?? 0) > 0) {
+    actions.push({
+      id: "compact-copy-and-labels",
+      kind: "bugfix+expression-improvement",
+      reason: "Text truncation and label wrapping indicate the generated copy is too dense for the chosen visual grammar.",
+      changes: {
+        compactCopyLevel: Math.min(3, Math.max(currentState.compactCopyLevel ?? 0, 1) + 1),
+        reduceSlideDensity: true
+      }
+    });
+  }
+
+  if ((blockingCodes["text.low-contrast"] ?? 0) > 0 && !currentState.safeContrast) {
+    actions.push({
+      id: "safe-contrast-style",
+      kind: "bugfix",
+      reason: "Low contrast findings mean the next loop should prefer a safer high-contrast style profile.",
+      changes: { safeContrast: true }
+    });
+  }
+
+  if ((blockingCodes["content.title-too-long"] ?? 0) > 0 && !currentState.shortenTitles) {
+    actions.push({
+      id: "shorten-slide-titles",
+      kind: "bugfix+expression-improvement",
+      reason: "Long titles reduce scanability and trigger content review blockers.",
+      changes: { shortenTitles: true }
+    });
+  }
+
+  actions.push({
+    id: "increase-expression-polish",
+    kind: "expression-improvement",
+    reason: "Every loop should improve not just correctness but also clarity, scanability, and visual presentation.",
+    changes: { expressionPolishLevel: Math.min(5, (currentState.expressionPolishLevel ?? 0) + 1) }
+  });
+
+  return {
+    role: "Development Lead",
+    loop: loopNumber,
+    model: "host-selected",
+    qaDecision: qa.decision,
+    exitCriteriaMet: qa.exitCriteria.met,
+    blockingCodes,
+    actions,
+    nextLoopWillApply: loopNumber < maxLoops,
+    risks: actions.length === 0 ? ["No automatic improvement actions were selected."] : []
+  };
+}
+
+function applyDevLeadPlan(currentState, plan) {
+  const nextState = {
+    ...currentState,
+    appliedActions: [...(currentState.appliedActions ?? [])]
+  };
+  for (const action of plan.actions ?? []) {
+    Object.assign(nextState, action.changes ?? {});
+    nextState.appliedActions.push({ loop: plan.loop, id: action.id, kind: action.kind, changes: action.changes });
+  }
+  return nextState;
+}
+
+function devLeadPlanMarkdown(plan) {
+  const lines = ["# Dev Lead Plan", "", `Loop: ${plan.loop}`, "", "## Blocking Codes", ""];
+  const entries = Object.entries(plan.blockingCodes ?? {});
+  if (entries.length === 0) {
+    lines.push("- none");
+  } else {
+    for (const [code, count] of entries) {
+      lines.push(`- \`${code}\`: ${count}`);
+    }
+  }
+  lines.push("", "## Actions", "");
+  for (const action of plan.actions ?? []) {
+    lines.push(`- **${action.kind}** \`${action.id}\`: ${action.reason}`);
+  }
+  lines.push("", `Next loop will apply: ${plan.nextLoopWillApply}`, "");
+  return `${lines.join("\n")}\n`;
 }

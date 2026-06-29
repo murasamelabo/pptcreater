@@ -12,7 +12,9 @@ Raise pptcreater quality through an adversarial but controlled loop:
 1. implement a focused improvement,
 2. simulate realistic pptcreater usage,
 3. evaluate the generated slides and logs,
-4. decide whether to continue or stop.
+4. create a Dev Lead repair/improvement plan,
+5. apply that plan to the next loop,
+6. decide whether to continue or stop.
 
 The evaluator and QA roles should normally run on a different model from the developer role. This
 reduces self-review optimism, but model judgement is never the final gate by itself.
@@ -116,6 +118,38 @@ The QA Gatekeeper decides whether the loop stops.
 }
 ```
 
+### DevLeadPlan
+
+After every loop, the Development Lead receives the aggregated EvalReports and QA summary, then
+writes a `dev-lead-plan.json`. The plan must include both correctness repairs and expression-quality
+improvements when the artifacts reveal weak visual communication.
+
+```json
+{
+  "role": "Development Lead",
+  "loop": 2,
+  "blockingCodes": {
+    "visual.truncated-text": 4,
+    "content.title-too-long": 2
+  },
+  "actions": [
+    {
+      "id": "compact-copy-and-labels",
+      "kind": "bugfix+expression-improvement",
+      "reason": "Text truncation and wrapped labels show the generated copy is too dense.",
+      "changes": { "compactCopyLevel": 2, "reduceSlideDensity": true }
+    },
+    {
+      "id": "increase-expression-polish",
+      "kind": "expression-improvement",
+      "reason": "Improve scanability and visual presentation in the next generated deck set.",
+      "changes": { "expressionPolishLevel": 2 }
+    }
+  ],
+  "nextLoopWillApply": true
+}
+```
+
 ## Loop
 
 ```mermaid
@@ -127,10 +161,21 @@ flowchart LR
   ART --> EVAL[Evaluator]
   EVAL --> PR[PatchRequest list]
   PR --> QA[QA Gatekeeper]
-  QA -- continue --> WI2[Next WorkItem]
-  WI2 --> DEV
+  QA --> PLAN[Dev Lead repair + expression plan]
+  PLAN -- apply to next loop --> USER
   QA -- stop --> DONE[Ready to commit / PR]
 ```
+
+The deterministic runner records this cycle as:
+
+- `input-improvement-state.json`: generation strategy used for the current loop.
+- `dev-lead-plan.json` / `dev-lead-plan.md`: fixes and expression improvements selected after evaluation.
+- `next-improvement-state.json`: strategy applied to the next loop.
+
+The runner's automatic plan is intentionally conservative. It can change generation profile, copy
+density, style safety, title length, slide density, and expression polish between loops. A human or
+agent Dev Lead may still make source-code patches when the PatchRequests point to root-cause bugs in
+the tool.
 
 ## Deterministic Gates
 
@@ -186,6 +231,7 @@ Recommended routing:
 | pptcreater tool not used | User Simulator or Development Lead | improve scenario prompt or guidance |
 | Generated slide has blocking lint | Development Lead | fix generator / layout / schema |
 | Generated slide passes lint but looks wrong | Evaluator | create PatchRequest with visual evidence |
+| Generated slide is technically valid but visually weak | Development Lead | improve expression selection, copy density, scanability, or visual grammar |
 | Evaluator and deterministic gates disagree | QA Gatekeeper | request human review or another scenario |
 | Loop repeats without progress | QA Gatekeeper | stop, summarize blocker, lower scope |
 
