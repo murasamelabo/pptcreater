@@ -8,6 +8,7 @@
 - Adjusted deck-agent and MCP guidance so `radar`, `ranking`, `matrix`, and other figure kinds are presented as peer expression options chosen by slide message/data fit, not as individually privileged directives.
 - Added `architecture` as a first-class `recommend_figure` intent that routes to `generate_native_diagram`, kept `timeline`/`gantt` as an allowed curated figure path, and updated deck-agent guidance to record role execution so users can tell whether the specialist agents actually ran.
 - Added a compact-label lint gate so short chips/buttons do not silently wrap labels into cramped two-line text.
+- Fixed Message Map deck generation so long user-request titles, quiet metadata, and evidence strings are not promoted into cramped visible labels; generated cover titles, callouts, contrast headings, and matrix point labels now use short topic labels instead of visible ellipses.
 - Clarified that intentional text-rich slides are allowed when they use `detail`, `prose`, or `structured-text` layouts with headings, indentation, emphasis, color, and whitespace to reduce cognitive load.
 
 ## v0.5.44 - 2026-06-28

@@ -325,6 +325,70 @@ function containFrame(
   return { x: frame.x + (frame.w - w) / 2, y: frame.y, w, h: frame.h };
 }
 
+function hasJapanese(value: string): boolean {
+  return /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(value);
+}
+
+function compactLabel(value: string, maxLength: number): string {
+  const normalized = value
+    .replace(/^\s*(?:対象|観点|表現|口調|tone|profile)\s*[:：]\s*/iu, "")
+    .replace(/adaptive\+|compact-copy\+|executive-summary\+|safe-contrast\+|expression-polish-\d+/giu, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!normalized) {
+    return value.trim();
+  }
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+  return Array.from(normalized).slice(0, Math.max(1, maxLength)).join("").trimEnd();
+}
+
+function topicLabel(value: string): string {
+  const normalized = value.replace(/^L\d+\s+/iu, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+  if (/^対象\s*[:：]/u.test(normalized)) return "対象";
+  if (/^観点\s*[:：]/u.test(normalized)) return "観点";
+  if (/^表現\s*[:：]/u.test(normalized)) return "表現";
+  if (/^口調\s*[:：]/u.test(normalized)) return "口調";
+  if (/^executive summary$/iu.test(normalized)) {
+    return "要約";
+  }
+  if (!hasJapanese(normalized)) {
+    return compactLabel(normalized, 30);
+  }
+
+  const known = ["投資判断", "候補比較", "リスク整理", "ロードマップ", "承認", "比較", "次の行動"];
+  const found = known.find((keyword) => normalized.includes(keyword));
+  if (found) {
+    return found;
+  }
+
+  const particles = ["の", "で", "に", "を", "と", "が", "は"];
+  const particleIndex = particles.map((particle) => normalized.indexOf(particle)).filter((index) => index > 1).sort((a, b) => a - b)[0];
+  const candidate = particleIndex ? normalized.slice(0, particleIndex) : normalized;
+  return compactLabel(candidate, 14);
+}
+
+function titleLabel(value: string): string {
+  const normalized = value.replace(/^L\d+\s+/iu, "").replace(/\s+/g, " ").trim();
+  if (!hasJapanese(normalized)) {
+    return compactLabel(normalized, 34);
+  }
+
+  const purposeMatch = normalized.match(/(.+?)(?:資料|スライド|デッキ)/u)?.[1];
+  const candidate = purposeMatch ?? normalized;
+  return compactLabel(candidate, 22);
+}
+
+function calloutLabel(value: string): string {
+  return hasJapanese(value) ? compactLabel(value, 12) : compactLabel(value, 12);
+}
+
+function pointLabel(value: string): string {
+  return hasJapanese(value) ? compactLabel(value, 10) : compactLabel(value, 10);
+}
+
 function visualAssetElement(
   asset: SlideVisualAsset | undefined,
   theme: Theme,
@@ -420,11 +484,11 @@ function slideTopicTitle(intent: SlideIntent): string {
     価格差: "費用比較",
     判断軸: "選択基準"
   };
-  return replacements[normalized] ?? normalized;
+  return replacements[normalized] ?? topicLabel(normalized);
 }
 
 function evidenceItems(intent: SlideIntent, min = 3): string[] {
-  const values = [...intent.evidence, ...intent.quietInfo].map((item) => item.trim()).filter(Boolean);
+  const values = intent.evidence.map((item) => compactLabel(item, 18)).filter(Boolean);
   while (values.length < min) values.push(intent.emphasis ?? intent.message);
   return values.slice(0, Math.max(min, Math.min(values.length, 6)));
 }
@@ -434,7 +498,7 @@ function statementVisual(theme: Theme, intent: SlideIntent, id: string): SlideEl
   const elements: SlideElement[] = [
     shape(`${id}-statement-panel`, "roundRect", 0.82, 2.05, 5.55, 3.98, 10, theme.accentSoft, theme.line, { radius: 0.18 }),
     icon(`${id}-statement-icon`, iconForEvidence(intent.emphasis ?? intent.message, 0), 1.16, 2.48, 0.54, 10, theme, { color: theme.accent, decorative: true }),
-    text(`${id}-statement-focus`, "callout", intent.emphasis ?? intent.message, 1.88, 2.55, 4.13, 0.72, 11, theme, {
+    text(`${id}-statement-focus`, "callout", calloutLabel(topicLabel(intent.emphasis ?? intent.message)), 1.88, 2.55, 4.13, 0.72, 11, theme, {
       bg: theme.accentSoft,
       color: theme.accent,
       fontSize: 24
@@ -492,16 +556,19 @@ function contrastVisual(theme: Theme, intent: SlideIntent, id: string, afterLabe
   const items = evidenceItems(intent, 4);
   const left = items.slice(0, 2);
   const right = items.slice(2, 4);
+  const isJapanese = hasJapanese([intent.title, intent.message, intent.emphasis, ...intent.evidence].filter(Boolean).join(" "));
+  const leftTitle = afterLabel === "比較" ? (isJapanese ? "比較A" : "Option A") : isJapanese ? "現状" : "Before";
+  const rightTitle = afterLabel === "比較" ? (isJapanese ? "比較B" : "Option B") : isJapanese ? afterLabel : "After";
   return [
     shape(`${id}-left-panel`, "roundRect", 0.82, 2.0, 4.75, 3.92, 10, theme.surface, theme.line, { radius: 0.18 }),
     shape(`${id}-right-panel`, "roundRect", 7.75, 2.0, 4.75, 3.92, 20, theme.accentSoft, theme.line, { radius: 0.18 }),
     shape(`${id}-bridge`, "rightArrow", 5.95, 3.46, 1.32, 0.64, 30, theme.accent, theme.accent, { radius: 0.04 }),
     icon(`${id}-left-icon`, iconForEvidence(left[0] ?? "left", 0), 1.18, 2.14, 0.46, 10, theme, { color: theme.accent, decorative: true }),
     icon(`${id}-right-icon`, iconForEvidence(right[0] ?? "right", 1), 8.1, 2.14, 0.46, 20, theme, { color: theme.accent, decorative: true }),
-    text(`${id}-left-title`, "callout", left[0] ?? "Before", 1.78, 2.42, 3.45, 0.42, 11, theme, { bg: theme.surface, fontSize: 21, color: theme.text }),
+    text(`${id}-left-title`, "callout", leftTitle, 1.78, 2.42, 3.45, 0.42, 11, theme, { bg: theme.surface, fontSize: 21, color: theme.text }),
     text(`${id}-left-body`, "body", left[1] ?? intent.message, 1.18, 3.18, 4.05, 1.4, 12, theme, { bg: theme.surface, fontSize: 19, color: theme.mutedText }),
     text(`${id}-bridge-text`, "caption", afterLabel, 6.15, 3.63, 0.9, 0.22, 31, theme, { bg: theme.accent, color: theme.inkOnAccent, align: "center", fontSize: 12 }),
-    text(`${id}-right-title`, "callout", right[0] ?? intent.emphasis ?? "After", 8.7, 2.42, 3.45, 0.42, 21, theme, { bg: theme.accentSoft, fontSize: 21, color: theme.accent }),
+    text(`${id}-right-title`, "callout", rightTitle, 8.7, 2.42, 3.45, 0.42, 21, theme, { bg: theme.accentSoft, fontSize: 21, color: theme.accent }),
     text(`${id}-right-body`, "body", right[1] ?? intent.message, 8.1, 3.18, 4.05, 1.4, 22, theme, { bg: theme.accentSoft, fontSize: 19, color: theme.text })
   ];
 }
@@ -519,7 +586,7 @@ function imageMessageVisual(theme: Theme, intent: SlideIntent, id: string): Slid
       color: theme.accent,
       decorative: true
     }),
-    text(`${id}-copy-heading`, "callout", intent.emphasis ?? intent.title, copyFrame.x + 1.08, copyFrame.y + 0.43, copyFrame.w - 1.55, 0.38, 22, theme, {
+    text(`${id}-copy-heading`, "callout", calloutLabel(topicLabel(intent.emphasis ?? intent.title)), copyFrame.x + 1.08, copyFrame.y + 0.43, copyFrame.w - 1.55, 0.38, 22, theme, {
       bg: theme.surface,
       color: theme.accent,
       fontSize: 22
@@ -554,7 +621,7 @@ function tableVisual(theme: Theme, intent: SlideIntent, id: string): SlideElemen
     shape(`${id}-table-head`, "rect", 0.82, 1.95, 11.65, 0.72, 11, theme.accent, theme.accent, { radius: 0 })
   ];
   elements.push(icon(`${id}-table-icon`, iconForEvidence(intent.emphasis ?? intent.title, 0), 1.05, 2.09, 0.34, 12, theme, { color: theme.inkOnAccent, decorative: true }));
-  elements.push(text(`${id}-table-head-text`, "callout", intent.emphasis ?? intent.title, 1.55, 2.12, 10.5, 0.28, 13, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 18 }));
+  elements.push(text(`${id}-table-head-text`, "callout", calloutLabel(topicLabel(intent.emphasis ?? intent.title)), 1.55, 2.12, 10.5, 0.28, 13, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 18 }));
   items.forEach((item, index) => {
     const y = 2.85 + index * 0.68;
     const fill = index % 2 === 0 ? mix(theme.surface, theme.background, 0.35) : theme.surface;
@@ -576,7 +643,7 @@ function matrixVisual(theme: Theme, intent: SlideIntent, id: string): SlideEleme
     text(`${id}-axis-y-label`, "caption", "費用負担", 3.85, 2.32, 1.3, 0.2, 14, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 12, align: "center" }),
     shape(`${id}-insight`, "roundRect", 8.55, 2.25, 3.55, 3.75, 50, theme.accentSoft, theme.line, { radius: 0.18 }),
     icon(`${id}-insight-icon`, "scale", 8.92, 2.42, 0.42, 50, theme, { color: theme.accent, decorative: true }),
-    text(`${id}-insight-title`, "callout", intent.emphasis ?? "判断軸", 9.48, 2.5, 2.28, 0.32, 51, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 21 }),
+    text(`${id}-insight-title`, "callout", calloutLabel(topicLabel(intent.emphasis ?? "判断軸")), 9.48, 2.5, 2.28, 0.32, 51, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 21 }),
     text(`${id}-insight-body`, "body", intent.message, 8.92, 3.42, 2.85, 1.45, 52, theme, { bg: theme.accentSoft, color: theme.text, fontSize: 18 })
   ];
   const points = [
@@ -588,7 +655,7 @@ function matrixVisual(theme: Theme, intent: SlideIntent, id: string): SlideEleme
   items.forEach((item, index) => {
     const [x, y] = points[index];
     elements.push(shape(`${id}-point-${index}`, "ellipse", x, y, 0.32, 0.32, 20 + index * 3, theme.accent, theme.accent));
-    elements.push(text(`${id}-point-label-${index}`, "caption", item, x + 0.42, y - 0.02, 1.85, 0.24, 21 + index * 3, theme, { bg: theme.surface, fontSize: 12, color: theme.text }));
+    elements.push(text(`${id}-point-label-${index}`, "caption", pointLabel(item), x + 0.42, y - 0.02, 1.85, 0.24, 21 + index * 3, theme, { bg: theme.surface, fontSize: 12, color: theme.text }));
   });
   return elements;
 }
@@ -645,7 +712,7 @@ function hubMapVisual(theme: Theme, intent: SlideIntent, id: string, locale: Loc
     icon(`${id}-right-icon`, rightPanel.iconKey, 7.6, 2.34, 0.58, 31, theme, { color: theme.accent, decorative: true }),
     text(`${id}-left-title`, "callout", leftPanel.title, 2.08, 2.42, 3.3, 0.34, 12, theme, { bg: theme.surface, color: theme.text, fontSize: 22 }),
     text(`${id}-right-title`, "callout", rightPanel.title, 8.36, 2.42, 3.3, 0.34, 32, theme, { bg: theme.accentSoft, color: theme.text, fontSize: 22 }),
-    text(`${id}-relation`, "caption", intent.emphasis ?? "施設タイプ", 5.95, 3.83, 1.44, 0.18, 51, theme, {
+    text(`${id}-relation`, "caption", compactLabel(intent.emphasis ?? "施設タイプ", 14), 5.78, 3.83, 1.78, 0.18, 51, theme, {
       bg: theme.accent,
       color: theme.inkOnAccent,
       align: "center",
@@ -673,8 +740,8 @@ function stepsVisual(theme: Theme, intent: SlideIntent, id: string): SlideElemen
   const elements: SlideElement[] = [
     shape(`${id}-rail`, "roundRect", 0.88, 2.0, 3.45, 4.6, 10, theme.accent, theme.accent, { radius: 0.18 }),
     icon(`${id}-rail-icon`, "clipboard", 1.18, 2.18, 0.52, 10, theme, { color: theme.inkOnAccent, decorative: true }),
-    text(`${id}-rail-title`, "callout", intent.emphasis ?? "実行順", 1.86, 2.45, 2.05, 0.45, 11, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 22 }),
-    text(`${id}-rail-body`, "body", intent.emphasis ?? intent.message, 1.18, 3.25, 2.85, 1.4, 12, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 18 })
+    text(`${id}-rail-title`, "callout", calloutLabel(topicLabel(intent.emphasis ?? "実行順")), 1.86, 2.45, 2.05, 0.45, 11, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 22 }),
+    text(`${id}-rail-body`, "body", calloutLabel(topicLabel(intent.emphasis ?? intent.message)), 1.18, 3.25, 2.85, 1.4, 12, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 18 })
   ];
   items.forEach((item, index) => {
     const y = 2.05 + index * 0.76;
@@ -745,9 +812,10 @@ function visualForIntent(theme: Theme, intent: SlideIntent, locale: Locale): [Me
 }
 
 function createCover(theme: Theme, title: string, messageMap: DeckMessageMap): Slide {
+  const displayTitle = titleLabel(title);
   return {
     id: "cover",
-    title,
+    title: displayTitle,
     layout: "cover",
     background: { color: theme.background },
     speakerNotes: [messageMap.objective, messageMap.audience, messageMap.desiredAction].filter(Boolean).join("\n"),
@@ -761,7 +829,7 @@ function createCover(theme: Theme, title: string, messageMap: DeckMessageMap): S
       icon("cover-icon-2", "heart", 10.72, 3.0, 0.55, 6, theme, { color: theme.inkOnAccent, decorative: true }),
       icon("cover-icon-3", "map-pin", 9.22, 4.9, 0.5, 7, theme, { color: theme.accent, decorative: true }),
       text("cover-kicker", "caption", "MESSAGE-FIRST DECK", 0.78, 1.08, 4.2, 0.28, 8, theme, { color: theme.accent, fontSize: 12, bold: true }),
-      text("cover-title", "title", title, 0.76, 1.62, 6.4, 1.62, 9, theme, { fontSize: 34 }),
+      text("cover-title", "title", displayTitle, 0.76, 1.62, 6.4, 1.62, 9, theme, { fontSize: 34 }),
       text("cover-objective", "body", messageMap.objective ?? "目的を1つに絞り、各スライドを1メッセージで構成します。", 0.8, 3.66, 6.15, 0.86, 10, theme, {
         color: theme.mutedText,
         fontSize: 20

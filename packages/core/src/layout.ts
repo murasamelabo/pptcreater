@@ -654,6 +654,19 @@ function shortenTextToFit(element: TextElement, fontSize: number): string {
     return normalized;
   }
 
+  const initialFit = textFitsAtSize({ ...element, text: normalized }, fontSize);
+  if (initialFit.fits) {
+    return initialFit.text;
+  }
+
+  const firstToken = tokenizeForWrap(normalized).find((token) => token.trim().length > 0)?.trim();
+  if (firstToken) {
+    const tokenFit = textFitsAtSize({ ...element, text: firstToken }, fontSize);
+    if (tokenFit.fits) {
+      return tokenFit.text;
+    }
+  }
+
   let low = 1;
   let high = chars.length;
   const ellipsisFit = textFitsAtSize({ ...element, text: "…" }, fontSize);

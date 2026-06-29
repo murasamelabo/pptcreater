@@ -86,6 +86,45 @@ const MESSAGE_MAP: DeckMessageMap = {
 };
 
 describe("message map deck generator", () => {
+  it("generates review-clean slides for long Japanese user-request topics", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "家族が箱根旅館を比較して予約候補を決める",
+        audience: "三世代旅行を検討している家族",
+        desiredAction: "候補を二つに絞って予約条件を確認する",
+        intents: [
+          {
+            slideId: "cloud-migration-board-approval",
+            title: "クラウド移行の取締役会承認に必要な投資判断とリスク整理",
+            message: "投資判断に必要な論点を短く示す。",
+            evidence: ["対象: 意思決定者", "観点: 投資判断", "表現: roadmap"],
+            quietInfo: ["profile: adaptive+compact-copy+executive-summary+safe-contrast+expression-polish-5"],
+            visualType: "step",
+            emphasis: "投資判断"
+          },
+          {
+            slideId: "hakone-ryokan-family-choice",
+            title: "箱根旅館比較で家族全員が納得できる候補を選ぶ",
+            message: "候補の違いを一目で見せる。",
+            evidence: ["対象: 家族", "観点: 露天風呂と食事", "表現: comparison"],
+            quietInfo: ["profile: adaptive+compact-copy+executive-summary+safe-contrast+expression-polish-5"],
+            visualType: "matrix",
+            emphasis: "候補比較"
+          }
+        ]
+      },
+      { title: "箱根旅館比較", locale: "ja-JP", contentMode: "report", styleProfile: "report" }
+    );
+
+    const issueCodes = new Set([
+      ...lintDeckSpec(deck).issues.map((issue) => issue.code),
+      ...reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error").map((issue) => issue.code)
+    ]);
+    expect([...issueCodes]).not.toContain("content.title-too-long");
+    expect([...issueCodes]).not.toContain("visual.truncated-text");
+    expect([...issueCodes]).not.toContain("layout.compact-label-wrap");
+  });
+
   it("turns SlideIntent entries into varied editable visual archetypes", () => {
     const deck = createDeckFromMessageMap(MESSAGE_MAP, {
       title: "横浜市周辺の産後ケア施設比較",

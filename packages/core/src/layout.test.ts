@@ -576,7 +576,7 @@ describe("layout polish", () => {
     expect(callout?.type === "text" ? callout.fontSize : undefined).toBe(14);
   });
 
-  it("keeps dense caption labels readable by shortening instead of shrinking below 12pt", () => {
+  it("keeps dense caption labels readable by shortening without visible ellipsis when a token fits", () => {
     const slide: Slide = {
       id: "dense-caption",
       title: "Dense caption",
@@ -603,7 +603,7 @@ describe("layout polish", () => {
     const caption = normalized.elements[0];
 
     expect(caption.type === "text" ? caption.fontSize : undefined).toBeGreaterThanOrEqual(12);
-    expect(caption.type === "text" ? caption.text : "").toContain("…");
+    expect(caption.type === "text" ? caption.text : "").toBe("出");
   });
 
   it("uses a verified ellipsis fallback for extremely narrow captions", () => {
