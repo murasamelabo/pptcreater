@@ -448,6 +448,8 @@ function runScenario(scenario, loopNumber, loopDir, improvementState) {
     directory: toPosixRelative(scenarioDir),
     patchRequestCount: evalReport.patchRequests.length,
     highOrCriticalCount: evalReport.patchRequests.filter((request) => request.severity === "critical" || request.severity === "high").length,
+    expressionCraft: evalReport.scores.expressionCraft,
+    expressionFingerprint: evalReport.deterministic.expressionCraft?.fingerprint,
     hashes
   };
 }
@@ -482,6 +484,8 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
 
   const finalizeJson = lastJsonForCommand(commands, "finalize");
   const reviewJson = lastJsonForCommand(commands, "review");
+  const deckJson = loadJsonIfExists(findScenarioArtifact(commands, "from-message-map", "deck.json"));
+  const expressionCraft = evaluateExpressionCraft(deckJson, scenario);
   const reviewBlocking = reviewJson?.blocking?.length ?? reviewJson?.blockingIssues?.length ?? 0;
   const reviewOk = reviewJson?.ok ?? (reviewBlocking === 0);
   if (!reviewOk || reviewBlocking > 0) {
@@ -521,6 +525,16 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
     });
   }
 
+  if (expressionCraft.score < 3) {
+    patchRequests.push({
+      severity: "medium",
+      problem: "Generated deck lacks scenario-specific expressive craft.",
+      evidence: expressionCraft.evidence,
+      expected: "Decks should vary their expressive strategy by scenario, using sample-derived tactics such as anchored realism, focal proof, spatial models, deliberate repetition, deck rhythm, or brand materiality.",
+      suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/visualQuality.ts", "scripts/run-dev-loop.mjs", ".github/agents/pptcreater-dev-evaluator.agent.md"]
+    });
+  }
+
   const toolCoverage = requiredTools.size === 0 ? 5 : Math.max(0, Math.round(((requiredTools.size - missingRequiredTools.length) / requiredTools.size) * 5));
   const commandScore = failedCommands.length === 0 ? 5 : 1;
   const reviewScore = reviewOk ? 4 : 2;
@@ -537,12 +551,14 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
       reviewBlocking,
       zip,
       hashes,
+      expressionCraft,
       finalize: summarizeJson(finalizeJson),
       review: summarizeJson(reviewJson)
     },
     scores: {
       messageFit: reviewScore,
       visualFit: reviewScore,
+      expressionCraft: expressionCraft.score,
       editability: Math.min(reviewScore, zipScore),
       accessibility: reviewJson?.scores?.accessibility ? Math.round(reviewJson.scores.accessibility / 20) : reviewScore,
       toolDiscipline: Math.min(toolCoverage, commandScore)
@@ -550,6 +566,90 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
     patchRequests,
     residualRisks: patchRequests.length === 0 ? [] : ["Review generated artifacts manually in PowerPoint/Studio before accepting visual quality."]
   };
+}
+
+function findScenarioArtifact(commands, commandName, fallbackName) {
+  const command = commands.find((entry) => entry.command.includes(` ${commandName} `));
+  if (!command?.outputFile) {
+    return null;
+  }
+  return path.join(repoRoot, path.dirname(command.outputFile), fallbackName);
+}
+
+function loadJsonIfExists(file) {
+  if (!file || !existsSync(file)) {
+    return null;
+  }
+  return JSON.parse(readFileSync(file, "utf8"));
+}
+
+function evaluateExpressionCraft(deck, scenario) {
+  if (!deck?.slides) {
+    return { score: 1, evidence: "deck.json was not available for expression craft evaluation." };
+  }
+
+  const bodySlides = deck.slides.filter((slide) => !["cover", "title", "section", "divider", "closing", "references"].includes(slide.layout ?? ""));
+  const layouts = bodySlides.map((slide) => slide.layout ?? "unknown");
+  const fingerprint = layouts.join(" > ");
+  const layoutCounts = countBy(layouts);
+  const dominantLayoutShare = bodySlides.length ? Math.max(...Object.values(layoutCounts)) / bodySlides.length : 1;
+  const slidesWithLargeMedia = bodySlides.filter(hasLargeMedia).length;
+  const slidesWithFocalProof = bodySlides.filter(hasFocalProof).length;
+  const slidesWithSpatialModel = bodySlides.filter(hasSpatialModel).length;
+  const slidesWithDeliberateRepetition = bodySlides.filter(hasDeliberateRepetition).length;
+  const layoutDiversity = Object.keys(layoutCounts).length;
+
+  const scenarioText = [scenario.purpose, scenario.audience, scenario.userRequest, ...(scenario.requiredExpressions ?? [])].join(" ").toLowerCase();
+  const wantsAnchoredRealism = /採用|会社|事例|顧客|製品|現場|office|customer|product|case|recruit/.test(scenarioText);
+  const wantsFocalProof = /kpi|roi|売上|数字|指標|実績|効果|比較|データ|budget|finance/.test(scenarioText);
+  const wantsSpatialModel = /プロセス|関係|構造|アーキテクチャ|移行|ロードマップ|journey|workflow|architecture|roadmap/.test(scenarioText);
+
+  let score = 2;
+  if (layoutDiversity >= Math.min(4, bodySlides.length)) score += 1;
+  if (dominantLayoutShare <= 0.45) score += 1;
+  if (slidesWithLargeMedia > 0 || !wantsAnchoredRealism) score += 0.5;
+  if (slidesWithFocalProof > 0 || !wantsFocalProof) score += 0.5;
+  if (slidesWithSpatialModel > 0 || !wantsSpatialModel) score += 0.5;
+  if (slidesWithDeliberateRepetition > 0) score += 0.5;
+  score = Math.max(1, Math.min(5, Math.round(score)));
+
+  const missing = [];
+  if (layoutDiversity < Math.min(4, bodySlides.length)) missing.push("deck rhythm / layout diversity");
+  if (dominantLayoutShare > 0.45) missing.push(`dominant layout share ${dominantLayoutShare.toFixed(2)}`);
+  if (wantsAnchoredRealism && slidesWithLargeMedia === 0) missing.push("anchored realism: no large photo/image/product visual");
+  if (wantsFocalProof && slidesWithFocalProof === 0) missing.push("focal proof: no large KPI/number proof slide");
+  if (wantsSpatialModel && slidesWithSpatialModel === 0) missing.push("spatial model: no map/flow/matrix/diagram/step spatial explanation");
+
+  return {
+    score,
+    fingerprint,
+    evidence: `expressionCraft=${score}/5; bodySlides=${bodySlides.length}; layoutDiversity=${layoutDiversity}; dominantLayoutShare=${dominantLayoutShare.toFixed(2)}; largeMedia=${slidesWithLargeMedia}; focalProof=${slidesWithFocalProof}; spatialModel=${slidesWithSpatialModel}; deliberateRepetition=${slidesWithDeliberateRepetition}; missing=${missing.join("; ") || "none"}`
+  };
+}
+
+function countBy(values) {
+  return values.reduce((counts, value) => {
+    counts[value] = (counts[value] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
+function hasLargeMedia(slide) {
+  return (slide.elements ?? []).some((element) => ["image", "svg", "diagram"].includes(element.type) && element.w >= 3.5 && element.h >= 2.2 && !element.decorative);
+}
+
+function hasFocalProof(slide) {
+  return (slide.elements ?? []).some((element) => element.type === "text" && (element.fontSize ?? 0) >= 28 && /\d|%|倍|億|万|円|pt|ポイント/u.test(element.text ?? ""));
+}
+
+function hasSpatialModel(slide) {
+  const layout = slide.layout ?? "";
+  return /flow|matrix|map|diagram|step|journey|architecture|before-after/u.test(layout);
+}
+
+function hasDeliberateRepetition(slide) {
+  const cards = (slide.elements ?? []).filter((element) => element.type === "shape" && ["roundRect", "roundedRect", "rect"].includes(element.shape) && element.w >= 1.5 && element.h >= 0.8);
+  return cards.length >= 3;
 }
 
 function lastJsonForCommand(commands, name) {
@@ -657,6 +757,12 @@ function evalSummaryMarkdown(report) {
 function createLoopQaReport(loopNumber, maxLoops, scenarioResults) {
   const highOrCritical = scenarioResults.reduce((sum, result) => sum + result.highOrCriticalCount, 0);
   const patchRequests = scenarioResults.reduce((sum, result) => sum + result.patchRequestCount, 0);
+  const expressionCraftAverage = scenarioResults.length
+    ? scenarioResults.reduce((sum, result) => sum + (result.expressionCraft ?? 0), 0) / scenarioResults.length
+    : 0;
+  const fingerprintCounts = countBy(scenarioResults.map((result) => result.expressionFingerprint).filter(Boolean));
+  const repeatedFingerprintCount = Object.values(fingerprintCounts).filter((count) => count > 1).reduce((sum, count) => sum + count, 0);
+  const repeatedFingerprintShare = scenarioResults.length ? repeatedFingerprintCount / scenarioResults.length : 0;
   const decision = loopNumber >= maxLoops ? "stop" : "continue";
   return {
     role: "QA Gatekeeper",
@@ -672,8 +778,16 @@ function createLoopQaReport(loopNumber, maxLoops, scenarioResults) {
     reasons: decision === "stop" ? [`Loop count reached ${maxLoops}.`] : [`Loop count ${loopNumber}/${maxLoops}; continue.`],
     patchRequestCount: patchRequests,
     highOrCriticalCount: highOrCritical,
+    expressionCraft: {
+      average: Number(expressionCraftAverage.toFixed(2)),
+      repeatedFingerprintShare: Number(repeatedFingerprintShare.toFixed(2)),
+      repeatedFingerprints: Object.fromEntries(Object.entries(fingerprintCounts).filter(([, count]) => count > 1))
+    },
     requiredNextWork: decision === "stop" ? [] : ["Apply dev-lead-plan.json to the next loop generation profile."],
-    acceptedRisks: decision === "stop" && patchRequests > 0 ? ["Exit criterion is count-only for this run; outstanding PatchRequests remain for later development review."] : []
+    acceptedRisks: [
+      ...(decision === "stop" && patchRequests > 0 ? ["Exit criterion is count-only for this run; outstanding PatchRequests remain for later development review."] : []),
+      ...(repeatedFingerprintShare >= 0.5 ? ["Multiple scenarios share similar layout fingerprints; expression diversity should be improved in a future Dev Lead pass."] : [])
+    ]
   };
 }
 

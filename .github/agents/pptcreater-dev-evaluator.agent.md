@@ -24,6 +24,7 @@ artifacts.
 
 - deterministic gates: build/test/finalize/review/zip integrity
 - visual fitness: message fit, hierarchy, density, readability, expression choice
+- expression craft: whether the deck uses sample-derived expressive strategies such as anchored realism, focal proof, spatial models, deliberate repetition, deck rhythm, and brand materiality instead of repeating the same card/table/flow surface
 - editability: native PowerPoint objects where expected, no unnecessary flattened diagrams
 - accessibility: contrast, alt text, reading order, font size
 - tool discipline: figure tools, templates, review gate, and source references used correctly
@@ -38,6 +39,7 @@ artifacts.
   "scores": {
     "messageFit": 0,
     "visualFit": 0,
+    "expressionCraft": 0,
     "editability": 0,
     "accessibility": 0,
     "toolDiscipline": 0

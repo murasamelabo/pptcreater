@@ -46,9 +46,25 @@ Evaluator は次の軸で評価する。各軸は 0-5 点で採点し、3 点未
 | --- | --- | --- | --- | --- |
 | `messageFit` | スライドのメッセージ、タイトル、根拠、scenario との一致 | 目的・聴き手・desired action に直結し、1スライド1メッセージになっている | 大枠は合うが、主張が弱い、根拠が薄い、読み手の行動に結びつきにくい | 目的から外れる、文章の寄せ集め、何を判断すべきか不明 |
 | `visualFit` | レイアウト、視線誘導、密度、表現選択、読みやすさ | 情報構造と視覚表現が一致し、3秒で主張が分かる | 読めるが密度・余白・視線誘導に弱さがある | 重なり、過密、表現ミスマッチ、主要情報が見えない |
+| `expressionCraft` | 表現の強さ、シナリオ固有性、視覚的な語り方の幅 | サンプルに見られるように、写真・数値・空間モデル・大胆な同型反復・章扉などを内容に合わせて使い分け、シナリオが変わると見た目の作戦も変わる | 表現は破綻していないが、カード/表/flowの置換に留まり、どのシナリオでも似た見え方になる | ほぼ同じテンプレートの繰り返し、主役不在、表現が内容の温度や文脈を伝えていない |
 | `editability` | PowerPoint上で編集できるか、native objects を使っているか | 期待される図解・ラベル・カードが編集可能な native elements | 一部が画像化されているが、実務上の修正は可能 | 技術図・表・ラベルが不必要に flattened SVG / image になっている |
 | `accessibility` | contrast、font size、alt text、reading order、低視認性 | lint / review 上も実見上も読みやすく、代替情報がある | 警告はあるが、主要情報は読める | 低コントラスト、極小文字、読順破綻、alt不足が判断を妨げる |
 | `toolDiscipline` | requiredTools、figure selection、template、review gate、source handling | ScenarioSpec の requiredTools を使い、ledger と成果物が一致する | 主要ツールは使ったが、一部が手作業・証跡不足 | requiredTools 未使用、review/finalize未実行、手作りscriptで回避 |
+
+## 表現力の評価観点
+
+Evaluator は、提示された実例（FABRIC TOKYO会社紹介、SUPER STUDIO 1on1変化、ENEOSアプリ事業デザイン、STORES Company Slide）を、コピーする対象ではなく評価語彙の参照として扱う。良い表現は装飾量ではなく、内容の見え方を変える設計判断として評価する。
+
+| 観点 | サンプルから抽出した要点 | 評価で見るもの |
+| --- | --- | --- |
+| `anchoredRealism` | FABRIC TOKYO / STORES のように、写真・現場・プロダクト・人の気配を使い、抽象説明を現実の場面へ接続する | 重要な会社紹介・採用・事例系 deck に、写真/スクリーンショット/製品状態/現場感のある大きな visual があるか。単なるアイコン置換だけで済ませていないか。 |
+| `focalProof` | FABRIC TOKYO の「お直し率 -70%」のように、1つの数字や成果を視覚上の主役として扱う | KPI/実績/比較が、表の1セルではなく、視線を止める大きな数値・吹き出し・線・強調として設計されているか。 |
+| `spatialModel` | SUPER STUDIO の二軸/矢印/人物配置のように、概念の関係を空間に置き換える | 状況、関係、変化、経験差、プロセスが、文章列ではなく位置・距離・向き・矢印・軸で理解できるか。 |
+| `deliberateRepetition` | ENEOS の3ポイントカードのように、同じ型を大胆に反復し、比較/列挙を強く読ませる | カード反復が単調な量産ではなく、点数・ラベル・余白・コントラストで意図的なリズムになっているか。 |
+| `deckRhythm` | STORES の写真章扉、詳細情報、顧客事例、制度説明が切り替わるように、deck全体に呼吸がある | 連続スライドがすべて同じ密度・同じ構造になっていないか。章扉、写真主役、データ主役、概念図、詳細説明のリズムがあるか。 |
+| `brandMateriality` | 各サンプルが色・余白・書体・写真トーンで固有の空気を持つ | テンプレート色を塗っただけでなく、subject/audienceに合う質感・余白・トーンがあるか。 |
+
+`expressionCraft` が 3 点未満の場合、Evaluator は `visual.expression-craft-low` の PatchRequest を出す。証拠には、少なくとも「同一layoutの支配率」「写真/大きなvisualの有無」「空間モデル/大胆な反復/数値主役の有無」「どのサンプル由来の観点が欠けているか」を含める。
 
 ## Deterministic gate の扱い
 
@@ -116,6 +132,7 @@ Evaluator は必ず次のJSON形で返す。
   "scores": {
     "messageFit": 0,
     "visualFit": 0,
+    "expressionCraft": 0,
     "editability": 0,
     "accessibility": 0,
     "toolDiscipline": 0
