@@ -1049,6 +1049,13 @@ function slideCommentFor({ slide, index, title, layout, visibleChars, textCount,
   }
 
   if (focalProof || /kpi|roi|売上|数字|指標|実績|効果|比較|予算|費用|gmv|budget|finance/u.test(scenarioNeed)) {
+    if (focalProof) {
+      return {
+        comment: `${topic}は数値や比較を主役化しており、判断材料が記憶に残りやすい構成です。`,
+        wouldBeBetterIf: `実データがある場合は出典や比較期間を近くに添えると、証拠としての信頼感がさらに上がります。`,
+        evidence: `layout=${layout}; focalProof=${focalProof}; dramaticScale=${dramaticScale}`
+      };
+    }
     return {
       comment: `${topic}は判断材料を示していますが、数字や比較の見せ方をさらに主役化できます。`,
       wouldBeBetterIf: `最も重要な数値を1つだけ大きく置き、その横に「なぜ重要か」を短く添えると、記憶に残るスライドになります。`,
@@ -1575,7 +1582,7 @@ function slideCommentThemes() {
     {
       id: "oversized-proof-number",
       title: "Evidence slides need oversized proof numbers",
-      pattern: /数字|数値|比較|主役化|大きく置き|記憶に残る/u,
+      pattern: /数字や比較の見せ方|数値を1つだけ大きく|数値や比較を主役化|focalProof=false/u,
       problemPattern: "KPI/comparison slides mention evidence but do not consistently create a memorable proof-number focal point.",
       proposedCapability: "Add or strengthen a focal-proof layout that selects the strongest numeric evidence and renders it as an oversized proof number with a short why-it-matters note.",
       suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/messageDeck.test.ts", "docs/dev-loop-evaluator-criteria.md"]

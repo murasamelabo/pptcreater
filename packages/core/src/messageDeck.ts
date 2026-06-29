@@ -592,6 +592,12 @@ function evidenceItems(intent: SlideIntent, min = 3): string[] {
   return values.slice(0, Math.max(min, Math.min(values.length, 6)));
 }
 
+function proofNumberForIntent(intent: SlideIntent): string | undefined {
+  const sourceText = [intent.emphasis, ...intent.evidence, intent.message, intent.title].filter(Boolean).join(" ");
+  const match = sourceText.match(/[-+]?\d[\d,.]*(?:\.\d+)?\s*(?:%|倍|億|万|円|pt|ポイント|件|社|人|年|ヶ月|月|日)?(?:\s*(?:減|増|改善|短縮|削減))?/u);
+  return match ? compactLabel(match[0], 12) : undefined;
+}
+
 function statementVisual(theme: Theme, intent: SlideIntent, id: string): SlideElement[] {
   const items = evidenceItems(intent, 3).slice(0, 3);
   const elements: SlideElement[] = [
@@ -733,13 +739,13 @@ function photoHeroVisual(theme: Theme, intent: SlideIntent, id: string): SlideEl
 }
 
 function focalProofVisual(theme: Theme, intent: SlideIntent, id: string): SlideElement[] {
-  const proof = evidenceItems(intent, 1).find((item) => /\d|%|倍|億|万|円|pt|ポイント|減|増/u.test(item)) ?? intent.emphasis ?? intent.title;
+  const proof = proofNumberForIntent(intent) ?? evidenceItems(intent, 1).find((item) => /\d|%|倍|億|万|円|pt|ポイント|減|増/u.test(item)) ?? intent.emphasis ?? intent.title;
   return [
     shape(`${id}-proof-band`, "roundRect", 0.82, 1.92, 4.95, 4.9, 10, theme.accent, theme.accent, { radius: 0.22 }),
-    text(`${id}-proof-number`, "title", proof, 1.22, 2.5, 4.18, 1.1, 11, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 48, bold: true, align: "center" }),
+    text(`${id}-proof-number`, "callout", proof, 1.22, 2.5, 4.18, 1.1, 11, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 31, bold: true, align: "center" }),
     text(`${id}-proof-label`, "caption", "FOCAL PROOF", 1.5, 4.0, 3.65, 0.22, 12, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true, align: "center" }),
     shape(`${id}-message-panel`, "roundRect", 6.2, 2.0, 5.95, 4.7, 20, theme.surface, theme.line, { radius: 0.2 }),
-    text(`${id}-message-title`, "callout", topicLabel(intent.title), 6.62, 2.45, 4.95, 0.45, 21, theme, { bg: theme.surface, color: theme.accent, fontSize: 23 }),
+    text(`${id}-message-title`, "callout", topicLabel(intent.title), 6.62, 2.45, 4.95, 0.45, 21, theme, { bg: theme.surface, color: theme.accent, fontSize: 25 }),
     text(`${id}-message-body`, "body", intent.message, 6.62, 3.18, 4.95, 1.12, 22, theme, { bg: theme.surface, color: theme.text, fontSize: 19 }),
     text(`${id}-message-evidence`, "body", evidenceItems(intent, 2).slice(0, 2).join(" / "), 6.62, 4.75, 4.95, 0.72, 23, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 16 })
   ];
@@ -952,6 +958,10 @@ function stepsVisual(theme: Theme, intent: SlideIntent, id: string): SlideElemen
 export function archetypeForIntent(intent: SlideIntent): MessageDeckArchetype {
   const text = [intent.title, intent.message, intent.emphasis, ...intent.evidence, ...intent.quietInfo].join(" ");
   const proofText = [intent.emphasis, ...intent.evidence].filter(Boolean).join(" ");
+  const proofNumber = proofNumberForIntent(intent);
+  if (proofNumber && ["summary", "table", "contrast", "before-after"].includes(intent.visualType)) {
+    return "focal-proof";
+  }
   switch (intent.visualType) {
     case "flow":
       return "flow";

@@ -190,6 +190,45 @@ describe("message map deck generator", () => {
     expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
   });
 
+  it("promotes numeric table and contrast intents into oversized proof-number slides", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "経営層が投資対効果を判断する",
+        audience: "経営層、事業責任者、財務責任者",
+        desiredAction: "投資継続を判断する",
+        intents: [
+          {
+            slideId: "roi-proof",
+            title: "ROI実績",
+            message: "導入後の手戻りが70%減少した。",
+            evidence: ["70%減少", "レビュー時間30%短縮", "年間1,200万円削減"],
+            quietInfo: [],
+            visualType: "table",
+            emphasis: "70%減少"
+          },
+          {
+            slideId: "cost-before-after",
+            title: "コスト比較",
+            message: "運用費が年間1,200万円下がる。",
+            evidence: ["Before 3,800万円", "After 2,600万円", "差分1,200万円"],
+            quietInfo: [],
+            visualType: "contrast",
+            emphasis: "1,200万円"
+          }
+        ]
+      },
+      { title: "投資対効果", locale: "ja-JP", contentMode: "decision" }
+    );
+
+    const roi = deck.slides.find((slide) => slide.id === "roi-proof");
+    const cost = deck.slides.find((slide) => slide.id === "cost-before-after");
+    expect(roi?.layout).toBe("message-focal-proof");
+    expect(cost?.layout).toBe("message-focal-proof");
+    expect(roi?.elements.some((element) => element.type === "text" && element.id === "roi-proof-proof-number" && /70/.test(element.text))).toBe(true);
+    expect(cost?.elements.some((element) => element.type === "text" && element.id === "cost-before-after-proof-number" && /1,200/.test(element.text))).toBe(true);
+    expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
+  });
+
   it("renders card and detail intents as a dedicated editorial-board archetype", () => {
     const deck = createDeckFromMessageMap(
       {
