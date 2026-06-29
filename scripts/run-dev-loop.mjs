@@ -1434,7 +1434,9 @@ function collectSlideCommentSynthesis(loopDir) {
     const reportPath = path.join(scenarioDir, "eval-report.json");
     if (!existsSync(reportPath)) continue;
     const report = JSON.parse(readFileSync(reportPath, "utf8"));
+    const deck = loadJsonIfExists(path.join(scenarioDir, "deck.json"));
     for (const comment of report.slideComments ?? []) {
+      const slide = findCommentSlide(deck, comment);
       comments.push({
         scenarioId: report.scenarioId ?? path.basename(scenarioDir),
         slideIndex: comment.slideIndex,
@@ -1443,14 +1445,15 @@ function collectSlideCommentSynthesis(loopDir) {
         layout: comment.layout,
         comment: comment.comment,
         wouldBeBetterIf: comment.wouldBeBetterIf,
-        evidence: comment.evidence
+        evidence: comment.evidence,
+        generatedFeatures: generatedFeatureFlags(slide)
       });
     }
   }
 
   const scenarioIds = new Set(comments.map((comment) => comment.scenarioId));
   const candidates = slideCommentThemes().map((theme) => {
-    const matches = comments.filter((comment) => theme.pattern.test(slideCommentText(comment)));
+    const matches = comments.filter((comment) => theme.pattern.test(slideCommentText(comment)) && !(theme.resolvedBy?.(comment) ?? false));
     const scenarios = [...new Set(matches.map((comment) => comment.scenarioId))];
     return {
       id: theme.id,
@@ -1496,12 +1499,30 @@ function slideCommentText(comment) {
   return [comment.title, comment.layout, comment.comment, comment.wouldBeBetterIf, comment.evidence].filter(Boolean).join("\n");
 }
 
+function findCommentSlide(deck, comment) {
+  if (!deck?.slides) return null;
+  return deck.slides.find((slide, index) => slide.id === comment.slideId || index + 1 === comment.slideIndex) ?? null;
+}
+
+function generatedFeatureFlags(slide) {
+  const elements = slide?.elements ?? [];
+  return {
+    coverAudienceActionStrip: elements.some((element) => element.id === "cover-audience-chip") && elements.some((element) => element.id === "cover-action-chip"),
+    photoAnnotationOverlay: elements.some((element) => /photo-annotation|photo-caption-rail/u.test(element.id ?? "")),
+    closingActionChecklist: elements.filter((element) => /^closing-check-\d+$/u.test(element.id ?? "")).length >= 3,
+    focalCardHierarchy: elements.some((element) => /editorial-support-card|statement-support-card/u.test(element.id ?? "")),
+    decisionAxisEmphasis: elements.some((element) => /decision-zone|decision-callout|decision-badge/u.test(element.id ?? "")),
+    focalProof: slide?.layout === "message-focal-proof" || elements.some((element) => element.type === "text" && (element.fontSize ?? 0) >= 28 && /\d|%|倍|億|万|円|pt|ポイント/u.test(element.text ?? ""))
+  };
+}
+
 function slideCommentThemes() {
   return [
     {
       id: "cover-audience-action-strip",
       title: "Cover slides need audience/action intent chips",
       pattern: /期待値|誰が何を判断|会議の緊張感/u,
+      resolvedBy: (comment) => comment.generatedFeatures?.coverAudienceActionStrip,
       problemPattern: "Cover slides state the topic but do not make the audience, decision, or desired action visible in the first few seconds.",
       proposedCapability: "Add a cover/title-slide composition that extracts audience + desired action from ScenarioSpec/message-map and renders them as compact chips near the title.",
       suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/messageDeck.test.ts", "scripts/run-dev-loop.mjs"]
@@ -1510,6 +1531,7 @@ function slideCommentThemes() {
       id: "photo-annotation-overlay",
       title: "Photo-led slides need visible annotation overlays",
       pattern: /画像|写真|場面|何を見れば|写真主役|注目点/u,
+      resolvedBy: (comment) => comment.generatedFeatures?.photoAnnotationOverlay || (!/largeMedia=true|message-photo-hero|message-image/u.test(slideCommentText(comment)) && !/画像の上|写真主役/u.test(slideCommentText(comment))),
       problemPattern: "Image/photo slides provide a visual entry point, but the image is not anchored to the argument with visible labels or captions.",
       proposedCapability: "Enhance photo-hero/focal-proof image layouts with an optional annotation badge, caption rail, or callout overlay derived from slide message/evidence.",
       suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/messageDeck.test.ts", "packages/core/src/layout.ts"]
@@ -1526,6 +1548,7 @@ function slideCommentThemes() {
       id: "focal-card-hierarchy",
       title: "Card grids need one dominant focal card",
       pattern: /見慣れたカード|ステップの並び|大きな主役カード|視線の入口|無難な構成/u,
+      resolvedBy: (comment) => comment.generatedFeatures?.focalCardHierarchy,
       problemPattern: "Card/step slides are structurally correct but visually generic because all cards have equal weight.",
       proposedCapability: "Add a focal-card variant that promotes one evidence or recommendation card to a larger dominant element while keeping supporting cards secondary.",
       suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/visualQuality.ts", "packages/core/src/messageDeck.test.ts"]
@@ -1534,6 +1557,7 @@ function slideCommentThemes() {
       id: "decision-axis-emphasis",
       title: "Structural diagrams need explicit decision emphasis",
       pattern: /構造を図解|図の軸|関係がさらに鋭く|どこを選ぶべき|何が対立|判断が分かれる/u,
+      resolvedBy: (comment) => comment.generatedFeatures?.decisionAxisEmphasis,
       problemPattern: "Matrix/map/flow slides show structure, but the decisive axis or choice point is not highlighted enough.",
       proposedCapability: "Route structural visuals through a decision-emphasis layer that highlights the recommended zone, conflict line, or choice node with a visible label.",
       suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/figureSelector.ts", "packages/diagram/src/index.ts"]
@@ -1542,6 +1566,7 @@ function slideCommentThemes() {
       id: "oversized-proof-number",
       title: "Evidence slides need oversized proof numbers",
       pattern: /数字や比較の見せ方|数値を1つだけ大きく|数値や比較を主役化|focalProof=false/u,
+      resolvedBy: (comment) => comment.generatedFeatures?.focalProof,
       problemPattern: "KPI/comparison slides mention evidence but do not consistently create a memorable proof-number focal point.",
       proposedCapability: "Add or strengthen a focal-proof layout that selects the strongest numeric evidence and renders it as an oversized proof number with a short why-it-matters note.",
       suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/messageDeck.test.ts", "docs/dev-loop-evaluator-criteria.md"]
@@ -1550,6 +1575,7 @@ function slideCommentThemes() {
       id: "closing-action-checklist",
       title: "Closing slides need owner/date/artifact next-action checklists",
       pattern: /期限・担当|確認物が見える|次アクションを「担当|会議後にそのまま使えるチェック/u,
+      resolvedBy: (comment) => comment.generatedFeatures?.closingActionChecklist,
       problemPattern: "Closing slides ask for action but do not always expose owner, due date, and artifact/checkpoint structure.",
       proposedCapability: "Add a closing/action slide pattern that renders next actions as owner/date/artifact checklist rows when the deck has decision or business-plan intent.",
       suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/messageDeck.test.ts"]

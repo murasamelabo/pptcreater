@@ -229,6 +229,80 @@ describe("message map deck generator", () => {
     expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
   });
 
+  it("renders statement evidence as a primary support card plus secondary rows", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "要点と根拠を短く伝える",
+        audience: "意思決定者",
+        desiredAction: "次の判断へ進む",
+        intents: [
+          {
+            slideId: "summary-statement",
+            title: "要約",
+            message: "最初に判断すべき論点を一つに絞る。",
+            evidence: ["最重要論点", "補助根拠", "次の確認"],
+            quietInfo: [],
+            visualType: "summary",
+            emphasis: "最重要論点"
+          }
+        ]
+      },
+      { title: "Statement hierarchy", locale: "ja-JP", contentMode: "report" }
+    );
+
+    const statement = deck.slides.find((slide) => slide.id === "summary-statement");
+    expect(statement?.layout).toBe("message-statement");
+    expect(statement?.elements.some((element) => element.id === "summary-statement-statement-support-card-0")).toBe(true);
+    expect(statement?.elements.some((element) => element.id === "summary-statement-statement-support-note-0")).toBe(true);
+    expect(statement?.elements.filter((element) => element.id.includes("statement-support-card")).length).toBe(3);
+    expect(statement?.elements.filter((element) => element.id.includes("evidence-chip")).length).toBe(0);
+  });
+
+  it("adds visible decision emphasis to structural visuals", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "選択肢の判断点を明確にする",
+        audience: "意思決定者",
+        desiredAction: "推奨案を選ぶ",
+        intents: [
+          {
+            slideId: "matrix-choice",
+            title: "候補比較",
+            message: "費用と柔軟性で選択肢を比較する。",
+            evidence: ["案A", "案B", "案C", "案D"],
+            quietInfo: [],
+            visualType: "matrix",
+            emphasis: "推奨案"
+          },
+          {
+            slideId: "hub-choice",
+            title: "関係整理",
+            message: "関係者間の判断点を示す。",
+            evidence: ["利用者", "運用", "財務", "開発"],
+            quietInfo: [],
+            visualType: "map",
+            emphasis: "判断点"
+          },
+          {
+            slideId: "before-choice",
+            title: "導入前後",
+            message: "変更前後の分岐を明確にする。",
+            evidence: ["現状", "課題", "導入後", "効果"],
+            quietInfo: [],
+            visualType: "before-after",
+            emphasis: "分岐点"
+          }
+        ]
+      },
+      { title: "Decision emphasis", locale: "ja-JP", contentMode: "decision" }
+    );
+
+    expect(deck.slides.find((slide) => slide.id === "matrix-choice")?.elements.some((element) => element.id === "matrix-choice-decision-zone")).toBe(true);
+    expect(deck.slides.find((slide) => slide.id === "hub-choice")?.elements.some((element) => element.id === "hub-choice-decision-callout")).toBe(true);
+    expect(deck.slides.find((slide) => slide.id === "before-choice")?.elements.some((element) => element.id === "before-choice-decision-badge")).toBe(true);
+    expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
+  });
+
   it("renders card and detail intents as a dedicated editorial-board archetype", () => {
     const deck = createDeckFromMessageMap(
       {
