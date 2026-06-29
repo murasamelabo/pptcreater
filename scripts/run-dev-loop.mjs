@@ -980,13 +980,6 @@ function slideCommentFor({ slide, index, title, layout, visibleChars, textCount,
   }
 
   if (layout === "cover") {
-    if (hasCoverAudienceActionStrip(slide)) {
-      return {
-        comment: `表紙はテーマに加えて読者と行動が見えるため、会議の用途が初見で伝わりやすくなっています。`,
-        wouldBeBetterIf: `次は背景ビジュアルや右側モチーフもシナリオ固有にすると、さらに記憶に残る表紙になります。`,
-        evidence: `layout=${layout}; audienceActionStrip=true; visibleChars=${visibleChars}; textElements=${textCount}`
-      };
-    }
     return {
       comment: `表紙はテーマを示していますが、聞き手が最初の3秒で期待値を持つには、読者と到達行動の見せ方がまだ控えめです。`,
       wouldBeBetterIf: `タイトルの横に「誰が何を判断する資料か」を短いタグで置き、表紙から会議の緊張感や用途が伝わるともっと良くなります。`,
@@ -995,13 +988,6 @@ function slideCommentFor({ slide, index, title, layout, visibleChars, textCount,
   }
 
   if (layout === "closing") {
-    if (hasClosingActionChecklist(slide)) {
-      return {
-        comment: `締めスライドは次の行動を担当・期限・確認物に分けており、会議後の実行に移しやすくなっています。`,
-        wouldBeBetterIf: `実データがある場合は担当名や日付をScenarioSpecから埋めると、さらに実務に近いクロージングになります。`,
-        evidence: `layout=${layout}; actionChecklist=true; visibleChars=${visibleChars}; textElements=${textCount}`
-      };
-    }
     return {
       comment: `締めスライドは行動を促していますが、実務で次に動くための期限・担当・確認物が見えるとさらに強くなります。`,
       wouldBeBetterIf: `次アクションを「担当、期限、確認する資料」の3点で小さく分解し、会議後にそのまま使えるチェックにするともっと良くなります。`,
@@ -1020,7 +1006,7 @@ function slideCommentFor({ slide, index, title, layout, visibleChars, textCount,
   if (/message-statement|message-table|message-flow|message-steps/u.test(layout) && cards >= 3) {
     return {
       comment: `${topic}は情報整理として成立していますが、見慣れたカードやステップの並びに寄っており、発見や驚きは弱めです。`,
-      wouldBeBetterIf: `1つだけ大きな主役カードを作る、または大きな数値・対立構図・比喩図のどれかを加えて視線の入口を作るともっと良くなります。`,
+      wouldBeBetterIf: `1つだけ大きな主役カードを作る、または写真・大きな数値・対立構図のどれかを加えて視線の入口を作るともっと良くなります。`,
       evidence: `layout=${layout}; cards=${cards}; dramaticScale=${dramaticScale}; spatialModel=${spatialModel}`
     };
   }
@@ -1033,14 +1019,7 @@ function slideCommentFor({ slide, index, title, layout, visibleChars, textCount,
     };
   }
 
-  if (largeMedia) {
-    if (hasPhotoAnnotationOverlay(slide)) {
-      return {
-        comment: `${topic}は画像に注目点とキャプションが重なり、視覚の入口と論点が結びついています。`,
-        wouldBeBetterIf: `次は注釈を1つの根拠数値や判断ラベルと連動させると、写真主役スライドの説得力がさらに上がります。`,
-        evidence: `layout=${layout}; photoAnnotation=true; largeMedia=${largeMedia}; visibleChars=${visibleChars}`
-      };
-    }
+  if (largeMedia || /photo|image|customer|case|旅館|顧客|採用/u.test(scenarioNeed)) {
     return {
       comment: `${topic}は視覚の入口がありますが、画像や場面が資料の論点とより強く結びつく余地があります。`,
       wouldBeBetterIf: `画像の上に短いキャプションや注目点を重ね、読者が「何を見ればよいか」まで分かる写真主役スライドにするともっと良くなります。`,
@@ -1049,13 +1028,6 @@ function slideCommentFor({ slide, index, title, layout, visibleChars, textCount,
   }
 
   if (focalProof || /kpi|roi|売上|数字|指標|実績|効果|比較|予算|費用|gmv|budget|finance/u.test(scenarioNeed)) {
-    if (focalProof) {
-      return {
-        comment: `${topic}は数値や比較を主役化しており、判断材料が記憶に残りやすい構成です。`,
-        wouldBeBetterIf: `実データがある場合は出典や比較期間を近くに添えると、証拠としての信頼感がさらに上がります。`,
-        evidence: `layout=${layout}; focalProof=${focalProof}; dramaticScale=${dramaticScale}`
-      };
-    }
     return {
       comment: `${topic}は判断材料を示していますが、数字や比較の見せ方をさらに主役化できます。`,
       wouldBeBetterIf: `最も重要な数値を1つだけ大きく置き、その横に「なぜ重要か」を短く添えると、記憶に残るスライドになります。`,
@@ -1065,7 +1037,7 @@ function slideCommentFor({ slide, index, title, layout, visibleChars, textCount,
 
   return {
     comment: `${topic}は主張と最低限の根拠が見えますが、まだ無難な構成に収まっています。`,
-    wouldBeBetterIf: `読み手が思わず立ち止まる主役要素を1つ決め、数値・比喩図・章扉・対立構図のどれかへ大胆に寄せるともっと良くなります。`,
+    wouldBeBetterIf: `読み手が思わず立ち止まる主役要素を1つ決め、写真・数値・比喩図・章扉のどれかへ大胆に寄せるともっと良くなります。`,
     evidence: `layout=${layout}; visibleChars=${visibleChars}; textElements=${textCount}; largeMedia=${largeMedia}; focalProof=${focalProof}; spatialModel=${spatialModel}`
   };
 }
@@ -1137,19 +1109,6 @@ function hasDramaticScaleContrast(slide) {
     if (["image", "svg", "diagram"].includes(element.type) && element.w >= 5.5 && element.h >= 3.0 && !element.decorative) return true;
     return false;
   });
-}
-
-function hasPhotoAnnotationOverlay(slide) {
-  return (slide.elements ?? []).some((element) => /photo-annotation|photo-caption-rail/u.test(element.id ?? ""));
-}
-
-function hasCoverAudienceActionStrip(slide) {
-  const ids = new Set((slide.elements ?? []).map((element) => element.id));
-  return ids.has("cover-audience-chip") && ids.has("cover-action-chip");
-}
-
-function hasClosingActionChecklist(slide) {
-  return (slide.elements ?? []).filter((element) => /^closing-check-\d+$/u.test(element.id ?? "")).length >= 3;
 }
 
 function lastJsonForCommand(commands, name) {

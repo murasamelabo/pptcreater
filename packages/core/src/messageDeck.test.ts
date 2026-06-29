@@ -261,6 +261,10 @@ describe("message map deck generator", () => {
 
     expect(deck.slides.map((slide) => slide.layout)).toContain("message-editorial-board");
     expect(archetypeForIntent(deck.metadata.messageMap?.intents[0] as DeckMessageMap["intents"][number])).toBe("editorial-board");
+    const editorial = deck.slides.find((slide) => slide.id === "detail-board");
+    expect(editorial?.elements.some((element) => element.id === "detail-board-editorial-hero")).toBe(true);
+    expect(editorial?.elements.filter((element) => element.id.includes("editorial-support-card")).length).toBeGreaterThanOrEqual(2);
+    expect(editorial?.elements.filter((element) => element.id.includes("editorial-card-")).length).toBe(0);
     expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
   });
 

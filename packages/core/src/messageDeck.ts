@@ -795,22 +795,24 @@ function editorialBoardVisual(theme: Theme, intent: SlideIntent, id: string): Sl
   const hero = intent.emphasis ?? intent.title;
   const elements: SlideElement[] = [
     shape(`${id}-editorial-backdrop`, "roundRect", 0.82, 1.88, 11.7, 4.92, 10, theme.surface, theme.line, { radius: 0.18 }),
-    shape(`${id}-editorial-hero`, "roundRect", 1.12, 2.24, 4.4, 3.95, 11, theme.accent, theme.accent, { radius: 0.2 }),
-    text(`${id}-editorial-kicker`, "caption", "KEY IDEA", 1.48, 2.62, 2.5, 0.22, 12, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true }),
-    text(`${id}-editorial-hero-title`, "title", topicLabel(hero), 1.45, 3.08, 3.58, 0.78, 13, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 32 }),
-    text(`${id}-editorial-hero-body`, "body", visibleSentence(intent.message), 1.48, 4.22, 3.55, 0.92, 14, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 18 }),
-    shape(`${id}-editorial-rule`, "rect", 1.48, 5.42, 1.75, 0.06, 15, theme.inkOnAccent, theme.inkOnAccent, { radius: 0 })
+    shape(`${id}-editorial-hero`, "roundRect", 1.12, 2.12, 5.05, 4.18, 11, theme.accent, theme.accent, { radius: 0.24 }),
+    shape(`${id}-editorial-hero-glow`, "ellipse", 4.38, 2.42, 1.1, 1.1, 12, theme.inkOnAccent, theme.inkOnAccent, { fillOpacity: 0.18 }),
+    text(`${id}-editorial-kicker`, "caption", "FOCAL CARD", 1.48, 2.52, 2.5, 0.22, 13, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true }),
+    text(`${id}-editorial-hero-title`, "title", topicLabel(hero), 1.45, 3.02, 4.28, 0.82, 14, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 34 }),
+    text(`${id}-editorial-hero-body`, "body", visibleSentence(intent.message), 1.48, 4.2, 4.05, 0.98, 15, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 18 }),
+    shape(`${id}-editorial-rule`, "rect", 1.48, 5.5, 2.05, 0.06, 16, theme.inkOnAccent, theme.inkOnAccent, { radius: 0 }),
+    text(`${id}-editorial-hero-note`, "caption", compactLabel(items[0] ?? hero, 22), 1.48, 5.78, 3.9, 0.18, 17, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true })
   ];
 
-  items.forEach((item, index) => {
-    const x = 6.0 + (index % 2) * 3.02;
-    const y = 2.18 + Math.floor(index / 2) * 2.06;
+  items.slice(1).forEach((item, index) => {
+    const x = 6.7;
+    const y = 2.22 + index * 1.34;
     const order = 24 + index * 5;
     const fill = index % 2 === 0 ? theme.background : theme.accentSoft;
-    elements.push(shape(`${id}-editorial-card-${index}`, "roundRect", x, y, 2.66, 1.54, order, fill, theme.line, { radius: 0.14 }));
-    elements.push(icon(`${id}-editorial-icon-${index}`, iconForEvidence(item, index), x + 0.24, y + 0.24, 0.3, order + 1, theme, { color: theme.accent, decorative: true }));
-    elements.push(text(`${id}-editorial-card-number-${index}`, "caption", String(index + 1).padStart(2, "0"), x + 2.02, y + 0.22, 0.38, 0.18, order + 2, theme, { bg: fill, color: theme.accent, fontSize: 12, bold: true, align: "right" }));
-    elements.push(text(`${id}-editorial-card-text-${index}`, "body", item, x + 0.24, y + 0.68, 2.15, 0.52, order + 3, theme, { bg: fill, color: theme.text, fontSize: 15 }));
+    elements.push(shape(`${id}-editorial-support-card-${index}`, "roundRect", x, y, 4.85, 0.95, order, fill, theme.line, { radius: 0.14 }));
+    elements.push(icon(`${id}-editorial-support-icon-${index}`, iconForEvidence(item, index), x + 0.28, y + 0.27, 0.3, order + 1, theme, { color: theme.accent, decorative: true }));
+    elements.push(text(`${id}-editorial-support-number-${index}`, "caption", String(index + 2).padStart(2, "0"), x + 4.12, y + 0.24, 0.38, 0.18, order + 2, theme, { bg: fill, color: theme.accent, fontSize: 12, bold: true, align: "right" }));
+    elements.push(text(`${id}-editorial-support-text-${index}`, "body", item, x + 0.82, y + 0.22, 3.05, 0.34, order + 3, theme, { bg: fill, color: theme.text, fontSize: 15 }));
   });
   return elements;
 }
