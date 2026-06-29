@@ -29,7 +29,7 @@ All applicable criteria must be satisfied:
 - representative decks finalize with zero blocking errors,
 - representative decks review with no blocking issues,
 - PPTX zip checks have `zeroNonDir = 0`,
-- no high/critical PatchRequests remain,
+- no open FixRequests remain,
 - residual risks are explicitly accepted.
 
 ## Required Output

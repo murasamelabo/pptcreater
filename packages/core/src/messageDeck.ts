@@ -352,6 +352,53 @@ function compactLabel(value: string, maxLength: number): string {
   return (wordSafe || clipped).replace(/[、,，・／/\s]+$/u, "").trimEnd();
 }
 
+function compactChipValue(value: string, maxLength: number): string {
+  const compact = compactLabel(value, maxLength);
+  if (!hasJapanese(value) || Array.from(compact).length >= 5) {
+    return compact;
+  }
+  const normalized = value
+    .replace(/^\s*(?:対象|観点|表現|口調|材料|読み手|行動|トーン|tone|profile)\s*[:：]\s*/iu, "")
+    .replace(/adaptive\+|compact-copy\+|executive-summary\+|safe-contrast\+|expression-polish-\d+/giu, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return Array.from(normalized).slice(0, maxLength).join("").replace(/[、,，・／/\s]+$/u, "").trimEnd();
+}
+
+function chipLabel(prefix: string, value: string, maxLength: number): string {
+  const compact = compactChipValue(value, maxLength);
+  const normalized = compact.replace(/^(?:対象|行動|Audience|Action)\s*[:：]\s*/u, "").trim();
+  const fallback = Array.from(value.replace(/\s+/g, "").trim()).slice(0, maxLength).join("");
+  return `${prefix}: ${normalized.length >= 2 ? normalized : fallback}`;
+}
+
+function audienceChipValue(value: string): string {
+  if (/CIO|CISO/iu.test(value)) return "CIO/CISO";
+  if (/経営|役員|意思決定|取締役/u.test(value)) return "意思決定者";
+  if (/財務|管理職|部長/u.test(value)) return "管理職";
+  if (/家族|本人/u.test(value)) return "本人/家族";
+  if (/工場|品質/u.test(value)) return "現場責任者";
+  if (/自治体|行政/u.test(value)) return "行政担当";
+  if (/店舗|販促/u.test(value)) return "店舗/販促";
+  if (/患者/u.test(value)) return "患者/家族";
+  if (/投資/u.test(value)) return "投資家";
+  if (/開発|エンジニア|SRE/u.test(value)) return "開発チーム";
+  return compactChipValue(value, 10);
+}
+
+function actionChipValue(value: string): string {
+  if (/承認|approve/u.test(value)) return "承認";
+  if (/比較|選ぶ|選定|絞/u.test(value)) return "比較/選定";
+  if (/合意|agree/u.test(value)) return "合意";
+  if (/寄付|donation/u.test(value)) return "寄付";
+  if (/実行|launch|開始/u.test(value)) return "実行";
+  if (/申請/u.test(value)) return "申請";
+  if (/理解|学|learn|伝える/u.test(value)) return "理解";
+  if (/確認|review/u.test(value)) return "確認";
+  return "次判断";
+}
+
 function clipTextAtSemanticBoundary(value: string, maxLength: number): string {
   const chars = Array.from(value);
   const clipped = chars.slice(0, Math.max(1, maxLength)).join("").trimEnd();
@@ -452,12 +499,12 @@ function coverTitleText(value: string): string {
 
 function audienceChipLabel(messageMap: DeckMessageMap): string {
   const audience = messageMap.audience ?? "Audience";
-  return hasJapanese(audience) ? `対象: ${compactLabel(audience, 14)}` : `Audience: ${compactLabel(audience, 18)}`;
+  return hasJapanese(audience) ? `対象: ${audienceChipValue(audience)}` : `Audience: ${compactLabel(audience, 18)}`;
 }
 
 function actionChipLabel(messageMap: DeckMessageMap): string {
   const action = messageMap.desiredAction ?? "Next decision";
-  return hasJapanese(action) ? `行動: ${compactLabel(action, 14)}` : `Action: ${compactLabel(action, 18)}`;
+  return hasJapanese(action) ? `行動: ${actionChipValue(action)}` : `Action: ${compactLabel(action, 18)}`;
 }
 
 function annotationLabel(intent: SlideIntent): string {
@@ -473,7 +520,7 @@ function captionRailText(intent: SlideIntent): string {
 
 function decisionEmphasisLabel(intent: SlideIntent): string {
   const candidate = intent.emphasis ?? intent.evidence[0] ?? intent.title;
-  return hasJapanese(candidate) ? `判断点: ${compactLabel(candidate, 10)}` : `Decision: ${compactLabel(candidate, 12)}`;
+  return hasJapanese(candidate) ? `判断点: ${compactLabel(candidate, 10)}` : "Decision point";
 }
 
 function closingChecklist(messageMap: DeckMessageMap): { label: string; value: string; icon: IconKey }[] {
@@ -482,9 +529,9 @@ function closingChecklist(messageMap: DeckMessageMap): { label: string; value: s
   const isJapanese = hasJapanese([action, audience, messageMap.objective ?? ""].join(" "));
   return isJapanese
     ? [
-        { label: "担当", value: compactLabel(audience, 18), icon: "clipboard" },
-        { label: "期限", value: "次回会議まで", icon: "calendar" },
-        { label: "確認物", value: compactLabel(action, 18), icon: "check" }
+        { label: "担当", value: audienceChipValue(audience), icon: "clipboard" },
+        { label: "期限", value: "次回会議までに確認", icon: "calendar" },
+        { label: "確認物", value: actionChipValue(action), icon: "check" }
       ]
     : [
         { label: "Owner", value: compactLabel(audience, 18), icon: "clipboard" },
@@ -608,12 +655,12 @@ function statementVisual(theme: Theme, intent: SlideIntent, id: string): SlideEl
   const elements: SlideElement[] = [
     shape(`${id}-statement-panel`, "roundRect", 0.82, 2.05, 5.55, 3.98, 10, theme.accentSoft, theme.line, { radius: 0.18 }),
     icon(`${id}-statement-icon`, iconForEvidence(intent.emphasis ?? intent.message, 0), 1.16, 2.48, 0.54, 10, theme, { color: theme.accent, decorative: true }),
-    text(`${id}-statement-focus`, "callout", calloutLabel(topicLabel(intent.emphasis ?? intent.message)), 1.88, 2.55, 4.13, 0.72, 11, theme, {
+    text(`${id}-statement-focus`, "title", calloutLabel(topicLabel(intent.emphasis ?? intent.message)), 1.88, 2.48, 4.13, 0.88, 11, theme, {
       bg: theme.accentSoft,
       color: theme.accent,
-      fontSize: 24
+      fontSize: 31
     }),
-    text(`${id}-statement-body`, "body", visibleSentence(intent.message), 1.16, 3.45, 4.85, 1.35, 12, theme, {
+    text(`${id}-statement-body`, "body", visibleSentence(intent.message), 1.16, 3.52, 4.85, 1.28, 12, theme, {
       bg: theme.accentSoft,
       color: theme.text,
       fontSize: 20
@@ -643,28 +690,35 @@ function flowVisual(theme: Theme, intent: SlideIntent, id: string): SlideElement
   const gap = 0.6;
   items.forEach((item, index) => {
     const x = startX + index * (nodeW + gap);
-    const order = 10 + index * 5;
+    const order = 10 + index * 8;
     const label = pointLabel(item);
-    elements.push(shape(`${id}-flow-node-${index}`, "roundRect", x, 2.9, nodeW, 1.42, order, index === 0 ? theme.accent : theme.surface, index === 0 ? theme.accent : theme.line, { radius: 0.2 }));
-    elements.push(icon(`${id}-flow-icon-${index}`, iconForEvidence(item, index), x + nodeW / 2 - 0.17, 3.05, 0.34, order + 1, theme, {
+    const isFocal = index === 0;
+    const nodeY = isFocal ? 2.66 : 2.9;
+    const nodeH = isFocal ? 1.86 : 1.42;
+    elements.push(shape(`${id}-flow-node-${index}`, "roundRect", x, nodeY, nodeW, nodeH, order, isFocal ? theme.accent : theme.surface, isFocal ? theme.accent : theme.line, { radius: isFocal ? 0.24 : 0.2 }));
+    if (isFocal) {
+      elements.push(shape(`${id}-flow-focal-glow`, "ellipse", x + 1.52, nodeY + 0.18, 0.58, 0.58, order + 1, theme.inkOnAccent, theme.inkOnAccent, { fillOpacity: 0.18 }));
+      elements.push(text(`${id}-flow-focal-label`, "caption", "START", x + 0.22, nodeY + 0.2, nodeW - 0.44, 0.18, order + 2, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true, align: "center" }));
+    }
+    elements.push(icon(`${id}-flow-icon-${index}`, iconForEvidence(item, index), x + nodeW / 2 - 0.17, nodeY + (isFocal ? 0.58 : 0.15), 0.34, order + 3, theme, {
       color: index === 0 ? theme.inkOnAccent : theme.accent,
       decorative: true
     }));
-    elements.push(text(`${id}-flow-label-${index}`, "caption", `STEP ${index + 1}`, x + 0.2, 3.46, nodeW - 0.4, 0.2, order + 2, theme, {
+    elements.push(text(`${id}-flow-label-${index}`, "caption", `STEP ${index + 1}`, x + 0.2, nodeY + (isFocal ? 0.98 : 0.56), nodeW - 0.4, 0.2, order + 4, theme, {
       color: index === 0 ? theme.inkOnAccent : theme.accent,
       bg: index === 0 ? theme.accent : theme.surface,
       fontSize: 12,
       bold: true,
       align: "center"
     }));
-    elements.push(text(`${id}-flow-text-${index}`, "body", label, x + 0.18, 3.72, nodeW - 0.36, 0.46, order + 3, theme, {
+    elements.push(text(`${id}-flow-text-${index}`, "body", label, x + 0.18, nodeY + (isFocal ? 1.24 : 0.82), nodeW - 0.36, isFocal ? 0.42 : 0.46, order + 5, theme, {
       color: index === 0 ? theme.inkOnAccent : theme.text,
       bg: index === 0 ? theme.accent : theme.surface,
-      fontSize: 17,
+      fontSize: isFocal ? 18 : 17,
       align: "center"
     }));
     if (index < items.length - 1) {
-      elements.push(shape(`${id}-flow-connector-${index}`, "line", x + nodeW + 0.12, 3.62, gap - 0.24, 0, order + 4, "none", theme.accent, { width: 1.4, endArrow: true }));
+      elements.push(shape(`${id}-flow-connector-${index}`, "line", x + nodeW + 0.12, 3.62, gap - 0.24, 0, order + 6, "none", theme.accent, { width: 1.4, endArrow: true }));
     }
   });
   return elements;
@@ -739,15 +793,16 @@ function photoHeroVisual(theme: Theme, intent: SlideIntent, id: string): SlideEl
   return [
     shape(`${id}-photo-bg`, "rect", 0.72, 1.72, 11.9, 5.3, 10, theme.accentSoft, theme.line, { radius: 0.2 }),
     visualAssetElement(visualAsset, theme, intent, `${id}-photo`, 0.92, 1.92, 6.35, 4.85, 11),
-    shape(`${id}-photo-annotation`, "roundRect", 1.24, 2.28, 3.0, 0.58, 12, theme.accent, theme.accent, { radius: 0.18, fillOpacity: 0.94 }),
-    icon(`${id}-photo-annotation-icon`, iconForEvidence(intent.emphasis ?? intent.message, 0), 1.42, 2.42, 0.24, 13, theme, { color: theme.inkOnAccent, decorative: true }),
-    text(`${id}-photo-annotation-text`, "caption", annotationLabel(intent), 1.78, 2.39, 2.2, 0.18, 14, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true }),
-    shape(`${id}-photo-caption-rail`, "roundRect", 1.24, 6.08, 5.55, 0.42, 15, theme.surface, theme.line, { radius: 0.14, fillOpacity: 0.9 }),
-    text(`${id}-photo-caption-rail-text`, "caption", captionRailText(intent), 1.52, 6.2, 5.0, 0.16, 16, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 12, bold: true, align: "center" }),
+    shape(`${id}-photo-annotation`, "roundRect", 1.18, 2.14, 4.1, 0.78, 12, theme.accent, theme.accent, { radius: 0.2, fillOpacity: 0.96 }),
+    shape(`${id}-photo-annotation-pointer`, "rightArrow", 4.78, 2.48, 0.48, 0.38, 13, theme.accent, theme.accent, { radius: 0 }),
+    icon(`${id}-photo-annotation-icon`, iconForEvidence(intent.emphasis ?? intent.message, 0), 1.42, 2.36, 0.32, 14, theme, { color: theme.inkOnAccent, decorative: true }),
+    text(`${id}-photo-annotation-text`, "caption", annotationLabel(intent), 1.88, 2.34, 3.0, 0.26, 15, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 14, bold: true }),
+    shape(`${id}-photo-caption-rail`, "roundRect", 1.18, 5.92, 5.88, 0.58, 16, theme.surface, theme.line, { radius: 0.16, fillOpacity: 0.94 }),
+    text(`${id}-photo-caption-rail-text`, "caption", captionRailText(intent), 1.46, 6.08, 5.3, 0.22, 17, theme, { bg: theme.surface, color: theme.text, fontSize: 13, bold: true, align: "center" }),
     shape(`${id}-caption-panel`, "roundRect", 7.55, 2.18, 4.58, 3.95, 20, theme.surface, theme.line, { radius: 0.22 }),
     text(`${id}-caption-kicker`, "caption", "SCENE", 7.95, 2.52, 1.4, 0.22, 21, theme, { bg: theme.surface, color: theme.accent, bold: true, fontSize: 12 }),
-    text(`${id}-caption-title`, "callout", topicLabel(intent.emphasis ?? intent.title), 7.95, 2.92, 3.72, 0.46, 22, theme, { bg: theme.surface, color: theme.text, fontSize: 25 }),
-    text(`${id}-caption-message`, "body", intent.message, 7.95, 3.68, 3.74, 1.08, 23, theme, { bg: theme.surface, color: theme.text, fontSize: 18 }),
+    text(`${id}-caption-title`, "title", topicLabel(intent.emphasis ?? intent.title), 7.95, 2.84, 3.72, 0.68, 22, theme, { bg: theme.surface, color: theme.text, fontSize: 31 }),
+    text(`${id}-caption-message`, "body", intent.message, 7.95, 3.72, 3.74, 1.04, 23, theme, { bg: theme.surface, color: theme.text, fontSize: 18 }),
     text(`${id}-caption-proof`, "caption", evidenceItems(intent, 1)[0] ?? intent.title, 7.95, 5.18, 3.6, 0.34, 24, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 13 })
   ];
 }
@@ -789,7 +844,9 @@ function conceptVisual(theme: Theme, intent: SlideIntent, id: string): SlideElem
     shape(`${id}-concept-core-shadow`, "roundRect", 4.72, 3.32, 3.9, 1.52, 12, mix(theme.accent, theme.background, 0.32), mix(theme.accent, theme.background, 0.32), { radius: 0.24 }),
     shape(`${id}-concept-core`, "roundRect", 4.48, 3.08, 3.9, 1.52, 13, theme.accent, theme.accent, { radius: 0.24 }),
     text(`${id}-concept-kicker`, "caption", "CONCEPT MODEL", 4.9, 3.36, 3.1, 0.18, 14, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true, align: "center" }),
-    text(`${id}-concept-center-text`, "callout", topicLabel(intent.emphasis ?? intent.title), 4.92, 3.76, 3.02, 0.38, 15, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 20, bold: true, align: "center" })
+    text(`${id}-concept-center-text`, "callout", topicLabel(intent.emphasis ?? intent.title), 4.92, 3.76, 3.02, 0.38, 15, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 20, bold: true, align: "center" }),
+    shape(`${id}-decision-callout`, "roundRect", 4.82, 4.86, 3.2, 0.42, 16, theme.surface, theme.accent, { radius: 0.14 }),
+    text(`${id}-decision-callout-text`, "caption", decisionEmphasisLabel(intent), 5.06, 4.99, 2.72, 0.14, 17, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true, align: "center" })
   ];
   items.forEach((item, index) => {
     const [x, y] = positions[index];
@@ -840,12 +897,19 @@ function tableVisual(theme: Theme, intent: SlideIntent, id: string): SlideElemen
   elements.push(icon(`${id}-table-icon`, iconForEvidence(intent.emphasis ?? intent.title, 0), 1.05, 2.09, 0.34, 12, theme, { color: theme.inkOnAccent, decorative: true }));
   elements.push(text(`${id}-table-head-text`, "callout", calloutLabel(topicLabel(intent.emphasis ?? intent.title)), 1.55, 2.12, 10.5, 0.28, 13, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 18 }));
   items.forEach((item, index) => {
-    const y = 2.85 + index * 0.68;
+    if (index === 0) {
+      elements.push(shape(`${id}-table-focal-card`, "roundRect", 1.04, 2.88, 10.95, 1.08, 20, theme.accentSoft, theme.accent, { radius: 0.18 }));
+      elements.push(icon(`${id}-table-focal-icon`, iconForEvidence(item, index), 1.34, 3.18, 0.38, 21, theme, { color: theme.accent, decorative: true }));
+      elements.push(text(`${id}-table-focal-label`, "caption", "FOCUS", 1.92, 3.06, 1.1, 0.18, 22, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 12, bold: true }));
+      elements.push(text(`${id}-table-focal-text`, "callout", item, 3.1, 3.08, 8.08, 0.36, 23, theme, { bg: theme.accentSoft, color: theme.text, fontSize: 20 }));
+      return;
+    }
+    const y = 4.18 + (index - 1) * 0.58;
     const fill = index % 2 === 0 ? mix(theme.surface, theme.background, 0.35) : theme.surface;
-    elements.push(shape(`${id}-row-${index}`, "rect", 0.98, y, 11.3, 0.56, 20 + index * 3, fill, fill, { radius: 0 }));
-    elements.push(icon(`${id}-row-icon-${index}`, iconForEvidence(item, index), 1.2, y + 0.12, 0.28, 21 + index * 4, theme, { color: theme.accent, decorative: true }));
-    elements.push(text(`${id}-row-index-${index}`, "caption", String(index + 1).padStart(2, "0"), 1.58, y + 0.16, 0.5, 0.18, 22 + index * 4, theme, { bg: fill, color: theme.accent, fontSize: 12, bold: true }));
-    elements.push(text(`${id}-row-text-${index}`, "body", item, 2.28, y + 0.08, 9.45, 0.3, 23 + index * 4, theme, { bg: fill, fontSize: 17 }));
+    elements.push(shape(`${id}-row-${index}`, "rect", 0.98, y, 11.3, 0.48, 24 + index * 4, fill, fill, { radius: 0 }));
+    elements.push(icon(`${id}-row-icon-${index}`, iconForEvidence(item, index), 1.2, y + 0.1, 0.24, 25 + index * 4, theme, { color: theme.accent, decorative: true }));
+    elements.push(text(`${id}-row-index-${index}`, "caption", String(index + 1).padStart(2, "0"), 1.58, y + 0.13, 0.5, 0.18, 26 + index * 4, theme, { bg: fill, color: theme.accent, fontSize: 12, bold: true }));
+    elements.push(text(`${id}-row-text-${index}`, "body", item, 2.28, y + 0.06, 9.45, 0.26, 27 + index * 4, theme, { bg: fill, fontSize: 16 }));
   });
   return elements;
 }
@@ -966,11 +1030,16 @@ function stepsVisual(theme: Theme, intent: SlideIntent, id: string): SlideElemen
   ];
   items.forEach((item, index) => {
     const y = 2.05 + index * 0.76;
-    const order = 20 + index * 5;
-    elements.push(shape(`${id}-step-dot-${index}`, "ellipse", 5.35, y + 0.08, 0.34, 0.34, order, theme.accent, theme.accent));
-    elements.push(icon(`${id}-step-icon-${index}`, iconForEvidence(item, index), 5.43, y + 0.16, 0.18, order + 1, theme, { color: theme.inkOnAccent, decorative: true }));
-    elements.push(shape(`${id}-step-line-${index}`, "line", 5.52, y + 0.45, 0.001, 0.32, order + 2, "none", theme.line, { width: 1 }));
-    elements.push(text(`${id}-step-text-${index}`, "body", visibleSentence(item), 5.98, y, 5.75, 0.36, order + 3, theme, { bg: theme.background, fontSize: 17 }));
+    const order = 20 + index * 8;
+    const isFocal = index === 0;
+    if (isFocal) {
+      elements.push(shape(`${id}-step-focal-card`, "roundRect", 5.04, y - 0.1, 6.6, 0.78, order, theme.accentSoft, theme.accent, { radius: 0.18 }));
+      elements.push(text(`${id}-step-focal-label`, "caption", "FIRST DECISION", 8.92, y + 0.5, 1.92, 0.14, order + 1, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 11, bold: true, align: "right" }));
+    }
+    elements.push(shape(`${id}-step-dot-${index}`, "ellipse", 5.35, y + 0.08, 0.34, 0.34, order + 2, theme.accent, theme.accent));
+    elements.push(icon(`${id}-step-icon-${index}`, iconForEvidence(item, index), 5.43, y + 0.16, 0.18, order + 3, theme, { color: theme.inkOnAccent, decorative: true }));
+    elements.push(shape(`${id}-step-line-${index}`, "line", 5.52, y + 0.45, 0.001, 0.32, order + 4, "none", theme.line, { width: 1 }));
+    elements.push(text(`${id}-step-text-${index}`, "body", visibleSentence(item), 5.98, y, 5.75, 0.36, order + 5, theme, { bg: isFocal ? theme.accentSoft : theme.background, fontSize: isFocal ? 18 : 17 }));
   });
   return elements;
 }
@@ -1102,19 +1171,20 @@ function createClosing(theme: Theme, messageMap: DeckMessageMap): Slide {
       text("closing-title", "title", title, 0.88, 2.0, 10.8, 0.72, 2, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 34 }),
       text("closing-message", "subtitle", action, 0.9, 3.05, 10.6, 0.5, 3, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 21 }),
       shape("closing-rule", "rect", 0.92, 3.85, 2.4, 0.07, 4, theme.inkOnAccent, theme.inkOnAccent, { radius: 0 }),
-      text("closing-body", "body", "この資料はMessage Mapから生成され、各スライドが1つの主張と根拠を持つように構成されています。", 0.9, 4.25, 9.5, 0.86, 5, theme, {
+      text("closing-body", "body", "会議後に迷わないよう、担当・期限・確認物をこの場で揃えます。", 0.9, 4.18, 9.5, 0.52, 5, theme, {
         bg: theme.accent,
         color: theme.inkOnAccent,
         fontSize: 20
       }),
       ...checklist.flatMap((item, index) => {
-        const x = 0.9 + index * 3.72;
+        const x = 0.9 + index * 3.82;
         const order = 10 + index * 5;
         return [
-          shape(`closing-check-${index}`, "roundRect", x, 5.58, 3.28, 0.68, order, theme.inkOnAccent, theme.inkOnAccent, { radius: 0.14, fillOpacity: 0.18 }),
-          icon(`closing-check-icon-${index}`, item.icon, x + 0.24, 5.76, 0.28, order + 1, theme, { color: theme.inkOnAccent, decorative: true }),
-          text(`closing-check-label-${index}`, "caption", item.label, x + 0.66, 5.72, 0.9, 0.18, order + 2, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true }),
-          text(`closing-check-value-${index}`, "caption", item.value, x + 1.54, 5.72, 1.42, 0.2, order + 3, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12 })
+          shape(`closing-check-${index}`, "roundRect", x, 5.18, 3.42, 1.18, order, theme.inkOnAccent, theme.inkOnAccent, { radius: 0.18, fillOpacity: 0.18 }),
+          shape(`closing-marker-${index}`, "rect", x, 5.18, 0.12, 1.18, order + 1, theme.inkOnAccent, theme.inkOnAccent, { radius: 0 }),
+          icon(`closing-check-icon-${index}`, item.icon, x + 0.36, 5.46, 0.38, order + 2, theme, { color: theme.inkOnAccent, decorative: true }),
+          text(`closing-check-label-${index}`, "caption", item.label, x + 0.92, 5.38, 1.8, 0.2, order + 3, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 13, bold: true }),
+          text(`closing-check-value-${index}`, "caption", item.value, x + 0.92, 5.72, 2.08, 0.24, order + 4, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 14, bold: true })
         ];
       })
     ]

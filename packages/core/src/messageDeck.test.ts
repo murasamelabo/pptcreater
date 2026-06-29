@@ -174,6 +174,9 @@ describe("message map deck generator", () => {
     const cover = deck.slides.find((slide) => slide.id === "cover");
     expect(cover?.elements.some((element) => element.id === "cover-audience-chip")).toBe(true);
     expect(cover?.elements.some((element) => element.id === "cover-action-chip")).toBe(true);
+    const actionChipText = cover?.elements.find((element) => element.id === "cover-action-chip-text");
+    expect(actionChipText).toMatchObject({ type: "text" });
+    expect(actionChipText?.type === "text" ? actionChipText.text.length : 0).toBeGreaterThan(5);
 
     const photo = deck.slides.find((slide) => slide.id === "executive-summary");
     expect(photo?.layout).toBe("message-photo-hero");
@@ -186,6 +189,7 @@ describe("message map deck generator", () => {
     expect(closing?.elements.some((element) => element.type === "text" && element.text === "担当")).toBe(true);
     expect(closing?.elements.some((element) => element.type === "text" && element.text === "期限")).toBe(true);
     expect(closing?.elements.some((element) => element.type === "text" && element.text === "確認物")).toBe(true);
+    expect(closing?.elements.some((element) => element.type === "text" && element.text === "次回会議までに確認")).toBe(true);
 
     expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
   });
@@ -226,6 +230,51 @@ describe("message map deck generator", () => {
     expect(cost?.layout).toBe("message-focal-proof");
     expect(roi?.elements.some((element) => element.type === "text" && element.id === "roi-proof-proof-number" && /70/.test(element.text))).toBe(true);
     expect(cost?.elements.some((element) => element.type === "text" && element.id === "cost-before-after-proof-number" && /1,200/.test(element.text))).toBe(true);
+    expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
+  });
+
+  it("adds focal hierarchy to table, flow, and step visuals", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "意思決定に必要な論点を短時間で確認する",
+        audience: "経営層と実務責任者",
+        desiredAction: "最初の判断点を合意する",
+        intents: [
+          {
+            slideId: "priority-table",
+            title: "優先論点",
+            message: "最も重要な論点を先に見る。",
+            evidence: ["投資判断", "コスト", "リスク", "運用負荷"],
+            quietInfo: [],
+            visualType: "table",
+            emphasis: "投資判断"
+          },
+          {
+            slideId: "process-flow",
+            title: "確認順序",
+            message: "最初の確認が後続の判断を決める。",
+            evidence: ["方針合意", "予算確認", "リスク整理", "承認"],
+            quietInfo: [],
+            visualType: "flow",
+            emphasis: "方針合意"
+          },
+          {
+            slideId: "decision-steps",
+            title: "実行手順",
+            message: "最初の判断点を明確にしてから進める。",
+            evidence: ["判断点", "担当", "期限", "確認資料"],
+            quietInfo: [],
+            visualType: "step",
+            emphasis: "判断点"
+          }
+        ]
+      },
+      { title: "Focal hierarchy", locale: "ja-JP", contentMode: "decision" }
+    );
+
+    expect(deck.slides.find((slide) => slide.id === "priority-table")?.elements.some((element) => element.id === "priority-table-table-focal-card")).toBe(true);
+    expect(deck.slides.find((slide) => slide.id === "process-flow")?.elements.some((element) => element.id === "process-flow-flow-focal-label")).toBe(true);
+    expect(deck.slides.find((slide) => slide.id === "decision-steps")?.elements.some((element) => element.id === "decision-steps-step-focal-card")).toBe(true);
     expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
   });
 
@@ -291,6 +340,15 @@ describe("message map deck generator", () => {
             quietInfo: [],
             visualType: "before-after",
             emphasis: "分岐点"
+          },
+          {
+            slideId: "concept-choice",
+            title: "価値循環",
+            message: "中心となる判断点を見える形にする。",
+            evidence: ["入力", "処理", "成果", "学習"],
+            quietInfo: [],
+            visualType: "cycle",
+            emphasis: "判断点"
           }
         ]
       },
@@ -300,7 +358,35 @@ describe("message map deck generator", () => {
     expect(deck.slides.find((slide) => slide.id === "matrix-choice")?.elements.some((element) => element.id === "matrix-choice-decision-zone")).toBe(true);
     expect(deck.slides.find((slide) => slide.id === "hub-choice")?.elements.some((element) => element.id === "hub-choice-decision-callout")).toBe(true);
     expect(deck.slides.find((slide) => slide.id === "before-choice")?.elements.some((element) => element.id === "before-choice-decision-badge")).toBe(true);
+    expect(deck.slides.find((slide) => slide.id === "concept-choice")?.elements.some((element) => element.id === "concept-choice-decision-callout")).toBe(true);
     expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
+  });
+
+  it("uses complete English decision badge labels", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "Clarify an executive choice",
+        audience: "Executives",
+        desiredAction: "Choose the target state",
+        intents: [
+          {
+            slideId: "target-state",
+            title: "Target state",
+            message: "The target state makes the tradeoff explicit.",
+            evidence: ["Target state", "Risk", "Cost", "Governance"],
+            quietInfo: [],
+            visualType: "before-after",
+            emphasis: "Target state"
+          }
+        ]
+      },
+      { title: "Target state", locale: "en-US", contentMode: "decision" }
+    );
+
+    const badge = deck.slides.find((slide) => slide.id === "target-state")?.elements.find((element) => element.id === "target-state-decision-badge-text");
+    expect(badge).toMatchObject({ type: "text" });
+    expect(badge?.type === "text" ? badge.text.replace(/\s+/g, " ") : "").toBe("Decision point");
+    expect(JSON.stringify(deck)).not.toContain("Decision: Target");
   });
 
   it("renders card and detail intents as a dedicated editorial-board archetype", () => {

@@ -148,7 +148,7 @@ function recordSourceCheck(scenario, messageMap, outputFile) {
   const sourceHints = sourceHintsForScenario(scenario);
   const embeddedUrls = urlsInObject(messageMap);
   const lines = [
-    "# Source Check",
+      "# Source Check",
     "",
     `Scenario: ${scenario.id}`,
     `Mode: deterministic-dev-loop-placeholder`,
@@ -251,6 +251,7 @@ function qualityProfile(loopNumber, improvementState) {
   const expressionPolishLevel = improvementState.expressionPolishLevel ?? 0;
   const informationDensityLevel = improvementState.informationDensityLevel ?? 0;
   const designAmbitionLevel = improvementState.designAmbitionLevel ?? 0;
+  const layoutDiversityLevel = improvementState.layoutDiversityLevel ?? 0;
   const baseEvidenceMax = compactCopyLevel >= 2 ? 2 : compactCopyLevel >= 1 ? 3 : 4;
   return {
     name: [
@@ -260,13 +261,15 @@ function qualityProfile(loopNumber, improvementState) {
       improvementState.safeContrast ? "safe-contrast" : null,
       expressionPolishLevel > 0 ? `expression-polish-${expressionPolishLevel}` : null,
       informationDensityLevel > 0 ? `information-density-${informationDensityLevel}` : null,
-      designAmbitionLevel > 0 ? `design-ambition-${designAmbitionLevel}` : null
+      designAmbitionLevel > 0 ? `design-ambition-${designAmbitionLevel}` : null,
+      layoutDiversityLevel > 0 ? `layout-diversity-${layoutDiversityLevel}` : null
     ].filter(Boolean).join("+"),
     includeExecutiveSummary: loopNumber >= 2 || Boolean(improvementState.forceExecutiveSummary),
     compactCopy: compactCopyLevel > 0,
     compactCopyLevel,
     informationDensityLevel,
     designAmbitionLevel,
+    layoutDiversityLevel,
     evidenceMax: Math.min(6, Math.max(baseEvidenceMax, 3 + informationDensityLevel)),
     titleMax: improvementState.shortenTitles ? 18 : compactCopyLevel > 0 ? 24 : 36,
     topicLimit: improvementState.reduceSlideDensity && informationDensityLevel === 0 ? 7 : 10,
@@ -287,20 +290,33 @@ function normalizeTopics(scenario, profile) {
 
 function visualTypeForExpression(expression, index, profile = {}, scenario = {}, topic = "") {
   const value = String(expression).toLowerCase();
+  if (String(topic).toLowerCase().includes("executive")) return "summary";
   const context = [scenario.userRequest, scenario.purpose, scenario.audience, topic, value].filter(Boolean).join(" ").toLowerCase();
+  const localContext = [topic, value].filter(Boolean).join(" ").toLowerCase();
+  const expectsRealism = /採用|会社|事例|顧客|製品|現場|患者|家族|旅館|不動産|小売|npo|office|customer|product|case|recruit|community|patient|family|hotel|retail/u.test(context);
+  const expectsProof = /kpi|roi|売上|数字|指標|実績|成果|効果|予算|費用|gmv|budget|finance|traction|impact/u.test(localContext);
+  if (/roadmap|timeline|gantt|calendar|step|checklist|ロードマップ|導入|実行|移行/u.test(localContext)) return "step";
+  if (/risk|governance|architecture|diagram|map|stakeholder|dependency|リスク|構造|関係|判断/u.test(localContext)) return "native-diagram";
+  if (expectsRealism && index === 1) return "image";
+  if (expectsProof && index % 3 === 0) return "summary";
+  if (/case|事例|顧客|customer|product|製品|採用|現場/u.test(localContext)) return index <= 2 ? "image" : "cards";
+  if ((profile.layoutDiversityLevel ?? 0) >= 1) {
+    const diverseRotation = ["summary", "matrix", "step", "native-diagram", "cards", "before-after", "cycle", "flow", "image"];
+    return diverseRotation[(index + (profile.layoutDiversityLevel ?? 0)) % diverseRotation.length];
+  }
   if ((profile.designAmbitionLevel ?? 0) >= 1) {
     const slot = (index + (profile.designAmbitionLevel ?? 0)) % 7;
     if (value.includes("section") || value.includes("chapter")) return "section";
     if (/写真|現場|顧客|事例|採用|会社|患者|家族|旅館|office|customer|case|recruit|photo/.test(context) || slot === 1) return "image";
-    if (/kpi|roi|売上|数字|指標|実績|成果|効果|予算|費用|gmv|budget|finance|traction|impact/.test(context) || slot === 2) return "summary";
+    if (expectsProof || slot === 2) return "summary";
     if (/関係|体験|循環|journey|concept|system|portfolio/.test(context) || slot === 3) return "cycle";
     if (/プロセス|構造|アーキテクチャ|移行|ロードマップ|workflow|architecture|roadmap|migration/.test(context) || slot === 4) return "native-diagram";
     if (slot === 5) return "matrix";
     if (slot === 6) return "flow";
   }
   if ((profile.expressionPolishLevel ?? 0) >= 1) {
-    if (/採用|会社|事例|顧客|支援者|寄付|患者|家族|旅館|現場|office|customer|case|recruit|community|patient|family/.test(context) && index % 4 === 1) return "image";
-    if (/kpi|roi|売上|数字|実績|成果|効果|予算|費用|gmv|budget|finance|traction|impact/.test(context) && index % 3 === 0) return "summary";
+    if (expectsRealism && index % 4 === 1) return "image";
+    if (expectsProof && index % 3 === 0) return "summary";
     if (/関係|構造|体験|journey|workflow|architecture|roadmap|migration|プロセス|ロードマップ|移行/.test(context)) return index % 2 === 0 ? "native-diagram" : "flow";
   }
   if ((profile.expressionPolishLevel ?? 0) >= 3 && (value.includes("structured") || value.includes("faq") || value.includes("detail"))) return "cards";
@@ -348,10 +364,10 @@ function messageForTopic(topic, scenario, profile) {
     return "結論、重要性、次の判断を先に示す。";
   }
   if ((profile.informationDensityLevel ?? 0) >= 2) {
-    return `${subject}について、判断材料・リスク・次の行動を同時に示す。`;
+    return `${subject}の判断材料を短く示す。`;
   }
   if ((profile.informationDensityLevel ?? 0) >= 1) {
-    return `${subject}の論点、根拠、次の行動を示す。`;
+    return `${subject}の論点と根拠を示す。`;
   }
   if (profile.expressionPolishLevel >= 2) {
     return `${subject}の要点と判断軸を示す。`;
@@ -366,21 +382,25 @@ function evidenceForTopic(topic, scenario, expression, profile) {
   const audience = trimTrailingFragment(profile.compactCopyLevel >= 2 ? audienceLabel(scenario.audience) : shorten(scenario.audience ?? "対象者", profile.compactCopy ? 18 : 28));
   const tone = trimTrailingFragment(shorten(scenario.tone ?? "標準", profile.compactCopy ? 12 : 20));
   const point = trimTrailingFragment(shorten(topic, profile.compactCopy ? 20 : 28));
+  const isSummaryTopic = String(topic).toLowerCase().includes("executive");
+  const summaryProof = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test([scenario.purpose, scenario.audience, topic].filter(Boolean).join(" ")) ? "3つの判断論点" : "3 decision points";
   if ((profile.informationDensityLevel ?? 0) >= 1) {
-    return [
+    const denseEvidence = [
       `材料: ${point}`,
       `読み手: ${audience}`,
       `行動: ${trimTrailingFragment(shorten(scenario.purpose ?? "判断", 24))}`,
       `表現: ${expressionLabel(expression)}`,
       `トーン: ${tone}`
-    ].slice(0, profile.evidenceMax ?? 5);
+    ];
+    return (isSummaryTopic ? [summaryProof, ...denseEvidence] : denseEvidence).slice(0, profile.evidenceMax ?? 5);
   }
-  return [
+  const evidence = [
     `対象: ${audience}`,
     `観点: ${trimTrailingFragment(shorten(topic, profile.compactCopy ? 18 : 24))}`,
     `表現: ${trimTrailingFragment(shorten(expression, 18))}`,
     `口調: ${tone}`
-  ].slice(0, profile.evidenceMax ?? 4);
+  ];
+  return (isSummaryTopic ? [summaryProof, ...evidence] : evidence).slice(0, profile.evidenceMax ?? 4);
 }
 
 function audienceLabel(audience) {
@@ -602,7 +622,7 @@ function runScenario(scenario, loopNumber, loopDir, improvementState) {
     model: "host-selected",
     artifacts: artifactList(scenarioDir),
     commands: commands.map(({ command, exitCode, outputFile }) => ({ command, exitCode, outputFile })),
-    blockingIssues: evalReport.patchRequests.filter((request) => request.severity === "critical" || request.severity === "high"),
+    fixRequests: evalReport.fixRequests,
     notes: [`Generated from realistic userRequest: ${scenario.userRequest}`]
   };
 
@@ -615,8 +635,8 @@ function runScenario(scenario, loopNumber, loopDir, improvementState) {
   return {
     scenarioId: scenario.id,
     directory: toPosixRelative(scenarioDir),
-    patchRequestCount: evalReport.patchRequests.length,
-    highOrCriticalCount: evalReport.patchRequests.filter((request) => request.severity === "critical" || request.severity === "high").length,
+    fixRequestCount: evalReport.fixRequests.length,
+    openFixesCount: evalReport.fixRequests.length,
     expressionCraft: evalReport.scores.expressionCraft,
     informationDensity: evalReport.scores.informationDensity,
     designAmbition: evalReport.scores.designAmbition,
@@ -631,11 +651,10 @@ function artifactList(dir) {
 }
 
 function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
-  const patchRequests = [];
+  const fixRequests = [];
   const failedCommands = commands.filter((command) => command.exitCode !== 0 && !isExpectedStructuredNonZero(command));
   for (const failed of failedCommands) {
-    patchRequests.push({
-      severity: "critical",
+    fixRequests.push({
       problem: "A required pptcreater CLI command failed during scenario generation.",
       evidence: `${failed.command} exited ${failed.exitCode}; see ${failed.outputFile}`,
       expected: "Scenario artifacts should be generated without command failures.",
@@ -644,8 +663,7 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
   }
 
   if (zip.exists && zip.zeroNonDir !== 0) {
-    patchRequests.push({
-      severity: "critical",
+    fixRequests.push({
       problem: "Rendered PPTX has zero-length non-directory zip entries.",
       evidence: `zeroNonDir=${zip.zeroNonDir}; entries=${zip.entries}`,
       expected: "PPTX zip integrity should have zeroNonDir=0.",
@@ -659,14 +677,14 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
   const expressionCraft = evaluateExpressionCraft(deckJson, scenario);
   const informationDensity = evaluateInformationDensity(deckJson);
   const designAmbition = evaluateDesignAmbition(deckJson, scenario);
+  const sampleQuality = evaluateSampleQuality(deckJson, scenario);
   const standaloneClarity = evaluateStandaloneClarity(deckJson);
   const textCompleteness = evaluateTextCompleteness(deckJson);
   const slideComments = buildSlideComments(deckJson, scenario, finalizeJson, reviewJson);
   const reviewBlocking = reviewJson?.blocking?.length ?? reviewJson?.blockingIssues?.length ?? 0;
   const reviewOk = reviewJson?.ok ?? (reviewBlocking === 0);
   if (!reviewOk || reviewBlocking > 0) {
-    patchRequests.push({
-      severity: "high",
+    fixRequests.push({
       problem: "Aggregated review found blocking issues.",
       evidence: `blocking=${reviewBlocking}; see review.txt`,
       expected: "Review should report ok=true with no blocking issues for generated scenarios.",
@@ -676,8 +694,7 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
 
   const badLineBreaks = lintIssuesByCode(finalizeJson, reviewJson, "layout.bad-line-break");
   if (badLineBreaks.length > 0) {
-    patchRequests.push({
-      severity: "medium",
+    fixRequests.push({
       problem: "Generated slides contain broken line breaks or visually cut-off text.",
       evidence: badLineBreaks.slice(0, 6).map((issue) => `${issue.path ?? "unknown"}: ${issue.message ?? issue.code}`).join(" | "),
       expected: "Evaluator should fail slides whose visible text breaks into orphan particles, dangling continuations, or cutoff-looking lines.",
@@ -689,8 +706,7 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
   const commandText = commands.map((command) => command.command).join("\n");
   const missingRequiredTools = [...requiredTools].filter((tool) => !toolCovered(tool, commandText));
   if (missingRequiredTools.length > 0) {
-    patchRequests.push({
-      severity: "medium",
+    fixRequests.push({
       problem: "Scenario required tools were not fully exercised by the deterministic runner.",
       evidence: `missing=${missingRequiredTools.join(", ")}`,
       expected: "The loop runner or User Simulator should exercise every ScenarioSpec.requiredTools entry or record a justified waiver.",
@@ -701,8 +717,7 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
   const sourceExpected = requiredTools.has("source-check") || (scenario.requiredExpressions ?? []).some((expression) => String(expression).includes("source"));
   const sourceCheckFile = findScenarioArtifact(commands, "source-check", "source-check.txt");
   if (sourceExpected && !sourceCheckFile) {
-    patchRequests.push({
-      severity: "medium",
+    fixRequests.push({
       problem: "Source-backed scenario needs live source verification that the deterministic runner cannot infer from placeholders.",
       evidence: "Scenario expects source-check or source-note; source-check.txt was not recorded.",
       expected: "User Simulator should collect official source URLs or record a deterministic source-check waiver for source-backed decks.",
@@ -711,8 +726,7 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
   }
 
   if (expressionCraft.score < 3) {
-    patchRequests.push({
-      severity: "medium",
+    fixRequests.push({
       problem: "Generated deck lacks scenario-specific expressive craft.",
       evidence: expressionCraft.evidence,
       expected: "Decks should vary their expressive strategy by scenario, using sample-derived tactics such as anchored realism, focal proof, spatial models, deliberate repetition, deck rhythm, or brand materiality.",
@@ -721,8 +735,7 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
   }
 
   if (informationDensity.score < 3) {
-    patchRequests.push({
-      severity: "medium",
+    fixRequests.push({
       problem: "Generated deck is too thin in visible information density.",
       evidence: informationDensity.evidence,
       expected: "Slides should carry enough visible context, evidence, and next-action information to feel substantive, like the reference decks that combine claim, support, and visual proof on one slide.",
@@ -731,8 +744,7 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
   }
 
   if (designAmbition.score < 3) {
-    patchRequests.push({
-      severity: "medium",
+    fixRequests.push({
       problem: "Generated deck is visually safe but not ambitious enough.",
       evidence: designAmbition.evidence,
       expected: "The loop should attempt bolder visual strategies such as photo-led spreads, oversized proof numbers, strong spatial models, deliberate repetition, and dramatic scale contrast; ineffective attempts should be reverted after comparison.",
@@ -741,8 +753,7 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
   }
 
   if (standaloneClarity.score < 3) {
-    patchRequests.push({
-      severity: "medium",
+    fixRequests.push({
       problem: "Generated slides are not understandable from visible output alone.",
       evidence: standaloneClarity.evidence,
       expected: "Each slide should be understandable from visible title, message, labels, and visual content without reading generation scripts, scenario files, speaker notes, or quiet metadata.",
@@ -751,12 +762,20 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
   }
 
   if (textCompleteness.score < 5) {
-    patchRequests.push({
-      severity: "medium",
+    fixRequests.push({
       problem: "Generated visible text contains incomplete or meaning-breaking fragments.",
       evidence: textCompleteness.evidence,
       expected: "Every visible text element, including cover titles and labels, should read as a complete understandable phrase or sentence rather than ending mid-word, mid-phrase, or after dangling punctuation.",
       suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/layout.ts", "scripts/run-dev-loop.mjs"]
+    });
+  }
+
+  for (const item of sampleQuality.fixItems) {
+    fixRequests.push({
+      problem: item.problem,
+      evidence: item.evidence,
+      expected: item.expected,
+      suggestedScope: item.suggestedScope
     });
   }
 
@@ -779,6 +798,7 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
       expressionCraft,
       informationDensity,
       designAmbition,
+      sampleQuality,
       standaloneClarity,
       textCompleteness,
       slideCommentCount: slideComments.length,
@@ -792,13 +812,14 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
       expressionCraft: Math.min(expressionCraft.score, designAmbition.score),
       informationDensity: informationDensity.score,
       designAmbition: designAmbition.score,
+      sampleQuality: sampleQuality.score,
       editability: Math.min(reviewScore, zipScore),
       accessibility: reviewJson?.scores?.accessibility ? Math.round(reviewJson.scores.accessibility / 20) : reviewScore,
       toolDiscipline: Math.min(toolCoverage, commandScore)
     },
     slideComments,
-    patchRequests,
-    residualRisks: patchRequests.length === 0 ? [] : ["Review generated artifacts manually in PowerPoint/Studio before accepting visual quality."]
+    fixRequests,
+    reviewNotes: fixRequests.length === 0 ? [] : ["Every fix request is expected to be addressed by generator, template, diagram, icon, preset, guidance, or related pptcreater program changes before the loop is considered improved."]
   };
 }
 
@@ -925,6 +946,90 @@ function evaluateDesignAmbition(deck, scenario) {
   };
 }
 
+function evaluateSampleQuality(deck, scenario) {
+  if (!deck?.slides) {
+    return {
+      score: 1,
+      evidence: "deck.json was not available for sample-quality evaluation.",
+      axes: {},
+      fixItems: [sampleQualityFix("artifact-unavailable", "Generated deck artifact is unavailable for sample-quality review.", "deck.json was not available.", ["scripts/run-dev-loop.mjs"])]
+    };
+  }
+
+  const bodySlides = deck.slides.filter((slide) => !["cover", "title", "section", "divider", "closing", "references"].includes(slide.layout ?? ""));
+  const allElements = deck.slides.flatMap((slide) => slide.elements ?? []);
+  const bodyElements = bodySlides.flatMap((slide) => slide.elements ?? []);
+  const fills = allElements.filter((element) => element.type === "shape" && typeof element.fill === "string" && element.fill !== "none").map((element) => String(element.fill).toLowerCase());
+  const uniqueFills = new Set(fills);
+  const paleDefaultFills = fills.filter((fill) => ["#f6f8fb", "#eeece1", "#d9eaf7", "#eaf2dd", "#fff2cc", "#f2dcdb", "#e4dfec"].includes(fill)).length;
+  const defaultFillShare = fills.length ? paleDefaultFills / fills.length : 1;
+  const layouts = bodySlides.map((slide) => slide.layout ?? "unknown");
+  const layoutCounts = countBy(layouts);
+  const dominantLayoutShare = bodySlides.length ? Math.max(...Object.values(layoutCounts)) / bodySlides.length : 1;
+  const largeMedia = bodySlides.filter(hasLargeMedia).length;
+  const focalProof = bodySlides.filter(hasFocalProof).length;
+  const spatialModel = bodySlides.filter(hasSpatialModel).length;
+  const deliberateRepetition = bodySlides.filter(hasDeliberateRepetition).length;
+  const dramaticScale = bodySlides.filter(hasDramaticScaleContrast).length;
+  const titleTexts = bodyElements.filter((element) => element.type === "text" && element.role === "title").map((element) => String(element.text ?? ""));
+  const genericTitleShare = titleTexts.length ? titleTexts.filter((text) => /^(overview|current state|target state|risk|cost|features|summary|要約|比較|現状|課題|効果)$/iu.test(text.trim())).length / titleTexts.length : 1;
+  const shapeCount = bodyElements.filter((element) => element.type === "shape").length;
+  const svgCount = bodyElements.filter((element) => element.type === "svg" || element.type === "image" || element.type === "diagram").length;
+  const scenarioText = [scenario.userRequest, scenario.purpose, scenario.audience, ...(scenario.requiredExpressions ?? [])].filter(Boolean).join(" ").toLowerCase();
+  const expectsRealism = /採用|会社|事例|顧客|製品|現場|患者|旅館|不動産|小売|npo|community|customer|product|case|recruit|patient|hotel|real estate|retail/.test(scenarioText);
+
+  const axes = {
+    colorSophistication: scoreAxis(uniqueFills.size >= 6 && defaultFillShare <= 0.72, `uniqueFills=${uniqueFills.size}; defaultFillShare=${defaultFillShare.toFixed(2)}`),
+    diagramVariety: scoreAxis(new Set(layouts).size >= Math.min(5, bodySlides.length) && dominantLayoutShare <= 0.45, `layoutDiversity=${new Set(layouts).size}; dominantLayoutShare=${dominantLayoutShare.toFixed(2)}`),
+    storyClarity: scoreAxis(genericTitleShare <= 0.25 && deck.slides.some((slide) => slide.layout === "cover") && deck.slides.some((slide) => slide.layout === "closing"), `genericTitleShare=${genericTitleShare.toFixed(2)}; hasCover=${deck.slides.some((slide) => slide.layout === "cover")}; hasClosing=${deck.slides.some((slide) => slide.layout === "closing")}`),
+    shapeCraft: scoreAxis(dramaticScale >= 2 && deliberateRepetition >= 2 && spatialModel >= Math.min(3, bodySlides.length), `dramaticScale=${dramaticScale}; deliberateRepetition=${deliberateRepetition}; spatialModel=${spatialModel}; shapeCount=${shapeCount}`),
+    typographyMateriality: scoreAxis(bodyElements.some((element) => element.type === "text" && (element.fontSize ?? 0) >= 31) && bodyElements.some((element) => element.type === "text" && (element.fontSize ?? 0) <= 13), `hasLargeType=${bodyElements.some((element) => element.type === "text" && (element.fontSize ?? 0) >= 31)}; hasSmallType=${bodyElements.some((element) => element.type === "text" && (element.fontSize ?? 0) <= 13)}`),
+    templateFreshness: scoreAxis((largeMedia > 0 || !expectsRealism) && (focalProof > 0 || /kpi|roi|予算|費用|売上|数字|finance|budget/.test(scenarioText)) && svgCount >= Math.max(1, Math.floor(bodySlides.length * 0.4)), `largeMedia=${largeMedia}; focalProof=${focalProof}; svgOrImage=${svgCount}; expectsRealism=${expectsRealism}`)
+  };
+
+  const fixItems = [];
+  if (axes.colorSophistication.score < 5) {
+    fixItems.push(sampleQualityFix("color-sophistication", "Colors look generic, pale, or unsophisticated compared with the sample slides.", axes.colorSophistication.evidence, ["packages/core/src/messageDeck.ts", "packages/core/src/templates.ts", "design-packs"]));
+  }
+  if (axes.diagramVariety.score < 5) {
+    fixItems.push(sampleQualityFix("diagram-variety", "Diagrams do not vary enough across scenarios and still feel like the same card/table/flow template.", axes.diagramVariety.evidence, ["packages/core/src/messageDeck.ts", "packages/core/src/figureSelector.ts", "packages/diagram/src/index.ts", "design-packs"]));
+  }
+  if (axes.storyClarity.score < 5) {
+    fixItems.push(sampleQualityFix("story-clarity", "The story does not carry a clear setup, tension, proof, and action arc like the sample decks.", axes.storyClarity.evidence, ["packages/core/src/messageDeck.ts", "packages/core/src/content.ts", "docs/dev-loop-test-scenarios.md"]));
+  }
+  if (axes.shapeCraft.score < 5) {
+    fixItems.push(sampleQualityFix("shape-craft", "The slide still reads like amateur rectangles/icons rather than a professionally composed visual system.", axes.shapeCraft.evidence, ["packages/core/src/messageDeck.ts", "packages/diagram/src/index.ts", "packages/assets-svg", "design-packs"]));
+  }
+  if (axes.typographyMateriality.score < 5) {
+    fixItems.push(sampleQualityFix("typography-materiality", "Typography and material feel remain flat or low-quality; the deck lacks deliberate type hierarchy and texture.", axes.typographyMateriality.evidence, ["packages/core/src/messageDeck.ts", "packages/core/src/typography.ts", "packages/core/src/templates.ts"]));
+  }
+  if (axes.templateFreshness.score < 5) {
+    fixItems.push(sampleQualityFix("template-freshness", "The deck still feels template-like instead of scenario-specific and sample-quality.", axes.templateFreshness.evidence, ["packages/core/src/messageDeck.ts", "templates", "design-packs", "packages/core/src/figureSelector.ts"]));
+  }
+
+  const score = Math.max(1, Math.round(Object.values(axes).reduce((sum, axis) => sum + axis.score, 0) / Object.keys(axes).length));
+  return {
+    score,
+    axes,
+    fixItems,
+    evidence: `sampleQuality=${score}/5; ${Object.entries(axes).map(([key, axis]) => `${key}=${axis.score} (${axis.evidence})`).join("; ")}`
+  };
+}
+
+function scoreAxis(pass, evidence) {
+  return { score: pass ? 5 : 2, evidence };
+}
+
+function sampleQualityFix(id, problem, evidence, suggestedScope) {
+  return {
+    id: `sample-quality-${id}`,
+    problem,
+    evidence,
+    expected: "Bring generated slides closer to the sample-slide quality: stylish color discipline, non-generic diagrams, clear narrative arc, professional shape composition, deliberate typography/material feel, and scenario-specific visual strategy.",
+    suggestedScope
+  };
+}
+
 function buildSlideComments(deck, scenario, ...reports) {
   if (!deck?.slides) {
     return [
@@ -961,6 +1066,7 @@ function buildSlideComments(deck, scenario, ...reports) {
 
 function slideCommentFor({ slide, index, title, layout, visibleChars, textCount, issueHints, scenario }) {
   const topic = trimTrailingFragment(shorten(title, 22));
+  const textElements = (slide.elements ?? []).filter((element) => element.type === "text");
   const blockingHints = issueHints.filter(isBlockingSlideIssue);
   const issueSummary = blockingHints.slice(0, 2).map((issue) => `${issue.code ?? "issue"}: ${issue.message ?? issue.path ?? "review finding"}`).join(" / ");
   const hasBlockingIssue = blockingHints.length > 0;
@@ -970,6 +1076,8 @@ function slideCommentFor({ slide, index, title, layout, visibleChars, textCount,
   const dramaticScale = hasDramaticScaleContrast(slide);
   const cards = (slide.elements ?? []).filter((element) => element.type === "shape" && ["roundRect", "roundedRect", "rect"].includes(element.shape) && element.w >= 1.5 && element.h >= 0.8).length;
   const scenarioNeed = [scenario.userRequest, scenario.purpose, scenario.audience, ...(scenario.requiredExpressions ?? [])].filter(Boolean).join(" ").toLowerCase();
+  const slideText = proofCandidateText(textElements).toLowerCase();
+  const slideHasNumericProof = /\d[\d,.]*(?:\.\d+)?\s*(?:%|倍|億|万|円|pt|ポイント|件|人|社|年|ヶ月|月|日)?|[一二三四五六七八九十]割|半減|倍増|削減|増加|減少/u.test(slideText);
 
   if (hasBlockingIssue) {
     return {
@@ -980,6 +1088,14 @@ function slideCommentFor({ slide, index, title, layout, visibleChars, textCount,
   }
 
   if (layout === "cover") {
+    const hasIntentChips = hasCoverIntentChips(slide);
+    if (hasIntentChips) {
+      return {
+        comment: `表紙はテーマに加えて読者と到達行動が見え、会議用途の入口として成立しています。`,
+        wouldBeBetterIf: `タグの文言をさらに短くし、主題語と判断行動の対比を強めると、初見の読み取りがさらに速くなります。`,
+        evidence: `layout=${layout}; visibleChars=${visibleChars}; textElements=${textCount}; intentChips=${hasIntentChips}`
+      };
+    }
     return {
       comment: `表紙はテーマを示していますが、聞き手が最初の3秒で期待値を持つには、読者と到達行動の見せ方がまだ控えめです。`,
       wouldBeBetterIf: `タイトルの横に「誰が何を判断する資料か」を短いタグで置き、表紙から会議の緊張感や用途が伝わるともっと良くなります。`,
@@ -988,6 +1104,14 @@ function slideCommentFor({ slide, index, title, layout, visibleChars, textCount,
   }
 
   if (layout === "closing") {
+    const hasChecklist = hasClosingActionChecklist(slide);
+    if (hasChecklist) {
+      return {
+        comment: `締めスライドは担当・期限・確認物がカード化され、会議後の行動に移しやすい構成です。`,
+        wouldBeBetterIf: `各カードの値をシナリオ固有の担当名、具体日付、確認資料名に寄せると、さらに実務で使いやすくなります。`,
+        evidence: `layout=${layout}; visibleChars=${visibleChars}; textElements=${textCount}; actionChecklist=${hasChecklist}`
+      };
+    }
     return {
       comment: `締めスライドは行動を促していますが、実務で次に動くための期限・担当・確認物が見えるとさらに強くなります。`,
       wouldBeBetterIf: `次アクションを「担当、期限、確認する資料」の3点で小さく分解し、会議後にそのまま使えるチェックにするともっと良くなります。`,
@@ -1003,35 +1127,46 @@ function slideCommentFor({ slide, index, title, layout, visibleChars, textCount,
     };
   }
 
-  if (/message-statement|message-table|message-flow|message-steps/u.test(layout) && cards >= 3) {
+  const dominantFocalElement = hasDominantFocalElement(slide);
+  if (/message-statement|message-table|message-flow|message-steps/u.test(layout) && cards >= 3 && !dominantFocalElement && !largeMedia && !focalProof && !dramaticScale) {
     return {
       comment: `${topic}は情報整理として成立していますが、見慣れたカードやステップの並びに寄っており、発見や驚きは弱めです。`,
       wouldBeBetterIf: `1つだけ大きな主役カードを作る、または写真・大きな数値・対立構図のどれかを加えて視線の入口を作るともっと良くなります。`,
-      evidence: `layout=${layout}; cards=${cards}; dramaticScale=${dramaticScale}; spatialModel=${spatialModel}`
+      evidence: `layout=${layout}; cards=${cards}; dominantFocalElement=${dominantFocalElement}; dramaticScale=${dramaticScale}; spatialModel=${spatialModel}`
     };
   }
 
-  if (/message-matrix|message-hub-map|message-concept|message-before-after/u.test(layout)) {
+  const decisionEmphasis = hasDecisionEmphasis(slide);
+  if (/message-matrix|message-hub-map|message-concept|message-before-after/u.test(layout) && !decisionEmphasis) {
     return {
       comment: `${topic}は構造を図解で示せていますが、図の軸や関係がさらに鋭くなる余地があります。`,
       wouldBeBetterIf: `単なる分類ではなく、「どこを選ぶべきか」「何が対立しているか」「どこで判断が分かれるか」を図の中に1つ強調するともっと良くなります。`,
-      evidence: `layout=${layout}; spatialModel=${spatialModel}; visibleChars=${visibleChars}`
+      evidence: `layout=${layout}; spatialModel=${spatialModel}; decisionEmphasis=${decisionEmphasis}; visibleChars=${visibleChars}`
     };
   }
 
-  if (largeMedia || /photo|image|customer|case|旅館|顧客|採用/u.test(scenarioNeed)) {
+  const photoAnnotation = hasPhotoAnnotation(slide);
+  if (largeMedia && !photoAnnotation) {
     return {
       comment: `${topic}は視覚の入口がありますが、画像や場面が資料の論点とより強く結びつく余地があります。`,
       wouldBeBetterIf: `画像の上に短いキャプションや注目点を重ね、読者が「何を見ればよいか」まで分かる写真主役スライドにするともっと良くなります。`,
-      evidence: `layout=${layout}; largeMedia=${largeMedia}; visibleChars=${visibleChars}`
+      evidence: `layout=${layout}; largeMedia=${largeMedia}; photoAnnotation=${photoAnnotation}; visibleChars=${visibleChars}`
     };
   }
 
-  if (focalProof || /kpi|roi|売上|数字|指標|実績|効果|比較|予算|費用|gmv|budget|finance/u.test(scenarioNeed)) {
+  if (!focalProof && /kpi|roi|売上|数字|指標|実績|効果|比較|予算|費用|gmv|budget|finance/u.test(scenarioNeed) && slideHasNumericProof) {
     return {
       comment: `${topic}は判断材料を示していますが、数字や比較の見せ方をさらに主役化できます。`,
       wouldBeBetterIf: `最も重要な数値を1つだけ大きく置き、その横に「なぜ重要か」を短く添えると、記憶に残るスライドになります。`,
-      evidence: `layout=${layout}; focalProof=${focalProof}; dramaticScale=${dramaticScale}`
+      evidence: `layout=${layout}; focalProof=${focalProof}; dramaticScale=${dramaticScale}; slideHasNumericProof=${slideHasNumericProof}`
+    };
+  }
+
+  if (dominantFocalElement || largeMedia || focalProof || (spatialModel && dramaticScale)) {
+    return {
+      comment: `${topic}は視覚的な核があり、スライド単体でも構造を追いやすい状態です。`,
+      wouldBeBetterIf: `核となる要素と補助情報の距離、余白、色の強弱をさらに詰めると、サンプルスライドに近い完成度になります。`,
+      evidence: `layout=${layout}; dominantFocalElement=${dominantFocalElement}; largeMedia=${largeMedia}; focalProof=${focalProof}; spatialModel=${spatialModel}; dramaticScale=${dramaticScale}`
     };
   }
 
@@ -1040,6 +1175,61 @@ function slideCommentFor({ slide, index, title, layout, visibleChars, textCount,
     wouldBeBetterIf: `読み手が思わず立ち止まる主役要素を1つ決め、写真・数値・比喩図・章扉のどれかへ大胆に寄せるともっと良くなります。`,
     evidence: `layout=${layout}; visibleChars=${visibleChars}; textElements=${textCount}; largeMedia=${largeMedia}; focalProof=${focalProof}; spatialModel=${spatialModel}`
   };
+}
+
+function proofCandidateText(textElements) {
+  return textElements
+    .filter((element) => {
+      const id = String(element.id ?? "");
+      const value = String(element.text ?? "").trim();
+      if (/eyebrow|kicker|index|number|step-label|flow-label|focal-label|relation|decision-callout/u.test(id)) return false;
+      if (/^(?:SLIDE|STEP|FOCUS|SCENE|NEXT ACTION|FIRST DECISION|FOCAL PROOF)\s*\d*$/iu.test(value)) return false;
+      if (/^\d{1,2}$/u.test(value)) return false;
+      return ["title", "subtitle", "body", "callout"].includes(String(element.role ?? ""));
+    })
+    .map((element) => String(element.text ?? ""))
+    .join(" ");
+}
+
+function hasCoverIntentChips(slide) {
+  const elements = slide.elements ?? [];
+  const hasAudience = elements.some((element) => element.id === "cover-audience-chip" && element.type === "shape" && element.w >= 2.4 && element.h >= 0.34);
+  const hasAction = elements.some((element) => element.id === "cover-action-chip" && element.type === "shape" && element.w >= 2.4 && element.h >= 0.34);
+  const hasReadableText = elements.some((element) => element.type === "text" && element.id === "cover-audience-chip-text" && /対象|Audience/u.test(element.text ?? ""))
+    && elements.some((element) => element.type === "text" && element.id === "cover-action-chip-text" && /行動|Action/u.test(element.text ?? ""));
+  return hasAudience && hasAction && hasReadableText;
+}
+
+function hasClosingActionChecklist(slide) {
+  const elements = slide.elements ?? [];
+  const labels = elements.filter((element) => element.type === "text").map((element) => String(element.text ?? ""));
+  const labelSet = new Set(labels);
+  const hasJapaneseLabels = ["担当", "期限", "確認物"].every((label) => labelSet.has(label));
+  const hasEnglishLabels = ["Owner", "Due", "Item"].every((label) => labelSet.has(label));
+  const cards = elements.filter((element) => element.type === "shape" && /^closing-check-\d+$/u.test(element.id ?? "") && element.w >= 3.0 && element.h >= 1.0).length;
+  return cards >= 3 && (hasJapaneseLabels || hasEnglishLabels);
+}
+
+function hasDominantFocalElement(slide) {
+  const elements = slide.elements ?? [];
+  if (elements.some((element) => /focal|hero|proof/u.test(element.id ?? "") && ((element.type === "shape" && element.w * element.h >= 2.2) || element.type === "text"))) {
+    return true;
+  }
+  const cards = elements.filter((element) => element.type === "shape" && ["roundRect", "roundedRect", "rect"].includes(element.shape) && element.w >= 1.5 && element.h >= 0.8);
+  if (cards.length < 2) return false;
+  const areas = cards.map((card) => card.w * card.h).sort((a, b) => b - a);
+  return areas[0] >= 1.8 * (areas[1] || 1);
+}
+
+function hasDecisionEmphasis(slide) {
+  return (slide.elements ?? []).some((element) => /decision-(zone|callout|badge)|decision-emphasis|decision-line/u.test(element.id ?? ""));
+}
+
+function hasPhotoAnnotation(slide) {
+  const elements = slide.elements ?? [];
+  const annotation = elements.some((element) => element.type === "shape" && /photo-annotation$/u.test(element.id ?? "") && element.w >= 3.6 && element.h >= 0.6);
+  const captionRail = elements.some((element) => element.type === "shape" && /photo-caption-rail$/u.test(element.id ?? "") && element.w >= 4.5 && element.h >= 0.4);
+  return annotation && captionRail;
 }
 
 function issuesForSlide(slideIndex, reports) {
@@ -1094,7 +1284,7 @@ function hasFocalProof(slide) {
 
 function hasSpatialModel(slide) {
   const layout = slide.layout ?? "";
-  return /flow|matrix|map|diagram|step|journey|architecture|before-after/u.test(layout);
+  return /flow|matrix|map|diagram|step|journey|architecture|before-after|concept/u.test(layout);
 }
 
 function hasDeliberateRepetition(slide) {
@@ -1229,12 +1419,12 @@ function evalSummaryMarkdown(report) {
     lines.push(`- Evidence: ${comment.evidence}`);
     lines.push("");
   }
-  lines.push("", "## Patch Requests", "");
-  if (report.patchRequests.length === 0) {
+  lines.push("", "## Fix Requests", "");
+  if (report.fixRequests.length === 0) {
     lines.push("- None");
   } else {
-    report.patchRequests.forEach((request, index) => {
-      lines.push(`${index + 1}. **${request.severity}** ${request.problem}`);
+    report.fixRequests.forEach((request, index) => {
+      lines.push(`${index + 1}. **Fix** ${request.problem}`);
       lines.push(`   Evidence: ${request.evidence}`);
       lines.push(`   Expected: ${request.expected}`);
     });
@@ -1244,8 +1434,8 @@ function evalSummaryMarkdown(report) {
 }
 
 function createLoopQaReport(loopNumber, maxLoops, scenarioResults) {
-  const highOrCritical = scenarioResults.reduce((sum, result) => sum + result.highOrCriticalCount, 0);
-  const patchRequests = scenarioResults.reduce((sum, result) => sum + result.patchRequestCount, 0);
+  const openFixes = scenarioResults.reduce((sum, result) => sum + result.openFixesCount, 0);
+  const fixRequests = scenarioResults.reduce((sum, result) => sum + result.fixRequestCount, 0);
   const expressionCraftAverage = scenarioResults.length
     ? scenarioResults.reduce((sum, result) => sum + (result.expressionCraft ?? 0), 0) / scenarioResults.length
     : 0;
@@ -1258,7 +1448,8 @@ function createLoopQaReport(loopNumber, maxLoops, scenarioResults) {
   const fingerprintCounts = countBy(scenarioResults.map((result) => result.expressionFingerprint).filter(Boolean));
   const repeatedFingerprintCount = Object.values(fingerprintCounts).filter((count) => count > 1).reduce((sum, count) => sum + count, 0);
   const repeatedFingerprintShare = scenarioResults.length ? repeatedFingerprintCount / scenarioResults.length : 0;
-  const decision = loopNumber >= maxLoops ? "stop" : "continue";
+  const reachedLoopLimit = loopNumber >= maxLoops;
+  const decision = reachedLoopLimit && openFixes === 0 ? "stop" : "continue";
   return {
     role: "QA Gatekeeper",
     model: "Opus4.8",
@@ -1268,11 +1459,17 @@ function createLoopQaReport(loopNumber, maxLoops, scenarioResults) {
       type: "loop-count",
       current: loopNumber,
       target: maxLoops,
-      met: loopNumber >= maxLoops
+      met: reachedLoopLimit
     },
-    reasons: decision === "stop" ? [`Loop count reached ${maxLoops}.`] : [`Loop count ${loopNumber}/${maxLoops}; continue.`],
-    patchRequestCount: patchRequests,
-    highOrCriticalCount: highOrCritical,
+    reasons: decision === "stop"
+      ? [`Loop count reached ${maxLoops} and no open FixRequests remain.`]
+      : [
+          reachedLoopLimit
+            ? `Loop count reached ${maxLoops}, but ${openFixes} open FixRequests remain; continue with program changes before completion.`
+            : `Loop count ${loopNumber}/${maxLoops}; continue.`
+        ],
+    fixRequestCount: fixRequests,
+    openFixesCount: openFixes,
     expressionCraft: {
       average: Number(expressionCraftAverage.toFixed(2)),
       repeatedFingerprintShare: Number(repeatedFingerprintShare.toFixed(2)),
@@ -1280,9 +1477,8 @@ function createLoopQaReport(loopNumber, maxLoops, scenarioResults) {
     },
     informationDensity: { average: Number(informationDensityAverage.toFixed(2)) },
     designAmbition: { average: Number(designAmbitionAverage.toFixed(2)) },
-    requiredNextWork: decision === "stop" ? [] : ["Apply dev-lead-plan.json to the next loop generation profile."],
+    requiredNextWork: decision === "stop" ? [] : ["Apply dev-lead-plan.json as code, template, diagram, icon, preset, or guidance changes before the next generation loop."],
     acceptedRisks: [
-      ...(decision === "stop" && patchRequests > 0 ? ["Exit criterion is count-only for this run; outstanding PatchRequests remain for later development review."] : []),
       ...(repeatedFingerprintShare >= 0.5 ? ["Multiple scenarios share similar layout fingerprints; expression diversity should be improved in a future Dev Lead pass."] : [])
     ]
   };
@@ -1291,7 +1487,7 @@ function createLoopQaReport(loopNumber, maxLoops, scenarioResults) {
 function writeRunIndex(runDir, loops) {
   const lines = ["# Dev Loop Run", "", `Run directory: ${toPosixRelative(runDir)}`, "", "## Loops", ""];
   for (const loop of loops) {
-    lines.push(`- [Loop ${String(loop.loop).padStart(2, "0")}](${path.posix.join(`loop-${String(loop.loop).padStart(2, "0")}`, "qa-report.json")}) - decision: ${loop.qa.decision}, patches: ${loop.qa.patchRequestCount}, high/critical: ${loop.qa.highOrCriticalCount}`);
+    lines.push(`- [Loop ${String(loop.loop).padStart(2, "0")}](${path.posix.join(`loop-${String(loop.loop).padStart(2, "0")}`, "qa-report.json")}) - decision: ${loop.qa.decision}, fixes: ${loop.qa.fixRequestCount}, open fixes: ${loop.qa.openFixesCount}`);
   }
   lines.push("", "Review each loop directory to compare scenario outputs across iterations. Each scenario folder contains `deck.pptx`, `studio.html`, and `eval-summary.md`.", "");
   writeText(path.join(runDir, "index.md"), lines.join("\n"));
@@ -1345,7 +1541,7 @@ function main() {
     writeJson(path.join(loopDir, "loop-summary.json"), { loop, scenarioResults, qa, devLeadPlan, nextImprovementState });
     loopSummaries.push({ loop, scenarioResults, qa, devLeadPlan, nextImprovementState });
     improvementState = nextImprovementState;
-    console.log(`Loop ${loop}/${options.loops}: ${scenarioResults.length} scenarios, patches=${qa.patchRequestCount}, highOrCritical=${qa.highOrCriticalCount}, decision=${qa.decision}, actions=${devLeadPlan.actions.length}`);
+    console.log(`Loop ${loop}/${options.loops}: ${scenarioResults.length} scenarios, fixes=${qa.fixRequestCount}, openFixes=${qa.openFixesCount}, decision=${qa.decision}, actions=${devLeadPlan.actions.length}`);
     if (requiresProgramChange) {
       console.log(`Stopped after loop ${loop}: ${featureActions.length} feature-extension action(s) require Dev Lead source changes before continuing. Use --continue-with-feature-actions only for diagnostic runs.`);
       break;
@@ -1389,6 +1585,7 @@ function initialImprovementState() {
     expressionPolishLevel: 0,
     informationDensityLevel: 0,
     designAmbitionLevel: 0,
+    layoutDiversityLevel: 0,
     experiments: {},
     appliedActions: []
   };
@@ -1426,6 +1623,20 @@ function collectQualityScores(loopDir) {
     designAmbitionAverage: average(scores.map((score) => score.designAmbition)),
     expressionCraftAverage: average(scores.map((score) => score.expressionCraft))
   };
+}
+
+function collectFixRequestGroups(loopDir) {
+  const counts = new Map();
+  for (const scenarioDir of readdirDirectories(loopDir)) {
+    const reportPath = path.join(scenarioDir, "eval-report.json");
+    if (!existsSync(reportPath)) continue;
+    const report = JSON.parse(readFileSync(reportPath, "utf8"));
+    for (const request of report.fixRequests ?? []) {
+      const problem = String(request.problem ?? "unknown");
+      counts.set(problem, (counts.get(problem) ?? 0) + 1);
+    }
+  }
+  return Object.fromEntries([...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])));
 }
 
 function collectSlideCommentSynthesis(loopDir) {
@@ -1509,7 +1720,7 @@ function slideCommentThemes() {
     {
       id: "photo-annotation-overlay",
       title: "Photo-led slides need visible annotation overlays",
-      pattern: /画像|写真|場面|何を見れば|写真主役|注目点/u,
+      pattern: /画像の上に短いキャプション|何を見ればよいか|写真主役|注目点を重ね|場面が資料の論点/u,
       problemPattern: "Image/photo slides provide a visual entry point, but the image is not anchored to the argument with visible labels or captions.",
       proposedCapability: "Enhance photo-hero/focal-proof image layouts with an optional annotation badge, caption rail, or callout overlay derived from slide message/evidence.",
       suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/messageDeck.test.ts", "packages/core/src/layout.ts"]
@@ -1541,7 +1752,7 @@ function slideCommentThemes() {
     {
       id: "oversized-proof-number",
       title: "Evidence slides need oversized proof numbers",
-      pattern: /数字や比較の見せ方|数値を1つだけ大きく|数値や比較を主役化|focalProof=false/u,
+      pattern: /数字や比較の見せ方|数値を1つだけ大きく|数値や比較を主役化|記憶に残るスライド/u,
       problemPattern: "KPI/comparison slides mention evidence but do not consistently create a memorable proof-number focal point.",
       proposedCapability: "Add or strengthen a focal-proof layout that selects the strongest numeric evidence and renders it as an oversized proof number with a short why-it-matters note.",
       suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/messageDeck.test.ts", "docs/dev-loop-evaluator-criteria.md"]
@@ -1611,6 +1822,7 @@ function readdirDirectories(dir) {
 
 function createDevLeadPlan(loopNumber, maxLoops, loopDir, qa, currentState) {
   const blockingCodes = collectBlockingCodes(loopDir);
+  const fixRequestGroups = collectFixRequestGroups(loopDir);
   const qualitySummary = collectQualityScores(loopDir);
   const slideCommentSynthesis = collectSlideCommentSynthesis(loopDir);
   const actions = [];
@@ -1651,6 +1863,21 @@ function createDevLeadPlan(loopNumber, maxLoops, loopDir, qa, currentState) {
       kind: "bugfix+expression-improvement",
       reason: "Long titles reduce scanability and trigger content review blockers.",
       changes: { shortenTitles: true }
+    });
+  }
+
+  const diagramVarietyFixes = fixRequestGroups["Diagrams do not vary enough across scenarios and still feel like the same card/table/flow template."] ?? 0;
+  const templateFreshnessFixes = fixRequestGroups["The deck still feels template-like instead of scenario-specific and sample-quality."] ?? 0;
+  if (diagramVarietyFixes > 0 || templateFreshnessFixes > 0) {
+    actions.push({
+      id: "diversify-visual-archetypes",
+      kind: "program-quality-improvement",
+      reason: "Sample-quality review still sees repetitive diagrams or template-like decks; increase scenario-level layout rotation and force stronger expressive archetypes in later loops.",
+      changes: {
+        layoutDiversityLevel: Math.min(3, (currentState.layoutDiversityLevel ?? 0) + 1),
+        designAmbitionLevel: Math.min(3, Math.max(currentState.designAmbitionLevel ?? 0, 1)),
+        expressionPolishLevel: Math.min(5, Math.max(currentState.expressionPolishLevel ?? 0, 4))
+      }
     });
   }
 
@@ -1740,6 +1967,7 @@ function createDevLeadPlan(loopNumber, maxLoops, loopDir, qa, currentState) {
     qaDecision: qa.decision,
     exitCriteriaMet: qa.exitCriteria.met,
     blockingCodes,
+    fixRequestGroups,
     qualitySummary,
     slideCommentSynthesis,
     featureExtensionCandidates: slideCommentSynthesis.featureExtensionCandidates,

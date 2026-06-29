@@ -25,7 +25,7 @@ reduces self-review optimism, but model judgement is never the final gate by its
 | --- | --- | --- | --- | --- |
 | Development Lead | `.github/agents/pptcreater-dev-lead.agent.md` | WorkItem, implementation, integration | Yes | implementation-oriented model |
 | User Simulator | `.github/agents/pptcreater-dev-user.agent.md` | realistic pptcreater usage scenarios and generated artifacts | No repo code edits | user-like or lower-context model |
-| Evaluator | `.github/agents/pptcreater-dev-evaluator.agent.md` | artifact critique and PatchRequest creation | No | pinned to `Opus4.8` |
+| Evaluator | `.github/agents/pptcreater-dev-evaluator.agent.md` | artifact critique and FixRequest creation | No | pinned to `Opus4.8` |
 | QA Gatekeeper | `.github/agents/pptcreater-dev-qa.agent.md` | stop/continue decision and risk acceptance | No | pinned to `Opus4.8` |
 
 ## Core Artifacts
@@ -74,7 +74,7 @@ representative scenarios.
 ### EvalReport
 
 The Evaluator turns generated artifacts into concrete development feedback.
-Detailed scoring rules, required evidence, severity, and PatchRequest criteria are defined in
+Detailed scoring rules, required evidence, fix request criteria are defined in
 [`dev-loop-evaluator-criteria.md`](dev-loop-evaluator-criteria.md).
 In addition to numeric scores, every EvalReport must include `slideComments` for every slide. These
 comments are intentionally generative critique: each slide gets a written observation plus one
@@ -93,6 +93,7 @@ aggregate signal.
   "modelReview": {
     "messageFit": 4,
     "visualFit": 3,
+    "sampleQuality": 3,
     "editability": 5,
     "toolDiscipline": 2
   },
@@ -107,9 +108,8 @@ aggregate signal.
       "evidence": "layout=message-hub-map; spatialModel=true"
     }
   ],
-  "patchRequests": [
+  "fixRequests": [
     {
-      "severity": "high",
       "problem": "The deck used hand-built SVG for an architecture slide.",
       "evidence": "slide 4, no generate_native_diagram call in tool ledger",
       "expected": "recommend_figure should route architecture wording to generate_native_diagram",
@@ -128,7 +128,7 @@ The QA Gatekeeper decides whether the loop stops.
   "workItemId": "dev-loop-001",
   "iteration": 2,
   "decision": "continue",
-  "reasons": ["scenario-technical-architecture still has high severity PatchRequest"],
+  "reasons": ["scenario-technical-architecture still has open FixRequest"],
   "requiredNextWork": ["Add architecture intent to recommend_figure"],
   "acceptedRisks": []
 }
@@ -175,10 +175,10 @@ flowchart LR
   DIFF --> USER[User Simulator]
   USER --> ART[Deck artifacts + tool ledger]
   ART --> EVAL[Evaluator]
-  EVAL --> PR[PatchRequest list]
+  EVAL --> PR[FixRequest list]
   PR --> QA[QA Gatekeeper]
   QA --> PLAN[Dev Lead repair + expression plan]
-  PLAN -- apply to next loop --> USER
+  PLAN -- implement program changes --> DIFF
   QA -- stop --> DONE[Ready to commit / PR]
 ```
 
@@ -189,11 +189,12 @@ The deterministic runner records this cycle as:
 - `dev-lead-plan.json` / `dev-lead-plan.md`: fixes and expression improvements selected after evaluation.
 - `next-improvement-state.json`: strategy applied to the next loop.
 
-The runner's automatic plan is intentionally conservative. It can change generation profile, copy
-density, style safety, title length, slide density, and expression polish between loops. A human or
-agent Dev Lead should use the slideComments to identify bigger tool changes, such as adding a new
-visual archetype or replacing a stale diagram grammar, when the loop is merely swapping familiar
-patterns without improving the artifacts.
+The runner's automatic plan is intentionally conservative. It can propose generation profile, copy
+density, style safety, title length, slide density, and expression polish changes, but those are not a
+substitute for pptcreater source work. A human or agent Dev Lead must use `fixRequests` and
+`slideComments` to identify program changes, such as generator code, templates, design packs,
+schematic/ponchi-e diagrams, icons, presets, color/type rules, or agent guidance, whenever the loop is
+merely swapping familiar patterns without improving the artifacts.
 
 The deterministic runner also aggregates `slideComments` into reusable feature-extension candidates.
 The aggregation is written into each loop's `dev-lead-plan.json` as:
@@ -207,7 +208,8 @@ The aggregation is written into each loop's `dev-lead-plan.json` as:
 
 Dev Lead must treat these candidates as product feedback, not as decorative comments. If the same
 comment pattern appears across multiple scenarios, the next step is to decide whether it warrants a
-code or guidance change and send that scoped work back through the development loop.
+code, template, preset, diagram, icon, design-pack, or guidance change and implement it before the
+next loop.
 
 Do not suppress a candidate merely because a similar feature has already been implemented. If the
 same critique keeps appearing after implementation, the correct interpretation is that the feature is
@@ -274,7 +276,7 @@ Recommended routing:
 | Build/test failure | Development Lead | code repair, focused tests |
 | pptcreater tool not used | User Simulator or Development Lead | improve scenario prompt or guidance |
 | Generated slide has blocking lint | Development Lead | fix generator / layout / schema |
-| Generated slide passes lint but looks wrong | Evaluator | create PatchRequest with visual evidence |
+| Generated slide passes lint but looks wrong | Evaluator | create FixRequest with visual evidence |
 | Generated slide is technically valid but visually weak | Development Lead | improve expression selection, copy density, scanability, or visual grammar |
 | Evaluator and deterministic gates disagree | QA Gatekeeper | request human review or another scenario |
 | Loop repeats without progress | QA Gatekeeper | stop, summarize blocker, lower scope |
@@ -292,7 +294,7 @@ Phase 1 is manual-but-structured:
 Phase 2 can add `scripts/dev-loop/` to create run folders, execute deterministic gates, and collect
 artifacts automatically.
 
-Phase 3 can run on PRs or nightly CI, but only after the manual loop produces useful PatchRequests
+Phase 3 can run on PRs or nightly CI, but only after the manual loop produces useful FixRequests
 without excessive noise.
 
 ## Relation To Deck Authoring Agents
