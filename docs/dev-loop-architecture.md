@@ -209,6 +209,12 @@ Dev Lead must treat these candidates as product feedback, not as decorative comm
 comment pattern appears across multiple scenarios, the next step is to decide whether it warrants a
 code or guidance change and send that scoped work back through the development loop.
 
+Do not suppress a candidate merely because a similar feature has already been implemented. If the
+same critique keeps appearing after implementation, the correct interpretation is that the feature is
+insufficient or its effect is not visible enough. The Development Lead should improve the generator or
+reject the hypothesis with evidence; it should not weaken evaluator criteria or filter the critique out
+of the handoff.
+
 By default, the deterministic runner now stops after a loop when `feature-extension` actions are
 present. This prevents a misleading run where loop 2, 3, and later iterations only tweak generation
 state while the required pptcreater source change has not happened. The loop may be forced to keep
