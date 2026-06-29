@@ -28,6 +28,10 @@ export const MESSAGE_DECK_ARCHETYPES = [
   "matrix",
   "hub-map",
   "image-message",
+  "photo-hero",
+  "focal-proof",
+  "section-break",
+  "concept",
   "steps"
 ] as const;
 
@@ -389,6 +393,15 @@ function pointLabel(value: string): string {
   return hasJapanese(value) ? compactLabel(value, 10) : compactLabel(value, 10);
 }
 
+function visibleSentence(value: string): string {
+  const text = value.trim();
+  if (!text) return text;
+  if (/[。.!?！？]$/u.test(text) || /(する|した|できる|ある|いる|なる|進める|示す|伝える|確認する|選ぶ)$/u.test(text)) {
+    return text;
+  }
+  return hasJapanese(text) ? `${text}を確認する。` : `${text} matters.`;
+}
+
 function visualAssetElement(
   asset: SlideVisualAsset | undefined,
   theme: Theme,
@@ -503,7 +516,7 @@ function statementVisual(theme: Theme, intent: SlideIntent, id: string): SlideEl
       color: theme.accent,
       fontSize: 24
     }),
-    text(`${id}-statement-body`, "body", intent.message, 1.16, 3.45, 4.85, 1.35, 12, theme, {
+    text(`${id}-statement-body`, "body", visibleSentence(intent.message), 1.16, 3.45, 4.85, 1.35, 12, theme, {
       bg: theme.accentSoft,
       color: theme.text,
       fontSize: 20
@@ -539,7 +552,7 @@ function flowVisual(theme: Theme, intent: SlideIntent, id: string): SlideElement
       bold: true,
       align: "center"
     }));
-    elements.push(text(`${id}-flow-text-${index}`, "body", item, x + 0.22, 3.75, nodeW - 0.44, 0.34, order + 3, theme, {
+    elements.push(text(`${id}-flow-text-${index}`, "body", visibleSentence(item), x + 0.22, 3.75, nodeW - 0.44, 0.34, order + 3, theme, {
       color: index === 0 ? theme.inkOnAccent : theme.text,
       bg: index === 0 ? theme.accent : theme.surface,
       fontSize: 17,
@@ -566,10 +579,10 @@ function contrastVisual(theme: Theme, intent: SlideIntent, id: string, afterLabe
     icon(`${id}-left-icon`, iconForEvidence(left[0] ?? "left", 0), 1.18, 2.14, 0.46, 10, theme, { color: theme.accent, decorative: true }),
     icon(`${id}-right-icon`, iconForEvidence(right[0] ?? "right", 1), 8.1, 2.14, 0.46, 20, theme, { color: theme.accent, decorative: true }),
     text(`${id}-left-title`, "callout", leftTitle, 1.78, 2.42, 3.45, 0.42, 11, theme, { bg: theme.surface, fontSize: 21, color: theme.text }),
-    text(`${id}-left-body`, "body", left[1] ?? intent.message, 1.18, 3.18, 4.05, 1.4, 12, theme, { bg: theme.surface, fontSize: 19, color: theme.mutedText }),
+    text(`${id}-left-body`, "body", visibleSentence(left[1] ?? intent.message), 1.18, 3.18, 4.05, 1.4, 12, theme, { bg: theme.surface, fontSize: 19, color: theme.mutedText }),
     text(`${id}-bridge-text`, "caption", afterLabel, 6.15, 3.63, 0.9, 0.22, 31, theme, { bg: theme.accent, color: theme.inkOnAccent, align: "center", fontSize: 12 }),
     text(`${id}-right-title`, "callout", rightTitle, 8.7, 2.42, 3.45, 0.42, 21, theme, { bg: theme.accentSoft, fontSize: 21, color: theme.accent }),
-    text(`${id}-right-body`, "body", right[1] ?? intent.message, 8.1, 3.18, 4.05, 1.4, 22, theme, { bg: theme.accentSoft, fontSize: 19, color: theme.text })
+    text(`${id}-right-body`, "body", visibleSentence(right[1] ?? intent.message), 8.1, 3.18, 4.05, 1.4, 22, theme, { bg: theme.accentSoft, fontSize: 19, color: theme.text })
   ];
 }
 
@@ -591,7 +604,7 @@ function imageMessageVisual(theme: Theme, intent: SlideIntent, id: string): Slid
       color: theme.accent,
       fontSize: 22
     }),
-    text(`${id}-copy-message`, "body", intent.message, copyFrame.x + 0.42, copyFrame.y + 1.12, copyFrame.w - 0.84, 0.8, 23, theme, {
+    text(`${id}-copy-message`, "body", visibleSentence(intent.message), copyFrame.x + 0.42, copyFrame.y + 1.12, copyFrame.w - 0.84, 0.8, 23, theme, {
       bg: theme.surface,
       color: theme.text,
       fontSize: 19
@@ -610,6 +623,66 @@ function imageMessageVisual(theme: Theme, intent: SlideIntent, id: string): Slid
     const y = copyFrame.y + 2.2 + index * 0.52;
     elements.push(icon(`${id}-copy-item-icon-${index}`, iconForEvidence(item, index), copyFrame.x + 0.5, y + 0.02, 0.24, 30 + index * 3, theme, { color: theme.accent, decorative: true }));
     elements.push(text(`${id}-copy-item-${index}`, "caption", item, copyFrame.x + 0.88, y, copyFrame.w - 1.25, 0.24, 31 + index * 3, theme, { bg: theme.surface, fontSize: 13, color: theme.text }));
+  });
+  return elements;
+}
+
+function photoHeroVisual(theme: Theme, intent: SlideIntent, id: string): SlideElement[] {
+  const visualAsset = intent.visualAsset ?? { type: "svg" as const, svg: illustrationSvg(theme, intent), altText: `${intent.title} scene`, placement: "right" as const };
+  return [
+    shape(`${id}-photo-bg`, "rect", 0.72, 1.72, 11.9, 5.3, 10, theme.accentSoft, theme.line, { radius: 0.2 }),
+    visualAssetElement(visualAsset, theme, intent, `${id}-photo`, 0.92, 1.92, 6.35, 4.85, 11),
+    shape(`${id}-caption-panel`, "roundRect", 7.55, 2.18, 4.58, 3.95, 20, theme.surface, theme.line, { radius: 0.22 }),
+    text(`${id}-caption-kicker`, "caption", "SCENE", 7.95, 2.52, 1.4, 0.22, 21, theme, { bg: theme.surface, color: theme.accent, bold: true, fontSize: 12 }),
+    text(`${id}-caption-title`, "callout", topicLabel(intent.emphasis ?? intent.title), 7.95, 2.92, 3.72, 0.46, 22, theme, { bg: theme.surface, color: theme.text, fontSize: 25 }),
+    text(`${id}-caption-message`, "body", intent.message, 7.95, 3.68, 3.74, 1.08, 23, theme, { bg: theme.surface, color: theme.text, fontSize: 18 }),
+    text(`${id}-caption-proof`, "caption", evidenceItems(intent, 1)[0] ?? intent.title, 7.95, 5.18, 3.6, 0.34, 24, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 13 })
+  ];
+}
+
+function focalProofVisual(theme: Theme, intent: SlideIntent, id: string): SlideElement[] {
+  const proof = evidenceItems(intent, 1).find((item) => /\d|%|倍|億|万|円|pt|ポイント|減|増/u.test(item)) ?? intent.emphasis ?? intent.title;
+  return [
+    shape(`${id}-proof-band`, "roundRect", 0.82, 1.92, 4.95, 4.9, 10, theme.accent, theme.accent, { radius: 0.22 }),
+    text(`${id}-proof-number`, "title", proof, 1.22, 2.5, 4.18, 1.1, 11, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 48, bold: true, align: "center" }),
+    text(`${id}-proof-label`, "caption", "FOCAL PROOF", 1.5, 4.0, 3.65, 0.22, 12, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true, align: "center" }),
+    shape(`${id}-message-panel`, "roundRect", 6.2, 2.0, 5.95, 4.7, 20, theme.surface, theme.line, { radius: 0.2 }),
+    text(`${id}-message-title`, "callout", topicLabel(intent.title), 6.62, 2.45, 4.95, 0.45, 21, theme, { bg: theme.surface, color: theme.accent, fontSize: 23 }),
+    text(`${id}-message-body`, "body", intent.message, 6.62, 3.18, 4.95, 1.12, 22, theme, { bg: theme.surface, color: theme.text, fontSize: 19 }),
+    text(`${id}-message-evidence`, "body", evidenceItems(intent, 2).slice(0, 2).join(" / "), 6.62, 4.75, 4.95, 0.72, 23, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 16 })
+  ];
+}
+
+function sectionBreakVisual(theme: Theme, intent: SlideIntent, id: string): SlideElement[] {
+  return [
+    shape(`${id}-section-bg`, "rect", 0, 1.65, W, 4.45, 10, theme.accent, theme.accent, { radius: 0 }),
+    text(`${id}-section-label`, "caption", "SECTION", 1.02, 2.12, 2.0, 0.28, 11, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 13, bold: true }),
+    text(`${id}-section-title`, "title", topicLabel(intent.title), 1.0, 2.72, 9.8, 0.84, 12, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 38 }),
+    text(`${id}-section-message`, "subtitle", intent.message, 1.04, 4.08, 9.5, 0.62, 13, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 22 }),
+    shape(`${id}-section-rule`, "rect", 1.04, 5.05, 2.4, 0.07, 14, theme.inkOnAccent, theme.inkOnAccent, { radius: 0 })
+  ];
+}
+
+function conceptVisual(theme: Theme, intent: SlideIntent, id: string): SlideElement[] {
+  const items = evidenceItems(intent, 4).slice(0, 4);
+  const cx = 6.55;
+  const cy = 4.05;
+  const positions = [
+    [2.3, 2.35],
+    [9.25, 2.35],
+    [9.25, 5.28],
+    [2.3, 5.28]
+  ] as const;
+  const elements: SlideElement[] = [
+    shape(`${id}-concept-center`, "ellipse", cx - 0.88, cy - 0.88, 1.76, 1.76, 10, theme.accent, theme.accent),
+    text(`${id}-concept-center-text`, "caption", topicLabel(intent.emphasis ?? intent.title), cx - 0.68, cy - 0.13, 1.36, 0.28, 11, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 13, bold: true, align: "center" })
+  ];
+  items.forEach((item, index) => {
+    const [x, y] = positions[index];
+    const order = 20 + index * 5;
+    elements.push(shape(`${id}-concept-node-${index}`, "roundRect", x, y, 2.25, 0.84, order, index % 2 === 0 ? theme.surface : theme.accentSoft, theme.line, { radius: 0.18 }));
+    elements.push(text(`${id}-concept-label-${index}`, "body", item, x + 0.18, y + 0.2, 1.88, 0.28, order + 1, theme, { bg: index % 2 === 0 ? theme.surface : theme.accentSoft, color: theme.text, fontSize: 15, align: "center" }));
+    elements.push(shape(`${id}-concept-link-${index}`, "line", Math.min(cx, x + 1.12), Math.min(cy, y + 0.42), Math.abs(cx - (x + 1.12)), Math.abs(cy - (y + 0.42)), order + 2, "none", theme.accent, { width: 1.1, endArrow: true }));
   });
   return elements;
 }
@@ -641,10 +714,10 @@ function matrixVisual(theme: Theme, intent: SlideIntent, id: string): SlideEleme
     shape(`${id}-axis-y-line`, "line", 4.55, 2.7, 0.001, 3.45, 12, "none", theme.line, { width: 1.2, endArrow: true }),
     text(`${id}-axis-x-label`, "caption", "柔軟性", 6.55, 4.66, 1.0, 0.2, 13, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 12, align: "right" }),
     text(`${id}-axis-y-label`, "caption", "費用負担", 3.85, 2.32, 1.3, 0.2, 14, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 12, align: "center" }),
-    shape(`${id}-insight`, "roundRect", 8.55, 2.25, 3.55, 3.75, 50, theme.accentSoft, theme.line, { radius: 0.18 }),
+    shape(`${id}-insight`, "roundRect", 8.42, 2.18, 3.82, 3.95, 50, theme.accentSoft, theme.line, { radius: 0.18 }),
     icon(`${id}-insight-icon`, "scale", 8.92, 2.42, 0.42, 50, theme, { color: theme.accent, decorative: true }),
-    text(`${id}-insight-title`, "callout", calloutLabel(topicLabel(intent.emphasis ?? "判断軸")), 9.48, 2.5, 2.28, 0.32, 51, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 21 }),
-    text(`${id}-insight-body`, "body", intent.message, 8.92, 3.42, 2.85, 1.45, 52, theme, { bg: theme.accentSoft, color: theme.text, fontSize: 18 })
+    text(`${id}-insight-title`, "callout", calloutLabel(topicLabel(intent.emphasis ?? "判断軸")), 9.48, 2.5, 2.42, 0.32, 51, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 21 }),
+    text(`${id}-insight-body`, "body", visibleSentence(intent.message), 8.78, 3.24, 3.14, 2.0, 52, theme, { bg: theme.accentSoft, color: theme.text, fontSize: 16 })
   ];
   const points = [
     [2.25, 5.35],
@@ -655,7 +728,7 @@ function matrixVisual(theme: Theme, intent: SlideIntent, id: string): SlideEleme
   items.forEach((item, index) => {
     const [x, y] = points[index];
     elements.push(shape(`${id}-point-${index}`, "ellipse", x, y, 0.32, 0.32, 20 + index * 3, theme.accent, theme.accent));
-    elements.push(text(`${id}-point-label-${index}`, "caption", pointLabel(item), x + 0.42, y - 0.02, 1.85, 0.24, 21 + index * 3, theme, { bg: theme.surface, fontSize: 12, color: theme.text }));
+    elements.push(text(`${id}-point-label-${index}`, "caption", visibleSentence(pointLabel(item)), x + 0.42, y - 0.08, 1.92, 0.38, 21 + index * 3, theme, { bg: theme.surface, fontSize: 12, color: theme.text }));
   });
   return elements;
 }
@@ -724,13 +797,13 @@ function hubMapVisual(theme: Theme, intent: SlideIntent, id: string, locale: Loc
     const y = 3.18 + index * 0.82;
     elements.push(shape(`${id}-left-chip-${index}`, "roundRect", 1.32, y, 4.28, 0.58, 20 + index * 3, mix(theme.surface, theme.background, 0.25), theme.line, { radius: 0.16 }));
     elements.push(icon(`${id}-left-chip-icon-${index}`, iconForEvidence(item, index), 1.52, y + 0.14, 0.28, 21 + index * 3, theme, { color: theme.accent, decorative: true }));
-    elements.push(text(`${id}-left-chip-text-${index}`, "body", item, 1.98, y + 0.1, 3.22, 0.22, 22 + index * 3, theme, { bg: theme.surface, fontSize: 15, align: "left" }));
+    elements.push(text(`${id}-left-chip-text-${index}`, "body", visibleSentence(item), 1.98, y + 0.1, 3.22, 0.22, 22 + index * 3, theme, { bg: theme.surface, fontSize: 15, align: "left" }));
   });
   rightPanel.items.forEach((item, index) => {
     const y = 3.18 + index * 0.82;
     elements.push(shape(`${id}-right-chip-${index}`, "roundRect", 7.6, y, 4.28, 0.58, 40 + index * 3, theme.surface, theme.line, { radius: 0.16 }));
     elements.push(icon(`${id}-right-chip-icon-${index}`, iconForEvidence(item, index + 3), 7.8, y + 0.14, 0.28, 41 + index * 3, theme, { color: theme.accent, decorative: true }));
-    elements.push(text(`${id}-right-chip-text-${index}`, "body", item, 8.26, y + 0.1, 3.22, 0.22, 42 + index * 3, theme, { bg: theme.surface, fontSize: 15, align: "left" }));
+    elements.push(text(`${id}-right-chip-text-${index}`, "body", visibleSentence(item), 8.26, y + 0.1, 3.22, 0.22, 42 + index * 3, theme, { bg: theme.surface, fontSize: 15, align: "left" }));
   });
   return elements;
 }
@@ -749,12 +822,14 @@ function stepsVisual(theme: Theme, intent: SlideIntent, id: string): SlideElemen
     elements.push(shape(`${id}-step-dot-${index}`, "ellipse", 5.35, y + 0.08, 0.34, 0.34, order, theme.accent, theme.accent));
     elements.push(icon(`${id}-step-icon-${index}`, iconForEvidence(item, index), 5.43, y + 0.16, 0.18, order + 1, theme, { color: theme.inkOnAccent, decorative: true }));
     elements.push(shape(`${id}-step-line-${index}`, "line", 5.52, y + 0.45, 0.001, 0.32, order + 2, "none", theme.line, { width: 1 }));
-    elements.push(text(`${id}-step-text-${index}`, "body", item, 5.98, y, 5.75, 0.36, order + 3, theme, { bg: theme.background, fontSize: 17 }));
+    elements.push(text(`${id}-step-text-${index}`, "body", visibleSentence(item), 5.98, y, 5.75, 0.36, order + 3, theme, { bg: theme.background, fontSize: 17 }));
   });
   return elements;
 }
 
 export function archetypeForIntent(intent: SlideIntent): MessageDeckArchetype {
+  const text = [intent.title, intent.message, intent.emphasis, ...intent.evidence, ...intent.quietInfo].join(" ");
+  const proofText = [intent.emphasis, ...intent.evidence].filter(Boolean).join(" ");
   switch (intent.visualType) {
     case "flow":
       return "flow";
@@ -773,8 +848,14 @@ export function archetypeForIntent(intent: SlideIntent): MessageDeckArchetype {
     case "native-diagram":
       return "hub-map";
     case "image":
-      return "image-message";
+      return "photo-hero";
     case "summary":
+      if (/\d|%|倍|億|万|円|pt|ポイント|減|増/u.test(proofText)) return "focal-proof";
+      return "statement";
+    case "section":
+      return "section-break";
+    case "cycle":
+      return "concept";
     case "cards":
     case "visual-scaffold":
     case "detail":
@@ -803,6 +884,14 @@ function visualForIntent(theme: Theme, intent: SlideIntent, locale: Locale): [Me
       return [archetype, hubMapVisual(theme, intent, id, locale)];
     case "image-message":
       return [archetype, imageMessageVisual(theme, intent, id)];
+    case "photo-hero":
+      return [archetype, photoHeroVisual(theme, intent, id)];
+    case "focal-proof":
+      return [archetype, focalProofVisual(theme, intent, id)];
+    case "section-break":
+      return [archetype, sectionBreakVisual(theme, intent, id)];
+    case "concept":
+      return [archetype, conceptVisual(theme, intent, id)];
     case "steps":
       return [archetype, stepsVisual(theme, intent, id)];
     case "statement":

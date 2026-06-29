@@ -275,25 +275,26 @@ function titleForTopic(topic, profile = { titleMax: 36 }) {
 }
 
 function messageForTopic(topic, scenario, profile) {
+  const subject = titleForTopic(topic, { titleMax: profile.compactCopy ? 20 : 28 });
   if (String(topic).toLowerCase().includes("executive")) {
     return "結論、重要性、次の判断を先に示す。";
   }
   if (profile.expressionPolishLevel >= 2) {
-    return `${shorten(topic, 12)}の見方を一目で伝える。`;
+    return `${subject}の要点と判断軸を示す。`;
   }
   if (profile.compactCopy) {
-    return `${shorten(topic, 14)}を判断に使える形にする。`;
+    return `${subject}を判断に使える形にする。`;
   }
-  return `${shorten(topic, 18)}を整理し、次の判断材料にする。`;
+  return `${subject}を整理し、次の判断材料にする。`;
 }
 
 function evidenceForTopic(topic, scenario, expression, profile) {
-  const audience = profile.compactCopyLevel >= 2 ? audienceLabel(scenario.audience) : shorten(scenario.audience ?? "対象者", profile.compactCopy ? 18 : 28);
-  const tone = shorten(scenario.tone ?? "標準", profile.compactCopy ? 12 : 20);
+  const audience = trimTrailingFragment(profile.compactCopyLevel >= 2 ? audienceLabel(scenario.audience) : shorten(scenario.audience ?? "対象者", profile.compactCopy ? 18 : 28));
+  const tone = trimTrailingFragment(shorten(scenario.tone ?? "標準", profile.compactCopy ? 12 : 20));
   return [
     `対象: ${audience}`,
-    `観点: ${shorten(topic, profile.compactCopy ? 18 : 24)}`,
-    `表現: ${shorten(expression, 18)}`,
+    `観点: ${trimTrailingFragment(shorten(topic, profile.compactCopy ? 18 : 24))}`,
+    `表現: ${trimTrailingFragment(shorten(expression, 18))}`,
     `口調: ${tone}`
   ].slice(0, profile.evidenceMax ?? 4);
 }
@@ -314,7 +315,18 @@ function shorten(value, maxLength) {
   if (text.length <= maxLength) {
     return text;
   }
-  return text.slice(0, Math.max(1, maxLength - 1));
+  const candidate = text.slice(0, Math.max(1, maxLength)).trimEnd();
+  if (/^[\p{Script=Latin}0-9 _-]+$/u.test(text)) {
+    const words = candidate.split(/[ _-]+/).filter(Boolean);
+    if (words.length > 1) {
+      return words.slice(0, -1).join(" ");
+    }
+  }
+  return candidate;
+}
+
+function trimTrailingFragment(value) {
+  return String(value).replace(/[、,，・／/\s]+$/u, "").trim();
 }
 
 function slug(value) {
@@ -513,6 +525,7 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
   const reviewJson = lastJsonForCommand(commands, "review");
   const deckJson = loadJsonIfExists(findScenarioArtifact(commands, "from-message-map", "deck.json"));
   const expressionCraft = evaluateExpressionCraft(deckJson, scenario);
+  const standaloneClarity = evaluateStandaloneClarity(deckJson);
   const reviewBlocking = reviewJson?.blocking?.length ?? reviewJson?.blockingIssues?.length ?? 0;
   const reviewOk = reviewJson?.ok ?? (reviewBlocking === 0);
   if (!reviewOk || reviewBlocking > 0) {
@@ -562,6 +575,16 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
     });
   }
 
+  if (standaloneClarity.score < 3) {
+    patchRequests.push({
+      severity: "medium",
+      problem: "Generated slides are not understandable from visible output alone.",
+      evidence: standaloneClarity.evidence,
+      expected: "Each slide should be understandable from visible title, message, labels, and visual content without reading generation scripts, scenario files, speaker notes, or quiet metadata.",
+      suggestedScope: ["packages/core/src/messageDeck.ts", "packages/core/src/content.ts", "docs/dev-loop-evaluator-criteria.md"]
+    });
+  }
+
   const toolCoverage = requiredTools.size === 0 ? 5 : Math.max(0, Math.round(((requiredTools.size - missingRequiredTools.length) / requiredTools.size) * 5));
   const commandScore = failedCommands.length === 0 ? 5 : 1;
   const reviewScore = reviewOk ? 4 : 2;
@@ -579,11 +602,13 @@ function evaluateScenario(scenario, loopNumber, commands, zip, hashes) {
       zip,
       hashes,
       expressionCraft,
+      standaloneClarity,
       finalize: summarizeJson(finalizeJson),
       review: summarizeJson(reviewJson)
     },
     scores: {
       messageFit: reviewScore,
+      standaloneClarity: standaloneClarity.score,
       visualFit: reviewScore,
       expressionCraft: expressionCraft.score,
       editability: Math.min(reviewScore, zipScore),
@@ -666,7 +691,10 @@ function hasLargeMedia(slide) {
 }
 
 function hasFocalProof(slide) {
-  return (slide.elements ?? []).some((element) => element.type === "text" && (element.fontSize ?? 0) >= 28 && /\d|%|倍|億|万|円|pt|ポイント/u.test(element.text ?? ""));
+  return (
+    slide.layout === "message-focal-proof" ||
+    (slide.elements ?? []).some((element) => element.type === "text" && (element.fontSize ?? 0) >= 28 && /\d|%|倍|億|万|円|pt|ポイント/u.test(element.text ?? ""))
+  );
 }
 
 function hasSpatialModel(slide) {
@@ -1014,4 +1042,30 @@ function devLeadPlanMarkdown(plan) {
   }
   lines.push("", `Next loop will apply: ${plan.nextLoopWillApply}`, "");
   return `${lines.join("\n")}\n`;
+}
+
+function evaluateStandaloneClarity(deck) {
+  if (!deck?.slides) {
+    return { score: 1, evidence: "deck.json was not available for standalone clarity evaluation." };
+  }
+
+  const bodySlides = deck.slides.filter((slide) => !["cover", "title", "section", "divider", "closing", "references"].includes(slide.layout ?? ""));
+  const weakSlides = [];
+  for (const slide of bodySlides) {
+    const visibleTexts = (slide.elements ?? []).filter((element) => element.type === "text").map((element) => element.text ?? "").filter(Boolean);
+    const joined = visibleTexts.join(" ");
+    const hasSentence = /[。.!?！？]/u.test(joined) || /(する|した|できる|ある|いる|なる|進める|示す|伝える|確認する|選ぶ)/u.test(joined);
+    const hasSubstance = /[A-Za-z0-9\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]{4,}/u.test(joined);
+    const vagueOnly = visibleTexts.some((text) => /^(対象|観点|表現|候補|比較|要約|現状|補完|Scene|SECTION)$/u.test(text.trim())) && visibleTexts.length <= 5;
+    const cutOff = visibleTexts.some((text) => /…$/.test(text.trim()) || /(?:、|と|の|に|を|が|は|で|へ)$/.test(text.trim()));
+    if (!hasSubstance || !hasSentence || vagueOnly || cutOff) {
+      weakSlides.push(`${slide.id}:${slide.layout}`);
+    }
+  }
+  const weakShare = bodySlides.length ? weakSlides.length / bodySlides.length : 1;
+  const score = weakShare === 0 ? 5 : weakShare <= 0.15 ? 4 : weakShare <= 0.3 ? 3 : weakShare <= 0.5 ? 2 : 1;
+  return {
+    score,
+    evidence: `standaloneClarity=${score}/5; bodySlides=${bodySlides.length}; weakSlides=${weakSlides.length}; weakShare=${weakShare.toFixed(2)}; examples=${weakSlides.slice(0, 6).join(", ") || "none"}`
+  };
 }

@@ -86,6 +86,63 @@ const MESSAGE_MAP: DeckMessageMap = {
 };
 
 describe("message map deck generator", () => {
+  it("supports expressive message-map patterns beyond generic text panels", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "採用候補者が会社の実態と成長の証拠を理解する",
+        audience: "採用候補者、事業責任者、投資家",
+        desiredAction: "次の面談で詳しく話を聞きたいと思ってもらう",
+        intents: [
+          {
+            slideId: "field-photo",
+            title: "現場の空気",
+            message: "働く場所と顧客接点の実感を先に伝える。",
+            evidence: ["採用候補者", "現場", "事例"],
+            quietInfo: [],
+            visualType: "image",
+            emphasis: "現場"
+          },
+          {
+            slideId: "proof-number",
+            title: "改善実績",
+            message: "お直し率が70%減り、体験改善が数字で確認できる。",
+            evidence: ["-70%", "1年半", "改善"],
+            quietInfo: [],
+            visualType: "summary",
+            emphasis: "-70%"
+          },
+          {
+            slideId: "chapter-break",
+            title: "カルチャーについて",
+            message: "ここから働く環境と価値観を見る。",
+            evidence: ["chapter", "culture"],
+            quietInfo: [],
+            visualType: "section",
+            emphasis: "Culture"
+          },
+          {
+            slideId: "concept-map",
+            title: "体験の循環",
+            message: "購入後の利用体験まで支えることで、関係が循環する。",
+            evidence: ["認知", "購入", "利用", "回収"],
+            quietInfo: [],
+            visualType: "cycle",
+            emphasis: "循環"
+          }
+        ]
+      },
+      { title: "表現力サンプル", locale: "ja-JP", contentMode: "presentation" }
+    );
+
+    const layouts = deck.slides.map((slide) => slide.layout);
+    expect(layouts).toContain("message-photo-hero");
+    expect(layouts).toContain("message-focal-proof");
+    expect(layouts).toContain("message-section-break");
+    expect(layouts).toContain("message-concept");
+    expect(JSON.stringify(deck)).not.toContain("…");
+    expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
+  });
+
   it("generates review-clean slides for long Japanese user-request topics", () => {
     const deck = createDeckFromMessageMap(
       {
@@ -237,9 +294,9 @@ describe("message map deck generator", () => {
     );
 
     const slide = deck.slides.find((candidate) => candidate.id === "official-context");
-    expect(slide?.layout).toBe("message-image");
-    const visual = slide?.elements.find((element) => element.id === "official-context-visual-asset");
-    const backdrop = slide?.elements.find((element) => element.id === "official-context-image-backdrop");
+    expect(slide?.layout).toBe("message-photo-hero");
+    const visual = slide?.elements.find((element) => element.id === "official-context-photo");
+    const backdrop = slide?.elements.find((element) => element.id === "official-context-photo-bg");
     expect(visual).toMatchObject({ type: "svg", sourceId: "official-page", citation: "Official page", altText: "Official service diagram" });
     if (!visual || visual.type !== "svg" || !backdrop || backdrop.type !== "shape") {
       throw new Error("Expected a generated SVG visual inside an image backdrop.");
@@ -249,7 +306,7 @@ describe("message map deck generator", () => {
     expect(visual.y).toBeGreaterThan(backdrop.y);
     expect(visual.x + visual.w).toBeLessThan(backdrop.x + backdrop.w);
     expect(visual.y + visual.h).toBeLessThan(backdrop.y + backdrop.h);
-    expect(slide?.elements.some((element) => element.id === "official-context-copy-panel")).toBe(true);
+    expect(slide?.elements.some((element) => element.id === "official-context-caption-panel")).toBe(true);
     expect(reviewVisualQuality(deck)).toEqual({ ok: true, issues: [] });
   });
 });
