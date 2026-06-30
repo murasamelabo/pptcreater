@@ -831,32 +831,29 @@ function sectionBreakVisual(theme: Theme, intent: SlideIntent, id: string): Slid
 }
 
 function conceptVisual(theme: Theme, intent: SlideIntent, id: string): SlideElement[] {
-  const items = evidenceItems(intent, 4).slice(0, 4);
+  const items = evidenceItems(intent, 2).slice(0, 2);
   const positions = [
-    [1.08, 2.18],
-    [8.78, 2.18],
-    [8.78, 5.0],
-    [1.08, 5.0]
+    [1.18, 4.8],
+    [8.68, 4.8]
   ] as const;
   const elements: SlideElement[] = [
     shape(`${id}-concept-stage`, "roundRect", 0.82, 1.88, 11.7, 4.92, 10, theme.surface, theme.line, { radius: 0.18 }),
-    shape(`${id}-concept-field`, "ellipse", 4.84, 2.42, 3.65, 3.65, 11, theme.accentSoft, theme.accentSoft, { fillOpacity: 0.82 }),
-    shape(`${id}-concept-core-shadow`, "roundRect", 4.72, 3.32, 3.9, 1.52, 12, mix(theme.accent, theme.background, 0.32), mix(theme.accent, theme.background, 0.32), { radius: 0.24 }),
-    shape(`${id}-concept-core`, "roundRect", 4.48, 3.08, 3.9, 1.52, 13, theme.accent, theme.accent, { radius: 0.24 }),
-    text(`${id}-concept-kicker`, "caption", "CONCEPT MODEL", 4.9, 3.36, 3.1, 0.18, 14, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true, align: "center" }),
-    text(`${id}-concept-center-text`, "callout", topicLabel(intent.emphasis ?? intent.title), 4.92, 3.76, 3.02, 0.38, 15, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 20, bold: true, align: "center" }),
-    shape(`${id}-decision-callout`, "roundRect", 4.82, 4.86, 3.2, 0.42, 16, theme.surface, theme.accent, { radius: 0.14 }),
-    text(`${id}-decision-callout-text`, "caption", decisionEmphasisLabel(intent), 5.06, 4.99, 2.72, 0.14, 17, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true, align: "center" })
+    shape(`${id}-concept-field`, "ellipse", 4.46, 2.18, 4.42, 4.42, 11, theme.accentSoft, theme.accentSoft, { fillOpacity: 0.82 }),
+    shape(`${id}-concept-core-shadow`, "roundRect", 4.36, 2.82, 4.62, 1.86, 12, mix(theme.accent, theme.background, 0.32), mix(theme.accent, theme.background, 0.32), { radius: 0.28 }),
+    shape(`${id}-concept-core`, "roundRect", 4.12, 2.56, 4.62, 1.86, 13, theme.accent, theme.accent, { radius: 0.28 }),
+    text(`${id}-concept-kicker`, "caption", "CONCEPT MODEL", 4.62, 2.94, 3.6, 0.18, 14, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true, align: "center" }),
+    text(`${id}-concept-center-text`, "title", topicLabel(intent.emphasis ?? intent.title), 4.62, 3.34, 3.58, 0.48, 15, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 27, bold: true, align: "center" }),
+    shape(`${id}-decision-callout`, "roundRect", 4.72, 4.76, 3.58, 0.42, 16, theme.surface, theme.accent, { radius: 0.14 }),
+    text(`${id}-decision-callout-text`, "caption", decisionEmphasisLabel(intent), 5.0, 4.89, 3.02, 0.14, 17, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true, align: "center" })
   ];
   items.forEach((item, index) => {
     const [x, y] = positions[index];
     const order = 24 + index * 4;
     const fill = index % 2 === 0 ? theme.background : theme.accentSoft;
     const label = compactLabel(item, 12);
-    elements.push(shape(`${id}-concept-node-${index}`, "roundRect", x, y, 3.48, 1.16, order, fill, theme.line, { radius: 0.16 }));
-    elements.push(shape(`${id}-concept-node-accent-${index}`, "rect", x, y, 0.12, 1.16, order + 1, theme.accent, theme.accent, { radius: 0 }));
-    elements.push(text(`${id}-concept-index-${index}`, "caption", String(index + 1).padStart(2, "0"), x + 0.32, y + 0.26, 0.48, 0.18, order + 2, theme, { bg: fill, color: theme.accent, fontSize: 12, bold: true }));
-    elements.push(text(`${id}-concept-label-${index}`, "body", label, x + 0.9, y + 0.24, 2.22, 0.44, order + 3, theme, { bg: fill, color: theme.text, fontSize: 15, align: "left" }));
+    elements.push(shape(`${id}-concept-node-${index}`, "roundRect", x, y, 3.48, 0.88, order, fill, theme.line, { radius: 0.16 }));
+    elements.push(shape(`${id}-concept-node-accent-${index}`, "rect", x, y, 0.12, 0.88, order + 1, theme.accent, theme.accent, { radius: 0 }));
+    elements.push(text(`${id}-concept-label-${index}`, "body", label, x + 0.42, y + 0.22, 2.66, 0.28, order + 2, theme, { bg: fill, color: theme.text, fontSize: 15, align: "left" }));
   });
   return elements;
 }

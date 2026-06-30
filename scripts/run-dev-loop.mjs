@@ -397,7 +397,8 @@ function evidenceForTopic(topic, scenario, expression, profile) {
   const evidence = [
     `対象: ${audience}`,
     `観点: ${trimTrailingFragment(shorten(topic, profile.compactCopy ? 18 : 24))}`,
-    `表現: ${trimTrailingFragment(shorten(expression, 18))}`,
+    `根拠: ${expressionLabel(expression)}`,
+    `次判断: ${trimTrailingFragment(shorten(scenario.purpose ?? "判断", 18))}`,
     `口調: ${tone}`
   ];
   return (isSummaryTopic ? [summaryProof, ...evidence] : evidence).slice(0, profile.evidenceMax ?? 4);
@@ -2238,6 +2239,20 @@ function createDevLeadPlan(loopNumber, maxLoops, loopDir, qa, currentState) {
   });
 
   for (const candidate of slideCommentSynthesis.featureExtensionCandidates.filter((item) => item.priority !== "low").slice(0, 3)) {
+    if (candidate.id === "claim-evidence-action-density") {
+      actions.push({
+        id: "increase-claim-evidence-action-density",
+        kind: "program-quality-improvement",
+        reason: `${candidate.title}: ${candidate.commentCount} slide comments across ${candidate.scenarioCount} scenarios show thin slides; apply denser evidence/action scaffolding in the next loop instead of stopping for manual feature work.`,
+        changes: {
+          informationDensityLevel: Math.min(2, Math.max(currentState.informationDensityLevel ?? 0, 1) + 1),
+          reduceSlideDensity: false
+        },
+        suggestedScope: candidate.suggestedScope,
+        evidence: candidate.evidence.slice(0, 3)
+      });
+      continue;
+    }
     actions.push({
       id: `feature-${candidate.id}`,
       kind: "feature-extension",
