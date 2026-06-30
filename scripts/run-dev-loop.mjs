@@ -355,16 +355,43 @@ function visualTypeForExpression(expression, index, profile = {}, scenario = {},
 function visualAssetForScenario(scenario, topic, index) {
   const title = shorten(topic, 28);
   const audience = audienceLabel(scenario.audience);
+  const visual = semanticVisualSpec(scenario, topic);
   const colors = ["#dbeafe", "#dcfce7", "#fef3c7", "#fce7f3", "#ede9fe"];
   const fill = colors[index % colors.length];
   const accent = ["#1860c5", "#0f7a43", "#8a5a0c", "#be185d", "#6d28d9"][index % 5];
+  const labels = visual.labels.slice(0, 3);
   return {
     type: "svg",
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640"><rect width="960" height="640" rx="44" fill="${fill}"/><circle cx="760" cy="140" r="92" fill="${accent}" opacity="0.16"/><rect x="96" y="104" width="430" height="318" rx="34" fill="#fff" opacity="0.86"/><rect x="568" y="344" width="268" height="132" rx="28" fill="${accent}" opacity="0.9"/><path d="M130 478c126-98 214-18 326-92 98-65 168-142 326-84" fill="none" stroke="${accent}" stroke-width="20" stroke-linecap="round" opacity="0.45"/><text x="130" y="194" font-family="Yu Gothic, Meiryo, sans-serif" font-size="42" font-weight="700" fill="#111827">${escapeSvg(title)}</text><text x="130" y="260" font-family="Yu Gothic, Meiryo, sans-serif" font-size="28" fill="#374151">${escapeSvg(audience)}</text><text x="604" y="425" font-family="Yu Gothic, Meiryo, sans-serif" font-size="38" font-weight="700" fill="#fff">Scene</text></svg>`,
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640"><rect width="960" height="640" rx="44" fill="${fill}"/><rect x="70" y="74" width="820" height="492" rx="38" fill="#fff" opacity="0.9"/><rect x="104" y="112" width="350" height="112" rx="24" fill="${accent}" opacity="0.95"/><text x="132" y="178" font-family="Yu Gothic, Meiryo, sans-serif" font-size="42" font-weight="700" fill="#fff">${escapeSvg(visual.heading)}</text><text x="104" y="286" font-family="Yu Gothic, Meiryo, sans-serif" font-size="34" font-weight="700" fill="#111827">${escapeSvg(title)}</text><text x="106" y="336" font-family="Yu Gothic, Meiryo, sans-serif" font-size="24" fill="#374151">${escapeSvg(audience)}</text>${labels.map((label, labelIndex) => `<g transform="translate(${130 + labelIndex * 250} 420)"><rect width="210" height="76" rx="20" fill="${labelIndex === 0 ? accent : "#f8fafc"}" stroke="${accent}" stroke-width="4" opacity="${labelIndex === 0 ? "0.95" : "1"}"/><circle cx="38" cy="38" r="18" fill="${labelIndex === 0 ? "#fff" : accent}" opacity="0.9"/><text x="72" y="47" font-family="Yu Gothic, Meiryo, sans-serif" font-size="24" font-weight="700" fill="${labelIndex === 0 ? "#fff" : "#111827"}">${escapeSvg(label)}</text></g>`).join("")}<path d="M126 382h696" stroke="${accent}" stroke-width="12" stroke-linecap="round" opacity="0.28"/></svg>`,
     altText: `${title} contextual visual`,
     placement: index % 2 === 0 ? "right" : "left",
-    caption: `${title} / ${audience}`
+    caption: `${visual.heading} / ${labels.join(" / ")}`
   };
+}
+
+function semanticVisualSpec(scenario, topic) {
+  const context = [scenario.id, scenario.userRequest, scenario.purpose, scenario.audience, topic, ...(scenario.requiredExpressions ?? [])].filter(Boolean).join(" ").toLowerCase();
+  if (/copilot|prompt|tips|プロンプト|便利tips|チーム/.test(context)) return { heading: "実践ワークフロー", labels: ["Prompt", "Review", "Team"] };
+  if (/security|zero trust|ciso|脅威|セキュリティ/.test(context)) return { heading: "リスク低減", labels: ["Threat", "Identity", "Response"] };
+  if (/ryokan|hakone|旅館|温泉/.test(context)) return { heading: "家族で選ぶ", labels: ["温泉", "食事", "アクセス"] };
+  if (/startup|investor|pitch|seed|投資家/.test(context)) return { heading: "投資家の記憶", labels: ["Problem", "Traction", "Ask"] };
+  if (/ai adoption|生成ai|copilot|governance/.test(context)) return { heading: "AI導入判断", labels: ["Use case", "Data", "Govern"] };
+  if (/qbr|saas|customer success/.test(context)) return { heading: "顧客成果", labels: ["Usage", "Outcome", "Next"] };
+  if (/onboarding|new hire|新入|オンボーディング/.test(context)) return { heading: "初週の動き", labels: ["環境", "レビュー", "初PR"] };
+  if (/migration|cloud|クラウド|移行/.test(context)) return { heading: "移行ゲート", labels: ["現状", "リスク", "承認"] };
+  if (/incident|postmortem|障害/.test(context)) return { heading: "学びへ変える", labels: ["検知", "復旧", "再発防止"] };
+  if (/npo|fundraising|寄付|地域/.test(context)) return { heading: "支援の循環", labels: ["課題", "活動", "寄付"] };
+  if (/roadmap|ロードマップ/.test(context)) return { heading: "優先順位", labels: ["顧客", "テーマ", "依存"] };
+  if (/quality|manufacturing|不良|品質/.test(context)) return { heading: "品質改善", labels: ["不良", "原因", "対策"] };
+  if (/healthcare|telehealth|患者|診療/.test(context)) return { heading: "安心して使う", labels: ["予約", "診察", "支払い"] };
+  if (/real estate|住み替え|エリア/.test(context)) return { heading: "暮らし比較", labels: ["通勤", "学校", "価格"] };
+  if (/research|conference|研究/.test(context)) return { heading: "研究の筋道", labels: ["問い", "方法", "結果"] };
+  if (/retail|campaign|小売|キャンペーン/.test(context)) return { heading: "売場で動く", labels: ["商品", "販促", "店舗"] };
+  if (/budget|finance|予算/.test(context)) return { heading: "予算判断", labels: ["差異", "要因", "打ち手"] };
+  if (/policy|public sector|自治体|政策/.test(context)) return { heading: "合意形成", labels: ["影響", "選択肢", "費用"] };
+  if (/mobile app|app launch|アプリ/.test(context)) return { heading: "ローンチ導線", labels: ["ターゲット", "機能", "KPI"] };
+  if (/learning|学習/.test(context)) return { heading: "続く学習", labels: ["目標", "予定", "支援"] };
+  return { heading: "要点の構造", labels: ["背景", "根拠", "次" ] };
 }
 
 function escapeSvg(value) {

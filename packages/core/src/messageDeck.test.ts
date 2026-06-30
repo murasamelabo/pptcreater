@@ -362,6 +362,60 @@ describe("message map deck generator", () => {
     expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
   });
 
+  it("does not use decision-point wording for onboarding or learning decks", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "新入社員が初週に迷わず開発を始める",
+        audience: "新入社員、メンター、開発チーム",
+        desiredAction: "初週に開発環境とレビュー習慣を身につける",
+        intents: [
+          {
+            slideId: "team-practice",
+            title: "チームでの使い方",
+            message: "レビュー可能な習慣としてCopilotを使う。",
+            evidence: ["プロンプト", "レビュー", "チーム"],
+            quietInfo: [],
+            visualType: "cycle",
+            emphasis: "チーム"
+          }
+        ]
+      },
+      { title: "オンボーディング", locale: "ja-JP", contentMode: "handout" }
+    );
+
+    const serialized = JSON.stringify(deck);
+    expect(serialized).not.toContain("判断点");
+    expect(serialized).not.toContain("Decision point");
+    expect(serialized).toContain("実践:");
+  });
+
+  it("uses meaningful visual labels instead of generic scene placeholders", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "Copilotの実践的な使い方を共有する",
+        audience: "開発チーム",
+        desiredAction: "チームでレビュー可能な使い方にそろえる",
+        intents: [
+          {
+            slideId: "team-use",
+            title: "チームでの使い方",
+            message: "個人Tipsではなくレビュー可能な習慣にする。",
+            evidence: ["Prompt", "Review", "Team"],
+            quietInfo: [],
+            visualType: "image",
+            emphasis: "チーム"
+          }
+        ]
+      },
+      { title: "Copilot Tips", locale: "ja-JP", contentMode: "presentation" }
+    );
+
+    const serialized = JSON.stringify(deck);
+    expect(serialized).not.toContain("SCENE");
+    expect(serialized).not.toContain(">Scene<");
+    expect(serialized).toMatch(/実践|注目|根拠|実例/);
+  });
+
   it("uses complete English decision badge labels", () => {
     const deck = createDeckFromMessageMap(
       {
@@ -385,7 +439,7 @@ describe("message map deck generator", () => {
 
     const badge = deck.slides.find((slide) => slide.id === "target-state")?.elements.find((element) => element.id === "target-state-decision-badge-text");
     expect(badge).toMatchObject({ type: "text" });
-    expect(badge?.type === "text" ? badge.text.replace(/\s+/g, " ") : "").toBe("Decision point");
+    expect(badge?.type === "text" ? badge.text.replace(/\s+/g, " ") : "").toBe("Decision axis");
     expect(JSON.stringify(deck)).not.toContain("Decision: Target");
   });
 

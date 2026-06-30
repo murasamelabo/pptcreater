@@ -520,7 +520,34 @@ function captionRailText(intent: SlideIntent): string {
 
 function decisionEmphasisLabel(intent: SlideIntent): string {
   const candidate = intent.emphasis ?? intent.evidence[0] ?? intent.title;
-  return hasJapanese(candidate) ? `判断点: ${compactLabel(candidate, 10)}` : "Decision point";
+  const context = [intent.title, intent.message, intent.emphasis, ...intent.evidence, ...intent.quietInfo].filter(Boolean).join(" ");
+  const label = compactLabel(candidate, 10);
+  if (hasJapanese(context)) {
+    if (/承認|判断|決裁|選定|比較|予算|投資|リスク|費用|候補|案/u.test(context)) return `判断軸: ${label}`;
+    if (/新入|オンボーディング|学習|使い方|Tips|プロンプト|レビュー|開発|チーム/u.test(context)) return `実践: ${label}`;
+    if (/患者|予約|支払い|注意|チェック|家族|旅館|住み替え/u.test(context)) return `確認: ${label}`;
+    if (/原因|障害|不良|品質|改善/u.test(context)) return `原因: ${label}`;
+    return `注目: ${label}`;
+  }
+  if (/approval|decision|choose|choice|budget|risk|cost|option|investment/i.test(context)) return "Decision axis";
+  if (/onboarding|learning|tips|prompt|review|developer|team|practice/i.test(context)) return "Practice point";
+  if (/patient|booking|payment|check|guide|family|home|area/i.test(context)) return "Check point";
+  if (/incident|root cause|defect|quality/i.test(context)) return "Cause focus";
+  return "Focus point";
+}
+
+function visualKickerLabel(intent: SlideIntent): string {
+  const context = [intent.title, intent.message, intent.emphasis, ...intent.evidence, ...intent.quietInfo].filter(Boolean).join(" ");
+  if (hasJapanese(context)) {
+    if (/事例|顧客|現場|旅館|患者|住み替え|地域/u.test(context)) return "実例";
+    if (/使い方|Tips|プロンプト|レビュー|開発/u.test(context)) return "実践";
+    if (/根拠|効果|成果|KPI|ROI|予算|費用/u.test(context)) return "根拠";
+    return "注目";
+  }
+  if (/case|customer|field|patient|community|hotel|home/i.test(context)) return "EXAMPLE";
+  if (/tips|prompt|review|developer|practice/i.test(context)) return "PRACTICE";
+  if (/proof|impact|kpi|roi|budget|cost/i.test(context)) return "PROOF";
+  return "FOCUS";
 }
 
 function closingChecklist(messageMap: DeckMessageMap): { label: string; value: string; icon: IconKey }[] {
@@ -800,7 +827,7 @@ function photoHeroVisual(theme: Theme, intent: SlideIntent, id: string): SlideEl
     shape(`${id}-photo-caption-rail`, "roundRect", 1.18, 5.92, 5.88, 0.58, 16, theme.surface, theme.line, { radius: 0.16, fillOpacity: 0.94 }),
     text(`${id}-photo-caption-rail-text`, "caption", captionRailText(intent), 1.46, 6.08, 5.3, 0.22, 17, theme, { bg: theme.surface, color: theme.text, fontSize: 13, bold: true, align: "center" }),
     shape(`${id}-caption-panel`, "roundRect", 7.55, 2.18, 4.58, 3.95, 20, theme.surface, theme.line, { radius: 0.22 }),
-    text(`${id}-caption-kicker`, "caption", "SCENE", 7.95, 2.52, 1.4, 0.22, 21, theme, { bg: theme.surface, color: theme.accent, bold: true, fontSize: 12 }),
+    text(`${id}-caption-kicker`, "caption", visualKickerLabel(intent), 7.95, 2.52, 1.4, 0.22, 21, theme, { bg: theme.surface, color: theme.accent, bold: true, fontSize: 12 }),
     text(`${id}-caption-title`, "title", topicLabel(intent.emphasis ?? intent.title), 7.95, 2.84, 3.72, 0.68, 22, theme, { bg: theme.surface, color: theme.text, fontSize: 31 }),
     text(`${id}-caption-message`, "body", intent.message, 7.95, 3.72, 3.74, 1.04, 23, theme, { bg: theme.surface, color: theme.text, fontSize: 18 }),
     text(`${id}-caption-proof`, "caption", evidenceItems(intent, 1)[0] ?? intent.title, 7.95, 5.18, 3.6, 0.34, 24, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 13 })
