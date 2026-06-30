@@ -247,7 +247,10 @@ function messageMapForScenario(scenario, loopNumber, improvementState) {
     desiredAction: scenario.purpose,
     intents: topics.map((topic, index) => {
       const expression = expressions[index % expressions.length];
-      const visualType = visualTypeForExpression(expression, index, profile, scenario, topic);
+      let visualType = visualTypeForExpression(expression, index, profile, scenario, topic);
+      if (visualType === "image" && !shouldUseGeneratedImage(scenario, topic)) {
+        visualType = "visual-scaffold";
+      }
       if (!validVisualTypes.has(visualType)) {
         throw new Error(`Internal visualType mapping produced invalid value: ${visualType}`);
       }
@@ -316,17 +319,17 @@ function visualTypeForExpression(expression, index, profile = {}, scenario = {},
   const expectsProof = /kpi|roi|売上|数字|指標|実績|成果|効果|予算|費用|gmv|budget|finance|traction|impact/u.test(localContext);
   if (/roadmap|timeline|gantt|calendar|step|checklist|ロードマップ|導入|実行|移行/u.test(localContext)) return "step";
   if (/risk|governance|architecture|diagram|map|stakeholder|dependency|リスク|構造|関係|判断/u.test(localContext)) return "native-diagram";
-  if (expectsRealism && index === 1) return "image";
+  if (expectsRealism && index === 1) return "visual-scaffold";
   if (expectsProof && index % 3 === 0) return "summary";
-  if (/case|事例|顧客|customer|product|製品|採用|現場/u.test(localContext)) return index <= 2 ? "image" : "cards";
+  if (/case|事例|顧客|customer|product|製品|採用|現場/u.test(localContext)) return index <= 2 ? "visual-scaffold" : "cards";
   if ((profile.layoutDiversityLevel ?? 0) >= 1) {
-    const diverseRotation = ["summary", "matrix", "step", "native-diagram", "cards", "before-after", "cycle", "flow", "image"];
+    const diverseRotation = ["summary", "matrix", "step", "native-diagram", "cards", "before-after", "cycle", "flow", "visual-scaffold"];
     return diverseRotation[(index + (profile.layoutDiversityLevel ?? 0)) % diverseRotation.length];
   }
   if ((profile.designAmbitionLevel ?? 0) >= 1) {
     const slot = (index + (profile.designAmbitionLevel ?? 0)) % 7;
     if (value.includes("section") || value.includes("chapter")) return "section";
-    if (/写真|現場|顧客|事例|採用|会社|患者|家族|旅館|office|customer|case|recruit|photo/.test(context) || slot === 1) return "image";
+    if (/写真|現場|顧客|事例|採用|会社|患者|家族|旅館|office|customer|case|recruit|photo/.test(context) || slot === 1) return "visual-scaffold";
     if (expectsProof || slot === 2) return "summary";
     if (/関係|体験|循環|journey|concept|system|portfolio/.test(context) || slot === 3) return "cycle";
     if (/プロセス|構造|アーキテクチャ|移行|ロードマップ|workflow|architecture|roadmap|migration/.test(context) || slot === 4) return "native-diagram";
@@ -334,7 +337,7 @@ function visualTypeForExpression(expression, index, profile = {}, scenario = {},
     if (slot === 6) return "flow";
   }
   if ((profile.expressionPolishLevel ?? 0) >= 1) {
-    if (expectsRealism && index % 4 === 1) return "image";
+    if (expectsRealism && index % 4 === 1) return "visual-scaffold";
     if (expectsProof && index % 3 === 0) return "summary";
     if (/関係|構造|体験|journey|workflow|architecture|roadmap|migration|プロセス|ロードマップ|移行/.test(context)) return index % 2 === 0 ? "native-diagram" : "flow";
   }
@@ -350,6 +353,13 @@ function visualTypeForExpression(expression, index, profile = {}, scenario = {},
   if (value.includes("detail") || value.includes("structured") || value.includes("faq")) return "detail";
   const rotation = ["summary", "flow", "table", "matrix", "step", "cards"];
   return rotation[index % rotation.length];
+}
+
+function shouldUseGeneratedImage(scenario, topic) {
+  const imagePrompts = scenario.research?.imagePrompts ?? [];
+  if (!Array.isArray(imagePrompts) || imagePrompts.length === 0) return false;
+  const normalizedTopic = normalizeMatchText(topic);
+  return imagePrompts.some((prompt) => normalizeMatchText(prompt.topic ?? prompt).includes(normalizedTopic) || normalizedTopic.includes(normalizeMatchText(prompt.topic ?? prompt)));
 }
 
 function visualAssetForScenario(scenario, topic, index) {
@@ -894,6 +904,9 @@ function auditVisualSnapshots(deck, slideImages) {
     for (const issue of overlappingTextIssues(textElements, slideId, image)) {
       blockingIssues.push(issue);
     }
+    for (const issue of overlappingVisualObjectIssues(slide, slideId, image)) {
+      blockingIssues.push(issue);
+    }
     if (!isNonBodySlide(slide)) {
       const largeMedia = hasLargeMedia(slide);
       const focalProof = hasFocalProof(slide);
@@ -909,6 +922,9 @@ function auditVisualSnapshots(deck, slideImages) {
       const equalCards = equalCardCount(slide);
       if (equalCards >= 5 && !dominant) {
         sampleQualityIssues.push({ kind: "equal-card-grid", slideId, image, message: `Rendered snapshot uses ${equalCards} similarly sized cards without a dominant card or visual hierarchy.` });
+      }
+      for (const issue of simpleShapeSvgIssues(slide, slideId, image)) {
+        sampleQualityIssues.push(issue);
       }
     }
   }
@@ -964,6 +980,56 @@ function overlappingTextIssues(textElements, slideId, image) {
     }
   }
   return issues;
+}
+
+function overlappingVisualObjectIssues(slide, slideId, image) {
+  const elements = slide.elements ?? [];
+  const mediaElements = elements.filter(isRenderedMediaElement);
+  const issues = [];
+  for (const media of mediaElements) {
+    for (const other of elements) {
+      if (other === media || other.decorative || isIntentionalMediaOverlay(media, other)) continue;
+      if (other.type !== "text" && !isRenderedMediaElement(other)) continue;
+      const area = intersectionArea(media, other);
+      if (area <= 0) continue;
+      const smaller = Math.max(0.01, Math.min(media.w * media.h, other.w * other.h));
+      const ratio = area / smaller;
+      if (other.type === "text" && ratio > 0.12) {
+        issues.push({ kind: "media-text-overlap", slideId, image, message: `Rendered media "${media.id}" overlaps text "${shorten(other.text, 28)}"; image placement makes the slide hard to read.` });
+      } else if (isRenderedMediaElement(other) && ratio > 0.08) {
+        issues.push({ kind: "media-overlap", slideId, image, message: `Rendered media "${media.id}" overlaps "${other.id}"; visual objects are colliding in the slide image.` });
+      }
+    }
+  }
+  return issues;
+}
+
+function simpleShapeSvgIssues(slide, slideId, image) {
+  const issues = [];
+  for (const element of slide.elements ?? []) {
+    if (element.type !== "svg" || element.decorative || element.w < 3.5 || element.h < 2.5) continue;
+    const svg = String(element.svg ?? "");
+    const rects = (svg.match(/<rect\b/giu) ?? []).length;
+    const circles = (svg.match(/<circle\b|<ellipse\b/giu) ?? []).length;
+    const texts = (svg.match(/<text\b/giu) ?? []).length;
+    const richerChartOrImage = /<image\b|<defs\b|linearGradient|radialGradient|<polygon\b|<polyline\b|data-allow-raster-visual/iu.test(svg);
+    if (!richerChartOrImage && rects + circles >= 3 && texts >= 2) {
+      issues.push({ kind: "simple-shape-svg", slideId, image, message: `Large SVG "${element.id}" is composed of simple shapes/text; prefer editable native PPTX objects unless the generated image is materially richer than native shapes.` });
+    }
+  }
+  return issues;
+}
+
+function isRenderedMediaElement(element) {
+  return ["svg", "image", "diagram", "smartart"].includes(element.type) && !element.decorative && element.w >= 0.5 && element.h >= 0.5;
+}
+
+function isIntentionalMediaOverlay(media, other) {
+  const mediaId = String(media.id ?? "");
+  const otherId = String(other.id ?? "");
+  const mediaRoot = mediaId.replace(/-(?:photo|visual-asset|image|diagram|svg).*$/u, "");
+  if (!mediaRoot || !otherId.startsWith(mediaRoot)) return false;
+  return /annotation|caption|badge|label|kicker|proof|title/u.test(otherId);
 }
 
 function isTinyGeneratedLabel(element) {
