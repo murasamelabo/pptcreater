@@ -99,7 +99,7 @@ function readScenarioResearch() {
   if (!existsSync(scenarioResearchPath)) {
     return { scenarios: {} };
   }
-  return JSON.parse(readFileSync(scenarioResearchPath, "utf8"));
+  return JSON.parse(readFileSync(scenarioResearchPath, "utf8").replace(/^\uFEFF/u, ""));
 }
 
 function attachScenarioResearch(scenario, researchCatalog) {
