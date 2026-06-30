@@ -249,7 +249,7 @@ function messageMapForScenario(scenario, loopNumber, improvementState) {
       const expression = expressions[index % expressions.length];
       let visualType = visualTypeForExpression(expression, index, profile, scenario, topic);
       if (visualType === "image" && !shouldUseGeneratedImage(scenario, topic)) {
-        visualType = "visual-scaffold";
+        visualType = nativeVisualFallbackForTopic(topic, index);
       }
       if (!validVisualTypes.has(visualType)) {
         throw new Error(`Internal visualType mapping produced invalid value: ${visualType}`);
@@ -319,17 +319,17 @@ function visualTypeForExpression(expression, index, profile = {}, scenario = {},
   const expectsProof = /kpi|roi|売上|数字|指標|実績|成果|効果|予算|費用|gmv|budget|finance|traction|impact/u.test(localContext);
   if (/roadmap|timeline|gantt|calendar|step|checklist|ロードマップ|導入|実行|移行/u.test(localContext)) return "step";
   if (/risk|governance|architecture|diagram|map|stakeholder|dependency|リスク|構造|関係|判断/u.test(localContext)) return "native-diagram";
-  if (expectsRealism && index === 1) return "visual-scaffold";
+  if (expectsRealism && index === 1) return nativeVisualFallbackForTopic(topic, index);
   if (expectsProof && index % 3 === 0) return "summary";
-  if (/case|事例|顧客|customer|product|製品|採用|現場/u.test(localContext)) return index <= 2 ? "visual-scaffold" : "cards";
+  if (/case|事例|顧客|customer|product|製品|採用|現場/u.test(localContext)) return index <= 2 ? nativeVisualFallbackForTopic(topic, index) : "cards";
   if ((profile.layoutDiversityLevel ?? 0) >= 1) {
-    const diverseRotation = ["summary", "matrix", "step", "native-diagram", "cards", "before-after", "cycle", "flow", "visual-scaffold"];
+    const diverseRotation = ["summary", "matrix", "step", "native-diagram", "before-after", "cycle", "flow", "contrast", "cards"];
     return diverseRotation[(index + (profile.layoutDiversityLevel ?? 0)) % diverseRotation.length];
   }
   if ((profile.designAmbitionLevel ?? 0) >= 1) {
     const slot = (index + (profile.designAmbitionLevel ?? 0)) % 7;
     if (value.includes("section") || value.includes("chapter")) return "section";
-    if (/写真|現場|顧客|事例|採用|会社|患者|家族|旅館|office|customer|case|recruit|photo/.test(context) || slot === 1) return "visual-scaffold";
+    if (/写真|現場|顧客|事例|採用|会社|患者|家族|旅館|office|customer|case|recruit|photo/.test(context) || slot === 1) return nativeVisualFallbackForTopic(topic, index);
     if (expectsProof || slot === 2) return "summary";
     if (/関係|体験|循環|journey|concept|system|portfolio/.test(context) || slot === 3) return "cycle";
     if (/プロセス|構造|アーキテクチャ|移行|ロードマップ|workflow|architecture|roadmap|migration/.test(context) || slot === 4) return "native-diagram";
@@ -337,7 +337,7 @@ function visualTypeForExpression(expression, index, profile = {}, scenario = {},
     if (slot === 6) return "flow";
   }
   if ((profile.expressionPolishLevel ?? 0) >= 1) {
-    if (expectsRealism && index % 4 === 1) return "visual-scaffold";
+    if (expectsRealism && index % 4 === 1) return nativeVisualFallbackForTopic(topic, index);
     if (expectsProof && index % 3 === 0) return "summary";
     if (/関係|構造|体験|journey|workflow|architecture|roadmap|migration|プロセス|ロードマップ|移行/.test(context)) return index % 2 === 0 ? "native-diagram" : "flow";
   }
@@ -417,7 +417,7 @@ function titleForTopic(topic, profile = { titleMax: 36 }) {
 function messageForTopic(topic, scenario, profile) {
   const researchSeed = researchSeedForTopic(scenario, topic);
   if (researchSeed?.message) {
-    return trimTrailingFragment(shorten(researchSeed.message, profile.compactCopy ? 34 : 44));
+    return trimTrailingFragment(shorten(normalizeResearchMessage(researchSeed.message), profile.compactCopy ? 34 : 44));
   }
   const subject = titleForTopic(topic, { titleMax: profile.compactCopy ? 20 : 28 });
   if (String(topic).toLowerCase().includes("executive")) {
@@ -436,6 +436,13 @@ function messageForTopic(topic, scenario, profile) {
     return `${subject}を判断に使える形にする。`;
   }
   return `${subject}を整理し、次の判断材料にする。`;
+}
+
+function normalizeResearchMessage(value) {
+  return String(value ?? "")
+    .replace(/だけでなく、/gu, "も含め、")
+    .replace(/([\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}])と([\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}])/gu, "$1・$2")
+    .replace(/([\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}])、([\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}])/gu, "$1・$2");
 }
 
 function evidenceForTopic(topic, scenario, expression, profile) {
@@ -1357,6 +1364,7 @@ function evaluateDesignAmbition(deck, scenario) {
   const bodySlides = deck.slides.filter((slide) => !["cover", "title", "section", "divider", "closing", "references"].includes(slide.layout ?? ""));
   const slideCount = Math.max(1, bodySlides.length);
   const largeMedia = bodySlides.filter(hasLargeMedia).length;
+  const largeVisual = bodySlides.filter(hasLargeVisualAnchor).length;
   const focalProof = bodySlides.filter(hasFocalProof).length;
   const spatialModel = bodySlides.filter(hasSpatialModel).length;
   const deliberateRepetition = bodySlides.filter(hasDeliberateRepetition).length;
@@ -1406,6 +1414,7 @@ function evaluateSampleQuality(deck, scenario) {
   const layoutCounts = countBy(layouts);
   const dominantLayoutShare = bodySlides.length ? Math.max(...Object.values(layoutCounts)) / bodySlides.length : 1;
   const largeMedia = bodySlides.filter(hasLargeMedia).length;
+  const largeVisual = bodySlides.filter(hasLargeVisualAnchor).length;
   const focalProof = bodySlides.filter(hasFocalProof).length;
   const spatialModel = bodySlides.filter(hasSpatialModel).length;
   const deliberateRepetition = bodySlides.filter(hasDeliberateRepetition).length;
@@ -1423,7 +1432,7 @@ function evaluateSampleQuality(deck, scenario) {
     storyClarity: scoreAxis(genericTitleShare <= 0.25 && deck.slides.some((slide) => slide.layout === "cover") && deck.slides.some((slide) => slide.layout === "closing"), `genericTitleShare=${genericTitleShare.toFixed(2)}; hasCover=${deck.slides.some((slide) => slide.layout === "cover")}; hasClosing=${deck.slides.some((slide) => slide.layout === "closing")}`),
     shapeCraft: scoreAxis(dramaticScale >= 2 && deliberateRepetition >= 2 && spatialModel >= Math.min(3, bodySlides.length), `dramaticScale=${dramaticScale}; deliberateRepetition=${deliberateRepetition}; spatialModel=${spatialModel}; shapeCount=${shapeCount}`),
     typographyMateriality: scoreAxis(bodyElements.some((element) => element.type === "text" && (element.fontSize ?? 0) >= 31) && bodyElements.some((element) => element.type === "text" && (element.fontSize ?? 0) <= 13), `hasLargeType=${bodyElements.some((element) => element.type === "text" && (element.fontSize ?? 0) >= 31)}; hasSmallType=${bodyElements.some((element) => element.type === "text" && (element.fontSize ?? 0) <= 13)}`),
-    templateFreshness: scoreAxis((largeMedia > 0 || !expectsRealism) && (focalProof > 0 || /kpi|roi|予算|費用|売上|数字|finance|budget/.test(scenarioText)) && svgCount >= Math.max(1, Math.floor(bodySlides.length * 0.4)), `largeMedia=${largeMedia}; focalProof=${focalProof}; svgOrImage=${svgCount}; expectsRealism=${expectsRealism}`)
+    templateFreshness: scoreAxis((largeVisual > 0 || !expectsRealism) && (focalProof > 0 || /kpi|roi|予算|費用|売上|数字|finance|budget/.test(scenarioText)) && svgCount >= Math.max(1, Math.floor(bodySlides.length * 0.4)), `largeVisual=${largeVisual}; largeMedia=${largeMedia}; focalProof=${focalProof}; svgOrImage=${svgCount}; expectsRealism=${expectsRealism}`)
   };
 
   const fixItems = [];
@@ -1711,7 +1720,14 @@ function countBy(values) {
 }
 
 function hasLargeMedia(slide) {
-  return (slide.elements ?? []).some((element) => ["image", "svg", "diagram"].includes(element.type) && element.w >= 3.5 && element.h >= 2.2 && !element.decorative);
+  return (slide.elements ?? []).some((element) => {
+    if (element.decorative) return false;
+    if (["image", "svg", "diagram"].includes(element.type)) return element.w >= 3.5 && element.h >= 2.2;
+    if (slide.layout === "message-editorial-board") return element.type === "shape" && /editorial-hero$/u.test(element.id ?? "") && element.w >= 4.5 && element.h >= 3.5;
+    if (slide.layout === "message-concept") return element.type === "shape" && /concept-core$/u.test(element.id ?? "") && element.w >= 4.0 && element.h >= 1.5;
+    if (slide.layout === "message-focal-proof") return element.type === "shape" && /proof-band$/u.test(element.id ?? "") && element.w >= 4.5 && element.h >= 4.5;
+    return false;
+  });
 }
 
 function hasFocalProof(slide) {
@@ -2593,4 +2609,18 @@ function normalizeVisibleTextForCompleteness(text) {
 function isStructuredLabelList(text) {
   const normalized = String(text).replace(/\s+/g, " ").trim();
   return /[、,，・／/]/u.test(normalized) && /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}A-Za-z0-9]{2,}/u.test(normalized);
+}
+
+function nativeVisualFallbackForTopic(topic, index) {
+  const text = String(topic ?? "").toLowerCase();
+  if (/risk|cost|budget|費用|リスク|予算|比較|tradeoff|option/u.test(text)) return "matrix";
+  if (/roadmap|timeline|schedule|phase|step|導入|移行|手順|予約|週間/u.test(text)) return "step";
+  if (/root|cause|原因|impact|outcome|before|after|改善|変化/u.test(text)) return "before-after";
+  if (/governance|architecture|stakeholder|repo|map|関係|構造/u.test(text)) return "native-diagram";
+  if (/concept|theme|mission|value|insight|課題|価値|方針/u.test(text)) return "cycle";
+  return ["matrix", "before-after", "cycle", "flow"][index % 4];
+}
+
+function hasLargeVisualAnchor(slide) {
+  return hasLargeMedia(slide) || hasDominantFocalElement(slide) || hasFocalProof(slide) || (hasSpatialModel(slide) && hasDramaticScaleContrast(slide));
 }

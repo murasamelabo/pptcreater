@@ -521,13 +521,14 @@ function captionRailText(intent: SlideIntent): string {
 function decisionEmphasisLabel(intent: SlideIntent): string {
   const candidate = intent.emphasis ?? intent.evidence[0] ?? intent.title;
   const context = [intent.title, intent.message, intent.emphasis, ...intent.evidence, ...intent.quietInfo].filter(Boolean).join(" ");
-  const label = compactLabel(candidate, 10);
+  const candidateIsEnglish = !hasJapanese(candidate);
+  const label = candidateIsEnglish ? "" : `: ${compactLabel(candidate, 8)}`;
   if (hasJapanese(context)) {
-    if (/承認|判断|決裁|選定|比較|予算|投資|リスク|費用|候補|案/u.test(context)) return `判断軸: ${label}`;
-    if (/新入|オンボーディング|学習|使い方|Tips|プロンプト|レビュー|開発|チーム/u.test(context)) return `実践: ${label}`;
-    if (/患者|予約|支払い|注意|チェック|家族|旅館|住み替え/u.test(context)) return `確認: ${label}`;
-    if (/原因|障害|不良|品質|改善/u.test(context)) return `原因: ${label}`;
-    return `注目: ${label}`;
+    if (/承認|判断|決裁|選定|比較|予算|投資|リスク|費用|候補|案/u.test(context)) return `判断軸${label}`;
+    if (/新入|オンボーディング|学習|使い方|Tips|プロンプト|レビュー|開発|チーム/u.test(context)) return `実践${label}`;
+    if (/患者|予約|支払い|注意|チェック|家族|旅館|住み替え/u.test(context)) return `確認${label}`;
+    if (/原因|障害|不良|品質|改善/u.test(context)) return `原因${label}`;
+    return `注目${label}`;
   }
   if (/approval|decision|choose|choice|budget|risk|cost|option|investment/i.test(context)) return "Decision axis";
   if (/onboarding|learning|tips|prompt|review|developer|team|practice/i.test(context)) return "Practice point";
@@ -892,7 +893,7 @@ function editorialBoardVisual(theme: Theme, intent: SlideIntent, id: string): Sl
     shape(`${id}-editorial-backdrop`, "roundRect", 0.82, 1.88, 11.7, 4.92, 10, theme.surface, theme.line, { radius: 0.18 }),
     shape(`${id}-editorial-hero`, "roundRect", 1.12, 2.12, 5.05, 4.18, 11, theme.accent, theme.accent, { radius: 0.24 }),
     shape(`${id}-editorial-hero-glow`, "ellipse", 4.38, 2.42, 1.1, 1.1, 12, theme.inkOnAccent, theme.inkOnAccent, { fillOpacity: 0.18 }),
-    text(`${id}-editorial-kicker`, "caption", "FOCAL CARD", 1.48, 2.52, 2.5, 0.22, 13, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true }),
+    text(`${id}-editorial-kicker`, "caption", "FOCUS", 1.48, 2.52, 2.5, 0.22, 13, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true }),
     text(`${id}-editorial-hero-title`, "title", topicLabel(hero), 1.45, 3.02, 4.28, 0.82, 14, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 34 }),
     text(`${id}-editorial-hero-body`, "body", visibleSentence(intent.message), 1.48, 4.2, 4.05, 0.98, 15, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 18 }),
     shape(`${id}-editorial-rule`, "rect", 1.48, 5.5, 2.05, 0.06, 16, theme.inkOnAccent, theme.inkOnAccent, { radius: 0 }),
