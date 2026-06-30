@@ -10,6 +10,10 @@
         "https://www.microsoft.com/en-us/security/business/zero-trust",
         "https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
       ],
+      "concreteCases": [
+        { "name": "Microsoft Defender XDR", "type": "security product", "sourceUrl": "https://learn.microsoft.com/en-us/defender-xdr/microsoft-365-defender", "keywords": ["製品概要", "導入メリット", "導入事例", "product", "case", "security"], "deckUse": "XDR製品例として、ID/エンドポイント/メール/アプリの防御を横断して説明する", "facts": ["Microsoft Defender XDRはエンドポイント、ID、メール、コラボレーション、クラウドアプリの防御を統合する", "インシデント、アラート、Advanced huntingをまとめて調査できる"] },
+        { "name": "Microsoft Sentinel", "type": "SIEM/SOAR product", "sourceUrl": "https://learn.microsoft.com/en-us/azure/sentinel/overview", "keywords": ["製品概要", "導入メリット", "ROI", "導入ステップ", "siem", "soar"], "deckUse": "SIEM/SOAR連携例として、データ接続、分析、プレイブック自動化を示す", "facts": ["Microsoft SentinelはクラウドネイティブSIEM/SOARとして脅威検出、調査、対応を支援する", "データコネクタ、分析ルール、ワークブック、プレイブックを使う"] }
+      ],
       "slideSeeds": [
         { "topic": "市場/脅威背景", "keywords": ["threat", "risk"], "message": "既知悪用脆弱性と侵害前提の運用を、経営リスクとして扱う。", "evidence": ["CISA KEVは実際に悪用確認された脆弱性を管理する公的カタログ", "Zero Trustは暗黙の信頼を置かず継続的に検証する考え方", "決裁者には技術機能より事業停止・監査・復旧リスクを示す"] },
         { "topic": "ROI", "keywords": ["roi", "business case"], "message": "ROIは防止効果だけでなく、検知・復旧時間の短縮で説明する。", "evidence": ["投資対効果は侵害防止、検知時間短縮、復旧工数削減に分ける", "既存運用との重複削減も評価軸にする", "CISO/CIO向けには費用よりリスク低減の単位を先に置く"] },
@@ -21,6 +25,10 @@
       "sourceUrls": [
         "https://docs.github.com/en/copilot/using-github-copilot/prompt-engineering-for-github-copilot",
         "https://docs.github.com/en/copilot/using-github-copilot/getting-code-suggestions-in-your-ide-with-github-copilot"
+      ],
+      "concreteCases": [
+        { "name": "GitHub Copilot in VS Code", "type": "developer tool", "sourceUrl": "https://code.visualstudio.com/docs/copilot/overview", "keywords": ["便利Tips 5-7個", "良いプロンプト例", "demo", "tips", "prompt"], "deckUse": "IDE内でのチャット、補完、編集支援を実演する題材にする", "facts": ["VS CodeのCopilotはチャット、コード補完、編集支援をエディタ内で使える", "開いているファイルや選択範囲を文脈として扱える"] },
+        { "name": "GitHub Copilot code suggestions", "type": "developer workflow", "sourceUrl": "https://docs.github.com/en/copilot/using-github-copilot/getting-code-suggestions-in-your-ide-with-github-copilot", "keywords": ["便利Tips 5-7個", "チームでの使い方", "review", "team"], "deckUse": "Tab受け入れ、部分編集、候補の読み替えをTipsに落とす", "facts": ["CopilotはIDE内でコード提案を表示し、開発者が採用/編集できる", "提案はレビュー可能な小さな変更に分けて使う"] }
       ],
       "slideSeeds": [
         { "topic": "便利Tips 5-7個", "keywords": ["tips"], "message": "Copilotは曖昧な依頼より、目的・制約・例を渡すと安定する。", "evidence": ["GitHub Docsは start general then get specific を推奨", "例を渡すことで期待する入出力や実装形を伝えられる", "複雑なタスクは小さく分割するとよい"] },
@@ -34,6 +42,10 @@
         "https://www.hakone.or.jp/",
         "https://www.japan.travel/en/destinations/kanto/kanagawa/hakone/"
       ],
+      "concreteCases": [
+        { "name": "強羅花壇", "type": "hakone ryokan", "sourceUrl": "https://www.gorakadan.com/", "keywords": ["候補旅館", "6項目比較", "家族タイプ別おすすめ", "ryokan", "candidate"], "deckUse": "高級滞在型の候補として、温泉・食事・特別感を比較する", "facts": ["強羅エリアの温泉旅館として公式サイトで宿泊、温泉、料理を案内している", "家族比較では価格より滞在体験と移動負担を別軸にする"] },
+        { "name": "箱根小涌園 天悠", "type": "hakone hotel ryokan", "sourceUrl": "https://www.ten-yu.com/", "keywords": ["候補旅館", "アクセス", "予約前チェック", "family", "hotel"], "deckUse": "大型滞在施設の候補として、客室温泉、食事、周辺施設を比較する", "facts": ["箱根小涌園 天悠は箱根小涌園エリアの温泉宿として客室、温泉、食事を案内している", "家族旅行では送迎、食事時間、子ども対応を予約前チェックに入れる"] }
+      ],
       "slideSeeds": [
         { "topic": "候補旅館", "keywords": ["ryokan", "candidate"], "message": "候補は価格帯だけでなく、滞在体験と移動負担で分ける。", "evidence": ["箱根は温泉、自然、美術館、芦ノ湖周辺など滞在体験が多様", "家族旅行では移動時間、食事、客室、温泉、周辺観光を同時に見る", "候補は高級滞在型、観光拠点型、子連れ実用型に分ける"] },
         { "topic": "6項目比較", "keywords": ["six criteria", "radar"], "message": "6項目は家族の会話が生まれる判断軸として使う。", "evidence": ["温泉、食事、部屋、アクセス、子ども対応、予算感を並べる", "点数だけではなく誰に向くかを添える", "家族の優先順位を可視化するradarが合う"] },
@@ -45,6 +57,10 @@
       "sourceUrls": [
         "https://www.ycombinator.com/library/2u-how-to-build-your-seed-round-pitch-deck",
         "https://www.ycombinator.com/library/4T-how-to-design-a-better-pitch-deck"
+      ],
+      "concreteCases": [
+        { "name": "Y Combinator Seed Deck guidance", "type": "pitch benchmark", "sourceUrl": "https://www.ycombinator.com/library/2u-how-to-build-your-seed-round-pitch-deck", "keywords": ["problem", "traction", "ask", "fundraising", "pitch"], "deckUse": "seed投資家向け資料の比較基準として、問題、トラクション、資金使途を整理する", "facts": ["YCはseed deckで明確な物語と覚えやすい要点を重視する", "調達額は次の資金調達ラウンドへ進むためのマイルストーンと結びつける"] },
+        { "name": "Stripe Atlas", "type": "startup product", "sourceUrl": "https://stripe.com/atlas", "keywords": ["solution", "business model", "market", "product"], "deckUse": "B2Bスタートアップの価値提案例として、起業手続き支援を題材にする", "facts": ["Stripe Atlasは会社設立、銀行口座、税務関連の起業支援を提供する", "ピッチでは顧客の面倒な業務をどう短縮するかを具体化できる"] }
       ],
       "slideSeeds": [
         { "topic": "problem", "keywords": ["problem"], "message": "問題は抽象市場ではなく、現実の人や企業の痛みとして示す。", "evidence": ["YCは問題が現実の人/企業にどう影響するかを重視", "Seed deckは長い思想ではなく明確な物語に絞る", "投資家が覚えるのは数点だけなので問題の一文を強くする"] },
@@ -58,6 +74,10 @@
         "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/scenarios/ai/",
         "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/overview"
       ],
+      "concreteCases": [
+        { "name": "Microsoft 365 Copilot", "type": "enterprise AI product", "sourceUrl": "https://learn.microsoft.com/en-us/copilot/microsoft-365/microsoft-365-copilot-overview", "keywords": ["expected value", "governance", "PoC scope", "copilot", "ai"], "deckUse": "生成AI導入のbuy/enable例として、業務アプリ内AI支援と管理条件を扱う", "facts": ["Microsoft 365 CopilotはMicrosoft 365アプリと組織データを使うAI支援として案内されている", "役員向けには利用シナリオ、データ権限、運用ガバナンスを分けて示す"] },
+        { "name": "Azure OpenAI Service", "type": "enterprise AI platform", "sourceUrl": "https://learn.microsoft.com/en-us/azure/ai-services/openai/overview", "keywords": ["roadmap", "governance", "PoC scope", "build", "platform"], "deckUse": "自社アプリ組込み型AIのbuild選択肢として、モデル利用、セキュリティ、運用を比較する", "facts": ["Azure OpenAI ServiceはAzure上でOpenAIモデルを利用するサービス", "PoCではデータ、認証、監査、コストの境界を確認する"] }
+      ],
       "slideSeeds": [
         { "topic": "why now", "keywords": ["use case"], "message": "AI導入は技術起点ではなく、業務成果のギャップから始める。", "evidence": ["CAFはAI use case identificationで業務問題から始めることを推奨", "反復作業、遅い承認、成果未達が有望な起点", "ユースケースは活動と期待結果の短い文にする"] },
         { "topic": "governance", "keywords": ["governance"], "message": "生成AIの本番利用には、責任あるAI、データ、セキュリティの基準が必要。", "evidence": ["CAFはResponsible AI strategyを本番スケールの条件とする", "Data strategyはAIの品質とコンプライアンスの土台", "Govern/Secure/Manageは運用段階で並行して効く"] },
@@ -68,6 +88,10 @@
       "summary": "QBR decks should connect adoption, outcomes, open risks, benchmarks, and next-quarter actions to customer value.",
       "sourceUrls": [
         "https://www.productplan.com/learn/product-roadmap-analytics-quantitative-and-qualitative-data/"
+      ],
+      "concreteCases": [
+        { "name": "Salesforce Sales Cloud", "type": "SaaS product", "sourceUrl": "https://www.salesforce.com/sales/cloud/", "keywords": ["usage summary", "benchmarks", "outcomes", "saas", "customer"], "deckUse": "QBRの利用状況例として、営業活動、商談、レポート活用を成果指標へつなげる", "facts": ["Sales Cloudは営業支援CRMとしてリード、商談、予測、レポートなどを扱う", "QBRではログではなく営業成果に近い行動指標へ翻訳する"] },
+        { "name": "Gainsight CS", "type": "customer success platform", "sourceUrl": "https://www.gainsight.com/customer-success/", "keywords": ["next actions", "open issues", "customer success", "qbr"], "deckUse": "Customer Success運用例として、ヘルススコア、リスク、次アクションを示す", "facts": ["GainsightはCustomer Success向けに顧客ヘルス、リスク、プレイブックを扱う", "次四半期アクションは担当、期日、測定指標まで落とす"] }
       ],
       "slideSeeds": [
         { "topic": "usage summary", "keywords": ["usage"], "message": "利用状況はログの羅列ではなく、顧客成果に近い行動指標で見る。", "evidence": ["ProductPlanはcustomer-oriented metricsの重要性を指摘", "利用量だけでなく機能利用、継続、品質、行動変化を示す", "定量データだけでは理由が分からないため定性フィードバックも必要"] },
@@ -81,6 +105,10 @@
         "https://docs.github.com/en/get-started/quickstart/github-flow",
         "https://docs.github.com/en/pull-requests/collaborating-with-pull-requests"
       ],
+      "concreteCases": [
+        { "name": "GitHub Codespaces", "type": "developer environment", "sourceUrl": "https://docs.github.com/en/codespaces/overview", "keywords": ["dev environment", "repo map", "first week", "onboarding"], "deckUse": "開発環境の具体例として、クラウド開発環境と初回セットアップを説明する", "facts": ["GitHub Codespacesはクラウド上の開発環境を提供する", "オンボーディングではローカル差分を減らし、初日に動く環境を用意できる"] },
+        { "name": "GitHub Actions", "type": "CI/CD workflow", "sourceUrl": "https://docs.github.com/en/actions/about-github-actions/understanding-github-actions", "keywords": ["release flow", "review flow", "ci", "workflow"], "deckUse": "レビュー後のテスト、ビルド、リリース導線を具体的に見せる", "facts": ["GitHub Actionsはリポジトリ内のイベントに応じてワークフローを実行できる", "新入社員にはPRからCI結果を見る導線を示す"] }
+      ],
       "slideSeeds": [
         { "topic": "repo map", "keywords": ["repo"], "message": "リポジトリ構成は、読む順番と最初に触る場所で説明する。", "evidence": ["新入社員には全体構造より最初の変更導線が必要", "README、package、tests、CI、deploy設定を入口にする", "所有者とレビュー先を併記する"] },
         { "topic": "review flow", "keywords": ["review"], "message": "レビュー文化はルールではなく、良い変更の条件として示す。", "evidence": ["pull requestは変更内容、議論、レビューの単位", "小さいPR、テスト、再現手順、影響範囲を明示", "レビューコメントへの応答と再確認を含める"] },
@@ -91,6 +119,10 @@
       "summary": "Cloud migration approval decks should map business outcomes to CAF Strategy/Plan/Ready/Adopt and operational Govern/Secure/Manage controls.",
       "sourceUrls": [
         "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/overview"
+      ],
+      "concreteCases": [
+        { "name": "Azure Migrate", "type": "cloud migration product", "sourceUrl": "https://learn.microsoft.com/en-us/azure/migrate/migrate-services-overview", "keywords": ["current state", "migration phases", "assessment", "migration"], "deckUse": "現状評価と移行候補の棚卸しに使う具体ツールとして示す", "facts": ["Azure Migrateはサーバー、データベース、Webアプリなどの評価と移行を支援する", "経営承認ではassessment、landing zone、pilot migrationを分ける"] },
+        { "name": "Azure landing zones", "type": "cloud foundation pattern", "sourceUrl": "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/landing-zone/", "keywords": ["migration phases", "approval ask", "ready", "landing zone"], "deckUse": "Readyフェーズの成果物として、ネットワーク、ID、管理、セキュリティの土台を説明する", "facts": ["Azure landing zonesはCAF Readyでクラウド環境の土台として扱われる", "移行前にガバナンス、ネットワーク、セキュリティ運用を準備する"] }
       ],
       "slideSeeds": [
         { "topic": "current state", "keywords": ["current"], "message": "現状はシステム一覧ではなく、事業制約と運用リスクで整理する。", "evidence": ["CAF Strategyはbusiness goalsへの整合を起点にする", "Planではoperating model, cloud skills, migration plan, cost estimationを扱う", "現状課題は可用性、保守期限、コスト、セキュリティに分ける"] },
@@ -104,6 +136,10 @@
         "https://csrc.nist.gov/pubs/sp/800/61/r3/final",
         "https://csrc.nist.gov/publications/detail/sp/800-61/rev-2/final"
       ],
+      "concreteCases": [
+        { "name": "PagerDuty Incident Response", "type": "incident response platform", "sourceUrl": "https://www.pagerduty.com/use-cases/incident-response/", "keywords": ["timeline", "preventive actions", "incident", "response"], "deckUse": "インシデント対応フロー例として、検知、エスカレーション、復旧を説明する", "facts": ["PagerDutyはインシデント対応、オンコール、エスカレーション運用を支援する", "ポストモーテムでは検知から復旧までの意思決定点を分ける"] },
+        { "name": "Atlassian postmortem guidance", "type": "postmortem practice", "sourceUrl": "https://www.atlassian.com/incident-management/postmortem", "keywords": ["root cause", "preventive actions", "postmortem"], "deckUse": "no-blameな振り返りとアクション整理の参考にする", "facts": ["Atlassianはincident postmortemを学習と改善のための活動として説明している", "原因、影響、タイムライン、再発防止を分けて扱う"] }
+      ],
       "slideSeeds": [
         { "topic": "timeline", "keywords": ["timeline"], "message": "時系列は発生、検知、判断、復旧、再発防止の転換点で見る。", "evidence": ["NIST SP 800-61はincident response capabilityに計画と資源が必要と説明", "重大障害では何がいつ分かったかを分ける", "復旧後の学びと次アクションを時系列に接続する"] },
         { "topic": "root cause", "keywords": ["cause"], "message": "原因は単一犯探しではなく、技術要因と検知/運用要因を分ける。", "evidence": ["root cause, contributing factors, failed controlsを区別", "障害対応は責めるためではなく再発防止の共通理解", "図解はroot-cause treeやbarrier analysisが合う"] },
@@ -116,6 +152,10 @@
         "https://www.councilofnonprofits.org/running-nonprofit/fundraising-and-resource-development",
         "https://givingusa.org/"
       ],
+      "concreteCases": [
+        { "name": "Second Harvest Japan", "type": "NPO", "sourceUrl": "https://2hj.org/english/", "keywords": ["community issue", "outcomes", "donation", "fundraising"], "deckUse": "食品支援NPOの実在例として、地域課題、活動、寄付用途を具体化する", "facts": ["Second Harvest Japanは日本で食品支援を行うフードバンク活動を案内している", "寄付依頼では活動量ではなく、支援が届く生活場面へ翻訳する"] },
+        { "name": "Japan Platform", "type": "NPO/NGO platform", "sourceUrl": "https://www.japanplatform.org/E/", "keywords": ["how to support", "community", "support"], "deckUse": "支援メニューと透明性の説明例として使う", "facts": ["Japan PlatformはNGO、経済界、政府が連携する緊急人道支援プラットフォーム", "支援者向けには寄付先、用途、成果報告の流れを明確にする"] }
+      ],
       "slideSeeds": [
         { "topic": "community issue", "keywords": ["issue"], "message": "地域課題は統計だけでなく、誰の生活がどう変わるかで伝える。", "evidence": ["支援者向けには課題、活動、成果、必要資金を一本の物語にする", "数字と人の顔を組み合わせる", "煽りすぎず具体的な支援先を示す"] },
         { "topic": "outcomes", "keywords": ["impact"], "message": "成果は活動量ではなく、地域に起きた変化として見せる。", "evidence": ["参加者数、継続率、相談件数、支援後の変化を使う", "before-afterやimpact metricsが合う", "支援がなければ続かない活動を明示する"] },
@@ -126,6 +166,10 @@
       "summary": "Roadmap all-hands decks should connect customer signals, themes, metrics, dependencies, and team implications.",
       "sourceUrls": [
         "https://www.productplan.com/learn/product-roadmap-analytics-quantitative-and-qualitative-data/"
+      ],
+      "concreteCases": [
+        { "name": "Jira Product Discovery", "type": "roadmap product", "sourceUrl": "https://www.atlassian.com/software/jira/product-discovery", "keywords": ["customer insights", "themes", "roadmap", "product"], "deckUse": "アイデア、インサイト、優先順位をロードマップ会話に変換する例にする", "facts": ["Jira Product Discoveryはアイデアやインサイトを整理し優先順位づけする製品", "全社会議では機能名より顧客変化と成功指標で説明する"] },
+        { "name": "Productboard", "type": "product management platform", "sourceUrl": "https://www.productboard.com/", "keywords": ["customer insights", "team implications", "roadmap"], "deckUse": "顧客フィードバックとロードマップの接続例として使う", "facts": ["Productboardは顧客インサイト、優先順位、ロードマップ管理を支援する", "部門別の行動変化をロードマップ横に置く"] }
       ],
       "slideSeeds": [
         { "topic": "customer insights", "keywords": ["customer"], "message": "ロードマップは顧客の行動と声の両方で裏づける。", "evidence": ["ProductPlanは定量と定性を併用する重要性を説明", "定量は何が起きたか、定性はなぜ起きたかを補う", "顧客指標はretention, churn, feature useなどが有効"] },
@@ -139,6 +183,10 @@
         "https://asq.org/quality-resources/root-cause-analysis",
         "https://asq.org/quality-resources/fishbone"
       ],
+      "concreteCases": [
+        { "name": "Toyota Production System", "type": "manufacturing system", "sourceUrl": "https://global.toyota/en/company/vision-and-philosophy/production-system/", "keywords": ["defect trend", "countermeasures", "quality", "manufacturing"], "deckUse": "現場改善とムダ低減の実在ベンチマークとして扱う", "facts": ["Toyota Production Systemはジャストインタイムと自働化を柱として説明されている", "品質改善資料では不良、工程、対策、現場負荷を同時に見る"] },
+        { "name": "ASQ Fishbone Diagram", "type": "quality tool", "sourceUrl": "https://asq.org/quality-resources/fishbone", "keywords": ["root causes", "fishbone", "cause"], "deckUse": "原因仮説をMan/Machine/Method/Materialなどに分ける図解例にする", "facts": ["Fishbone diagramは問題の潜在原因をカテゴリ別に整理する品質ツール", "根本原因と寄与要因を分けて検証順を置く"] }
+      ],
       "slideSeeds": [
         { "topic": "defect trend", "keywords": ["defect"], "message": "不良率は責任追及ではなく、改善対象を絞る入口として示す。", "evidence": ["RCAはcontinuous improvementの一部", "問題定義、原因仮説、対策設計を分ける", "現場向けには推移と発生工程を一緒に見せる"] },
         { "topic": "root causes", "keywords": ["root"], "message": "原因仮説はfishboneでカテゴリ化し、検証順を明確にする。", "evidence": ["Fishboneは問題の原因候補をカテゴリに整理する品質ツール", "ASQはbrainstormingの構造化に有用と説明", "Man, Machine, Method, Material, Measurementなどで整理する"] },
@@ -150,6 +198,10 @@
       "sourceUrls": [
         "https://telehealth.hhs.gov/patients/why-use-telehealth",
         "https://www.hhs.gov/hipaa/for-professionals/special-topics/telehealth/index.html"
+      ],
+      "concreteCases": [
+        { "name": "Zoom for Healthcare", "type": "telehealth communication product", "sourceUrl": "https://www.zoom.com/en/industry/healthcare/", "keywords": ["what it is", "booking steps", "telehealth", "service"], "deckUse": "オンライン診療の通信サービス例として、予約、診察、接続不安を説明する", "facts": ["ZoomはHealthcare向けのビデオコミュニケーション用途を案内している", "患者向けには端末、通信、静かな場所、本人確認を手順化する"] },
+        { "name": "Microsoft Cloud for Healthcare", "type": "healthcare cloud service", "sourceUrl": "https://www.microsoft.com/en-us/industry/health/microsoft-cloud-for-healthcare", "keywords": ["privacy", "important cautions", "healthcare"], "deckUse": "医療データと運用の管理例として、プライバシーと支援導線を説明する", "facts": ["Microsoft Cloud for Healthcareは医療業界向けクラウド機能を案内している", "利用案内では対面が必要な症状と緊急時の導線を明記する"] }
       ],
       "slideSeeds": [
         { "topic": "what it is", "keywords": ["what"], "message": "オンライン診療は、自宅などから医療者とつながる受診方法。", "evidence": ["HHSはtelehealthを電話やビデオで医療者と話せる方法と説明", "メッセージ送信や血圧などの情報共有にも使える", "対面が必要な場合もあると明記する"] },
@@ -163,6 +215,10 @@
         "https://www.mlit.go.jp/",
         "https://www.reins.or.jp/"
       ],
+      "concreteCases": [
+        { "name": "SUUMO", "type": "real estate search service", "sourceUrl": "https://suumo.jp/", "keywords": ["six criteria", "tradeoffs", "visit", "area"], "deckUse": "物件/エリア探索の実在サービス例として、駅距離、価格、間取りを比較軸にする", "facts": ["SUUMOは賃貸、購入、注文住宅など不動産情報を検索できるサービス", "家族比較では価格だけでなく通勤、学校、生活動線を並べる"] },
+        { "name": "REINS", "type": "real estate information network", "sourceUrl": "https://www.reins.or.jp/", "keywords": ["tradeoffs", "budget", "area comparison"], "deckUse": "市場情報の公的/業界データ源として、成約や流通情報の確認に触れる", "facts": ["REINSは不動産流通機構の情報ネットワークとして案内されている", "住み替え資料では公開サービスと専門家確認の役割を分ける"] }
+      ],
       "slideSeeds": [
         { "topic": "six criteria", "keywords": ["criteria"], "message": "住み替え比較は、生活の優先順位を家族で言語化するために使う。", "evidence": ["通勤、学校、治安、買い物、自然、価格感を同じ尺度で見る", "価格だけでなく日々の負担と休日の過ごし方を入れる", "radarやdiscussion guideが家族会話に向く"] },
         { "topic": "tradeoffs", "keywords": ["tradeoff"], "message": "候補エリアは、便利さと広さ/価格のトレードオフで整理する。", "evidence": ["駅距離、通勤時間、教育環境、買い物動線は相互に影響", "短期の好みと長期の資産性を分ける", "現地訪問で確認する仮説を出す"] },
@@ -174,6 +230,10 @@
       "sourceUrls": [
         "https://www.nature.com/nature-portfolio/for-authors/write",
         "https://owl.purdue.edu/owl/research_and_citation/"
+      ],
+      "concreteCases": [
+        { "name": "Overleaf", "type": "research writing product", "sourceUrl": "https://www.overleaf.com/", "keywords": ["method", "research question", "conference", "writing"], "deckUse": "共同執筆/LaTeX論文作成の実在ツール例として、研究発表の制作導線に触れる", "facts": ["OverleafはオンラインLaTeXエディタとして共同編集と論文執筆を支援する", "研究発表では問い、方法、結果、限界を読み順で設計する"] },
+        { "name": "Zotero", "type": "reference management product", "sourceUrl": "https://www.zotero.org/", "keywords": ["limitations", "citation", "source"], "deckUse": "文献管理と引用確認の具体ツール例として使う", "facts": ["Zoteroは文献収集、整理、引用管理を支援する", "限界と先行研究の位置づけは引用管理とセットで示す"] }
       ],
       "slideSeeds": [
         { "topic": "research question", "keywords": ["question"], "message": "研究課題は、何が未解決で何を明らかにしたいかを一文にする。", "evidence": ["背景から研究ギャップへつなぐ", "専門外には用語より問いの意味を先に出す", "結果スライドの読み方を先に置く"] },
@@ -187,6 +247,10 @@
         "https://nrf.com/insights/holiday-and-seasonal-trends",
         "https://www.shopify.com/retail/seasonal-marketing"
       ],
+      "concreteCases": [
+        { "name": "Shopify POS", "type": "retail product", "sourceUrl": "https://www.shopify.com/pos", "keywords": ["store operations", "product mix", "retail", "campaign"], "deckUse": "店舗販売とオンライン在庫/顧客管理の実在例としてキャンペーン運用を説明する", "facts": ["Shopify POSは店頭販売、在庫、顧客管理を扱うPOS製品", "季節キャンペーンでは主役商品、ついで買い、補充作業を分ける"] },
+        { "name": "Google Merchant Center", "type": "retail marketing product", "sourceUrl": "https://www.google.com/retail/solutions/merchant-center/", "keywords": ["target", "channels", "campaign"], "deckUse": "商品情報配信と広告/検索面への展開例として使う", "facts": ["Google Merchant CenterはGoogle上で商品情報を表示/管理するための仕組み", "チャネル別に訴求と商品情報の整備を分ける"] }
+      ],
       "slideSeeds": [
         { "topic": "target", "keywords": ["target"], "message": "ターゲットは属性ではなく、季節の買い物動機で分ける。", "evidence": ["季節キャンペーンは需要タイミングと購買理由が重要", "ギフト、自己消費、まとめ買い、来店動機を分ける", "店舗スタッフが説明しやすい言葉にする"] },
         { "topic": "product mix", "keywords": ["product"], "message": "商品構成は主役商品、ついで買い、在庫リスクで設計する。", "evidence": ["売上目標だけでなく粗利と在庫回転を見る", "販促導線と陳列の役割を分ける", "キャンペーン期間中の欠品/過剰在庫リスクを置く"] },
@@ -198,6 +262,10 @@
       "sourceUrls": [
         "https://www.investopedia.com/terms/v/variance-analysis.asp",
         "https://www.cfo.com/"
+      ],
+      "concreteCases": [
+        { "name": "Microsoft Power BI", "type": "analytics product", "sourceUrl": "https://learn.microsoft.com/en-us/power-bi/fundamentals/power-bi-overview", "keywords": ["budget vs actual", "drivers", "forecast", "finance"], "deckUse": "予算実績差異を可視化するBI例として、driver分解とforecastを示す", "facts": ["Power BIはデータを視覚化しレポート/ダッシュボードを作成する分析サービス", "予算レビューでは差異、要因、打ち手を同じ画面で見る"] },
+        { "name": "Microsoft Excel", "type": "spreadsheet product", "sourceUrl": "https://www.microsoft.com/en-us/microsoft-365/excel", "keywords": ["actions", "budget", "variance"], "deckUse": "予算表とシナリオ管理の身近なツール例として使う", "facts": ["Excelは表計算、分析、グラフ作成に使われるMicrosoft 365アプリ", "管理職向けには表の詳細より意思決定期限と削減額を強調する"] }
       ],
       "slideSeeds": [
         { "topic": "budget vs actual", "keywords": ["budget"], "message": "予算レビューは差額の大きさより、次に管理すべき差異を示す。", "evidence": ["variance analysisは予算と実績の差を分析する考え方", "前年差、予算差、見込み差を分ける", "管理職には打ち手の優先順位を示す"] },
@@ -211,6 +279,10 @@
         "https://www.oecd.org/governance/",
         "https://www.jil.go.jp/english/"
       ],
+      "concreteCases": [
+        { "name": "Decidim", "type": "participatory democracy platform", "sourceUrl": "https://decidim.org/", "keywords": ["stakeholder process", "citizen impact", "policy", "consensus"], "deckUse": "住民参加・合意形成の実在プラットフォーム例として説明する", "facts": ["Decidimは参加型民主主義のためのオープンソースプラットフォーム", "政策説明では住民、議会、行政、事業者の関与点を分ける"] },
+        { "name": "GOV.UK Consultation Principles", "type": "public consultation guidance", "sourceUrl": "https://www.gov.uk/government/publications/consultation-principles-guidance", "keywords": ["policy options", "stakeholder process", "consultation"], "deckUse": "意見募集と説明責任の参考として、合意形成スケジュールを整理する", "facts": ["GOV.UKはconsultation principles guidanceを公開している", "政策案は費用、実現性、影響、意見募集を同じ流れで示す"] }
+      ],
       "slideSeeds": [
         { "topic": "citizen impact", "keywords": ["citizen"], "message": "住民影響は賛否ではなく、誰に何が変わるかを中立に示す。", "evidence": ["公共説明では公平性、透明性、影響範囲が重要", "影響を世帯、事業者、行政運用に分ける", "過度に煽らず選択肢を示す"] },
         { "topic": "policy options", "keywords": ["policy"], "message": "施策案は単一案ではなく、費用と実現性の比較で示す。", "evidence": ["選択肢ごとに効果、費用、リスク、合意形成負荷を比較", "政策の判断軸を明示する", "住民説明に使える言葉へ翻訳する"] },
@@ -223,6 +295,10 @@
         "https://developer.apple.com/app-store/marketing/guidelines/",
         "https://play.google.com/console/about/guides/releasewithconfidence/"
       ],
+      "concreteCases": [
+        { "name": "TestFlight", "type": "app beta testing product", "sourceUrl": "https://developer.apple.com/testflight/", "keywords": ["first-month operations", "target user", "app launch", "beta"], "deckUse": "iOSアプリのベータ配布とフィードバック回収の具体例として使う", "facts": ["TestFlightはApp Store公開前にベータテストを行うためのApple公式機能", "ローンチ前にクラッシュ、初回体験、レビュー観点を確認する"] },
+        { "name": "Firebase Crashlytics", "type": "app monitoring product", "sourceUrl": "https://firebase.google.com/products/crashlytics", "keywords": ["KPI", "first-month operations", "crash", "monitoring"], "deckUse": "初月運用のクラッシュ監視と品質KPIの例として使う", "facts": ["Firebase Crashlyticsはアプリのクラッシュを追跡し優先度づけするサービス", "初月KPIはinstallだけでなくactivation、retention、crash-freeを分ける"] }
+      ],
       "slideSeeds": [
         { "topic": "target user", "keywords": ["target"], "message": "ターゲットは属性だけでなく、初回利用の状況で描く。", "evidence": ["アプリローンチでは誰がいつ使うかが価値提案を決める", "personaは課題、代替手段、初回行動で表す", "獲得チャネルごとに訴求を変える"] },
         { "topic": "KPI", "keywords": ["kpi"], "message": "KPIはインストール数だけでなく、初回価値到達までを見る。", "evidence": ["初月はinstall, activation, retention, crash-free, reviewを分ける", "Google Playは自信を持ったリリースのため事前テストと段階的展開を重視", "Appleのマーケティングガイドラインは表記や素材利用のルールを示す"] },
@@ -234,6 +310,10 @@
       "sourceUrls": [
         "https://www.edutopia.org/article/goal-setting-students/",
         "https://www.understood.org/en/articles/how-to-help-your-child-set-goals"
+      ],
+      "concreteCases": [
+        { "name": "Khan Academy", "type": "learning product", "sourceUrl": "https://www.khanacademy.org/", "keywords": ["学習目標", "週間スケジュール", "learning", "goal"], "deckUse": "家庭学習の実在サービス例として、単元、練習、進捗確認を計画に入れる", "facts": ["Khan Academyは数学などの学習コンテンツと練習問題を提供する", "学習計画では小さな到達目標と週次の振り返りを組み合わせる"] },
+        { "name": "Duolingo", "type": "learning app", "sourceUrl": "https://www.duolingo.com/", "keywords": ["サポート方法", "週間スケジュール", "habit", "learning"], "deckUse": "継続学習アプリの例として、短時間習慣、連続学習、励まし方を説明する", "facts": ["Duolingoは言語学習アプリとして短いレッスンと継続習慣を前面に出している", "家族支援は監視ではなく準備、伴走、振り返りに分ける"] }
       ],
       "slideSeeds": [
         { "topic": "学習目標", "keywords": ["goal"], "message": "学習目標は責める道具ではなく、小さな成功を見える化する約束。", "evidence": ["子ども向け目標は具体的で達成可能な小ステップがよい", "本人が選ぶ余地を残す", "結果だけでなく習慣を評価する"] },

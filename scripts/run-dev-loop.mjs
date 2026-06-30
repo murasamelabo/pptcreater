@@ -199,11 +199,15 @@ function recordSourceCheck(scenario, messageMap, outputFile) {
 }
 
 function sourceHintsForScenario(scenario) {
+  const concreteCaseUrls = (scenario.research?.concreteCases ?? [])
+    .map((item) => item?.sourceUrl)
+    .filter(Boolean);
   return [
     ...(scenario.sourceHints ?? []),
     ...(scenario.sources ?? []),
     ...(scenario.officialSources ?? []),
-    ...(scenario.research?.sourceUrls ?? [])
+    ...(scenario.research?.sourceUrls ?? []),
+    ...concreteCaseUrls
   ].map(String).filter(Boolean);
 }
 
@@ -416,8 +420,15 @@ function titleForTopic(topic, profile = { titleMax: 36 }) {
 
 function messageForTopic(topic, scenario, profile) {
   const researchSeed = researchSeedForTopic(scenario, topic);
+  const concreteCases = concreteCasesForTopic(scenario, topic);
   if (researchSeed?.message) {
+    if (concreteCases.length > 0 && /製品|事例|候補|サービス|product|case|candidate|service/u.test(String(topic))) {
+      return trimTrailingFragment(shorten(`${caseNames(concreteCases)}を具体例に、${normalizeResearchMessage(researchSeed.message)}`, profile.compactCopy ? 34 : 44));
+    }
     return trimTrailingFragment(shorten(normalizeResearchMessage(researchSeed.message), profile.compactCopy ? 34 : 44));
+  }
+  if (concreteCases.length > 0) {
+    return trimTrailingFragment(shorten(`${caseNames(concreteCases)}を例に、判断材料を具体化する。`, profile.compactCopy ? 34 : 44));
   }
   const subject = titleForTopic(topic, { titleMax: profile.compactCopy ? 20 : 28 });
   if (String(topic).toLowerCase().includes("executive")) {
@@ -451,11 +462,13 @@ function evidenceForTopic(topic, scenario, expression, profile) {
   const point = trimTrailingFragment(shorten(topic, profile.compactCopy ? 20 : 28));
   const researchSeed = researchSeedForTopic(scenario, topic);
   const researchedEvidence = (researchSeed?.evidence ?? []).map((item) => trimTrailingFragment(shorten(item, profile.compactCopy ? 28 : 42)));
+  const concreteEvidence = concreteCasesForTopic(scenario, topic).flatMap((item) => concreteCaseEvidence(item, profile));
   const isSummaryTopic = String(topic).toLowerCase().includes("executive");
   const summaryProof = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test([scenario.purpose, scenario.audience, topic].filter(Boolean).join(" ")) ? "3つの判断論点" : "3 decision points";
   if ((profile.informationDensityLevel ?? 0) >= 1) {
     const denseEvidence = [
       ...researchedEvidence,
+      ...concreteEvidence,
       `材料: ${point}`,
       `読み手: ${audience}`,
       `行動: ${trimTrailingFragment(shorten(scenario.purpose ?? "判断", 24))}`,
@@ -466,6 +479,7 @@ function evidenceForTopic(topic, scenario, expression, profile) {
   }
   const evidence = [
     ...researchedEvidence,
+    ...concreteEvidence,
     `対象: ${audience}`,
     `観点: ${trimTrailingFragment(shorten(topic, profile.compactCopy ? 18 : 24))}`,
     `根拠: ${expressionLabel(expression)}`,
@@ -484,6 +498,34 @@ function researchSeedForTopic(scenario, topic) {
     const keywords = (seed.keywords ?? []).map(normalizeMatchText);
     return seedTopic.includes(normalizedTopic) || normalizedTopic.includes(seedTopic) || keywords.some((keyword) => keyword && (keyword.includes(normalizedTopic) || normalizedTopic.includes(keyword)));
   }) ?? null;
+}
+
+function concreteCasesForTopic(scenario, topic) {
+  const cases = scenario.research?.concreteCases ?? [];
+  if (!Array.isArray(cases) || cases.length === 0) return [];
+  const normalizedTopic = normalizeMatchText(topic);
+  const matches = cases.filter((item) => {
+    const searchable = [
+      item.name,
+      item.type,
+      item.deckUse,
+      ...(item.keywords ?? []),
+      ...(item.facts ?? [])
+    ].map(normalizeMatchText).filter(Boolean);
+    return searchable.some((value) => value.includes(normalizedTopic) || normalizedTopic.includes(value));
+  });
+  return (matches.length > 0 ? matches : cases).slice(0, 2);
+}
+
+function caseNames(cases) {
+  return cases.map((item) => item.name).filter(Boolean).slice(0, 2).join(" / ");
+}
+
+function concreteCaseEvidence(item, profile) {
+  const maxLength = profile.compactCopy ? 32 : 48;
+  const facts = Array.isArray(item.facts) ? item.facts : [];
+  const lines = facts.length > 0 ? facts : [item.deckUse ?? item.type ?? "実在ケース"];
+  return lines.slice(0, 2).map((line) => trimTrailingFragment(shorten(`${item.name}: ${line}`, maxLength)));
 }
 
 function normalizeMatchText(value) {
