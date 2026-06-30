@@ -843,8 +843,8 @@ function conceptVisual(theme: Theme, intent: SlideIntent, id: string): SlideElem
     shape(`${id}-concept-core`, "roundRect", 4.12, 2.56, 4.62, 1.86, 13, theme.accent, theme.accent, { radius: 0.28 }),
     text(`${id}-concept-kicker`, "caption", "CONCEPT MODEL", 4.62, 2.94, 3.6, 0.18, 14, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true, align: "center" }),
     text(`${id}-concept-center-text`, "title", topicLabel(intent.emphasis ?? intent.title), 4.62, 3.34, 3.58, 0.48, 15, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 27, bold: true, align: "center" }),
-    shape(`${id}-decision-callout`, "roundRect", 4.72, 4.76, 3.58, 0.42, 16, theme.surface, theme.accent, { radius: 0.14 }),
-    text(`${id}-decision-callout-text`, "caption", decisionEmphasisLabel(intent), 5.0, 4.89, 3.02, 0.14, 17, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true, align: "center" })
+    shape(`${id}-decision-callout`, "roundRect", 4.72, 4.48, 3.58, 0.42, 16, theme.surface, theme.accent, { radius: 0.14 }),
+    text(`${id}-decision-callout-text`, "caption", decisionEmphasisLabel(intent), 5.0, 4.61, 3.02, 0.14, 17, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true, align: "center" })
   ];
   items.forEach((item, index) => {
     const [x, y] = positions[index];

@@ -1,0 +1,245 @@
+﻿{
+  "version": 1,
+  "updatedAt": "2026-06-30",
+  "purpose": "Reusable internet-researched content seeds for pptcreater dev-loop scenarios. The runner loads this once per run and does not perform web research inside each loop.",
+  "sourcePolicy": "Use these as scenario-level content seeds and source hints for synthetic decks. They are not exhaustive market reports; keep factual claims tied to listed public sources.",
+  "scenarios": {
+    "scenario-it-security-product-decision-maker": {
+      "summary": "Decision-maker security decks should connect threat exposure, zero-trust controls, business risk reduction, ROI, case evidence, and rollout steps.",
+      "sourceUrls": [
+        "https://www.microsoft.com/en-us/security/business/zero-trust",
+        "https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
+      ],
+      "slideSeeds": [
+        { "topic": "市場/脅威背景", "keywords": ["threat", "risk"], "message": "既知悪用脆弱性と侵害前提の運用を、経営リスクとして扱う。", "evidence": ["CISA KEVは実際に悪用確認された脆弱性を管理する公的カタログ", "Zero Trustは暗黙の信頼を置かず継続的に検証する考え方", "決裁者には技術機能より事業停止・監査・復旧リスクを示す"] },
+        { "topic": "ROI", "keywords": ["roi", "business case"], "message": "ROIは防止効果だけでなく、検知・復旧時間の短縮で説明する。", "evidence": ["投資対効果は侵害防止、検知時間短縮、復旧工数削減に分ける", "既存運用との重複削減も評価軸にする", "CISO/CIO向けには費用よりリスク低減の単位を先に置く"] },
+        { "topic": "導入ステップ", "keywords": ["roadmap", "deployment"], "message": "導入は全社一括ではなく、重要資産から段階的に検証する。", "evidence": ["初期診断、重要ID/端末、検知運用、全社展開の順で進める", "PoCでは管理対象、検知精度、運用負荷を確認する", "経営承認では90日以内の成果指標を置く"] }
+      ]
+    },
+    "scenario-github-copilot-tips-tech-talk": {
+      "summary": "Copilot tips decks should show concrete editor behaviors, prompt patterns, partial acceptance, alternatives, and team workflow habits.",
+      "sourceUrls": [
+        "https://docs.github.com/en/copilot/using-github-copilot/prompt-engineering-for-github-copilot",
+        "https://docs.github.com/en/copilot/using-github-copilot/getting-code-suggestions-in-your-ide-with-github-copilot"
+      ],
+      "slideSeeds": [
+        { "topic": "便利Tips 5-7個", "keywords": ["tips"], "message": "Copilotは曖昧な依頼より、目的・制約・例を渡すと安定する。", "evidence": ["GitHub Docsは start general then get specific を推奨", "例を渡すことで期待する入出力や実装形を伝えられる", "複雑なタスクは小さく分割するとよい"] },
+        { "topic": "良いプロンプト例", "keywords": ["prompt"], "message": "良いプロンプトは、背景、成功条件、具体例、関連コードを含む。", "evidence": ["GitHub Docsは examples, avoid ambiguity, indicate relevant code を推奨", "テストを先に例として書く使い方も紹介されている", "曖昧語ではなく対象関数やファイルを名指しする"] },
+        { "topic": "チームでの使い方", "keywords": ["team"], "message": "チーム利用では、個人Tipsよりレビュー可能な習慣に落とす。", "evidence": ["コード提案はTabで受け入れるだけでなく編集前提", "代替候補や部分受け入れを使い、提案を丸呑みしない", "履歴や開いているファイルの文脈を整理する"] }
+      ]
+    },
+    "scenario-hakone-ryokan-family-choice": {
+      "summary": "Hakone comparison decks should use shared family decision criteria, not generic hotel ranking.",
+      "sourceUrls": [
+        "https://www.hakone.or.jp/",
+        "https://www.japan.travel/en/destinations/kanto/kanagawa/hakone/"
+      ],
+      "slideSeeds": [
+        { "topic": "候補旅館", "keywords": ["ryokan", "candidate"], "message": "候補は価格帯だけでなく、滞在体験と移動負担で分ける。", "evidence": ["箱根は温泉、自然、美術館、芦ノ湖周辺など滞在体験が多様", "家族旅行では移動時間、食事、客室、温泉、周辺観光を同時に見る", "候補は高級滞在型、観光拠点型、子連れ実用型に分ける"] },
+        { "topic": "6項目比較", "keywords": ["six criteria", "radar"], "message": "6項目は家族の会話が生まれる判断軸として使う。", "evidence": ["温泉、食事、部屋、アクセス、子ども対応、予算感を並べる", "点数だけではなく誰に向くかを添える", "家族の優先順位を可視化するradarが合う"] },
+        { "topic": "予約前チェック", "keywords": ["checklist"], "message": "予約前に確認する項目を、当日の失敗回避に直結させる。", "evidence": ["食事時間、送迎、貸切風呂、キャンセル条件を確認", "子ども連れは寝具・食事・大浴場利用条件を見る", "候補を2-3件に絞ったあと公式サイトで最新条件を確認"] }
+      ]
+    },
+    "scenario-startup-investor-seed-pitch": {
+      "summary": "Seed pitch decks should be clear, concise, narrative-led, and built around 5-7 memorable investor takeaways.",
+      "sourceUrls": [
+        "https://www.ycombinator.com/library/2u-how-to-build-your-seed-round-pitch-deck",
+        "https://www.ycombinator.com/library/4T-how-to-design-a-better-pitch-deck"
+      ],
+      "slideSeeds": [
+        { "topic": "problem", "keywords": ["problem"], "message": "問題は抽象市場ではなく、現実の人や企業の痛みとして示す。", "evidence": ["YCは問題が現実の人/企業にどう影響するかを重視", "Seed deckは長い思想ではなく明確な物語に絞る", "投資家が覚えるのは数点だけなので問題の一文を強くする"] },
+        { "topic": "traction", "keywords": ["traction"], "message": "トラクションは曲線より、数字が何を意味するかを明示する。", "evidence": ["YCはtraction numbersを clear and meaningful に見せることを推奨", "グラフ横に文脈となる統計を置く", "MRR、成長率、継続率、顧客数などを用途に合わせて選ぶ"] },
+        { "topic": "ask", "keywords": ["fundraising", "ask"], "message": "調達額は、次の12か月で何を達成するかに結びつける。", "evidence": ["YC seed deck templateは調達額と資金で到達する状態を示す", "Series A readinessに向けたマイルストーンが重要", "Team slideは創業者が問題に適している理由を示す"] }
+      ]
+    },
+    "scenario-enterprise-ai-adoption-executive": {
+      "summary": "Enterprise AI adoption decks should start from business problems, classify use cases, compare build/buy options, and include governance, data, security, and PoC gates.",
+      "sourceUrls": [
+        "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/scenarios/ai/",
+        "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/overview"
+      ],
+      "slideSeeds": [
+        { "topic": "why now", "keywords": ["use case"], "message": "AI導入は技術起点ではなく、業務成果のギャップから始める。", "evidence": ["CAFはAI use case identificationで業務問題から始めることを推奨", "反復作業、遅い承認、成果未達が有望な起点", "ユースケースは活動と期待結果の短い文にする"] },
+        { "topic": "governance", "keywords": ["governance"], "message": "生成AIの本番利用には、責任あるAI、データ、セキュリティの基準が必要。", "evidence": ["CAFはResponsible AI strategyを本番スケールの条件とする", "Data strategyはAIの品質とコンプライアンスの土台", "Govern/Secure/Manageは運用段階で並行して効く"] },
+        { "topic": "PoC scope", "keywords": ["poc"], "message": "PoCは新規性ではなく、測定可能な業務価値で切る。", "evidence": ["CAFはmeaningful opportunitiesを絞ることを推奨", "Copilots, low-code, PaaS, infrastructureの選択肢は制御度とスピードのトレードオフ", "PoCではデータ可用性、スキル、コストを同時に見る"] }
+      ]
+    },
+    "scenario-saas-qbr-customer-success": {
+      "summary": "QBR decks should connect adoption, outcomes, open risks, benchmarks, and next-quarter actions to customer value.",
+      "sourceUrls": [
+        "https://www.productplan.com/learn/product-roadmap-analytics-quantitative-and-qualitative-data/"
+      ],
+      "slideSeeds": [
+        { "topic": "usage summary", "keywords": ["usage"], "message": "利用状況はログの羅列ではなく、顧客成果に近い行動指標で見る。", "evidence": ["ProductPlanはcustomer-oriented metricsの重要性を指摘", "利用量だけでなく機能利用、継続、品質、行動変化を示す", "定量データだけでは理由が分からないため定性フィードバックも必要"] },
+        { "topic": "benchmarks", "keywords": ["benchmark"], "message": "ベンチマークは顧客に次の行動を促す比較として使う。", "evidence": ["ロードマップ指標は意思決定と行動に結びつくものに絞る", "vanity metricsは避ける", "顧客平均との差を改善提案に変換する"] },
+        { "topic": "next actions", "keywords": ["action"], "message": "次四半期の合意は、担当、期日、測定指標まで落とす。", "evidence": ["QBRは継続利用とアップセルの会話につなげる場", "open issuesは責任追及ではなく障害除去として扱う", "推奨施策は顧客成果KPIへ紐づける"] }
+      ]
+    },
+    "scenario-new-hire-onboarding-engineering": {
+      "summary": "Engineering onboarding decks should make first-week tasks, repo map, review habits, and release path concrete enough to act on.",
+      "sourceUrls": [
+        "https://docs.github.com/en/get-started/quickstart/github-flow",
+        "https://docs.github.com/en/pull-requests/collaborating-with-pull-requests"
+      ],
+      "slideSeeds": [
+        { "topic": "repo map", "keywords": ["repo"], "message": "リポジトリ構成は、読む順番と最初に触る場所で説明する。", "evidence": ["新入社員には全体構造より最初の変更導線が必要", "README、package、tests、CI、deploy設定を入口にする", "所有者とレビュー先を併記する"] },
+        { "topic": "review flow", "keywords": ["review"], "message": "レビュー文化はルールではなく、良い変更の条件として示す。", "evidence": ["pull requestは変更内容、議論、レビューの単位", "小さいPR、テスト、再現手順、影響範囲を明示", "レビューコメントへの応答と再確認を含める"] },
+        { "topic": "first week checklist", "keywords": ["first week"], "message": "初週は環境構築、読解、最初の小変更までを1本の流れにする。", "evidence": ["Day 1 access、Day 2 local run、Day 3 test、Day 4 small fix、Day 5 retrospective", "メンターとの同期点を置く", "詰まった時の連絡先を明示"] }
+      ]
+    },
+    "scenario-cloud-migration-board-approval": {
+      "summary": "Cloud migration approval decks should map business outcomes to CAF Strategy/Plan/Ready/Adopt and operational Govern/Secure/Manage controls.",
+      "sourceUrls": [
+        "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/overview"
+      ],
+      "slideSeeds": [
+        { "topic": "current state", "keywords": ["current"], "message": "現状はシステム一覧ではなく、事業制約と運用リスクで整理する。", "evidence": ["CAF Strategyはbusiness goalsへの整合を起点にする", "Planではoperating model, cloud skills, migration plan, cost estimationを扱う", "現状課題は可用性、保守期限、コスト、セキュリティに分ける"] },
+        { "topic": "migration phases", "keywords": ["migration"], "message": "移行はStrategy, Plan, Ready, Adoptの順にゲートを置く。", "evidence": ["CAF foundational methodologiesはStrategy, Plan, Ready, Adopt", "Readyではlanding zoneを準備", "Adopt後はGovern, Secure, Manageで継続運用する"] },
+        { "topic": "approval ask", "keywords": ["approval"], "message": "承認依頼は初期予算だけでなく、次ゲートの判断条件を含める。", "evidence": ["費用、リスク、段階、期待効果を同じ表で示す", "承認範囲はassessment, landing zone, pilot migrationに分ける", "次回会議で判断する成果物を明示する"] }
+      ]
+    },
+    "scenario-incident-postmortem-technical": {
+      "summary": "Postmortem decks should separate timeline, impact, detection, root cause, recovery, and corrective actions with a no-blame learning tone.",
+      "sourceUrls": [
+        "https://csrc.nist.gov/pubs/sp/800/61/r3/final",
+        "https://csrc.nist.gov/publications/detail/sp/800-61/rev-2/final"
+      ],
+      "slideSeeds": [
+        { "topic": "timeline", "keywords": ["timeline"], "message": "時系列は発生、検知、判断、復旧、再発防止の転換点で見る。", "evidence": ["NIST SP 800-61はincident response capabilityに計画と資源が必要と説明", "重大障害では何がいつ分かったかを分ける", "復旧後の学びと次アクションを時系列に接続する"] },
+        { "topic": "root cause", "keywords": ["cause"], "message": "原因は単一犯探しではなく、技術要因と検知/運用要因を分ける。", "evidence": ["root cause, contributing factors, failed controlsを区別", "障害対応は責めるためではなく再発防止の共通理解", "図解はroot-cause treeやbarrier analysisが合う"] },
+        { "topic": "preventive actions", "keywords": ["preventive"], "message": "再発防止策はowner、期限、検証方法までセットにする。", "evidence": ["対策は検知、緩和、恒久対応、訓練に分ける", "action tableは担当・期限・完了条件を持つ", "次回レビューで効果を確認する"] }
+      ]
+    },
+    "scenario-npo-fundraising-community": {
+      "summary": "Fundraising decks should move from community issue to human story, proof of impact, funding gap, and specific support options.",
+      "sourceUrls": [
+        "https://www.councilofnonprofits.org/running-nonprofit/fundraising-and-resource-development",
+        "https://givingusa.org/"
+      ],
+      "slideSeeds": [
+        { "topic": "community issue", "keywords": ["issue"], "message": "地域課題は統計だけでなく、誰の生活がどう変わるかで伝える。", "evidence": ["支援者向けには課題、活動、成果、必要資金を一本の物語にする", "数字と人の顔を組み合わせる", "煽りすぎず具体的な支援先を示す"] },
+        { "topic": "outcomes", "keywords": ["impact"], "message": "成果は活動量ではなく、地域に起きた変化として見せる。", "evidence": ["参加者数、継続率、相談件数、支援後の変化を使う", "before-afterやimpact metricsが合う", "支援がなければ続かない活動を明示する"] },
+        { "topic": "how to support", "keywords": ["donation"], "message": "寄付依頼は金額別に何が実現するかを可視化する。", "evidence": ["一口金額、企業協賛、ボランティア、物品支援を分ける", "寄付用途表で透明性を上げる", "次の行動はQR/問い合わせ/説明会参加に落とす"] }
+      ]
+    },
+    "scenario-product-roadmap-all-hands": {
+      "summary": "Roadmap all-hands decks should connect customer signals, themes, metrics, dependencies, and team implications.",
+      "sourceUrls": [
+        "https://www.productplan.com/learn/product-roadmap-analytics-quantitative-and-qualitative-data/"
+      ],
+      "slideSeeds": [
+        { "topic": "customer insights", "keywords": ["customer"], "message": "ロードマップは顧客の行動と声の両方で裏づける。", "evidence": ["ProductPlanは定量と定性を併用する重要性を説明", "定量は何が起きたか、定性はなぜ起きたかを補う", "顧客指標はretention, churn, feature useなどが有効"] },
+        { "topic": "themes", "keywords": ["theme"], "message": "半年の重点テーマは機能名ではなく、顧客/事業の変化で表す。", "evidence": ["roadmap metricsはbusiness goalsとproduct visionへつなぐ", "vanity metricsは避ける", "テーマごとに成功指標を1つ置く"] },
+        { "topic": "team implications", "keywords": ["team"], "message": "全社向けには、各チームが明日から変える行動まで落とす。", "evidence": ["営業、CS、開発、プロダクトの依存を見える化", "dependency mapで部門間の期待をそろえる", "リスクはロードマップ横に置く"] }
+      ]
+    },
+    "scenario-manufacturing-quality-improvement": {
+      "summary": "Manufacturing quality decks should show defect trend, root-cause hypotheses, countermeasures, expected effect, and role commitments.",
+      "sourceUrls": [
+        "https://asq.org/quality-resources/root-cause-analysis",
+        "https://asq.org/quality-resources/fishbone"
+      ],
+      "slideSeeds": [
+        { "topic": "defect trend", "keywords": ["defect"], "message": "不良率は責任追及ではなく、改善対象を絞る入口として示す。", "evidence": ["RCAはcontinuous improvementの一部", "問題定義、原因仮説、対策設計を分ける", "現場向けには推移と発生工程を一緒に見せる"] },
+        { "topic": "root causes", "keywords": ["root"], "message": "原因仮説はfishboneでカテゴリ化し、検証順を明確にする。", "evidence": ["Fishboneは問題の原因候補をカテゴリに整理する品質ツール", "ASQはbrainstormingの構造化に有用と説明", "Man, Machine, Method, Material, Measurementなどで整理する"] },
+        { "topic": "countermeasures", "keywords": ["countermeasure"], "message": "改善施策は効果見込みと現場負荷を同時に示す。", "evidence": ["RCAは根本原因を恒久的に除去するための取り組み", "対策は担当、開始日、確認指標を持つ", "短期封じ込めと恒久対策を分ける"] }
+      ]
+    },
+    "scenario-healthcare-service-patient-guide": {
+      "summary": "Patient-facing telehealth decks should explain what telehealth is, benefits, booking/visit/payment flow, privacy, cautions, and support in plain language.",
+      "sourceUrls": [
+        "https://telehealth.hhs.gov/patients/why-use-telehealth",
+        "https://www.hhs.gov/hipaa/for-professionals/special-topics/telehealth/index.html"
+      ],
+      "slideSeeds": [
+        { "topic": "what it is", "keywords": ["what"], "message": "オンライン診療は、自宅などから医療者とつながる受診方法。", "evidence": ["HHSはtelehealthを電話やビデオで医療者と話せる方法と説明", "メッセージ送信や血圧などの情報共有にも使える", "対面が必要な場合もあると明記する"] },
+        { "topic": "booking steps", "keywords": ["booking"], "message": "予約から診察までの手順を、患者目線のチェックリストにする。", "evidence": ["予約、事前準備、本人確認、診察、支払い、薬/次回案内に分ける", "不安を減らすため必要な端末と通信環境を先に示す", "家族や受付スタッフも読める言葉にする"] },
+        { "topic": "important cautions", "keywords": ["privacy", "caution"], "message": "注意点はプライバシー、緊急時、対面が必要な症状を中心に置く。", "evidence": ["HHS OCRはtelehealth利用時のPHI privacy/securityリスク説明資料を提供", "患者向けには静かな場所、個人端末、通信環境を確認", "緊急症状はオンラインではなく救急/対面へ誘導"] }
+      ]
+    },
+    "scenario-real-estate-area-comparison-family": {
+      "summary": "Family area-comparison decks should make commute, school, safety, daily shopping, nature, and budget tradeoffs visible for discussion.",
+      "sourceUrls": [
+        "https://www.mlit.go.jp/",
+        "https://www.reins.or.jp/"
+      ],
+      "slideSeeds": [
+        { "topic": "six criteria", "keywords": ["criteria"], "message": "住み替え比較は、生活の優先順位を家族で言語化するために使う。", "evidence": ["通勤、学校、治安、買い物、自然、価格感を同じ尺度で見る", "価格だけでなく日々の負担と休日の過ごし方を入れる", "radarやdiscussion guideが家族会話に向く"] },
+        { "topic": "tradeoffs", "keywords": ["tradeoff"], "message": "候補エリアは、便利さと広さ/価格のトレードオフで整理する。", "evidence": ["駅距離、通勤時間、教育環境、買い物動線は相互に影響", "短期の好みと長期の資産性を分ける", "現地訪問で確認する仮説を出す"] },
+        { "topic": "next visits", "keywords": ["visit"], "message": "次の内見では、数字で見えない生活感を確認する。", "evidence": ["平日朝、休日昼、夜の雰囲気を分けて見る", "学校/保育、病院、スーパー、公園への徒歩動線を確認", "家族ごとの譲れない条件を持参する"] }
+      ]
+    },
+    "scenario-university-research-conference": {
+      "summary": "Research talks should make background, research question, method, results, limitations, and contribution clear to mixed expertise audiences.",
+      "sourceUrls": [
+        "https://www.nature.com/nature-portfolio/for-authors/write",
+        "https://owl.purdue.edu/owl/research_and_citation/"
+      ],
+      "slideSeeds": [
+        { "topic": "research question", "keywords": ["question"], "message": "研究課題は、何が未解決で何を明らかにしたいかを一文にする。", "evidence": ["背景から研究ギャップへつなぐ", "専門外には用語より問いの意味を先に出す", "結果スライドの読み方を先に置く"] },
+        { "topic": "method", "keywords": ["method"], "message": "方法は手順の羅列ではなく、比較可能性と妥当性の設計として示す。", "evidence": ["対象、データ、手法、評価指標をflowで整理", "制約や仮定を隠さず示す", "専門外には処理順と判断点を図で補う"] },
+        { "topic": "limitations", "keywords": ["limitations"], "message": "限界は弱点ではなく、結果の適用範囲を正確にするために示す。", "evidence": ["結果、考察、今後の課題を分ける", "サンプル、測定、外的妥当性の限界を整理", "次の研究計画へつなげる"] }
+      ]
+    },
+    "scenario-retail-seasonal-campaign-plan": {
+      "summary": "Retail seasonal campaign decks should link target, offer, product mix, channels, sales goal, calendar, and store operations.",
+      "sourceUrls": [
+        "https://nrf.com/insights/holiday-and-seasonal-trends",
+        "https://www.shopify.com/retail/seasonal-marketing"
+      ],
+      "slideSeeds": [
+        { "topic": "target", "keywords": ["target"], "message": "ターゲットは属性ではなく、季節の買い物動機で分ける。", "evidence": ["季節キャンペーンは需要タイミングと購買理由が重要", "ギフト、自己消費、まとめ買い、来店動機を分ける", "店舗スタッフが説明しやすい言葉にする"] },
+        { "topic": "product mix", "keywords": ["product"], "message": "商品構成は主役商品、ついで買い、在庫リスクで設計する。", "evidence": ["売上目標だけでなく粗利と在庫回転を見る", "販促導線と陳列の役割を分ける", "キャンペーン期間中の欠品/過剰在庫リスクを置く"] },
+        { "topic": "store operations", "keywords": ["store"], "message": "店舗オペレーションは、POP、陳列、声かけ、補充のチェックに落とす。", "evidence": ["現場が動けるように日別の準備項目を作る", "販促担当と店舗責任者の役割を分ける", "初週に売れ筋と在庫を見直す"] }
+      ]
+    },
+    "scenario-finance-budget-review-management": {
+      "summary": "Budget review decks should distinguish budget vs actual, variance drivers, forecast, risks, and management actions.",
+      "sourceUrls": [
+        "https://www.investopedia.com/terms/v/variance-analysis.asp",
+        "https://www.cfo.com/"
+      ],
+      "slideSeeds": [
+        { "topic": "budget vs actual", "keywords": ["budget"], "message": "予算レビューは差額の大きさより、次に管理すべき差異を示す。", "evidence": ["variance analysisは予算と実績の差を分析する考え方", "前年差、予算差、見込み差を分ける", "管理職には打ち手の優先順位を示す"] },
+        { "topic": "drivers", "keywords": ["driver"], "message": "コスト増要因は、価格、数量、稼働、例外要因に分解する。", "evidence": ["水増し説明ではなくdriver別の分解が必要", "一過性と構造的な増加を分ける", "打ち手は要因ごとに担当を置く"] },
+        { "topic": "actions", "keywords": ["action"], "message": "打ち手は削減額、リスク、意思決定期限を同じ表で見る。", "evidence": ["予算修正、発注見直し、稼働調整、投資延期を分ける", "forecastはbest/base/worstで示す", "次回レビューで確認する指標を決める"] }
+      ]
+    },
+    "scenario-public-sector-policy-briefing": {
+      "summary": "Public policy briefings should explain background, citizen impact, policy options, cost, schedule, and consensus process in neutral language.",
+      "sourceUrls": [
+        "https://www.oecd.org/governance/",
+        "https://www.jil.go.jp/english/"
+      ],
+      "slideSeeds": [
+        { "topic": "citizen impact", "keywords": ["citizen"], "message": "住民影響は賛否ではなく、誰に何が変わるかを中立に示す。", "evidence": ["公共説明では公平性、透明性、影響範囲が重要", "影響を世帯、事業者、行政運用に分ける", "過度に煽らず選択肢を示す"] },
+        { "topic": "policy options", "keywords": ["policy"], "message": "施策案は単一案ではなく、費用と実現性の比較で示す。", "evidence": ["選択肢ごとに効果、費用、リスク、合意形成負荷を比較", "政策の判断軸を明示する", "住民説明に使える言葉へ翻訳する"] },
+        { "topic": "stakeholder process", "keywords": ["stakeholder"], "message": "合意形成は説明会、意見募集、修正案の流れで設計する。", "evidence": ["関係者を住民、議会、行政、事業者に分ける", "反対論点を先に整理する", "スケジュールと意思決定ポイントを図示する"] }
+      ]
+    },
+    "scenario-mobile-app-launch-marketing": {
+      "summary": "Mobile app launch decks should connect target users, value proposition, core features, launch channels, KPI, and first-month operations.",
+      "sourceUrls": [
+        "https://developer.apple.com/app-store/marketing/guidelines/",
+        "https://play.google.com/console/about/guides/releasewithconfidence/"
+      ],
+      "slideSeeds": [
+        { "topic": "target user", "keywords": ["target"], "message": "ターゲットは属性だけでなく、初回利用の状況で描く。", "evidence": ["アプリローンチでは誰がいつ使うかが価値提案を決める", "personaは課題、代替手段、初回行動で表す", "獲得チャネルごとに訴求を変える"] },
+        { "topic": "KPI", "keywords": ["kpi"], "message": "KPIはインストール数だけでなく、初回価値到達までを見る。", "evidence": ["初月はinstall, activation, retention, crash-free, reviewを分ける", "Google Playは自信を持ったリリースのため事前テストと段階的展開を重視", "Appleのマーケティングガイドラインは表記や素材利用のルールを示す"] },
+        { "topic": "first-month operations", "keywords": ["operation"], "message": "初月運用は獲得、レビュー対応、不具合対応を日次で見る。", "evidence": ["ローンチ後はレビュー、問い合わせ、クラッシュ、継続率を早期監視", "広告/ASO/PR/CRMを分ける", "初週と4週目で評価指標を変える"] }
+      ]
+    },
+    "scenario-personal-learning-plan-family": {
+      "summary": "Family learning-plan decks should turn goals, weekly schedule, strengths, support methods, and motivation into a non-blaming shared plan.",
+      "sourceUrls": [
+        "https://www.edutopia.org/article/goal-setting-students/",
+        "https://www.understood.org/en/articles/how-to-help-your-child-set-goals"
+      ],
+      "slideSeeds": [
+        { "topic": "学習目標", "keywords": ["goal"], "message": "学習目標は責める道具ではなく、小さな成功を見える化する約束。", "evidence": ["子ども向け目標は具体的で達成可能な小ステップがよい", "本人が選ぶ余地を残す", "結果だけでなく習慣を評価する"] },
+        { "topic": "週間スケジュール", "keywords": ["schedule"], "message": "週間計画は詰め込みより、続く時間帯と休憩を先に決める。", "evidence": ["曜日別に短い学習ブロックを置く", "得意科目と苦手科目を交互にする", "家族の声かけタイミングを決める"] },
+        { "topic": "サポート方法", "keywords": ["support"], "message": "家族の支援は監視ではなく、準備、伴走、振り返りに分ける。", "evidence": ["前向きな学習習慣には安心感が必要", "褒める観点と困った時の相談先を決める", "週1回の振り返りで計画を更新する"] }
+      ]
+    }
+  }
+}

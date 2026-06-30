@@ -10,6 +10,7 @@
 - 大きめのUI/品質変更では、happy path、adversarial path、regression path を少なくとも1つずつ選ぶ。
 - 生成物は `generated/dev-loop-runs/<run-id>/<scenario-id>/` に置く。
 - User Simulator は、`userRequest` に近い自然な依頼文から deck artifact を作る。
+- User Simulator / deterministic runner は、毎ループWeb検索しない。共通リサーチ資産 [`dev-loop-scenario-research.json`](dev-loop-scenario-research.json) を読み込み、各scenarioの `slideSeeds` を slide message / evidence / source hints に使う。
 - User Simulator は、実行した CLI / MCP / agent 呼び出しを `tool-ledger.json` に残す。
 - Evaluator は、`finalize`、`review`、PPTX zip integrity、tool ledger、Studio HTML またはスクリーンショットを証拠にする。
 - `requiredExpressions` は実装を縛るためではなく、その資料で自然に期待される表現形式を示す。

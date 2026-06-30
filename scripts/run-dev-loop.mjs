@@ -9,6 +9,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
 const cliPath = path.join(repoRoot, "packages", "cli", "dist", "index.js");
 const scenarioDocPath = path.join(repoRoot, "docs", "dev-loop-test-scenarios.md");
+const scenarioResearchPath = path.join(repoRoot, "docs", "dev-loop-scenario-research.json");
 
 const validVisualTypes = new Set([
   "section",
@@ -92,6 +93,23 @@ function readScenarios() {
     throw new Error(`No ScenarioSpec objects found in ${scenarioDocPath}`);
   }
   return scenarios;
+}
+
+function readScenarioResearch() {
+  if (!existsSync(scenarioResearchPath)) {
+    return { scenarios: {} };
+  }
+  return JSON.parse(readFileSync(scenarioResearchPath, "utf8"));
+}
+
+function attachScenarioResearch(scenario, researchCatalog) {
+  const research = researchCatalog?.scenarios?.[scenario.id];
+  if (!research) return scenario;
+  return {
+    ...scenario,
+    research,
+    sourceHints: [...(scenario.sourceHints ?? []), ...(research.sourceUrls ?? [])]
+  };
 }
 
 function selectScenarios(scenarios, selector) {
@@ -184,7 +202,8 @@ function sourceHintsForScenario(scenario) {
   return [
     ...(scenario.sourceHints ?? []),
     ...(scenario.sources ?? []),
-    ...(scenario.officialSources ?? [])
+    ...(scenario.officialSources ?? []),
+    ...(scenario.research?.sourceUrls ?? [])
   ].map(String).filter(Boolean);
 }
 
@@ -359,6 +378,10 @@ function titleForTopic(topic, profile = { titleMax: 36 }) {
 }
 
 function messageForTopic(topic, scenario, profile) {
+  const researchSeed = researchSeedForTopic(scenario, topic);
+  if (researchSeed?.message) {
+    return trimTrailingFragment(shorten(researchSeed.message, profile.compactCopy ? 34 : 44));
+  }
   const subject = titleForTopic(topic, { titleMax: profile.compactCopy ? 20 : 28 });
   if (String(topic).toLowerCase().includes("executive")) {
     return "結論、重要性、次の判断を先に示す。";
@@ -382,10 +405,13 @@ function evidenceForTopic(topic, scenario, expression, profile) {
   const audience = trimTrailingFragment(profile.compactCopyLevel >= 2 ? audienceLabel(scenario.audience) : shorten(scenario.audience ?? "対象者", profile.compactCopy ? 18 : 28));
   const tone = trimTrailingFragment(shorten(scenario.tone ?? "標準", profile.compactCopy ? 12 : 20));
   const point = trimTrailingFragment(shorten(topic, profile.compactCopy ? 20 : 28));
+  const researchSeed = researchSeedForTopic(scenario, topic);
+  const researchedEvidence = (researchSeed?.evidence ?? []).map((item) => trimTrailingFragment(shorten(item, profile.compactCopy ? 28 : 42)));
   const isSummaryTopic = String(topic).toLowerCase().includes("executive");
   const summaryProof = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test([scenario.purpose, scenario.audience, topic].filter(Boolean).join(" ")) ? "3つの判断論点" : "3 decision points";
   if ((profile.informationDensityLevel ?? 0) >= 1) {
     const denseEvidence = [
+      ...researchedEvidence,
       `材料: ${point}`,
       `読み手: ${audience}`,
       `行動: ${trimTrailingFragment(shorten(scenario.purpose ?? "判断", 24))}`,
@@ -395,6 +421,7 @@ function evidenceForTopic(topic, scenario, expression, profile) {
     return (isSummaryTopic ? [summaryProof, ...denseEvidence] : denseEvidence).slice(0, profile.evidenceMax ?? 5);
   }
   const evidence = [
+    ...researchedEvidence,
     `対象: ${audience}`,
     `観点: ${trimTrailingFragment(shorten(topic, profile.compactCopy ? 18 : 24))}`,
     `根拠: ${expressionLabel(expression)}`,
@@ -402,6 +429,21 @@ function evidenceForTopic(topic, scenario, expression, profile) {
     `口調: ${tone}`
   ];
   return (isSummaryTopic ? [summaryProof, ...evidence] : evidence).slice(0, profile.evidenceMax ?? 4);
+}
+
+function researchSeedForTopic(scenario, topic) {
+  const seeds = scenario.research?.slideSeeds ?? [];
+  if (!Array.isArray(seeds) || seeds.length === 0) return null;
+  const normalizedTopic = normalizeMatchText(topic);
+  return seeds.find((seed) => {
+    const seedTopic = normalizeMatchText(seed.topic);
+    const keywords = (seed.keywords ?? []).map(normalizeMatchText);
+    return seedTopic.includes(normalizedTopic) || normalizedTopic.includes(seedTopic) || keywords.some((keyword) => keyword && (keyword.includes(normalizedTopic) || normalizedTopic.includes(keyword)));
+  }) ?? null;
+}
+
+function normalizeMatchText(value) {
+  return String(value ?? "").toLowerCase().replace(/[-_／/\s]+/g, "").trim();
 }
 
 function audienceLabel(audience) {
@@ -1799,7 +1841,8 @@ function writeRunIndex(runDir, loops) {
 
 function main() {
   const options = parseArgs(process.argv.slice(2));
-  const scenarios = selectScenarios(readScenarios(), options.scenarios);
+  const researchCatalog = readScenarioResearch();
+  const scenarios = selectScenarios(readScenarios().map((scenario) => attachScenarioResearch(scenario, researchCatalog)), options.scenarios);
   const runDir = path.resolve(repoRoot, options.output);
   if (existsSync(runDir) && !options.force) {
     throw new Error(`Output directory already exists: ${runDir}. Use --force or choose another --output.`);
@@ -2247,6 +2290,20 @@ function createDevLeadPlan(loopNumber, maxLoops, loopDir, qa, currentState) {
         changes: {
           informationDensityLevel: Math.min(2, Math.max(currentState.informationDensityLevel ?? 0, 1) + 1),
           reduceSlideDensity: false
+        },
+        suggestedScope: candidate.suggestedScope,
+        evidence: candidate.evidence.slice(0, 3)
+      });
+      continue;
+    }
+    if (candidate.id === "oversized-proof-number") {
+      actions.push({
+        id: "increase-proof-slide-routing",
+        kind: "program-quality-improvement",
+        reason: `${candidate.title}: ${candidate.commentCount} slide comments across ${candidate.scenarioCount} scenarios show numeric/comparison evidence that should be routed to stronger focal-proof treatment in the next loop.`,
+        changes: {
+          designAmbitionLevel: Math.min(3, Math.max(currentState.designAmbitionLevel ?? 0, 1)),
+          expressionPolishLevel: Math.min(5, Math.max(currentState.expressionPolishLevel ?? 0, 4))
         },
         suggestedScope: candidate.suggestedScope,
         evidence: candidate.evidence.slice(0, 3)
