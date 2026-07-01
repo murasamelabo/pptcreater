@@ -410,6 +410,14 @@ The smallest useful implementation is not a new renderer. It is a planning layer
 4. Add tests proving the artifacts exist, contain rationale, and avoid direct fixed-pattern selection.
 5. Add a CLI flag to write these artifacts beside the DeckSpec.
 
+Initial implementation status:
+
+- `packages/core/src/visualGrammarRegistry.ts` defines metadata-only visual grammars.
+- `packages/core/src/narrativePlanning.ts` converts an existing `DeckMessageMap` into staged planning artifacts.
+- `pptcreater from-message-map --planning-mode narrative-v1 --planning-output-dir <dir>` writes `deck-planning-input.json`, `deck-brief.json`, `chapter-plan.json`, `slide-briefs.json`, `slide-text-plan.json`, `expression-plan.json`, `layout-plan.json`, and `visual-grammar-registry.json` while still emitting the legacy-compatible DeckSpec.
+
+This slice intentionally does not change the visual renderer yet. It gives the dev loop inspectable artifacts so future expression failures can be attributed to message planning, copy planning, expression selection, layout planning, or rendering.
+
 Only after that should the renderer start using `ExpressionPlan` and `LayoutPlan` to compose slides without fixed archetypes.
 
 ## Decision

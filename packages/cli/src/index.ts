@@ -11,6 +11,7 @@ import {
   classifyFinalizeLintReports,
   cliMessage,
   createDeckFromMessageMap,
+  createNarrativePlanArtifacts,
   createEditWithCopilotPrompt,
   createSampleDeck,
   createSectionDividerSlides,
@@ -48,6 +49,7 @@ import {
   type ContentMode,
   type DeckSpec,
   type Locale,
+  type PlanningMode,
   type StyleProfile,
   type TemplateRegistryEntry
 } from "@pptcreater/core";
@@ -183,6 +185,15 @@ function parseStyleProfile(value: string): StyleProfile {
   throw new InvalidArgumentError(`Style must be one of: ${STYLE_PROFILES.join(", ")}.`);
 }
 
+function parsePlanningMode(value: string): PlanningMode {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "legacy" || normalized === "narrative-v1") {
+    return normalized;
+  }
+
+  throw new InvalidArgumentError("Planning mode must be one of: legacy, narrative-v1.");
+}
+
 function parseBuiltinIconName(value: string): BuiltinIconName {
   const normalized = value.trim().toLowerCase();
   if (BUILTIN_ICON_NAMES.includes(normalized as BuiltinIconName)) {
@@ -299,6 +310,8 @@ program
   .option("--style <profile>", "Force a style: minimal, stylish, report, presentation, technical", parseStyleProfile)
   .option("--template <id>", "Template id")
   .option("--author <name>", "Deck author")
+  .option("--planning-mode <mode>", "Planning mode: legacy or narrative-v1", parsePlanningMode, "legacy")
+  .option("--planning-output-dir <path>", "Write narrative-v1 planning artifacts to this directory")
   .option("--no-cover", "Skip the generated cover slide")
   .option("--no-closing", "Skip the generated closing slide")
   .option("--json", "Emit JSON result", false)
@@ -310,6 +323,8 @@ program
     style?: StyleProfile;
     template?: string;
     author?: string;
+    planningMode: PlanningMode;
+    planningOutputDir?: string;
     cover: boolean;
     closing: boolean;
     json: boolean;
@@ -332,9 +347,29 @@ program
       keywords,
       sources
     });
+    let planningArtifacts: ReturnType<typeof createNarrativePlanArtifacts> | undefined;
+    if (options.planningMode === "narrative-v1" || options.planningOutputDir) {
+      planningArtifacts = createNarrativePlanArtifacts(messageMap, {
+        title: options.title,
+        request: options.title,
+        locale: asLocale(options.locale),
+        contentMode: options.contentMode
+      });
+      if (options.planningOutputDir) {
+        await mkdir(options.planningOutputDir, { recursive: true });
+        await writeJson(`${options.planningOutputDir}/deck-planning-input.json`, planningArtifacts.planningInput);
+        await writeJson(`${options.planningOutputDir}/deck-brief.json`, planningArtifacts.deckBrief);
+        await writeJson(`${options.planningOutputDir}/chapter-plan.json`, planningArtifacts.chapters);
+        await writeJson(`${options.planningOutputDir}/slide-briefs.json`, planningArtifacts.slideBriefs);
+        await writeJson(`${options.planningOutputDir}/slide-text-plan.json`, planningArtifacts.slideTextPlans);
+        await writeJson(`${options.planningOutputDir}/expression-plan.json`, planningArtifacts.expressionPlans);
+        await writeJson(`${options.planningOutputDir}/layout-plan.json`, planningArtifacts.layoutPlans);
+        await writeJson(`${options.planningOutputDir}/visual-grammar-registry.json`, planningArtifacts.visualGrammars);
+      }
+    }
     await writeJson(options.output, deck);
     if (options.json) {
-      console.log(JSON.stringify({ outputPath: options.output, deck }, null, 2));
+      console.log(JSON.stringify({ outputPath: options.output, planningOutputDir: options.planningOutputDir, planningMode: options.planningMode, planningArtifacts, deck }, null, 2));
       return;
     }
     console.log(cliMessage(outputLocale(deck.locale), "cli.created", { path: options.output }));
