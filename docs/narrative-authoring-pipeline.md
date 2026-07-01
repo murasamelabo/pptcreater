@@ -416,7 +416,9 @@ Initial implementation status:
 - `packages/core/src/narrativePlanning.ts` converts an existing `DeckMessageMap` into staged planning artifacts.
 - `pptcreater from-message-map --planning-mode narrative-v1 --planning-output-dir <dir>` writes `deck-planning-input.json`, `deck-brief.json`, `chapter-plan.json`, `slide-briefs.json`, `slide-text-plan.json`, `expression-plan.json`, `layout-plan.json`, and `visual-grammar-registry.json` while still emitting the legacy-compatible DeckSpec.
 
-This slice intentionally does not change the visual renderer yet. It gives the dev loop inspectable artifacts so future expression failures can be attributed to message planning, copy planning, expression selection, layout planning, or rendering.
+The first slice added inspectable artifacts so future expression failures can be attributed to message planning, copy planning, expression selection, layout planning, or rendering.
+
+The second slice wires `planningMode: "narrative-v1"` into `createDeckFromMessageMap`. In that mode, content slides use `ExpressionPlan.selectedGrammarId` and a grammar-driven native-object composer, producing `message-grammar-*` layouts instead of immediately mapping `SlideIntent.visualType` to the legacy `message-*` archetypes. Legacy mode remains the default.
 
 Only after that should the renderer start using `ExpressionPlan` and `LayoutPlan` to compose slides without fixed archetypes.
 

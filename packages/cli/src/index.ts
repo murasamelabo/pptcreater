@@ -345,7 +345,8 @@ program
       includeCover: options.cover,
       includeClosing: options.closing,
       keywords,
-      sources
+      sources,
+      planningMode: options.planningMode
     });
     let planningArtifacts: ReturnType<typeof createNarrativePlanArtifacts> | undefined;
     if (options.planningMode === "narrative-v1" || options.planningOutputDir) {

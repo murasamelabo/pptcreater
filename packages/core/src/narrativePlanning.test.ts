@@ -1,6 +1,8 @@
 ﻿import { describe, expect, it } from "vitest";
+import { createDeckFromMessageMap } from "./messageDeck.js";
 import { createNarrativePlanArtifacts } from "./narrativePlanning.js";
 import type { DeckMessageMap } from "./schema.js";
+import { reviewVisualQuality } from "./visualQuality.js";
 
 const MESSAGE_MAP: DeckMessageMap = {
   objective: "意思決定者が導入判断に必要な論点を理解する",
@@ -90,5 +92,22 @@ describe("narrative planning artifacts", () => {
     expect(artifacts.slideBriefs[0].densityTarget).toBe("dense");
     expect(artifacts.slideBriefs[0].splitReason).toMatch(/split|分割|summarized/u);
     expect(artifacts.layoutPlans[0].overflowPolicy).toBe("split");
+  });
+
+  it("can generate DeckSpec slides from narrative-v1 grammar layouts", () => {
+    const deck = createDeckFromMessageMap(MESSAGE_MAP, {
+      title: "Narrative rendering",
+      locale: "ja-JP",
+      contentMode: "decision",
+      planningMode: "narrative-v1"
+    });
+
+    const contentSlides = deck.slides.filter((slide) => slide.id !== "cover" && slide.id !== "closing");
+
+    expect(deck.metadata.keywords).toContain("narrative-v1");
+    expect(contentSlides.every((slide) => slide.layout.startsWith("message-grammar-"))).toBe(true);
+    expect(contentSlides.some((slide) => slide.layout.includes("typographic-emphasis"))).toBe(true);
+    expect(JSON.stringify(deck)).not.toContain("message-flow");
+    expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
   });
 });
