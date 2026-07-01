@@ -340,7 +340,7 @@ function compactLabel(value: string, maxLength: number): string {
   const normalized = value
     .replace(/^\s*(?:対象|観点|表現|口調|材料|読み手|行動|トーン|tone|profile)\s*[:：]\s*/iu, "")
     .replace(/adaptive\+|compact-copy\+|executive-summary\+|safe-contrast\+|expression-polish-\d+/giu, "")
-    .replace(/[-_]+/g, " ")
+    .replace(/(?<![A-Za-z0-9])[-_]+|[-_]+(?![A-Za-z0-9])/g, " ")
     .replace(/\s+/g, " ")
     .trim();
   if (!normalized) {
@@ -385,6 +385,8 @@ function audienceChipValue(value: string): string {
   if (/店舗|販促/u.test(value)) return "店舗/販促";
   if (/患者/u.test(value)) return "患者/家族";
   if (/投資/u.test(value)) return "投資家";
+  if (/アーキテクト|設計者|技術責任|architect/iu.test(value)) return "アーキテクト";
+  if (/セキュリティ|security/iu.test(value)) return "セキュリティ";
   if (/開発|エンジニア|SRE/u.test(value)) return "開発チーム";
   return compactChipValue(value, 10);
 }
@@ -430,7 +432,7 @@ function trimJapaneseDanglingEnd(value: string): string {
 }
 
 function topicLabel(value: string): string {
-  const normalized = value.replace(/^L\d+\s+/iu, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+  const normalized = value.replace(/^L\d+\s+/iu, "").replace(/(?<![A-Za-z0-9])[-_]+|[-_]+(?![A-Za-z0-9])/g, " ").replace(/\s+/g, " ").trim();
   if (/^対象\s*[:：]/u.test(normalized)) return "対象";
   if (/^観点\s*[:：]/u.test(normalized)) return "観点";
   if (/^表現\s*[:：]/u.test(normalized)) return "表現";
@@ -442,7 +444,7 @@ function topicLabel(value: string): string {
     return compactLabel(normalized, 30);
   }
 
-  const known = ["投資判断", "候補比較", "リスク整理", "ロードマップ", "承認", "比較", "次の行動"];
+  const known = ["投資判断", "候補比較", "リスク整理", "ロードマップ", "次の行動"];
   const found = known.find((keyword) => normalized.includes(keyword));
   if (found) {
     return found;
@@ -476,13 +478,13 @@ function pointLabel(value: string): string {
 function visibleSentence(value: string): string {
   const text = value.trim();
   if (!text) return text;
-  if (/^(対象|観点|表現|口調|材料|読み手|行動|トーン)\s*[:：]/u.test(text) || /[、/／]/.test(text) || text.length <= 18) {
+  if (/^(対象|観点|表現|口調|材料|読み手|行動|トーン)\s*[:：]/u.test(text) || /[:：]/.test(text) || /[、/／]/.test(text) || text.length <= 18) {
     return text;
   }
   if (/[。.!?！？]$/u.test(text) || /(する|した|できる|ある|いる|なる|進める|示す|伝える|確認する|選ぶ)$/u.test(text)) {
     return text;
   }
-  return hasJapanese(text) ? `${text}を確認する。` : `${text} matters.`;
+  return hasJapanese(text) ? `${text}。` : `${text} matters.`;
 }
 
 function coverTitleText(value: string): string {
@@ -675,8 +677,12 @@ function evidenceItems(intent: SlideIntent, min = 3): string[] {
 }
 
 function proofNumberForIntent(intent: SlideIntent): string | undefined {
-  const sourceText = [intent.emphasis, ...intent.evidence, intent.message, intent.title].filter(Boolean).join(" ");
-  const match = sourceText.match(/[-+]?\d[\d,.]*(?:\.\d+)?\s*(?:%|倍|億|万|円|pt|ポイント|件|社|人|年|ヶ月|月|日)?(?:\s*(?:減|増|改善|短縮|削減))?/u);
+  const sourceText = [intent.emphasis, ...intent.evidence, intent.message, intent.title]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/(?:19|20)\d{2}\s*年?/gu, " ");
+  // Require a real unit and a clean digit boundary so product names (Auth0) and bare years never become a hero number.
+  const match = sourceText.match(/(?<![A-Za-z0-9])[-+]?\d[\d,.]*(?:\.\d+)?\s*(?:%|倍|億|万|円|pt|ポイント|件|社|人|年|ヶ月|月|日)(?:\s*(?:減|増|改善|短縮|削減))?/u);
   return match ? compactLabel(match[0], 12) : undefined;
 }
 
@@ -1173,7 +1179,7 @@ function narrativeSlideShell(theme: Theme, intent: SlideIntent, elements: SlideE
         decorative: true,
         bg: theme.accentSoft
       }),
-      text(`${id}-eyebrow`, "caption", `GRAMMAR ${String(index + 1).padStart(2, "0")}`, 0.7, 0.38, 1.68, 0.25, 1, theme, {
+      text(`${id}-eyebrow`, "caption", `SLIDE ${String(index + 1).padStart(2, "0")}`, 0.7, 0.38, 1.68, 0.25, 1, theme, {
         color: theme.accent,
         bg: theme.background,
         fontSize: 12,
@@ -1186,22 +1192,57 @@ function narrativeSlideShell(theme: Theme, intent: SlideIntent, elements: SlideE
   };
 }
 
-function narrativeItems(intent: SlideIntent, min = 3, max = 6): string[] {
-  return evidenceItems(intent, min).slice(0, max).map((item) => compactLabel(item, 18));
+function hasCodeToken(value: string): boolean {
+  return /[A-Za-z0-9][-_/=.:+][A-Za-z0-9]/.test(value) || /[=]|\bRFC\s?\d|urn:|https?:\/\//i.test(value);
 }
 
-function grammarLabel(expressionPlan: ExpressionPlan): string {
-  return expressionPlan.selectedGrammarId.replace(/-/g, " ").toUpperCase();
+function narrativeLabel(value: string, max = 26): string {
+  const text = String(value).replace(/\s+/g, " ").trim();
+  if (!text) return text;
+  if (hasCodeToken(text)) {
+    const chars = Array.from(text);
+    return chars.length <= max + 12 ? text : chars.slice(0, max + 12).join("").trimEnd();
+  }
+  return compactLabel(text, max);
 }
 
-function narrativeEvidenceBoard(theme: Theme, intent: SlideIntent, expressionPlan: ExpressionPlan): SlideElement[] {
+function narrativeItems(intent: SlideIntent, min = 3, max = 6, labelMax = 26): string[] {
+  const values = intent.evidence.map((item) => narrativeLabel(item, labelMax)).filter(Boolean);
+  while (values.length < min) values.push(narrativeLabel(intent.emphasis ?? intent.message, labelMax));
+  return values.slice(0, max);
+}
+
+function conceptMarkSvg(ink: string): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 150" role="img"><circle cx="42" cy="75" r="17" fill="none" stroke="${ink}" stroke-width="6"/><circle cx="164" cy="42" r="15" fill="${ink}" opacity="0.92"/><circle cx="164" cy="112" r="15" fill="none" stroke="${ink}" stroke-width="6"/><path d="M60 68 L146 46 M60 82 L146 106" fill="none" stroke="${ink}" stroke-width="5" stroke-linecap="round"/></svg>`;
+}
+
+function conceptMarkElement(theme: Theme, intent: SlideIntent, id: string, x: number, y: number, w: number, h: number, readingOrder: number, ink: string): SvgElement {
+  const label = topicLabel(intent.emphasis ?? intent.title);
+  return {
+    id: `${id}-narrative-mark`,
+    type: "svg",
+    x,
+    y,
+    w,
+    h,
+    readingOrder,
+    decorative: false,
+    altText: `${label} relationship mark`,
+    title: label,
+    description: visibleSentence(intent.message),
+    svg: conceptMarkSvg(ink)
+  };
+}
+
+function narrativeEvidenceBoard(theme: Theme, intent: SlideIntent, _expressionPlan: ExpressionPlan): SlideElement[] {
   const id = intent.slideId;
   const items = narrativeItems(intent, 3, 5);
   const elements: SlideElement[] = [
     shape(`${id}-narrative-claim-panel`, "roundRect", 0.86, 1.96, 5.3, 4.84, 10, theme.accent, theme.accent, { radius: 0.22 }),
-    text(`${id}-narrative-grammar`, "caption", grammarLabel(expressionPlan), 1.18, 2.32, 3.7, 0.2, 11, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true }),
+    text(`${id}-narrative-grammar`, "caption", visualKickerLabel(intent), 1.18, 2.32, 3.7, 0.2, 11, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true }),
     text(`${id}-narrative-claim`, "callout", topicLabel(intent.emphasis ?? intent.title), 1.18, 2.86, 4.35, 0.72, 12, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 28 }),
-    text(`${id}-narrative-message`, "body", visibleSentence(intent.message), 1.18, 4.12, 4.28, 1.06, 13, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 18 }),
+    text(`${id}-narrative-message`, "body", visibleSentence(intent.message), 1.18, 4.12, 4.28, 1.0, 13, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 18 }),
+    conceptMarkElement(theme, intent, id, 4.62, 5.42, 1.32, 1.02, 14, theme.inkOnAccent),
     shape(`${id}-narrative-evidence-field`, "roundRect", 6.72, 2.04, 5.62, 4.66, 20, theme.surface, theme.line, { radius: 0.18 })
   ];
   items.forEach((item, index) => {
@@ -1221,11 +1262,11 @@ function narrativeTypographic(theme: Theme, intent: SlideIntent, expressionPlan:
   const items = narrativeItems(intent, 2, 3);
   return [
     shape(`${id}-type-band`, "roundRect", 0.92, 2.02, 6.2, 4.54, 10, theme.accent, theme.accent, { radius: 0.24 }),
-    text(`${id}-type-grammar`, "caption", grammarLabel(expressionPlan), 1.32, 2.42, 3.9, 0.2, 11, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true }),
+    text(`${id}-type-grammar`, "caption", visualKickerLabel(intent), 1.32, 2.42, 3.9, 0.2, 11, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true }),
     text(`${id}-type-proof`, "callout", proof, 1.28, 3.04, 5.08, 1.12, 12, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 38, align: "center" }),
     text(`${id}-type-message`, "body", visibleSentence(intent.message), 1.52, 4.72, 4.58, 0.74, 13, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 18, align: "center" }),
     shape(`${id}-type-context`, "roundRect", 7.58, 2.24, 4.42, 3.92, 20, theme.surface, theme.line, { radius: 0.18 }),
-    text(`${id}-type-context-title`, "callout", topicLabel(intent.title), 7.98, 2.72, 3.42, 0.38, 21, theme, { bg: theme.surface, color: theme.accent, fontSize: 22 }),
+    text(`${id}-type-context-title`, "subtitle", topicLabel(intent.title), 7.98, 2.72, 3.42, 0.38, 21, theme, { bg: theme.surface, color: theme.accent, fontSize: 20 }),
     ...items.flatMap((item, index) => {
       const y = 3.58 + index * 0.72;
       return [
@@ -1236,23 +1277,36 @@ function narrativeTypographic(theme: Theme, intent: SlideIntent, expressionPlan:
   ];
 }
 
-function narrativeSequentialPath(theme: Theme, intent: SlideIntent, expressionPlan: ExpressionPlan): SlideElement[] {
+function narrativeSequentialPath(theme: Theme, intent: SlideIntent, _expressionPlan: ExpressionPlan): SlideElement[] {
   const id = intent.slideId;
-  const items = narrativeItems(intent, 4, 6);
+  const items = narrativeItems(intent, 3, 6, 18);
+  const count = items.length;
+  const stageX = 0.92;
+  const stageW = 11.48;
   const elements: SlideElement[] = [
-    shape(`${id}-path-stage`, "roundRect", 0.92, 2.0, 11.48, 4.72, 10, theme.surface, theme.line, { radius: 0.18 }),
-    text(`${id}-path-grammar`, "caption", grammarLabel(expressionPlan), 1.26, 2.28, 3.2, 0.18, 11, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true }),
-    shape(`${id}-path-line`, "line", 1.8, 5.72, 9.3, -2.48, 12, "none", theme.accent, { width: 1.5, endArrow: true })
+    shape(`${id}-path-stage`, "roundRect", stageX, 2.0, stageW, 4.72, 10, theme.surface, theme.line, { radius: 0.18 }),
+    text(`${id}-path-kicker`, "caption", visualKickerLabel(intent), 1.26, 2.3, 3.4, 0.2, 11, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true })
   ];
+  const marginX = 0.5;
+  const gap = 0.42;
+  const usableW = stageW - marginX * 2;
+  const cardW = Math.max(1.5, (usableW - gap * (count - 1)) / count);
+  const cardY = 3.55;
+  const cardH = 2.5;
+  const startX = stageX + marginX;
+  const badgeCenterY = cardY + 0.52;
   items.forEach((item, index) => {
-    const t = items.length === 1 ? 0 : index / (items.length - 1);
-    const x = 1.52 + t * 8.9;
-    const y = 5.36 - t * 2.22 + (index % 2 === 0 ? -0.12 : 0.22);
-    const order = 20 + index * 5;
+    const x = startX + index * (cardW + gap);
     const isFocal = index === 0;
-    elements.push(shape(`${id}-path-node-${index}`, "ellipse", x, y, isFocal ? 0.66 : 0.52, isFocal ? 0.66 : 0.52, order, isFocal ? theme.accent : theme.accentSoft, isFocal ? theme.accent : theme.line));
-    elements.push(text(`${id}-path-number-${index}`, "caption", String(index + 1), x + (isFocal ? 0.22 : 0.17), y + (isFocal ? 0.22 : 0.17), 0.18, 0.12, order + 1, theme, { bg: isFocal ? theme.accent : theme.accentSoft, color: isFocal ? theme.inkOnAccent : theme.accent, fontSize: 11, bold: true, align: "center" }));
-    elements.push(text(`${id}-path-label-${index}`, "body", item, x - 0.55, y + 0.78, 1.82, 0.34, order + 2, theme, { bg: theme.surface, color: theme.text, fontSize: 14, align: "center" }));
+    const cardFill = isFocal ? theme.accent : theme.background;
+    const order = 20 + index * 6;
+    if (index < count - 1) {
+      elements.push(shape(`${id}-path-connector-${index}`, "line", x + cardW, badgeCenterY, gap, 0, order, "none", theme.accent, { width: 1.4, endArrow: true }));
+    }
+    elements.push(shape(`${id}-path-card-${index}`, "roundRect", x, cardY, cardW, cardH, order + 1, cardFill, isFocal ? theme.accent : theme.line, { radius: 0.16 }));
+    elements.push(shape(`${id}-path-badge-${index}`, "ellipse", x + cardW / 2 - 0.28, cardY + 0.24, 0.56, 0.56, order + 2, isFocal ? theme.inkOnAccent : theme.accent, isFocal ? theme.inkOnAccent : theme.accent, { fillOpacity: isFocal ? 0.24 : 1 }));
+    elements.push(text(`${id}-path-number-${index}`, "caption", String(index + 1), x + cardW / 2 - 0.28, cardY + 0.4, 0.56, 0.22, order + 3, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 16, bold: true, align: "center" }));
+    elements.push(text(`${id}-path-label-${index}`, "body", item, x + 0.16, cardY + 1.08, cardW - 0.32, 1.22, order + 4, theme, { bg: cardFill, color: isFocal ? theme.inkOnAccent : theme.text, fontSize: 14, align: "center", valign: "top" }));
   });
   return elements;
 }
@@ -1265,10 +1319,10 @@ function narrativeComparisonField(theme: Theme, intent: SlideIntent, expressionP
     shape(`${id}-comparison-left`, "roundRect", 0.92, 2.02, 5.24, 4.54, 10, theme.surface, theme.line, { radius: 0.2 }),
     shape(`${id}-comparison-right`, "roundRect", 7.2, 2.02, 5.24, 4.54, 20, theme.accentSoft, theme.line, { radius: 0.2 }),
     shape(`${id}-comparison-gap`, "rect", 6.52, 2.42, 0.16, 3.7, 30, theme.accent, theme.accent, { radius: 0 }),
-    text(`${id}-comparison-grammar`, "caption", grammarLabel(expressionPlan), 1.24, 2.34, 3.8, 0.18, 11, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true }),
-    text(`${id}-comparison-left-title`, "callout", leftA ?? "Option A", 1.28, 2.92, 3.9, 0.44, 12, theme, { bg: theme.surface, color: theme.text, fontSize: 22 }),
+    text(`${id}-comparison-grammar`, "caption", visualKickerLabel(intent), 1.24, 2.34, 3.8, 0.18, 11, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true }),
+    text(`${id}-comparison-left-title`, "callout", leftA ?? "Option A", 1.28, 2.88, 4.6, 0.56, 12, theme, { bg: theme.surface, color: theme.text, fontSize: 16, valign: "middle" }),
     text(`${id}-comparison-left-body`, "body", visibleSentence(leftB ?? intent.message), 1.28, 3.78, 4.0, 0.94, 13, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 18 }),
-    text(`${id}-comparison-right-title`, "callout", rightA ?? topicLabel(intent.emphasis ?? intent.title), 7.58, 2.92, 3.9, 0.44, 21, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 22 }),
+    text(`${id}-comparison-right-title`, "callout", rightA ?? topicLabel(intent.emphasis ?? intent.title), 7.58, 2.88, 4.6, 0.56, 21, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 16, valign: "middle" }),
     text(`${id}-comparison-right-body`, "body", visibleSentence(rightB ?? intent.message), 7.58, 3.78, 4.0, 0.94, 22, theme, { bg: theme.accentSoft, color: theme.text, fontSize: 18 }),
     shape(`${id}-comparison-decision`, "roundRect", 4.74, 5.52, 3.86, 0.5, 31, theme.accent, theme.accent, { radius: 0.16 }),
     text(`${id}-comparison-decision-text`, "caption", decisionEmphasisLabel(intent), 5.02, 5.68, 3.28, 0.16, 32, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true, align: "center" })
@@ -1280,21 +1334,21 @@ function narrativeDecisionSurface(theme: Theme, intent: SlideIntent, expressionP
   const items = narrativeItems(intent, 4, 6);
   const elements: SlideElement[] = [
     shape(`${id}-decision-stage`, "roundRect", 0.92, 1.96, 8.02, 4.86, 10, theme.surface, theme.line, { radius: 0.18 }),
-    text(`${id}-decision-grammar`, "caption", grammarLabel(expressionPlan), 1.24, 2.24, 3.5, 0.18, 11, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true }),
+    text(`${id}-decision-grammar`, "caption", visualKickerLabel(intent), 1.24, 2.24, 3.5, 0.18, 11, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true }),
     shape(`${id}-decision-x-axis`, "line", 1.62, 5.78, 6.52, 0, 12, "none", theme.accent, { width: 1.4, endArrow: true }),
     shape(`${id}-decision-y-axis`, "line", 1.62, 5.78, 0.001, -3.08, 13, "none", theme.accent, { width: 1.4, endArrow: true }),
-    shape(`${id}-decision-zone`, "roundRect", 5.42, 2.84, 1.92, 1.18, 14, theme.accentSoft, theme.accent, { radius: 0.18, fillOpacity: 0.88 }),
-    text(`${id}-decision-zone-label`, "caption", decisionEmphasisLabel(intent), 5.66, 3.28, 1.44, 0.18, 15, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 12, bold: true, align: "center" }),
+    shape(`${id}-decision-zone`, "roundRect", 5.62, 2.66, 1.9, 1.06, 14, theme.accentSoft, theme.accent, { radius: 0.18, fillOpacity: 0.88 }),
+    text(`${id}-decision-zone-label`, "caption", decisionEmphasisLabel(intent), 5.82, 3.04, 1.5, 0.18, 15, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 12, bold: true, align: "center" }),
     shape(`${id}-decision-note`, "roundRect", 9.32, 2.32, 2.88, 3.8, 50, theme.accentSoft, theme.line, { radius: 0.18 }),
     text(`${id}-decision-note-title`, "callout", topicLabel(intent.emphasis ?? intent.title), 9.66, 2.74, 2.18, 0.34, 51, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 21 }),
     text(`${id}-decision-note-body`, "body", visibleSentence(intent.message), 9.66, 3.52, 2.12, 1.34, 52, theme, { bg: theme.accentSoft, color: theme.text, fontSize: 16 })
   ];
   items.slice(0, 4).forEach((item, index) => {
-    const positions = [[2.2, 5.02], [3.2, 3.82], [4.7, 4.62], [6.2, 3.36]] as const;
+    const positions = [[2.0, 4.95], [2.95, 3.95], [3.95, 4.6], [4.9, 3.6]] as const;
     const [x, y] = positions[index];
     const order = 20 + index * 4;
-    elements.push(shape(`${id}-decision-point-${index}`, "ellipse", x, y, 0.32, 0.32, order, theme.accent, theme.accent));
-    elements.push(text(`${id}-decision-point-label-${index}`, "caption", item, x + 0.38, y - 0.08, 1.62, 0.3, order + 1, theme, { bg: theme.surface, color: theme.text, fontSize: 12 }));
+    elements.push(shape(`${id}-decision-point-${index}`, "ellipse", x, y, 0.3, 0.3, order, theme.accent, theme.accent));
+    elements.push(text(`${id}-decision-point-label-${index}`, "caption", narrativeLabel(item, 12), x - 0.5, y + 0.34, 1.3, 0.24, order + 1, theme, { bg: theme.surface, color: theme.text, fontSize: 11, align: "center" }));
   });
   return elements;
 }
@@ -1304,7 +1358,7 @@ function narrativeLayeredModel(theme: Theme, intent: SlideIntent, expressionPlan
   const items = narrativeItems(intent, 4, 6);
   const elements: SlideElement[] = [
     shape(`${id}-layer-stage`, "roundRect", 1.06, 2.0, 11.18, 4.72, 10, theme.surface, theme.line, { radius: 0.18 }),
-    text(`${id}-layer-grammar`, "caption", grammarLabel(expressionPlan), 1.42, 2.26, 3.7, 0.18, 11, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true })
+    text(`${id}-layer-grammar`, "caption", visualKickerLabel(intent), 1.42, 2.26, 3.7, 0.18, 11, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true })
   ];
   items.forEach((item, index) => {
     const y = 5.66 - index * 0.58;
@@ -1324,7 +1378,7 @@ function narrativeDetailPage(theme: Theme, intent: SlideIntent, expressionPlan: 
   const items = narrativeItems(intent, 4, 6);
   const elements: SlideElement[] = [
     shape(`${id}-detail-page`, "roundRect", 0.92, 1.96, 11.48, 4.88, 10, theme.surface, theme.line, { radius: 0.16 }),
-    text(`${id}-detail-grammar`, "caption", grammarLabel(expressionPlan), 1.28, 2.26, 3.4, 0.18, 11, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true }),
+    text(`${id}-detail-grammar`, "caption", visualKickerLabel(intent), 1.28, 2.26, 3.4, 0.18, 11, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true }),
     text(`${id}-detail-lead`, "body", visibleSentence(intent.message), 1.28, 2.72, 10.32, 0.54, 12, theme, { bg: theme.surface, color: theme.text, fontSize: 18 })
   ];
   items.forEach((item, index) => {
@@ -1345,7 +1399,7 @@ function narrativePhotoAnchor(theme: Theme, intent: SlideIntent, expressionPlan:
     shape(`${id}-photo-stage`, "roundRect", 0.92, 1.96, 6.1, 4.88, 10, theme.accentSoft, theme.line, { radius: 0.2 }),
     visualAssetElement(intent.visualAsset, theme, intent, `${id}-photo-anchor`, 1.18, 2.24, 5.58, 3.92, 11),
     shape(`${id}-photo-caption`, "roundRect", 1.32, 5.92, 5.28, 0.42, 12, theme.surface, theme.line, { radius: 0.14, fillOpacity: 0.94 }),
-    text(`${id}-photo-caption-text`, "caption", grammarLabel(expressionPlan), 1.58, 6.05, 4.76, 0.14, 13, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true, align: "center" }),
+    text(`${id}-photo-caption-text`, "caption", visualKickerLabel(intent), 1.58, 6.05, 4.76, 0.14, 13, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true, align: "center" }),
     shape(`${id}-photo-message-panel`, "roundRect", 7.52, 2.28, 4.42, 3.88, 20, theme.surface, theme.line, { radius: 0.18 }),
     text(`${id}-photo-message-title`, "callout", topicLabel(intent.emphasis ?? intent.title), 7.92, 2.74, 3.54, 0.42, 21, theme, { bg: theme.surface, color: theme.accent, fontSize: 22 }),
     text(`${id}-photo-message-body`, "body", visibleSentence(intent.message), 7.92, 3.52, 3.42, 1.14, 22, theme, { bg: theme.surface, color: theme.text, fontSize: 18 }),
@@ -1355,12 +1409,11 @@ function narrativePhotoAnchor(theme: Theme, intent: SlideIntent, expressionPlan:
 
 function narrativeTableTextSystem(theme: Theme, intent: SlideIntent, expressionPlan: ExpressionPlan): SlideElement[] {
   const id = intent.slideId;
-  const items = narrativeItems(intent, 4, 7);
+  const items = narrativeItems(intent, 4, 7, 34);
   const elements: SlideElement[] = [
     shape(`${id}-table-stage`, "roundRect", 0.96, 2.02, 11.42, 4.62, 10, theme.surface, theme.line, { radius: 0.16 }),
     shape(`${id}-table-header`, "rect", 0.96, 2.02, 11.42, 0.58, 11, theme.accent, theme.accent, { radius: 0 }),
-    text(`${id}-table-header-text`, "caption", grammarLabel(expressionPlan), 1.28, 2.22, 5.5, 0.14, 12, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true }),
-    text(`${id}-table-message`, "caption", compactLabel(intent.message, 34), 7.26, 2.22, 4.52, 0.14, 13, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true, align: "right" })
+    text(`${id}-table-header-text`, "caption", visualKickerLabel(intent), 1.28, 2.22, 10.8, 0.14, 12, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true })
   ];
   items.forEach((item, index) => {
     const y = 2.86 + index * 0.48;
@@ -1378,17 +1431,17 @@ function narrativeSpatialModel(theme: Theme, intent: SlideIntent, expressionPlan
   const items = narrativeItems(intent, 4, 5);
   const elements: SlideElement[] = [
     shape(`${id}-spatial-stage`, "roundRect", 0.94, 1.96, 11.46, 4.9, 10, theme.surface, theme.line, { radius: 0.18 }),
-    text(`${id}-spatial-grammar`, "caption", grammarLabel(expressionPlan), 1.26, 2.24, 3.3, 0.18, 11, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true }),
+    text(`${id}-spatial-grammar`, "caption", visualKickerLabel(intent), 1.26, 2.24, 3.3, 0.18, 11, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true }),
     shape(`${id}-spatial-path`, "line", 2.0, 5.72, 8.1, -2.72, 12, "none", theme.accent, { width: 1.2, endArrow: true }),
-    shape(`${id}-spatial-focus`, "roundRect", 5.08, 3.2, 2.2, 0.72, 13, theme.accentSoft, theme.accent, { radius: 0.18 }),
-    text(`${id}-spatial-focus-text`, "caption", topicLabel(intent.emphasis ?? intent.title), 5.32, 3.46, 1.72, 0.14, 14, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 12, bold: true, align: "center" })
+    shape(`${id}-spatial-focus`, "roundRect", 5.02, 3.16, 2.32, 0.78, 13, theme.accentSoft, theme.accent, { radius: 0.18 }),
+    text(`${id}-spatial-focus-text`, "caption", topicLabel(intent.emphasis ?? intent.title), 5.14, 3.4, 2.08, 0.3, 14, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 12, bold: true, align: "center", valign: "middle" })
   ];
   const positions = [[1.72, 5.42], [3.62, 4.64], [5.52, 3.82], [7.42, 3.06], [9.32, 2.52]] as const;
   items.forEach((item, index) => {
     const [x, y] = positions[index];
     const order = 20 + index * 4;
     elements.push(shape(`${id}-spatial-node-${index}`, "ellipse", x, y, 0.42, 0.42, order, theme.accent, theme.accent));
-    elements.push(text(`${id}-spatial-label-${index}`, "caption", item, x - 0.56, y + 0.56, 1.72, 0.26, order + 1, theme, { bg: theme.surface, color: theme.text, fontSize: 12, align: "center" }));
+    elements.push(text(`${id}-spatial-label-${index}`, "caption", narrativeLabel(item, 20), x - 0.78, y + 0.56, 2.16, 0.4, order + 1, theme, { bg: theme.surface, color: theme.text, fontSize: 12, align: "center" }));
   });
   return elements;
 }

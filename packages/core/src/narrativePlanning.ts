@@ -278,19 +278,66 @@ function splitReasonForIntent(intent: SlideIntent): string | undefined {
   return undefined;
 }
 
+function hasStrongMetric(text: string): boolean {
+  // Calendar years / timeframes (e.g. 2026年, 2026) are context, not hero metrics.
+  const cleaned = text.replace(/(?:19|20)\d{2}\s*年?/gu, " ");
+  return (
+    /(?<![A-Za-z0-9])\d[\d,]*(?:\.\d+)?\s*(?:%|倍|億|万|円|件|人|社|pt|ポイント|ヶ月|分|時間|日|年)/u.test(cleaned) ||
+    /(?<![A-Za-z0-9])\d[\d,]*(?:\.\d+)?\s*(?:減|増|削減|短縮|改善|向上|低減)/u.test(cleaned)
+  );
+}
+
+function impliesTradeoff(text: string): boolean {
+  return /トレードオフ|trade[- ]?off|優先度|優先順位|リスクとリターン|risk\s*(?:vs|and)?\s*return|費用対効果|意思決定/iu.test(text);
+}
+
 function grammarForIntent(intent: SlideIntent, contentMode: ContentMode): VisualGrammarId {
   const text = slideText(intent);
   const lower = text.toLowerCase();
   const evidenceCount = intent.evidence.length;
-  if (intent.visualAsset || /写真|画像|スクリーンショット|実例|現場|product|photo|screenshot|case/u.test(lower)) return "photo-product-anchor";
+
+  // 1. Real asset anchor only when a concrete image/screenshot/photo is implied.
+  if (intent.visualAsset || /写真|スクリーンショット|現場写真|product shot|photo|screenshot/u.test(lower)) return "photo-product-anchor";
+
+  // 2. A large hero metric only when there is a real measured number with a unit or change verb.
+  if (hasStrongMetric(text) && evidenceCount <= 4) return "typographic-emphasis";
+
+  // 3. Honor the authoring visualType as a grammar prior instead of a fixed legacy archetype.
+  switch (intent.visualType) {
+    case "section":
+      return "typographic-emphasis";
+    case "image":
+      return "photo-product-anchor";
+    case "flow":
+    case "step":
+      return "sequential-path";
+    case "contrast":
+    case "before-after":
+      // Two-sided contrast reads as a comparison; three or more distinct options read as a board.
+      return intent.evidence.length >= 3 ? "evidence-board" : "comparison-field";
+    case "matrix":
+      return impliesTradeoff(lower) ? "decision-surface" : "evidence-board";
+    case "table":
+      return "table-text-system";
+    case "map":
+    case "ponchi-e":
+    case "native-diagram":
+      return /階層|レイヤ|layer|stack|基盤|platform|構成/u.test(lower) ? "layered-model" : "spatial-model";
+    case "cycle":
+      return "spatial-model";
+    default:
+      break;
+  }
+
+  // 4. Keyword refinements when the visualType is generic (summary/cards/detail/visual-scaffold).
   if (contentMode === "handout" && (intent.visualType === "detail" || evidenceCount >= 6)) return "detail-reading-page";
-  if (/[-+]?\d[\d,.]*(?:%|倍|億|万|円|pt|件|人|社|年)?/u.test(text) && evidenceCount <= 4) return "typographic-emphasis";
-  if (/比較|候補|option|vs|選択|違い|差分|trade|before|after/u.test(lower)) return "comparison-field";
-  if (/判断|優先|risk|return|matrix|費用|効果|投資|承認/u.test(lower)) return "decision-surface";
-  if (/手順|工程|順|ロードマップ|timeline|step|flow|移行|導入|運用/u.test(lower)) return "sequential-path";
-  if (/階層|layer|stack|構造|architecture|governance|基盤|platform/u.test(lower)) return "layered-model";
-  if (/関係|循環|距離|方向|成熟|体験|journey|cycle|map/u.test(lower)) return "spatial-model";
-  if (intent.visualType === "table" || evidenceCount >= 5) return "table-text-system";
+  if (/役割|ロール|三者|登場|関係者|信頼|actor|role|relationship|trust/u.test(lower)) return "spatial-model";
+  if (/比較|候補|option|vs|選択|違い|差分|before|after/u.test(lower)) return "comparison-field";
+  if (/手順|工程|順序|ステップ|ロードマップ|timeline|flow|移行手順|導入手順/u.test(lower)) return "sequential-path";
+  if (/階層|layer|stack|architecture|基盤|platform/u.test(lower)) return "layered-model";
+  if (impliesTradeoff(lower)) return "decision-surface";
+  if (/関係|循環|距離|方向|成熟|journey/u.test(lower)) return "spatial-model";
+  if (evidenceCount >= 5) return "table-text-system";
   return "evidence-board";
 }
 

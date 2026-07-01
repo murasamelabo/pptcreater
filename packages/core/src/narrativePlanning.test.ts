@@ -110,4 +110,115 @@ describe("narrative planning artifacts", () => {
     expect(JSON.stringify(deck)).not.toContain("message-flow");
     expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
   });
+
+  it("preserves technical identifiers and hides internal grammar labels", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "ID-JAG のトークン交換を理解する",
+        audience: "ID基盤/セキュリティのアーキテクト",
+        desiredAction: "PoCで既存OBOとの差分を確認する",
+        intents: [
+          {
+            slideId: "actors",
+            title: "登場ロール",
+            message: "三者でSSO信頼をAPI認可へ延伸する。",
+            evidence: ["Client", "Resource Application", "IdP"],
+            quietInfo: [],
+            visualType: "native-diagram",
+            emphasis: "三者信頼モデル"
+          },
+          {
+            slideId: "flow",
+            title: "全体フロー",
+            message: "ID-JAG を交換し短命トークンを得る。",
+            evidence: ["SSOログイン", "Token Exchange", "ID-JAG発行", "Access Token"],
+            quietInfo: [],
+            visualType: "flow",
+            emphasis: "二段階交換"
+          },
+          {
+            slideId: "resource",
+            title: "Resource側検証",
+            message: "ID-JAG を JWT Bearer として受ける。",
+            evidence: ["grant_type=jwt-bearer", "assertion=ID-JAG", "typ/aud/client_id"],
+            quietInfo: [],
+            visualType: "table",
+            emphasis: "JWT Bearer"
+          }
+        ]
+      },
+      { title: "ID-JAG deep dive", locale: "ja-JP", contentMode: "technical", planningMode: "narrative-v1" }
+    );
+
+    const serialized = JSON.stringify(deck);
+    // Technical identifiers must not be mangled into spaced forms.
+    expect(serialized).toContain("ID-JAG");
+    expect(serialized).toContain("grant_type=jwt-bearer");
+    expect(serialized).toContain("typ/aud/client_id");
+    expect(serialized).not.toContain("ID JAG");
+    expect(serialized).not.toContain("client id");
+    // Internal grammar scaffolding labels must not reach the slide surface.
+    expect(serialized).not.toContain("GRAMMAR ");
+    expect(serialized).not.toContain("TABLE TEXT SYSTEM");
+    expect(serialized).not.toContain("DECISION SURFACE");
+    expect(serialized).not.toContain("SEQUENTIAL PATH");
+    // Roles/relationships must not be forced into a decision scatter; flow keeps a sequence.
+    expect(deck.slides.find((slide) => slide.id === "actors")?.layout).toBe("message-grammar-spatial-model");
+    expect(deck.slides.find((slide) => slide.id === "flow")?.layout).toBe("message-grammar-sequential-path");
+    expect(deck.slides.find((slide) => slide.id === "resource")?.layout).toBe("message-grammar-table-text-system");
+    expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
+  });
+
+  it("keeps calendar-year context and product-name digits from hijacking hero-metric grammar", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "XAA の広がりを理解する",
+        audience: "アーキテクト",
+        desiredAction: "候補を比較する",
+        intents: [
+          {
+            slideId: "ecosystem",
+            title: "エコシステム",
+            message: "XAAはOkta主導で広がる。",
+            evidence: [
+              "IdP: Okta, Athenz",
+              "Clients: Claude, VS Code",
+              "Authorization servers: Stytch, Auth0",
+              "Resource apps: Asana, Figma"
+            ],
+            quietInfo: ["2026年前半時点"],
+            visualType: "table",
+            emphasis: "相互運用エコシステム"
+          },
+          {
+            slideId: "alternatives",
+            title: "代替手段",
+            message: "差別化は短命・IdP集中管理にある。",
+            evidence: [
+              "APIキー: 長命で分散",
+              "標準OAuth同意: IT可視性が弱い",
+              "サービスアカウント: ユーザー代理性が薄い",
+              "独自OBO: 単一IdPに閉じやすい"
+            ],
+            quietInfo: [],
+            visualType: "contrast",
+            emphasis: "標準で相互運用"
+          }
+        ]
+      },
+      { title: "XAA ecosystem", locale: "ja-JP", contentMode: "technical", planningMode: "narrative-v1" }
+    );
+
+    const serialized = JSON.stringify(deck);
+    // A calendar year in quiet context must not be treated as a hero metric.
+    expect(deck.slides.find((slide) => slide.id === "ecosystem")?.layout).toBe("message-grammar-table-text-system");
+    // A product-name digit (Auth0) must never become a focal "0".
+    expect(serialized).not.toMatch(/"text"\s*:\s*"0"/);
+    // Three or more distinct options read as a board, not a two-sided comparison.
+    expect(deck.slides.find((slide) => slide.id === "alternatives")?.layout).toBe("message-grammar-evidence-board");
+    // Adjective-ending fragment labels must not get an ungrammatical 「を確認する」 suffix.
+    expect(serialized).not.toContain("弱いを確認する");
+    expect(serialized).not.toContain("薄いを確認する");
+    expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
+  });
 });
