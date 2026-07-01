@@ -351,6 +351,41 @@ export const SlideVisualAssetSchema = z
     }
   });
 
+export const SlideIntentDiagramNodeSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  sublabel: z.string().optional(),
+  kind: z.enum(["actor", "system", "process", "data", "note", "cloud"]).optional(),
+  emphasis: z.boolean().optional()
+});
+
+export const SlideIntentDiagramEdgeSchema = z.object({
+  from: z.string().min(1),
+  to: z.string().min(1),
+  label: z.string().optional(),
+  dashed: z.boolean().optional(),
+  bidirectional: z.boolean().optional()
+});
+
+export const SlideIntentDiagramGroupSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  nodeIds: z.array(z.string().min(1)).min(1)
+});
+
+/**
+ * Optional explicit figure authored on a SlideIntent. When present (and a diagram renderer is
+ * available), the narrative pipeline renders it as an editable native diagram (nodes, labeled
+ * connectors, and dashed group panels) instead of a hand-composed shape approximation. This lets a
+ * message map author precise sequence flows, trust-domain boundaries, and control-plane maps.
+ */
+export const SlideIntentDiagramSchema = z.object({
+  direction: z.enum(["LR", "TB"]).default("LR"),
+  nodes: z.array(SlideIntentDiagramNodeSchema).min(2),
+  edges: z.array(SlideIntentDiagramEdgeSchema).default([]),
+  groups: z.array(SlideIntentDiagramGroupSchema).default([])
+});
+
 export const SlideIntentSchema = z.object({
   slideId: z.string().min(1),
   title: z.string().min(1),
@@ -359,7 +394,8 @@ export const SlideIntentSchema = z.object({
   visualType: SlideVisualTypeSchema,
   emphasis: z.string().min(1).optional(),
   quietInfo: z.array(z.string().min(1)).default([]),
-  visualAsset: SlideVisualAssetSchema.optional()
+  visualAsset: SlideVisualAssetSchema.optional(),
+  diagram: SlideIntentDiagramSchema.optional()
 });
 
 export const DeckMessageMapSchema = z.object({
@@ -421,6 +457,10 @@ export type Slide = z.infer<typeof SlideSchema>;
 export type DeckSpec = z.infer<typeof DeckSpecSchema>;
 export type SlideVisualType = z.infer<typeof SlideVisualTypeSchema>;
 export type SlideIntent = z.infer<typeof SlideIntentSchema>;
+export type SlideIntentDiagram = z.infer<typeof SlideIntentDiagramSchema>;
+export type SlideIntentDiagramNode = z.infer<typeof SlideIntentDiagramNodeSchema>;
+export type SlideIntentDiagramEdge = z.infer<typeof SlideIntentDiagramEdgeSchema>;
+export type SlideIntentDiagramGroup = z.infer<typeof SlideIntentDiagramGroupSchema>;
 export type DeckMessageMap = z.infer<typeof DeckMessageMapSchema>;
 export type SlideVisualAsset = z.infer<typeof SlideVisualAssetSchema>;
 

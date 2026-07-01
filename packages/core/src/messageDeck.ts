@@ -10,6 +10,7 @@ import type {
   Slide,
   SlideElement,
   SlideIntent,
+  SlideIntentDiagram,
   SlideVisualAsset,
   SvgElement,
   TextElement
@@ -39,6 +40,25 @@ export const MESSAGE_DECK_ARCHETYPES = [
 
 export type MessageDeckArchetype = (typeof MESSAGE_DECK_ARCHETYPES)[number];
 
+/**
+ * Request passed to a {@link NarrativeDiagramRenderer}. The narrative pipeline defines this seam so
+ * the heavy `@pptcreater/diagram` generators can be injected by the CLI/MCP layer without the core
+ * package depending on them. The renderer must return editable native diagram elements (or null to
+ * fall back to the grammar composer).
+ */
+export type NarrativeDiagramRenderRequest = {
+  idPrefix: string;
+  title: string;
+  summary: string;
+  longDescription: string;
+  frame: { x: number; y: number; w: number; h: number };
+  readingOrderStart: number;
+  accent?: string;
+  diagram: SlideIntentDiagram;
+};
+
+export type NarrativeDiagramRenderer = (request: NarrativeDiagramRenderRequest) => SlideElement[] | null;
+
 export type CreateDeckFromMessageMapOptions = {
   title: string;
   locale?: Locale;
@@ -54,6 +74,7 @@ export type CreateDeckFromMessageMapOptions = {
   includeClosing?: boolean;
   tokens?: DesignTokens;
   planningMode?: PlanningMode;
+  diagramRenderer?: NarrativeDiagramRenderer;
 };
 
 type Theme = {
@@ -1200,8 +1221,11 @@ function narrativeLabel(value: string, max = 26): string {
   const text = String(value).replace(/\s+/g, " ").trim();
   if (!text) return text;
   if (hasCodeToken(text)) {
+    // Technical identifiers (grant_type=..., insufficient_user_authentication, MCP 2025-11-25) lose
+    // their meaning when cut mid-token, so keep them nearly whole and let wrapping/auto-fit shrink.
     const chars = Array.from(text);
-    return chars.length <= max + 12 ? text : chars.slice(0, max + 12).join("").trimEnd();
+    const limit = Math.min(max + 40, 72);
+    return chars.length <= limit ? text : chars.slice(0, limit).join("").trimEnd();
   }
   return compactLabel(text, max);
 }
@@ -1446,6 +1470,24 @@ function narrativeSpatialModel(theme: Theme, intent: SlideIntent, expressionPlan
   return elements;
 }
 
+function renderAuthoredDiagram(theme: Theme, intent: SlideIntent, renderer?: NarrativeDiagramRenderer): SlideElement[] | null {
+  if (!intent.diagram || !renderer) return null;
+  const summary = (intent.emphasis ?? intent.message).trim() || intent.title;
+  const longDescriptionRaw = [intent.message, ...intent.evidence].filter(Boolean).join(" ").trim();
+  const longDescription = longDescriptionRaw.length >= 20 ? longDescriptionRaw : `${intent.title}: ${summary} ${longDescriptionRaw}`.trim();
+  const rendered = renderer({
+    idPrefix: `${intent.slideId}-dg`,
+    title: slideTopicTitle(intent),
+    summary,
+    longDescription,
+    frame: { x: 0.92, y: 1.98, w: 11.48, h: 4.82 },
+    readingOrderStart: 20,
+    accent: theme.accent,
+    diagram: intent.diagram
+  });
+  return rendered && rendered.length > 0 ? rendered : null;
+}
+
 function narrativeElementsForIntent(theme: Theme, intent: SlideIntent, expressionPlan: ExpressionPlan, _layoutPlan: LayoutPlan, locale: Locale): SlideElement[] {
   switch (expressionPlan.selectedGrammarId) {
     case "typographic-emphasis":
@@ -1584,7 +1626,8 @@ export function createDeckFromMessageMap(messageMap: DeckMessageMap, options: Cr
     if (narrativeArtifacts) {
       const expressionPlan = narrativeArtifacts.expressionPlans[index];
       const layoutPlan = narrativeArtifacts.layoutPlans[index];
-      const elements = narrativeElementsForIntent(theme, intent, expressionPlan, layoutPlan, locale);
+      const authoredDiagram = renderAuthoredDiagram(theme, intent, options.diagramRenderer);
+      const elements = authoredDiagram ?? narrativeElementsForIntent(theme, intent, expressionPlan, layoutPlan, locale);
       slides.push(narrativeSlideShell(theme, intent, elements, expressionPlan, index));
       return;
     }

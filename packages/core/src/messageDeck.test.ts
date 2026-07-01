@@ -1,5 +1,5 @@
 ﻿import { describe, expect, it } from "vitest";
-import { createDeckFromMessageMap, MESSAGE_DECK_ARCHETYPES, archetypeForIntent } from "./messageDeck.js";
+import { createDeckFromMessageMap, MESSAGE_DECK_ARCHETYPES, archetypeForIntent, type NarrativeDiagramRenderRequest } from "./messageDeck.js";
 import { lintDeckSpec } from "./lint.js";
 import { reviewMessageMap } from "./messageMap.js";
 import { reviewVisualQuality } from "./visualQuality.js";
@@ -677,5 +677,79 @@ describe("message map deck generator", () => {
     expect(visual.y + visual.h).toBeLessThan(backdrop.y + backdrop.h);
     expect(slide?.elements.some((element) => element.id === "official-context-caption-panel")).toBe(true);
     expect(reviewVisualQuality(deck)).toEqual({ ok: true, issues: [] });
+  });
+});
+
+describe("authored intent diagrams", () => {
+  const DIAGRAM_MAP: DeckMessageMap = {
+    objective: "認可フローを図で説明する",
+    audience: "アーキテクト",
+    desiredAction: "フローを評価する",
+    intents: [
+      {
+        slideId: "flow",
+        title: "全体フロー",
+        message: "AからBへトークンを渡す。",
+        evidence: ["A が要求", "B が検証"],
+        quietInfo: [],
+        visualType: "flow",
+        emphasis: "二段階",
+        diagram: {
+          direction: "TB",
+          nodes: [
+            { id: "a", label: "A", sublabel: "要求側" },
+            { id: "b", label: "B", sublabel: "検証側" }
+          ],
+          edges: [{ from: "a", to: "b", label: "token" }],
+          groups: []
+        }
+      }
+    ]
+  };
+
+  it("renders an authored intent.diagram through the injected diagram renderer", () => {
+    const seen: NarrativeDiagramRenderRequest[] = [];
+    const deck = createDeckFromMessageMap(DIAGRAM_MAP, {
+      title: "diagram deck",
+      locale: "ja-JP",
+      contentMode: "technical",
+      planningMode: "narrative-v1",
+      diagramRenderer: (request) => {
+        seen.push(request);
+        return [
+          {
+            id: `${request.idPrefix}-node`,
+            type: "shape",
+            shape: "roundRect",
+            x: request.frame.x,
+            y: request.frame.y,
+            w: 2,
+            h: 1,
+            readingOrder: request.readingOrderStart,
+            decorative: true,
+            fill: "#2563eb",
+            altText: "generated native schematic shape"
+          }
+        ];
+      }
+    });
+
+    expect(seen).toHaveLength(1);
+    expect(seen[0].diagram.nodes.map((node) => node.id)).toEqual(["a", "b"]);
+    expect(seen[0].diagram.edges[0]).toMatchObject({ from: "a", to: "b", label: "token" });
+    const flow = deck.slides.find((slide) => slide.id === "flow");
+    expect(flow?.elements.some((element) => element.id === "flow-dg-node")).toBe(true);
+  });
+
+  it("falls back to the grammar composer when no diagram renderer is injected", () => {
+    const deck = createDeckFromMessageMap(DIAGRAM_MAP, {
+      title: "diagram deck",
+      locale: "ja-JP",
+      contentMode: "technical",
+      planningMode: "narrative-v1"
+    });
+    const flow = deck.slides.find((slide) => slide.id === "flow");
+    expect(flow?.elements.some((element) => element.id === "flow-dg-node")).toBe(false);
+    expect(flow?.elements.some((element) => element.type === "text")).toBe(true);
   });
 });

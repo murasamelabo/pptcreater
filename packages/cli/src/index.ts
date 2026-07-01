@@ -11,6 +11,8 @@ import {
   classifyFinalizeLintReports,
   cliMessage,
   createDeckFromMessageMap,
+  type NarrativeDiagramRenderRequest,
+  type SlideElement,
   createNarrativePlanArtifacts,
   createEditWithCopilotPrompt,
   createSampleDeck,
@@ -194,6 +196,43 @@ function parsePlanningMode(value: string): PlanningMode {
   throw new InvalidArgumentError("Planning mode must be one of: legacy, narrative-v1.");
 }
 
+/**
+ * Adapter that lets the narrative message-map pipeline render authored `intent.diagram` figures as
+ * editable native diagrams via `@pptcreater/diagram`, without the core package depending on it.
+ */
+const messageMapDiagramRenderer = (request: NarrativeDiagramRenderRequest) => {
+  const result = renderNativePonchiDiagram(
+    {
+      title: request.title,
+      summary: request.summary,
+      longDescription: request.longDescription,
+      direction: request.diagram.direction,
+      nodes: request.diagram.nodes.map((node) => ({
+        id: node.id,
+        label: node.label,
+        ...(node.sublabel ? { sublabel: node.sublabel } : {}),
+        ...(node.kind ? { kind: node.kind } : {}),
+        ...(node.emphasis ? { emphasis: node.emphasis } : {})
+      })),
+      arrows: request.diagram.edges.map((edge) => ({
+        from: edge.from,
+        to: edge.to,
+        ...(edge.label ? { label: edge.label } : {}),
+        ...(edge.dashed ? { dashed: edge.dashed } : {}),
+        ...(edge.bidirectional ? { bidirectional: edge.bidirectional } : {})
+      })),
+      groups: request.diagram.groups.map((group) => ({ id: group.id, label: group.label, nodeIds: group.nodeIds }))
+    },
+    {
+      frame: request.frame,
+      idPrefix: request.idPrefix,
+      readingOrderStart: request.readingOrderStart,
+      ...(request.accent ? { accent: request.accent } : {})
+    }
+  );
+  return result.elements as unknown as SlideElement[];
+};
+
 function parseBuiltinIconName(value: string): BuiltinIconName {
   const normalized = value.trim().toLowerCase();
   if (BUILTIN_ICON_NAMES.includes(normalized as BuiltinIconName)) {
@@ -346,7 +385,8 @@ program
       includeClosing: options.closing,
       keywords,
       sources,
-      planningMode: options.planningMode
+      planningMode: options.planningMode,
+      diagramRenderer: messageMapDiagramRenderer
     });
     let planningArtifacts: ReturnType<typeof createNarrativePlanArtifacts> | undefined;
     if (options.planningMode === "narrative-v1" || options.planningOutputDir) {
