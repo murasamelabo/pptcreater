@@ -2146,10 +2146,18 @@ function autoLayout(diagram: PonchiDiagram): { nodes: PlacedNode[]; width: numbe
 
   const hasArrows = diagram.arrows.some((arrow) => arrow.from !== arrow.to);
   if (!hasArrows) {
-    // No connections: arrange in a near-square grid so a bag of cards reads cleanly.
-    const columns = Math.max(1, Math.round(Math.sqrt(diagram.nodes.length)));
+    // No connections: a small set reads best as a single track in the requested reading
+    // direction (a vendor/logo row for LR, a checklist column for TB), while larger sets pack
+    // into a near-square grid so they do not overflow a wide-but-short frame.
+    const count = diagram.nodes.length;
+    const columns =
+      count <= 5
+        ? diagram.direction === "TB"
+          ? 1
+          : count
+        : Math.max(1, Math.round(Math.sqrt(count)));
     const rows: PonchiNode[][] = [];
-    for (let index = 0; index < diagram.nodes.length; index += columns) {
+    for (let index = 0; index < count; index += columns) {
       rows.push(diagram.nodes.slice(index, index + columns));
     }
     return placeRanks(rows, true);
@@ -3194,9 +3202,11 @@ function constrainVerticalLabelWidth(anchor: Point, maxWidth: number, avoidRects
       constrained = Math.min(constrained, 2 * Math.max(0, anchor.x - (rect.x + rect.w) - padding));
     } else if (anchor.x <= rect.x) {
       constrained = Math.min(constrained, 2 * Math.max(0, rect.x - anchor.x - padding));
-    } else {
-      constrained = Math.min(constrained, 0);
     }
+    // When anchor.x lies within the rect's horizontal span the node sits directly above/below
+    // the label in the same column (typical of top-down flows). A stacked node does not limit the
+    // label's horizontal extent, so it must not collapse the width - doing so truncates edge labels
+    // such as "ID-JAG" or "Access Token" in tightly packed vertical flows.
   }
 
   return Math.max(0.45, constrained);
@@ -3476,7 +3486,7 @@ export function renderNativePonchiDiagram(
   }
 
   for (const connectorLabel of connectorLabels) {
-    const labelBoxWidth = Math.min(1.8, Math.max(0.45, connectorLabel.maxWidth), Math.max(0.52, (labelUnits(connectorLabel.label) * 9.5) / 72 + 0.22));
+    const labelBoxWidth = Math.min(1.8, Math.max(0.45, connectorLabel.maxWidth), Math.max(0.52, (labelUnits(connectorLabel.label) * 9.5 + 10) / 72 + 0.18));
     const labelTextWidth = labelBoxWidth - 0.12;
     const label = nativeTextFit(connectorLabel.label, labelTextWidth, { preferredSize: 9.5, minimumSize: 8.5, maxLines: 1 });
     const anchorX = clamp(connectorLabel.anchor.x, options.frame.x + labelBoxWidth / 2, options.frame.x + options.frame.w - labelBoxWidth / 2);
@@ -3495,6 +3505,17 @@ export function renderNativePonchiDiagram(
         { fontSize: label.size, color: "#334155", contrastBackground: "#FFFFFF", bold: true, readingOrder: nextOrder() }
       )
     );
+  }
+
+  // Connector (edge) labels sit in compact chips fitted to the label text at a small size.
+  // Tag them as generated diagram text so the deck layout pass keeps that fitted size
+  // (8.5pt floor) instead of bumping them to the 12pt body-text minimum and re-wrapping
+  // tightly fitted labels such as "ID Token" or "Access Token". Node labels live in larger
+  // boxes and stay on the standard readable floor.
+  for (const element of elements) {
+    if (element.type === "text" && !element.altText && /-connector-label-\d/u.test(element.id)) {
+      element.altText = "generated native schematic text";
+    }
   }
 
   return {

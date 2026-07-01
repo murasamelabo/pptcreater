@@ -169,6 +169,59 @@ describe("ponchi diagram rendering", () => {
     expect(rendered.svg).toContain("<polygon");
   });
 
+  it("lays a small edgeless node set into one row for LR and one column for TB", () => {
+    const nodes = [
+      { id: "a", label: "Entra", kind: "system" as const },
+      { id: "b", label: "Okta", kind: "system" as const },
+      { id: "c", label: "Auth0", kind: "system" as const },
+      { id: "d", label: "Keycloak", kind: "system" as const }
+    ];
+    const positions = (rendered: ReturnType<typeof renderNativePonchiDiagram>) =>
+      nodes.map((node, index) => {
+        const shape = rendered.elements.find(
+          (element) => element.type === "shape" && element.id === `native-diagram-node-${node.id}-${index}`
+        );
+        if (!shape || shape.type !== "shape") {
+          throw new Error(`missing node shape ${node.id}`);
+        }
+        return shape;
+      });
+
+    const row = positions(
+      renderNativePonchiDiagram({
+        title: "Vendors",
+        summary: "vendor row",
+        longDescription:
+          "Verifies that an edgeless LR node set is placed on one horizontal row so a vendor or logo strip reads left to right.",
+        direction: "LR",
+        nodes,
+        arrows: []
+      })
+    );
+    // One shared baseline (single row) with four strictly left-to-right columns.
+    expect(Math.max(...row.map((p) => p.y)) - Math.min(...row.map((p) => p.y))).toBeLessThan(0.01);
+    for (let i = 1; i < row.length; i += 1) {
+      expect(row[i].x).toBeGreaterThan(row[i - 1].x);
+    }
+
+    const column = positions(
+      renderNativePonchiDiagram({
+        title: "Checklist",
+        summary: "vertical list",
+        longDescription:
+          "Verifies that an edgeless TB node set stacks into one vertical column so a checklist reads top to bottom.",
+        direction: "TB",
+        nodes,
+        arrows: []
+      })
+    );
+    // One shared column (single file) with four strictly top-to-bottom rows.
+    expect(Math.max(...column.map((p) => p.x)) - Math.min(...column.map((p) => p.x))).toBeLessThan(0.01);
+    for (let i = 1; i < column.length; i += 1) {
+      expect(column[i].y).toBeGreaterThan(column[i - 1].y);
+    }
+  });
+
   it("rejects a mix of auto-laid-out and hand-placed nodes", () => {
     expect(() =>
       renderPonchiDiagram({

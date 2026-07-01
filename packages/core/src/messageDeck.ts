@@ -1488,6 +1488,167 @@ function renderAuthoredDiagram(theme: Theme, intent: SlideIntent, renderer?: Nar
   return rendered && rendered.length > 0 ? rendered : null;
 }
 
+// ---------------------------------------------------------------------------
+// Comparison table (general figure)
+// ---------------------------------------------------------------------------
+// A `contrast`/`matrix` intent whose evidence is *entirely* terse tabular data of the form
+// "行ラベル: セルA / セルB (/ セルC ...)" renders as a clean editable comparison grid instead of an
+// evidence board. The first evidence line supplies the header (row-header label + column headers);
+// remaining lines are body rows. Cells that are exactly a judgement mark (◎ ○ △ ✕) render as
+// colour-coded glyphs so technical readers can scan trade-offs at a glance. This keeps the strongest
+// artifact for "OBO vs ID-JAG" style slides while staying data-driven from the message map.
+
+type ComparisonMark = "best" | "good" | "partial" | "no";
+
+const COMPARISON_MARK_COLOR: Record<ComparisonMark, string> = {
+  // Darkened so the glyphs clear WCAG 4.5:1 both on white cells and on the emphasized column's
+  // accentSoft tint (the lighter green/amber failed at ~3.9:1 against the tint).
+  best: "#166534",
+  good: "#166534",
+  partial: "#92400E",
+  no: "#B91C1C"
+};
+
+function comparisonMarkFor(cell: string): ComparisonMark | null {
+  const c = cell.trim();
+  if (c === "◎") return "best";
+  if (c === "○" || c === "◯" || c === "●") return "good";
+  if (c === "△" || c === "▲") return "partial";
+  if (c === "✕" || c === "×" || c === "✖" || c === "✗") return "no";
+  return null;
+}
+
+function parseComparisonRows(evidence: string[]): Array<{ label: string; cells: string[] }> | null {
+  const rows: Array<{ label: string; cells: string[] }> = [];
+  let columns = -1;
+  for (const line of evidence) {
+    const match = /^\s*(.+?)\s*[:：]\s*(.+?)\s*$/u.exec(line);
+    if (!match) return null;
+    const label = match[1].trim();
+    const cells = match[2].split(/\s+[／/]\s+/u).map((cell) => cell.trim()).filter(Boolean);
+    if (cells.length < 2) return null;
+    if (columns === -1) columns = cells.length;
+    else if (cells.length !== columns) return null;
+    if (label.length > 16 || cells.some((cell) => cell.length > 16)) return null;
+    rows.push({ label, cells });
+  }
+  // Need a header row plus at least two body rows to justify a table over a comparison panel.
+  return rows.length >= 3 ? rows : null;
+}
+
+function renderComparisonTable(theme: Theme, intent: SlideIntent): SlideElement[] | null {
+  if (intent.visualType !== "contrast" && intent.visualType !== "matrix") return null;
+  const parsed = parseComparisonRows(intent.evidence);
+  if (!parsed) return null;
+
+  const id = `${intent.slideId}-ctable`;
+  const header = parsed[0];
+  const bodyRows = parsed.slice(1);
+  const columns = header.cells.length;
+  const emphasizedCol = columns - 1; // land the eye on the last column (the recommended option)
+
+  const frame = { x: 0.92, y: 1.98, w: 11.48, h: 4.82 };
+  const labelW = Math.min(3.0, Math.max(2.1, frame.w * 0.22));
+  const dataW = (frame.w - labelW) / columns;
+  const headerH = 0.62;
+  const rowH = Math.min(0.92, (frame.h - headerH) / bodyRows.length);
+  const tableH = headerH + rowH * bodyRows.length;
+  const hasMarks = bodyRows.some((row) => row.cells.some((cell) => comparisonMarkFor(cell)));
+  const legendH = hasMarks ? 0.32 : 0;
+  const top = frame.y + Math.max(0, (frame.h - tableH - legendH) / 2);
+  const colX = (columnIndex: number) => frame.x + labelW + columnIndex * dataW;
+
+  const elements: SlideElement[] = [];
+  let ro = 20;
+
+  // Header row.
+  elements.push(
+    shape(`${id}-h-label`, "rect", frame.x, top, labelW, headerH, ro++, theme.accent, theme.accent, { radius: 0, width: 0.75 }),
+    text(`${id}-h-label-t`, "caption", header.label, frame.x + 0.16, top, labelW - 0.32, headerH, ro++, theme, {
+      bg: theme.accent,
+      color: theme.inkOnAccent,
+      fontSize: 14,
+      bold: true,
+      align: "left",
+      valign: "middle"
+    })
+  );
+  for (let ci = 0; ci < columns; ci += 1) {
+    const x = colX(ci);
+    const isEmphasis = ci === emphasizedCol;
+    elements.push(
+      shape(`${id}-h-${ci}`, "rect", x, top, dataW, headerH, ro++, theme.accent, theme.accent, { radius: 0, width: 0.75 }),
+      text(`${id}-h-${ci}-t`, "callout", header.cells[ci], x + 0.12, top, dataW - 0.24, headerH, ro++, theme, {
+        bg: theme.accent,
+        color: theme.inkOnAccent,
+        fontSize: isEmphasis ? 17 : 15,
+        bold: true,
+        align: "center",
+        valign: "middle"
+      })
+    );
+  }
+
+  // Body rows.
+  bodyRows.forEach((row, ri) => {
+    const y = top + headerH + ri * rowH;
+    elements.push(
+      shape(`${id}-r${ri}-label`, "rect", frame.x, y, labelW, rowH, ro++, theme.surface, theme.line, { radius: 0, width: 0.75 }),
+      text(`${id}-r${ri}-label-t`, "body", row.label, frame.x + 0.16, y, labelW - 0.32, rowH, ro++, theme, {
+        bg: theme.surface,
+        color: theme.text,
+        fontSize: 14,
+        bold: true,
+        align: "left",
+        valign: "middle"
+      })
+    );
+    for (let ci = 0; ci < columns; ci += 1) {
+      const x = colX(ci);
+      const isEmphasis = ci === emphasizedCol;
+      const cellBg = isEmphasis ? theme.accentSoft : "#FFFFFF";
+      const cell = row.cells[ci];
+      const mark = comparisonMarkFor(cell);
+      elements.push(shape(`${id}-r${ri}-c${ci}`, "rect", x, y, dataW, rowH, ro++, cellBg, theme.line, { radius: 0, width: 0.75 }));
+      elements.push(
+        mark
+          ? text(`${id}-r${ri}-c${ci}-t`, "callout", cell, x + 0.12, y, dataW - 0.24, rowH, ro++, theme, {
+              bg: cellBg,
+              color: COMPARISON_MARK_COLOR[mark],
+              fontSize: 22,
+              bold: true,
+              align: "center",
+              valign: "middle"
+            })
+          : text(`${id}-r${ri}-c${ci}-t`, "body", cell, x + 0.12, y, dataW - 0.24, rowH, ro++, theme, {
+              bg: cellBg,
+              color: theme.text,
+              fontSize: 14,
+              bold: isEmphasis,
+              align: "center",
+              valign: "middle"
+            })
+      );
+    }
+  });
+
+  // Legend for the judgement marks.
+  if (hasMarks) {
+    const legendY = top + tableH + 0.06;
+    elements.push(
+      text(`${id}-legend`, "caption", "◎ 最適　○ 対応　△ 限定　✕ 非対応", frame.x + 0.04, legendY, frame.w - 0.08, 0.26, ro++, theme, {
+        bg: theme.background,
+        color: theme.mutedText,
+        fontSize: 12,
+        align: "left",
+        valign: "middle"
+      })
+    );
+  }
+
+  return elements;
+}
+
 function narrativeElementsForIntent(theme: Theme, intent: SlideIntent, expressionPlan: ExpressionPlan, _layoutPlan: LayoutPlan, locale: Locale): SlideElement[] {
   switch (expressionPlan.selectedGrammarId) {
     case "typographic-emphasis":
@@ -1626,7 +1787,8 @@ export function createDeckFromMessageMap(messageMap: DeckMessageMap, options: Cr
     if (narrativeArtifacts) {
       const expressionPlan = narrativeArtifacts.expressionPlans[index];
       const layoutPlan = narrativeArtifacts.layoutPlans[index];
-      const authoredDiagram = renderAuthoredDiagram(theme, intent, options.diagramRenderer);
+      const authoredComparison = renderComparisonTable(theme, intent);
+      const authoredDiagram = authoredComparison ?? renderAuthoredDiagram(theme, intent, options.diagramRenderer);
       const elements = authoredDiagram ?? narrativeElementsForIntent(theme, intent, expressionPlan, layoutPlan, locale);
       slides.push(narrativeSlideShell(theme, intent, elements, expressionPlan, index));
       return;
