@@ -9,6 +9,12 @@ This document is about **deck authoring**. For improving pptcreater itself with 
 Simulator, Evaluator, and QA Gatekeeper, see
 [`dev-loop-architecture.md`](dev-loop-architecture.md).
 
+For the proposed next-generation authoring path that avoids choosing fixed diagram patterns too
+early, see [`narrative-authoring-pipeline.md`](narrative-authoring-pipeline.md). That proposal keeps
+`DeckSpec` as the render/review boundary, but inserts narrative planning, slide copy planning,
+visual grammar metadata, expression selection, and layout composition before concrete objects are
+created.
+
 Run `pptcreater agents` (or the MCP tool `list_agent_roles`) to print the live role definitions, and
 `pptcreater review <deck.json>` (or the MCP tool `review_deck`) to run the aggregated quality gate.
 
