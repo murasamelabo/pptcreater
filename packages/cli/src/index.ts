@@ -118,8 +118,7 @@ const DESIGN_COMPONENT_BY_GRAMMAR: Record<string, string> = {
   "detail-reading-page": "list-vertical-p3",
   "evidence-board": "list-horizontal-p2",
   "typographic-emphasis": "scale-p4",
-  "spatial-model": "formula-p1",
-  "table-text-system": "list-vertical-p5"
+  "spatial-model": "formula-p1"
 };
 
 const DESIGN_COMPONENT_BY_VISUAL_TYPE: Record<string, string> = {
@@ -128,7 +127,6 @@ const DESIGN_COMPONENT_BY_VISUAL_TYPE: Record<string, string> = {
   matrix: "matrix-p6",
   flow: "flow-horizontal-p3",
   step: "step-p4",
-  table: "list-vertical-p5",
   cards: "list-horizontal-p2",
   cycle: "cycle-p1",
   "native-diagram": "formula-p1",
@@ -182,6 +180,7 @@ const COMMON_PLACEHOLDERS = [
 
 function designComponentIdForRequest(request: NarrativeDesignComponentRequest): string | undefined {
   const context = [request.intent.slideId, request.intent.title, request.intent.message, request.intent.emphasis, ...(request.intent.evidence ?? []), ...(request.intent.details ?? [])].join(" ");
+  if (request.intent.visualType === "table" || request.expressionPlan.selectedGrammarId === "table-text-system") return undefined;
   if (request.intent.visualType === "summary") return undefined;
   if (request.intent.visualType === "contrast" && (/代替|alternative/i.test(context) || (request.intent.evidence ?? []).length > 3)) return "list-vertical-p5";
   const visualTypeComponentId = DESIGN_COMPONENT_BY_VISUAL_TYPE[request.intent.visualType];
@@ -263,8 +262,12 @@ function isGenericSlideTitle(value: string): boolean {
   return /^(?:要約|まとめ|結論|概要|サマリー|summary|recap|conclusion)$/iu.test(value.trim());
 }
 
+function isThinTopicTitle(value: string): boolean {
+  return /^(?:全体像|全体フロー|登場ロール|用語整理|基本概念|必要な統制|導入評価|セキュリティ要点|Resource側検証|Token Exchange|ID-JAG JWT)$/iu.test(value.trim());
+}
+
 function slideMessageText(request: NarrativeDesignComponentRequest): string {
-  return compactReplacementText(isGenericSlideTitle(request.intent.title) ? request.intent.message : request.intent.emphasis ?? request.intent.message, request.intent.title, 24);
+  return compactReplacementText(isGenericSlideTitle(request.intent.title) || isThinTopicTitle(request.intent.title) ? request.intent.message : request.intent.emphasis ?? request.intent.message, request.intent.title, 28);
 }
 
 function slideSummaryText(request: NarrativeDesignComponentRequest): string {
@@ -276,7 +279,7 @@ function badgeForIntent(request: NarrativeDesignComponentRequest): string {
   if (/AI|MCP/u.test(context)) return "AI";
   if (/ID-JAG/u.test(context)) return "ID";
   if (/XAA/u.test(context)) return "XAA";
-  if (/IdP|ポリシー/u.test(context)) return "IdP";
+  if (/IdP|ポリシー/u.test(context)) return "ID";
   if (/JWT/u.test(context)) return "JWT";
   if (/API/u.test(context)) return "API";
   if (/OBO/u.test(context)) return "OBO";
