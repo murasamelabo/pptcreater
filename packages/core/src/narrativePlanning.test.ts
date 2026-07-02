@@ -75,6 +75,39 @@ describe("narrative planning artifacts", () => {
     expect(artifacts.expressionPlans[0].selectedGrammarId).toBe("evidence-board");
   });
 
+  it("does not force list-like matrix intents into repeated two-axis maps", () => {
+    const map: DeckMessageMap = {
+      objective: "統制要件を整理する",
+      audience: "セキュリティアーキテクト",
+      desiredAction: "評価観点を確認する",
+      intents: [
+        {
+          slideId: "controls",
+          title: "必要な統制",
+          message: "企業が欲しいのは、IdP中心の統制面である。",
+          evidence: ["集中ビュー", "許可/拒否", "短命認証", "監査証跡", "即時失効"],
+          quietInfo: [],
+          visualType: "matrix",
+          emphasis: "IdP中心の統制面"
+        },
+        {
+          slideId: "true-matrix",
+          title: "優先順位マトリクス",
+          message: "統制強度と実装負荷の二軸で優先度を決める。",
+          evidence: ["低負荷・高統制", "高負荷・高統制", "低負荷・低統制"],
+          quietInfo: [],
+          visualType: "matrix",
+          emphasis: "二軸で優先度を決める"
+        }
+      ]
+    };
+
+    const artifacts = createNarrativePlanArtifacts(map, { locale: "ja-JP", contentMode: "handout" });
+
+    expect(artifacts.expressionPlans[0].selectedGrammarId).toBe("table-text-system");
+    expect(artifacts.expressionPlans[1].selectedGrammarId).toBe("decision-surface");
+  });
+
   it("marks dense slides for splitting before layout cramming", () => {
     const denseMap: DeckMessageMap = {
       objective: "情報量の多い手元資料を作る",

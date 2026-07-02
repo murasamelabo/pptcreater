@@ -293,6 +293,14 @@ function impliesTradeoff(text: string): boolean {
   return /トレードオフ|trade[- ]?off|優先度|優先順位|リスクとリターン|risk\s*(?:vs|and)?\s*return|費用対効果|意思決定/iu.test(text);
 }
 
+function impliesTwoAxisSurface(text: string): boolean {
+  return (
+    impliesTradeoff(text) ||
+    /(?:2軸|二軸|縦軸|横軸|x軸|y軸|quadrant|象限|matrix|マトリクス|散布|ポジショニング|positioning)/iu.test(text) ||
+    /(?:低|高).*(?:低|高).*(?:軸|象限|マトリクス)/u.test(text)
+  );
+}
+
 function grammarForIntent(intent: SlideIntent, contentMode: ContentMode): VisualGrammarId {
   const text = slideText(intent);
   const lower = text.toLowerCase();
@@ -320,7 +328,7 @@ function grammarForIntent(intent: SlideIntent, contentMode: ContentMode): Visual
       // Two-sided contrast reads as a comparison; three or more distinct options read as a board.
       return intent.evidence.length >= 3 ? "evidence-board" : "comparison-field";
     case "matrix":
-      return "decision-surface";
+      return impliesTwoAxisSurface(lower) ? "decision-surface" : (evidenceCount >= 5 ? "table-text-system" : "evidence-board");
     case "table":
       return "table-text-system";
     case "map":
@@ -339,7 +347,7 @@ function grammarForIntent(intent: SlideIntent, contentMode: ContentMode): Visual
   if (/比較|候補|option|vs|選択|違い|差分|before|after/u.test(lower)) return "comparison-field";
   if (/手順|工程|順序|ステップ|ロードマップ|timeline|flow|移行手順|導入手順/u.test(lower)) return "sequential-path";
   if (/階層|layer|stack|architecture|基盤|platform/u.test(lower)) return "layered-model";
-  if (impliesTradeoff(lower)) return "decision-surface";
+  if (impliesTwoAxisSurface(lower)) return "decision-surface";
   if (/関係|循環|距離|方向|成熟|journey/u.test(lower)) return "spatial-model";
   if (evidenceCount >= 5) return "table-text-system";
   return "evidence-board";
