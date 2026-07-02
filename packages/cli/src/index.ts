@@ -57,6 +57,7 @@ import {
   type DeckSpec,
   type Locale,
   type PlanningMode,
+  type PptxSlideColorReplacement,
   type PptxSlideTextReplacement,
   type StyleProfile,
   type TemplateRegistryEntry
@@ -182,6 +183,7 @@ const COMMON_PLACEHOLDERS = [
 
 function designComponentIdForRequest(request: NarrativeDesignComponentRequest): string | undefined {
   const context = [request.intent.slideId, request.intent.title, request.intent.message, request.intent.emphasis, ...(request.intent.evidence ?? []), ...(request.intent.details ?? [])].join(" ");
+  if (request.intent.visualType === "contrast" && (/代替|alternative/i.test(context) || (request.intent.evidence ?? []).length > 3)) return "list-vertical-p5";
   const visualTypeComponentId = DESIGN_COMPONENT_BY_VISUAL_TYPE[request.intent.visualType];
   if (visualTypeComponentId) return visualTypeComponentId;
   if (/APIキー|従来|改善|Before|After|転換/u.test(context)) return "before-after-p1";
@@ -227,6 +229,11 @@ function semanticReplacementLabel(value: string | undefined): string | undefined
   if (/resource/u.test(text) && /endpoint/u.test(text)) return "resource";
   if (/audience/u.test(text) && /MUST NOT/u.test(text)) return "audience禁止";
   if (/actor_token/u.test(text)) return "actor_tokenなし";
+  if (/true competitor is siloed delegation/i.test(text)) return "分断委任";
+  if (/siloed delegation/i.test(text)) return "サイロ委任";
+  if (/standard oauth consent|標準OAuth同意/iu.test(text) && /IT可視性/u.test(text)) return "同意の可視性";
+  if (/サービスアカウント/u.test(text) && /ユーザー代理性/u.test(text)) return "代理性が弱い";
+  if (/APIキー/u.test(text) && /長命|分散/u.test(text)) return "長命キー";
   return undefined;
 }
 
@@ -237,12 +244,16 @@ function compactReplacementText(value: string | undefined, fallback: string, max
   return firstPhrase.slice(0, max);
 }
 
+function slideMessageText(request: NarrativeDesignComponentRequest): string {
+  return compactReplacementText(request.intent.emphasis ?? request.intent.message, request.intent.title, 24);
+}
+
 function badgeForIntent(request: NarrativeDesignComponentRequest): string {
   const context = [request.intent.slideId, request.intent.title, request.intent.message, request.intent.emphasis].join(" ");
+  if (/AI|MCP/u.test(context)) return "AI";
   if (/ID-JAG/u.test(context)) return "ID";
   if (/XAA/u.test(context)) return "XAA";
   if (/IdP|ポリシー/u.test(context)) return "IdP";
-  if (/AI|MCP/u.test(context)) return "AI";
   if (/JWT/u.test(context)) return "JWT";
   if (/API/u.test(context)) return "API";
   if (/OBO/u.test(context)) return "OBO";
@@ -255,9 +266,9 @@ function badgeForIntent(request: NarrativeDesignComponentRequest): string {
 
 function headerReplacementsForIntent(request: NarrativeDesignComponentRequest): PptxSlideTextReplacement[] {
   return [
-    { at: 0, to: compactReplacementText(request.intent.title, request.intent.slideId, 18) },
+    { at: 0, to: `SLIDE ${String(request.slideIndex + 1).padStart(2, "0")}` },
     { at: 1, to: badgeForIntent(request) },
-    { at: 2, to: compactReplacementText(request.intent.emphasis ?? request.intent.message, request.intent.title, 28) }
+    { at: 2, to: slideMessageText(request) }
   ];
 }
 
@@ -276,35 +287,35 @@ function replacementValuesForIntent(request: NarrativeDesignComponentRequest, co
     const problemItems = support.filter((value) => /できない|課題|限界|危険|止ま|長命|漏洩|分散|難しい|同意画面/u.test(value));
     const solutionItems = support.filter((value) => /短命|スコープ|ユーザー代理|採用|拡張|制御|管理|評価|検証|必要/u.test(value) && !problemItems.includes(value));
     return [
-      compactReplacementText(problemItems[0], intent.message, 22),
-      compactReplacementText(problemItems[1], details[0] ?? evidence[0] ?? intent.message, 22),
-      compactReplacementText(problemItems[2], details[1] ?? evidence[1] ?? intent.message, 22),
-      compactReplacementText(solutionItems[0], evidence[0] ?? intent.emphasis ?? intent.title, 24),
-      compactReplacementText(solutionItems[1], evidence[1] ?? details[0] ?? intent.title, 24),
-      compactReplacementText(solutionItems[2], evidence[2] ?? details[1] ?? intent.title, 24),
+      compactReplacementText(problemItems[0], intent.message, 14),
+      compactReplacementText(problemItems[1], details[0] ?? evidence[0] ?? intent.message, 14),
+      compactReplacementText(problemItems[2], details[1] ?? evidence[1] ?? intent.message, 14),
+      compactReplacementText(solutionItems[0], evidence[0] ?? intent.emphasis ?? intent.title, 14),
+      compactReplacementText(solutionItems[1], evidence[1] ?? details[0] ?? intent.title, 14),
+      compactReplacementText(solutionItems[2], evidence[2] ?? details[1] ?? intent.title, 14),
       compactReplacementText(intent.emphasis, "改善", 14)
     ];
   }
   if (componentId === "formula-p1") {
     return [
       compactReplacementText(intent.title, "概念", 12),
-      compactReplacementText(evidence[0] ?? details[0], intent.message, 18),
+      compactReplacementText(evidence[0] ?? details[0], intent.message, 14),
       compactReplacementText(intent.emphasis, "掛け合わせ", 16),
-      compactReplacementText(evidence[1] ?? details[1], intent.message, 18),
-      compactReplacementText(evidence[2] ?? intent.message, "成果", 18),
-      compactReplacementText(details[2] ?? intent.message, intent.message, 22)
+      compactReplacementText(evidence[1] ?? details[1], intent.message, 14),
+      compactReplacementText(evidence[2] ?? intent.message, "成果", 14),
+      compactReplacementText(details[2] ?? intent.message, intent.message, 16)
     ];
   }
   if (componentId === "matrix-p6") {
     return [
       compactReplacementText(intent.title, "候補", 14),
-      compactReplacementText(intent.emphasis, "評価軸", 18),
-      compactReplacementText(evidence[0], "推奨", 18),
-      compactReplacementText(details[0], evidence[0] ?? intent.message, 24),
-      compactReplacementText(evidence[1], "見送り", 18),
-      compactReplacementText(details[1], evidence[1] ?? intent.message, 24),
-      compactReplacementText(evidence[2], "要検討", 18),
-      compactReplacementText(details[2], evidence[2] ?? intent.message, 24)
+      compactReplacementText(intent.emphasis, "評価軸", 12),
+      compactReplacementText(evidence[0], "推奨", 12),
+      compactReplacementText(details[0], evidence[0] ?? intent.message, 14),
+      compactReplacementText(evidence[1], "見送り", 12),
+      compactReplacementText(details[1], evidence[1] ?? intent.message, 14),
+      compactReplacementText(evidence[2], "要検討", 12),
+      compactReplacementText(details[2], evidence[2] ?? intent.message, 14)
     ];
   }
   if (componentId === "step-p4") {
@@ -312,15 +323,19 @@ function replacementValuesForIntent(request: NarrativeDesignComponentRequest, co
     return [0, 1, 2, 3].flatMap((index) => {
       const raw = steps[index] ?? details[index] ?? evidence[index] ?? support[index] ?? intent.message;
       const [label, description] = raw.split(/[:：]/u, 2);
-      return [compactReplacementText(label, `Step ${index + 1}`, 12), compactReplacementText(description ?? raw, raw, 20)];
+      return [compactReplacementText(label, `Step ${index + 1}`, 10), compactReplacementText(description ?? raw, raw, 16)];
     });
   }
   if (componentId === "list-vertical-p5" || componentId === "list-horizontal-p2") {
     const items = evidence.length ? evidence : support;
-    return [0, 1, 2, 3].flatMap((index) => [
-      compactReplacementText(items[index], intent.title, componentId === "list-horizontal-p2" ? 12 : 18),
-      compactReplacementText(details[index] ?? support[index + items.length], intent.message, componentId === "list-horizontal-p2" ? 18 : 24)
-    ]);
+    return [0, 1, 2, 3].flatMap((index) => {
+      const raw = items[index] ?? intent.title;
+      const [label, body] = raw.split(/[:：]/u, 2);
+      return [
+        compactReplacementText(label, intent.title, componentId === "list-horizontal-p2" ? 10 : 14),
+        compactReplacementText(body ?? details[index] ?? support[index + items.length], intent.message, componentId === "list-horizontal-p2" ? 14 : 18)
+      ];
+    });
   }
   const values = uniqueValues([
     intent.title,
@@ -330,8 +345,8 @@ function replacementValuesForIntent(request: NarrativeDesignComponentRequest, co
     ...details,
     ...(intent.quietInfo ?? [])
   ]);
-  if (expressionPlan.selectedGrammarId === "comparison-field" && evidence.length >= 2) {
-    return [intent.title, intent.emphasis ?? intent.title, ...evidence, ...details].filter(Boolean);
+  if (componentId === "comparison-p3" || (expressionPlan.selectedGrammarId === "comparison-field" && evidence.length >= 2)) {
+    return uniqueValues([intent.title, intent.emphasis ?? intent.title, ...evidence, ...details]).map((value, index) => compactReplacementText(value, index === 0 ? intent.title : intent.message, index < 4 ? 16 : 12));
   }
   if (expressionPlan.selectedGrammarId === "sequential-path") {
     return [intent.title, ...(evidence.length ? evidence : details), intent.emphasis ?? intent.message].filter(Boolean);
@@ -360,6 +375,10 @@ function textReplacements(request: NarrativeDesignComponentRequest, componentId:
   return replacements;
 }
 
+function designComponentRecolor(accent: string): PptxSlideColorReplacement[] {
+  return ["#2B5797", "#E0922F", "#9F3D36", "#A23A35", "#1593B8", "#2E73A8", "#4A7BC8", "#6C5CA8", "#1FA98F"].map((from) => ({ from, to: accent, scope: "all" }));
+}
+
 async function createZukaiDesignComponentRenderer() {
   const components = await listDesignComponents({ roots: ["design-packs"] });
   const byId = new Map(components.map((component) => [component.id, component]));
@@ -376,6 +395,7 @@ async function createZukaiDesignComponentRenderer() {
       sourceSlideIndex: component.sourceSlideIndex,
       textReplacements: textReplacements(request, componentId),
       nodeGroups: component.editableGroups,
+      recolor: designComponentRecolor(request.accent),
       summary: `${component.name}: ${request.intent.title}`,
       longDescription: [request.intent.message, ...request.intent.evidence, ...(request.intent.details ?? [])].join(" ")
     };

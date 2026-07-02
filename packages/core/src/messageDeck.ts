@@ -66,6 +66,8 @@ export type NarrativeDiagramRenderer = (request: NarrativeDiagramRenderRequest) 
 export type NarrativeDesignComponentRequest = {
   idPrefix: string;
   title: string;
+  slideIndex: number;
+  accent: string;
   intent: SlideIntent;
   expressionPlan: ExpressionPlan;
   layoutPlan: LayoutPlan;
@@ -536,6 +538,31 @@ function visibleSentence(value: string): string {
     return text;
   }
   return hasJapanese(text) ? `${text}。` : `${text} matters.`;
+}
+
+function slideMessageText(intent: SlideIntent): string {
+  const source = intent.emphasis ?? intent.message;
+  const first = source.replace(/\s+/g, " ").replace(/。$/u, "").split(/[。；;\n]/u)[0]?.trim() || source.trim();
+  if (first.length <= 34) {
+    return first;
+  }
+  return compactLabel(first, hasJapanese(first) ? 24 : 34);
+}
+
+function intentBadgeText(intent: SlideIntent): string {
+  const context = [intent.slideId, intent.title, intent.message, intent.emphasis, ...intent.evidence].filter(Boolean).join(" ");
+  if (/AI|MCP/u.test(context)) return "AI";
+  if (/ID-JAG/u.test(context)) return "ID";
+  if (/XAA/u.test(context)) return "XAA";
+  if (/IdP|ポリシー/u.test(context)) return "IdP";
+  if (/JWT/u.test(context)) return "JWT";
+  if (/API/u.test(context)) return "API";
+  if (/OBO/u.test(context)) return "OBO";
+  if (intent.visualType === "summary") return "要約";
+  if (intent.visualType === "step" || intent.visualType === "flow") return "STEP";
+  if (intent.visualType === "matrix") return "評価";
+  if (intent.visualType === "contrast") return "比較";
+  return "KEY";
 }
 
 function coverTitleText(value: string): string {
@@ -1216,6 +1243,7 @@ function narrativeSlideShell(theme: Theme, intent: SlideIntent, elements: SlideE
   const id = intent.slideId;
   const title = slideTopicTitle(intent);
   const fullSlideComponent = ownsFullSlideCanvas(elements);
+  const slideNumber = `SLIDE ${String(index + 1).padStart(2, "0")}`;
   return {
     id,
     title,
@@ -1236,19 +1264,16 @@ function narrativeSlideShell(theme: Theme, intent: SlideIntent, elements: SlideE
       ? elements
       : [
           shape(`${id}-canvas`, "rect", 0, 0, W, H, 0, theme.background, theme.background, { radius: 0 }),
-          icon(`${id}-header-icon`, iconForEvidence(intent.emphasis ?? intent.title, index), 0.7, 0.86, 0.42, 4, theme, {
-            color: theme.accent,
-            decorative: true,
-            bg: theme.accentSoft
-          }),
-          text(`${id}-eyebrow`, "caption", `SLIDE ${String(index + 1).padStart(2, "0")}`, 0.7, 0.38, 1.68, 0.25, 1, theme, {
+          text(`${id}-eyebrow`, "caption", slideNumber, 0.7, 0.38, 1.68, 0.25, 1, theme, {
             color: theme.accent,
             bg: theme.background,
             fontSize: 12,
             bold: true
           }),
-          text(`${id}-title`, "title", title, 1.22, 0.72, 3.88, 0.62, 2, theme, { fontSize: 26 }),
-          text(`${id}-message`, "subtitle", intent.message, 5.22, 0.68, 7.12, 0.92, 3, theme, { color: theme.text, fontSize: 20 }),
+          shape(`${id}-header-badge`, "roundRect", 0.72, 0.82, 0.58, 0.42, 2, theme.accent, theme.accent, { radius: 0.12 }),
+          text(`${id}-header-badge-text`, "caption", intentBadgeText(intent), 0.8, 0.94, 0.42, 0.14, 3, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 11, bold: true, align: "center" }),
+          text(`${id}-title`, "title", title, 1.5, 0.72, 3.6, 0.62, 4, theme, { fontSize: 26 }),
+          text(`${id}-message`, "subtitle", slideMessageText(intent), 5.22, 0.72, 7.12, 0.68, 5, theme, { color: theme.text, fontSize: 21 }),
           ...elements
         ]
   };
@@ -1859,6 +1884,8 @@ export function createDeckFromMessageMap(messageMap: DeckMessageMap, options: Cr
         : options.designComponentRenderer?.({
             idPrefix: `${intent.slideId}-dc`,
             title: slideTopicTitle(intent),
+            slideIndex: index,
+            accent: theme.accent,
             intent,
             expressionPlan,
             layoutPlan,
