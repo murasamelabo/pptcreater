@@ -145,7 +145,7 @@ Before creating a DeckSpec, clarify these points when they are not already speci
 
 1. Use pptcreater MCP resources/tools where available.
 2. Use \`interview_slide_brief\` when the request is underspecified.
-3. Before writing custom DeckSpec, call \`get_slide_creation_rules\` (or CLI \`pptcreater rules --locale <locale> --content-mode <mode>\`) and keep the first draft inside those constraints instead of relying on repeated lint fixes.
+3. Before writing custom DeckSpec, call \`get_slide_creation_rules\` (or CLI \`pptcreater rules --locale <locale> --content-mode <mode>\`) and keep the first draft inside those constraints instead of relying on repeated lint fixes. When authoring Message Maps for source-backed handout/technical decks, preserve source-level definitions, figures, constraints, caveats, and validation points in \`details[]\` and \`sourceTrace[]\`; do not compress the source into a thin one-sentence outline.
 4. For consulting-style, executive, customer-facing, important-meeting, or internal-friendly business decks, run \`plan_business_deck\` (or CLI \`pptcreater business-plan\`) before writing DeckSpec. It defines objective, reader action, section architecture, slide-level emphasis, reading path, and human-review flags.
 5. Use \`generate_edit_with_copilot_prompt\` only when the user explicitly wants a PowerPoint for the web / Edit with Copilot prompt. This is an upstream prompt workflow; final deterministic output should still use pptcreater rendering when possible.
 6. For a direct PPTX request, prefer \`create_pptx\` or \`create_powerpoint\` first. It creates, lints, polishes, and renders with safe defaults.
@@ -159,7 +159,7 @@ Before creating a DeckSpec, clarify these points when they are not already speci
 13. When external websites are used as references, record each one in \`metadata.sources\` with its actual \`url\`. The final slide must collect these URLs; \`polish_deck_layout\`, \`render_pptx\`, and \`render_studio\` append/update it automatically.
 14. Create a visual DeckSpec with editable PowerPoint shapes/text where possible.
 15. Run \`review_business_deck\` for business storyline, section flow, page emphasis, and final landing checks.
-16. Run \`review_content\` (or CLI \`pptcreater content-review\`) before linting. It applies locale/content-mode writing rules: Japanese report/technical/handout decks use a short topic title + slide message, Japanese presentation/decision decks allow concise assertion titles, and English decks prefer action titles.
+16. Run \`review_message_map\` / CLI \`pptcreater message-review\` before DeckSpec generation when you authored the Message Map yourself; source-backed handout/technical maps must not have thin evidence/details or missing sourceTrace. Then run \`review_content\` (or CLI \`pptcreater content-review\`) before linting. It applies locale/content-mode writing rules: Japanese report/technical/handout decks use a short topic title + slide message, Japanese presentation/decision decks allow concise assertion titles, and English decks prefer action titles.
 17. Run \`lint_deck\`, then \`review_deck\` as the REQUIRED deterministic quality gate before declaring the deck render-ready: it aggregates lint + content + business + visual-quality reviews, classifies findings (blocking / polish-fixable / advisory), and routes each blocking issue to its owner role. Fix every blocking finding and re-run until \`ok\` is true. A generic code review is not a substitute for \`review_deck\`.
 17b. For finished-deck judgment, run \`review_slide_quality\` (or CLI \`pptcreater quality-review <deck.json> --purpose-profile P?\`). It applies the ppptevaluater standard: D1-D9 dimensions, P1-P5 purpose profiles, A1-A6 anti-patterns, and S1-S7 deck story flow. Use this when evaluating whether a deck is actually good for its purpose, not merely lint-clean.
 18. Run \`polish_deck_layout\` when layout issues or overflow risks are present. \`render_pptx\` also applies this safeguard automatically.
@@ -446,8 +446,8 @@ You bridge chapter-level structure to slide-level intent.
 
 ## What you produce: SlidePlan[]
 
-Per slide: **message** (one sentence), **evidence[]**, **figureKind**, **data**, **layoutHint**,
-**reviewFlags**.
+Per slide: **message** (one sentence), **evidence[]**, **details[]**, **sourceTrace[]**, **figureKind**,
+**data**, **layoutHint**, **reviewFlags**.
 
 ## How to choose a figure
 
@@ -461,7 +461,8 @@ One slide, one message. Choose the figure from meaning, not decoration. Treat ti
 architecture, matrix, ranking, radar, flow, tree, venn, contrast, table, detail, and other formats as peer options; use the one
 that best exposes the slide's structure, and include alternatives when the fit is close. Prefer
 curated components.
-Record sources for external data so the Reviewer's traceability check passes.
+Do not make source-backed handout/technical decks thin at the Message Map stage. Keep enough \`evidence[]\`, \`details[]\`, and \`sourceTrace[]\` for the reviewer to recover the original argument.
+Record sources for external data so \`review_message_map\`, \`review_deck\`, and \`quality-review\` can trace the argument back to the source.
 `
   },
   {

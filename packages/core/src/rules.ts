@@ -31,7 +31,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
     ? [
         "最初にこの get_slide_creation_rules / pptcreater rules の内容を読み、以後の DeckSpec 生成制約として扱う。",
         "目的・聴衆・contentMode・枚数・出典・使うテンプレート/ブランドが曖昧なら、DeckSpec を書く前に確認または合理的に仮定する。",
-        "DeckSpecを書く前にMessage Map / SlideIntentを作り、各スライドのmessage・evidence・visualType・emphasisを決める。メッセージが曖昧ならヒアリングしてから進める。",
+        "DeckSpecを書く前にMessage Map / SlideIntentを作り、各スライドのmessage・evidence・details・sourceTrace・visualType・emphasisを決める。手元資料/技術資料では元資料の定義・数値・制約・検証観点をdetails/sourceTraceに残し、薄い1文メモにしない。メッセージが曖昧ならヒアリングしてから進める。",
         "PDF知見: いきなりPowerPointを立ち上げない。先に「聴き手に何を納得/行動してもらうか」「贈り物として何を渡すか」を紙・メモ・Message Mapで決める。",
         "経営向け・顧客向け・重要会議・コンサル風資料では plan_business_deck を先に実行し、章構成と各スライドの役割を決める。",
         "search_templates / recommend_template で template を決め、search_assets で既存アイコン・クラウドプリセットを先に探す。",
@@ -42,7 +42,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
     : [
         "Read these get_slide_creation_rules / pptcreater rules first and treat them as constraints for the DeckSpec you are about to write.",
         "If purpose, audience, contentMode, slide count, sources, template, or brand constraints are unclear, clarify or make explicit assumptions before writing DeckSpec.",
-        "Before writing DeckSpec, create a Message Map / SlideIntent set that defines message, evidence, visualType, and emphasis for each slide. If the message is unclear, interview first.",
+        "Before writing DeckSpec, create a Message Map / SlideIntent set that defines message, evidence, details, sourceTrace, visualType, and emphasis for each slide. For handouts and technical/source-backed decks, preserve definitions, figures, constraints, and validation points in details/sourceTrace instead of compressing the source into thin one-line notes. If the message is unclear, interview first.",
         "PDF-derived rule: do not open PowerPoint first. Decide what the audience should understand/do and what 'gift' the slide gives them using paper, notes, or Message Map before layout.",
         "For executive, customer-facing, important-meeting, or consulting-style decks, run plan_business_deck first to define sections and slide roles.",
         "Choose the template through search_templates / recommend_template, and search_assets before creating new icons or cloud pictograms.",
@@ -67,7 +67,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "最終PPTXでは render-blocking lint を force しない。エラーは内容・構造・配置を直して解消する。"
       ]
     : [
-      ...formatSlideQualityStandard(locale),
+        ...formatSlideQualityStandard(locale),
         "One slide, one message. Do not combine multiple arguments, decisions, or flows on one slide.",
         "The audience is the protagonist. Order content by what helps them understand, agree, and act — not by the author's thinking order.",
         "Slides are a means to convey a message, not the goal. Separate key point, message, and visual/table before designing.",

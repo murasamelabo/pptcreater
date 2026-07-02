@@ -196,13 +196,14 @@ function makeId(prefix: string, index: number): string {
 }
 
 function slideText(intent: SlideIntent): string {
-  return [intent.title, intent.message, intent.emphasis, ...intent.evidence, ...intent.quietInfo].filter(Boolean).join(" ");
+  return [intent.title, intent.message, intent.emphasis, ...intent.evidence, ...(intent.details ?? []), ...intent.quietInfo, ...(intent.sourceTrace ?? [])].filter(Boolean).join(" ");
 }
 
 function densityForIntent(intent: SlideIntent): SlideBrief["densityTarget"] {
-  const visibleTextLength = [intent.title, intent.message, ...intent.evidence].join("").length;
-  if (intent.evidence.length >= 5 || visibleTextLength > 180) return "dense";
-  if (intent.evidence.length <= 2 && visibleTextLength < 80) return "sparse";
+  const visibleTextLength = [intent.title, intent.message, ...intent.evidence, ...(intent.details ?? [])].join("").length;
+  const supportUnits = intent.evidence.length + (intent.details?.length ?? 0);
+  if (supportUnits >= 5 || visibleTextLength > 180) return "dense";
+  if (supportUnits <= 2 && visibleTextLength < 80) return "sparse";
   return "balanced";
 }
 
@@ -264,7 +265,7 @@ function chapterIdForSlide(chapters: ChapterPlan[], slideId: string): string {
 }
 
 function informationUnitsForIntent(intent: SlideIntent): InformationUnit[] {
-  const units = [intent.message, intent.emphasis, ...intent.quietInfo].filter((item): item is string => Boolean(item));
+  const units = [intent.message, intent.emphasis, ...(intent.details ?? []), ...intent.quietInfo, ...(intent.sourceTrace ?? [])].filter((item): item is string => Boolean(item));
   return units.map((item, index) => ({ id: `${intent.slideId}-info-${index + 1}`, text: item, priority: index + 1, sourceTrace: index === 0 ? "message" : "quietInfo/emphasis" }));
 }
 
@@ -273,8 +274,9 @@ function evidenceUnitsForIntent(intent: SlideIntent): EvidenceUnit[] {
 }
 
 function splitReasonForIntent(intent: SlideIntent): string | undefined {
-  if (intent.evidence.length > 6) return "More than six evidence units should be split or summarized before layout.";
-  if ([intent.title, intent.message, ...intent.evidence].join("").length > 260) return "Visible text is dense; split or move detail to notes if layout cannot preserve readability.";
+  const supportUnits = intent.evidence.length + (intent.details?.length ?? 0);
+  if (supportUnits >= 5) return "Five or more support units should be split, summarized, or moved into notes before layout.";
+  if ([intent.title, intent.message, ...intent.evidence, ...(intent.details ?? [])].join("").length > 360) return "Visible/source text is dense; preserve detail in notes and split if layout cannot preserve readability.";
   return undefined;
 }
 

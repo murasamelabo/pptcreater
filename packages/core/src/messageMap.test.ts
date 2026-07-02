@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import { attachMessageMap, createSampleDeck, reviewMessageMap } from "./index.js";
 
 describe("message map / slide intent", () => {
@@ -11,7 +11,7 @@ describe("message map / slide intent", () => {
   });
 
   it("accepts a deck with one clear intent per content slide", () => {
-    const deck = attachMessageMap(createSampleDeck("ja-JP", { slideCount: 3 }), [
+    const deck = attachMessageMap(createSampleDeck("ja-JP", { slideCount: 3, contentMode: "presentation" }), [
       {
         slideId: "slide-1",
         title: "要点",
@@ -19,7 +19,7 @@ describe("message map / slide intent", () => {
         evidence: ["助成は低価格", "自費は柔軟"],
         visualType: "flow",
         emphasis: "市助成",
-        quietInfo: ["細かい条件は出典へ"]
+        quietInfo: ["細かい条件は補足へ"]
       },
       {
         slideId: "slide-2",
@@ -66,5 +66,42 @@ describe("message map / slide intent", () => {
     expect(report.issues.map((issue) => issue.code)).toEqual(
       expect.arrayContaining(["message-map.message-too-broad", "message-map.evidence-missing", "message-map.emphasis-missing"])
     );
+  });
+
+  it("warns when source-backed handout intents drop supporting detail and source trace", () => {
+    const deck = attachMessageMap(createSampleDeck("ja-JP", { slideCount: 1, contentMode: "handout" }), [
+      {
+        slideId: "slide-1",
+        title: "ID-JAG概要",
+        message: "ID-JAGはIdPがユーザー代理アクセスをJWTで証明する。",
+        evidence: ["IdPが署名", "JWT Bearerで提示"],
+        visualType: "detail",
+        emphasis: "IdP署名",
+        quietInfo: []
+      }
+    ]);
+
+    const report = reviewMessageMap(deck);
+
+    expect(report.ok).toBe(true);
+    expect(report.issues.map((issue) => issue.code)).toEqual(expect.arrayContaining(["message-map.supporting-detail-thin", "message-map.source-trace-missing"]));
+  });
+
+  it("accepts source-backed handout intents that preserve details and trace", () => {
+    const deck = attachMessageMap(createSampleDeck("ja-JP", { slideCount: 1, contentMode: "handout" }), [
+      {
+        slideId: "slide-1",
+        title: "ID-JAG概要",
+        message: "ID-JAGはIdPがユーザー代理アクセスをJWTで証明する。",
+        evidence: ["IdPが署名", "JWT Bearerで提示", "audience-boundで再利用を防ぐ"],
+        details: ["typ=oauth-id-jag+jwt", "client_idとaudを検証"],
+        sourceTrace: ["§4.4 ID-JAG JWT のクレーム"],
+        visualType: "detail",
+        emphasis: "IdP署名",
+        quietInfo: []
+      }
+    ]);
+
+    expect(reviewMessageMap(deck)).toEqual({ ok: true, issues: [] });
   });
 });

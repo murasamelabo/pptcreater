@@ -391,6 +391,14 @@ export const SlideIntentSchema = z.object({
   title: z.string().min(1),
   message: z.string().min(1),
   evidence: z.array(z.string().min(1)).default([]),
+  /**
+   * Supporting details that should survive source-to-message-map condensation but do not all need to
+   * appear on the slide face. Use this for definitions, protocol parameters, caveats, numeric context,
+   * and acceptance criteria that should remain available in planning artifacts and speaker notes.
+   */
+  details: z.array(z.string().min(1)).optional(),
+  /** Source-section ids, URLs, page references, or local note anchors that prove where the message came from. */
+  sourceTrace: z.array(z.string().min(1)).optional(),
   visualType: SlideVisualTypeSchema,
   emphasis: z.string().min(1).optional(),
   quietInfo: z.array(z.string().min(1)).default([]),

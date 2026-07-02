@@ -11,6 +11,8 @@ import {
   classifyFinalizeLintReports,
   cliMessage,
   createDeckFromMessageMap,
+  type NarrativeDesignComponentRequest,
+  type NarrativeDesignComponentResponse,
   type NarrativeDiagramRenderRequest,
   type SlideElement,
   createNarrativePlanArtifacts,
@@ -55,6 +57,7 @@ import {
   type DeckSpec,
   type Locale,
   type PlanningMode,
+  type PptxSlideTextReplacement,
   type StyleProfile,
   type TemplateRegistryEntry
 } from "@pptcreater/core";
@@ -103,6 +106,279 @@ function templateEntryJson(entry: TemplateRegistryEntry): Record<string, unknown
     source: entry.source,
     deletable: entry.deletable,
     ...(entry.deleteReason ? { deleteReason: entry.deleteReason } : {})
+  };
+}
+
+const DESIGN_COMPONENT_BY_GRAMMAR: Record<string, string> = {
+  "sequential-path": "flow-horizontal-p3",
+  "comparison-field": "comparison-p3",
+  "decision-surface": "matrix-p6",
+  "layered-model": "step-p3",
+  "detail-reading-page": "list-vertical-p3",
+  "evidence-board": "list-horizontal-p2",
+  "typographic-emphasis": "scale-p4",
+  "spatial-model": "formula-p1",
+  "table-text-system": "list-vertical-p5"
+};
+
+const DESIGN_COMPONENT_BY_VISUAL_TYPE: Record<string, string> = {
+  "before-after": "before-after-p1",
+  contrast: "comparison-p3",
+  matrix: "matrix-p6",
+  flow: "flow-horizontal-p3",
+  step: "step-p4",
+  table: "list-vertical-p5",
+  cards: "list-horizontal-p2",
+  summary: "list-horizontal-p2",
+  cycle: "cycle-p1",
+  "native-diagram": "formula-p1",
+  "ponchi-e": "venn-p6"
+};
+
+const COMMON_PLACEHOLDERS = [
+  "要件定義",
+  "ニーズを整理",
+  "設計",
+  "構成を決める",
+  "開発",
+  "実装する",
+  "テスト",
+  "品質を確認",
+  "リリース",
+  "本番へ展開",
+  "手作業での入力",
+  "情報が分散",
+  "処理が遅い",
+  "自動で取り込み",
+  "一元管理",
+  "即時処理",
+  "スタンダード",
+  "プレミアム",
+  "コスト効率",
+  "機能性",
+  "使いやすさ",
+  "一貫した品質",
+  "スピード対応",
+  "柔軟な拡張性",
+  "手厚いサポート",
+  "確かな実績",
+  "高品質",
+  "高速対応",
+  "拡張",
+  "認知",
+  "サービスを知る",
+  "検討",
+  "比較・評価する",
+  "導入",
+  "利用を開始する",
+  "定着・拡大",
+  "全市場",
+  "対象市場",
+  "自社",
+  "品質",
+  "価格",
+  "サービス"
+];
+
+function designComponentIdForRequest(request: NarrativeDesignComponentRequest): string | undefined {
+  const context = [request.intent.slideId, request.intent.title, request.intent.message, request.intent.emphasis, ...(request.intent.evidence ?? []), ...(request.intent.details ?? [])].join(" ");
+  const visualTypeComponentId = DESIGN_COMPONENT_BY_VISUAL_TYPE[request.intent.visualType];
+  if (visualTypeComponentId) return visualTypeComponentId;
+  if (/APIキー|従来|改善|Before|After|転換/u.test(context)) return "before-after-p1";
+  if (/ポリシー|評価|統制|判断|優先/u.test(context)) return "matrix-p6";
+  if (/OBO|比較|代替|vs|違い/u.test(context)) return "comparison-p3";
+  if (/Token Exchange|JWT Bearer|フロー|手順|導入評価|次/u.test(context)) return "flow-horizontal-p3";
+  if (/基本概念|掛け合わせ|拡張|信頼/u.test(context)) return "formula-p1";
+  if (/市場|規模|スコープ|範囲/u.test(context)) return "scale-p4";
+  return DESIGN_COMPONENT_BY_GRAMMAR[request.expressionPlan.selectedGrammarId];
+}
+
+function uniqueValues(values: Array<string | undefined>): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    const cleaned = value?.trim();
+    if (!cleaned || seen.has(cleaned)) continue;
+    seen.add(cleaned);
+    result.push(cleaned);
+  }
+  return result;
+}
+
+function semanticReplacementLabel(value: string | undefined): string | undefined {
+  const text = value?.replace(/\s+/g, " ").trim();
+  if (!text) return undefined;
+  if (/MCP.*XAA|XAA.*Authorization Extension/u.test(text)) return "XAA採用";
+  if (/同意画面|対話型同意/u.test(text)) return "対話同意で停止";
+  if (/長命APIキー|APIキー/u.test(text) && /漏洩|保持|持たせ|安全/u.test(text)) return "長命キーリスク";
+  if (/短命|スコープ限定|ユーザー代理/u.test(text)) return "短命・限定委任";
+  if (/複数SaaS|複数.*API|横断/u.test(text)) return "複数API横断";
+  if (/ログイン可否/u.test(text)) return "ログイン管理";
+  if (/API代理アクセス|API認可/u.test(text)) return "API代理認可";
+  if (/同じポリシー|ポリシー面/u.test(text)) return "同一ポリシー";
+  if (/署名鍵|メタデータ/u.test(text)) return "署名鍵で信頼";
+  if (/接続してよい|接続可否/u.test(text)) return "接続可否";
+  if (/scope|スコープ/u.test(text) && /最小権限/u.test(text)) return "最小scope";
+  if (/許可グループ/u.test(text)) return "許可グループ";
+  if (/MFA|step-up|ステップアップ/u.test(text)) return "MFA条件";
+  if (/subject_token|client_id|aud/u.test(text)) return "aud/client_id";
+  if (/grant_type/u.test(text)) return "grant_type";
+  if (/requested_token_type/u.test(text)) return "token_type";
+  if (/resource/u.test(text) && /endpoint/u.test(text)) return "resource";
+  if (/audience/u.test(text) && /MUST NOT/u.test(text)) return "audience禁止";
+  if (/actor_token/u.test(text)) return "actor_tokenなし";
+  return undefined;
+}
+
+function compactReplacementText(value: string | undefined, fallback: string, max = 24): string {
+  const source = (semanticReplacementLabel(value) ?? value ?? fallback).replace(/\s+/g, " ").replace(/。$/u, "").trim() || fallback;
+  const firstPhrase = source.split(/[。；;\n]/u)[0]?.trim() || source;
+  if (firstPhrase.length <= max) return firstPhrase;
+  return firstPhrase.slice(0, max);
+}
+
+function badgeForIntent(request: NarrativeDesignComponentRequest): string {
+  const context = [request.intent.slideId, request.intent.title, request.intent.message, request.intent.emphasis].join(" ");
+  if (/ID-JAG/u.test(context)) return "ID";
+  if (/XAA/u.test(context)) return "XAA";
+  if (/IdP|ポリシー/u.test(context)) return "IdP";
+  if (/AI|MCP/u.test(context)) return "AI";
+  if (/JWT/u.test(context)) return "JWT";
+  if (/API/u.test(context)) return "API";
+  if (/OBO/u.test(context)) return "OBO";
+  if (request.intent.visualType === "summary") return "要約";
+  if (request.intent.visualType === "step") return "STEP";
+  if (request.intent.visualType === "matrix") return "評価";
+  if (request.intent.visualType === "contrast") return "比較";
+  return "KEY";
+}
+
+function headerReplacementsForIntent(request: NarrativeDesignComponentRequest): PptxSlideTextReplacement[] {
+  return [
+    { at: 0, to: compactReplacementText(request.intent.title, request.intent.slideId, 18) },
+    { at: 1, to: badgeForIntent(request) },
+    { at: 2, to: compactReplacementText(request.intent.emphasis ?? request.intent.message, request.intent.title, 28) }
+  ];
+}
+
+function replacementValuesForIntent(request: NarrativeDesignComponentRequest, componentId: string): string[] {
+  const { intent, expressionPlan } = request;
+  const evidence = intent.evidence ?? [];
+  const details = intent.details ?? [];
+  const support = uniqueValues([
+    ...evidence,
+    ...details,
+    intent.message,
+    intent.emphasis,
+    ...(intent.quietInfo ?? [])
+  ]);
+  if (componentId === "before-after-p1") {
+    const problemItems = support.filter((value) => /できない|課題|限界|危険|止ま|長命|漏洩|分散|難しい|同意画面/u.test(value));
+    const solutionItems = support.filter((value) => /短命|スコープ|ユーザー代理|採用|拡張|制御|管理|評価|検証|必要/u.test(value) && !problemItems.includes(value));
+    return [
+      compactReplacementText(problemItems[0], intent.message, 22),
+      compactReplacementText(problemItems[1], details[0] ?? evidence[0] ?? intent.message, 22),
+      compactReplacementText(problemItems[2], details[1] ?? evidence[1] ?? intent.message, 22),
+      compactReplacementText(solutionItems[0], evidence[0] ?? intent.emphasis ?? intent.title, 24),
+      compactReplacementText(solutionItems[1], evidence[1] ?? details[0] ?? intent.title, 24),
+      compactReplacementText(solutionItems[2], evidence[2] ?? details[1] ?? intent.title, 24),
+      compactReplacementText(intent.emphasis, "改善", 14)
+    ];
+  }
+  if (componentId === "formula-p1") {
+    return [
+      compactReplacementText(intent.title, "概念", 12),
+      compactReplacementText(evidence[0] ?? details[0], intent.message, 18),
+      compactReplacementText(intent.emphasis, "掛け合わせ", 16),
+      compactReplacementText(evidence[1] ?? details[1], intent.message, 18),
+      compactReplacementText(evidence[2] ?? intent.message, "成果", 18),
+      compactReplacementText(details[2] ?? intent.message, intent.message, 22)
+    ];
+  }
+  if (componentId === "matrix-p6") {
+    return [
+      compactReplacementText(intent.title, "候補", 14),
+      compactReplacementText(intent.emphasis, "評価軸", 18),
+      compactReplacementText(evidence[0], "推奨", 18),
+      compactReplacementText(details[0], evidence[0] ?? intent.message, 24),
+      compactReplacementText(evidence[1], "見送り", 18),
+      compactReplacementText(details[1], evidence[1] ?? intent.message, 24),
+      compactReplacementText(evidence[2], "要検討", 18),
+      compactReplacementText(details[2], evidence[2] ?? intent.message, 24)
+    ];
+  }
+  if (componentId === "step-p4") {
+    const steps = evidence.length ? evidence : details;
+    return [0, 1, 2, 3].flatMap((index) => {
+      const raw = steps[index] ?? details[index] ?? evidence[index] ?? support[index] ?? intent.message;
+      const [label, description] = raw.split(/[:：]/u, 2);
+      return [compactReplacementText(label, `Step ${index + 1}`, 12), compactReplacementText(description ?? raw, raw, 20)];
+    });
+  }
+  if (componentId === "list-vertical-p5" || componentId === "list-horizontal-p2") {
+    const items = evidence.length ? evidence : support;
+    return [0, 1, 2, 3].flatMap((index) => [
+      compactReplacementText(items[index], intent.title, componentId === "list-horizontal-p2" ? 12 : 18),
+      compactReplacementText(details[index] ?? support[index + items.length], intent.message, componentId === "list-horizontal-p2" ? 18 : 24)
+    ]);
+  }
+  const values = uniqueValues([
+    intent.title,
+    intent.emphasis ?? intent.title,
+    intent.message,
+    ...evidence,
+    ...details,
+    ...(intent.quietInfo ?? [])
+  ]);
+  if (expressionPlan.selectedGrammarId === "comparison-field" && evidence.length >= 2) {
+    return [intent.title, intent.emphasis ?? intent.title, ...evidence, ...details].filter(Boolean);
+  }
+  if (expressionPlan.selectedGrammarId === "sequential-path") {
+    return [intent.title, ...(evidence.length ? evidence : details), intent.emphasis ?? intent.message].filter(Boolean);
+  }
+  return values;
+}
+
+const DESIGN_COMPONENT_PLACEHOLDERS: Record<string, string[]> = {
+  "before-after-p1": ["手作業での入力", "情報が分散", "処理が遅い", "自動で取り込み", "一元管理", "即時処理", "改善"],
+  "matrix-p6": ["注力候補", "効果中・コスト低", "推奨", "高効果・低コスト", "見送り", "低効果・高コスト", "要検討", "高効果・高コスト"],
+  "formula-p1": ["技術力", "コア技術の蓄積", "発想力", "自由なアイデア", "イノベーション", "新たな価値創造"],
+  "comparison-p3": ["比較項目", "松 プレミアム", "竹 スタンダード  ★", "梅 ベーシック", "初期費用", "¥150,000", "¥80,000", "¥30,000", "月額費用", "¥15,000", "¥5,000", "拡張性", "最高", "高い", "標準", "サポート", "専任担当", "24時間", "平日のみ", "セキュリティ", "高度"],
+  "step-p4": ["認知", "サービスを知る", "検討", "比較・評価する", "導入", "利用を開始する", "定着・拡大", "活用が広がる"],
+  "list-vertical-p5": ["一貫した品質", "どの案件でも安定した成果を提供します", "スピード対応", "短納期の要望にも柔軟に対応します", "柔軟な拡張性", "事業規模の変化に合わせて拡張できます", "手厚いサポート", "導入後も継続的に支援し続けます"],
+  "list-horizontal-p2": ["高品質", "徹底した品質管理と", "第三者レビュー体制", "高速対応", "自動化の徹底により", "短納期を安定実現", "柔軟拡張", "成長に合わせ機能を", "段階的に拡張"]
+};
+
+function textReplacements(request: NarrativeDesignComponentRequest, componentId: string, max = 16): PptxSlideTextReplacement[] {
+  const values = replacementValuesForIntent(request, componentId);
+  const cleaned = values.map((value) => value.trim()).filter(Boolean).slice(0, max);
+  const placeholders = DESIGN_COMPONENT_PLACEHOLDERS[componentId] ?? COMMON_PLACEHOLDERS;
+  const replacements: PptxSlideTextReplacement[] = headerReplacementsForIntent(request);
+  for (let index = 0; index < Math.min(placeholders.length, cleaned.length); index += 1) {
+    replacements.push({ match: placeholders[index], to: cleaned[index] });
+  }
+  return replacements;
+}
+
+async function createZukaiDesignComponentRenderer() {
+  const components = await listDesignComponents({ roots: ["design-packs"] });
+  const byId = new Map(components.map((component) => [component.id, component]));
+  return (request: NarrativeDesignComponentRequest): NarrativeDesignComponentResponse | null => {
+    if (request.intent.diagram || request.intent.visualAsset) return null;
+    const componentId = designComponentIdForRequest(request);
+    if (!componentId) return null;
+    const component = byId.get(componentId);
+    if (!component) return null;
+    return {
+      componentId,
+      componentName: component.name,
+      templatePath: component.sourcePptxPath,
+      sourceSlideIndex: component.sourceSlideIndex,
+      textReplacements: textReplacements(request, componentId),
+      nodeGroups: component.editableGroups,
+      summary: `${component.name}: ${request.intent.title}`,
+      longDescription: [request.intent.message, ...request.intent.evidence, ...(request.intent.details ?? [])].join(" ")
+    };
   };
 }
 
@@ -385,9 +661,41 @@ program
     const sources = extractDeckSources(raw);
     const keywords =
       Array.isArray(container.keywords) && container.keywords.every((value): value is string => typeof value === "string") ? container.keywords : undefined;
+    const parsedLocale = asLocale(options.locale);
+    const reviewProbe = createSampleDeck(parsedLocale, {
+      slideCount: Math.max(1, Math.min(40, messageMap.intents.length)),
+      contentMode: options.contentMode,
+      styleProfile: options.style
+    });
+    reviewProbe.slides = messageMap.intents.map((intent, index) => ({
+      id: intent.slideId,
+      title: intent.title,
+      layout: "message-map-probe",
+      elements: [
+        {
+          id: `${intent.slideId}-probe-title`,
+          type: "text",
+          role: "title",
+          text: intent.title,
+          x: 0.5,
+          y: 0.5,
+          w: 10,
+          h: 0.5,
+          fontSize: 24,
+          bold: true,
+          readingOrder: index + 1,
+          decorative: false
+        }
+      ]
+    }));
+    reviewProbe.metadata = { ...reviewProbe.metadata, contentMode: options.contentMode, sources: sources ?? [], messageMap };
+    const messageMapReview = reviewMessageMap(reviewProbe);
+    if (!messageMapReview.ok) {
+      throw new Error(`Message Map review failed before DeckSpec generation:\n${messageMapReview.issues.map((issue) => `${issue.severity.toUpperCase()} ${issue.code} ${issue.path}: ${issue.message}`).join("\n")}`);
+    }
     const deck = createDeckFromMessageMap(messageMap, {
       title: options.title,
-      locale: asLocale(options.locale),
+      locale: parsedLocale,
       contentMode: options.contentMode,
       styleProfile: options.style,
       template: options.template,
@@ -397,14 +705,15 @@ program
       keywords,
       sources,
       planningMode: options.planningMode,
-      diagramRenderer: messageMapDiagramRenderer
+      diagramRenderer: messageMapDiagramRenderer,
+      designComponentRenderer: options.planningMode === "narrative-v1" ? await createZukaiDesignComponentRenderer() : undefined
     });
     let planningArtifacts: ReturnType<typeof createNarrativePlanArtifacts> | undefined;
     if (options.planningMode === "narrative-v1" || options.planningOutputDir) {
       planningArtifacts = createNarrativePlanArtifacts(messageMap, {
         title: options.title,
         request: options.title,
-        locale: asLocale(options.locale),
+        locale: parsedLocale,
         contentMode: options.contentMode
       });
       if (options.planningOutputDir) {

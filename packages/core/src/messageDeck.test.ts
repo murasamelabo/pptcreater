@@ -752,4 +752,59 @@ describe("authored intent diagrams", () => {
     expect(flow?.elements.some((element) => element.id === "flow-dg-node")).toBe(false);
     expect(flow?.elements.some((element) => element.type === "text")).toBe(true);
   });
+
+  it("preserves source details and trace in narrative speaker notes", () => {
+    const map: DeckMessageMap = {
+      objective: "仕様を説明する",
+      audience: "アーキテクト",
+      desiredAction: "仕様差分を確認する",
+      intents: [
+        {
+          slideId: "claims",
+          title: "JWTクレーム",
+          message: "ID-JAGはaud/client_id/typで利用先と呼び出し元を縛る。",
+          evidence: ["audはtoken endpoint", "client_idは要求クライアント"],
+          details: ["typ=oauth-id-jag+jwt", "jti/exp/iatが必須"],
+          sourceTrace: ["§4.4 ID-JAG JWT のクレーム"],
+          quietInfo: ["RFC 7523"],
+          visualType: "detail",
+          emphasis: "aud/client_id/typ"
+        }
+      ]
+    };
+
+    const deck = createDeckFromMessageMap(map, { title: "details deck", locale: "ja-JP", contentMode: "handout", planningMode: "narrative-v1" });
+    const slide = deck.slides.find((candidate) => candidate.id === "claims");
+
+    expect(slide?.speakerNotes).toContain("Details: typ=oauth-id-jag+jwt / jti/exp/iatが必須");
+    expect(slide?.speakerNotes).toContain("Source trace: §4.4 ID-JAG JWT のクレーム");
+  });
+
+  it("can realize narrative-v1 slides with curated design-pack pptxSlide components", () => {
+    const deck = createDeckFromMessageMap(DIAGRAM_MAP, {
+      title: "design component deck",
+      locale: "ja-JP",
+      contentMode: "technical",
+      planningMode: "narrative-v1",
+      designComponentRenderer: (request) => ({
+        componentId: "flow-horizontal-p3",
+        componentName: "フロー（横型） P3",
+        templatePath: "design-packs/zukai/zukai-patterns-full.pptx",
+        sourceSlideIndex: 6,
+        textReplacements: [
+          { at: 0, to: "全体フロー" },
+          { at: 4, to: "A" },
+          { at: 7, to: "B" }
+        ],
+        summary: request.intent.title,
+        longDescription: request.intent.message
+      })
+    });
+    const flow = deck.slides.find((slide) => slide.id === "flow");
+    const component = flow?.elements.find((element) => element.type === "pptxSlide");
+
+    expect(component).toMatchObject({ type: "pptxSlide", templatePath: "design-packs/zukai/zukai-patterns-full.pptx", sourceSlideIndex: 6 });
+    expect(flow?.elements).toHaveLength(1);
+    expect(flow?.elements.some((element) => element.id === "flow-title" || element.id === "flow-message")).toBe(false);
+  });
 });

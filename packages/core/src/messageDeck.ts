@@ -13,6 +13,10 @@ import type {
   SlideIntentDiagram,
   SlideVisualAsset,
   SvgElement,
+  PptxSlideTextReplacement,
+  PptxSlideNodeGroup,
+  PptxSlideNodeOperation,
+  PptxSlideColorReplacement,
   TextElement
 } from "./schema.js";
 import { createNarrativePlanArtifacts, type ExpressionPlan, type LayoutPlan, type PlanningMode } from "./narrativePlanning.js";
@@ -59,6 +63,31 @@ export type NarrativeDiagramRenderRequest = {
 
 export type NarrativeDiagramRenderer = (request: NarrativeDiagramRenderRequest) => SlideElement[] | null;
 
+export type NarrativeDesignComponentRequest = {
+  idPrefix: string;
+  title: string;
+  intent: SlideIntent;
+  expressionPlan: ExpressionPlan;
+  layoutPlan: LayoutPlan;
+  locale: Locale;
+  readingOrderStart: number;
+};
+
+export type NarrativeDesignComponentResponse = {
+  componentId: string;
+  componentName: string;
+  templatePath: string;
+  sourceSlideIndex: number;
+  textReplacements?: PptxSlideTextReplacement[];
+  nodeGroups?: PptxSlideNodeGroup[];
+  nodeOperations?: PptxSlideNodeOperation[];
+  recolor?: PptxSlideColorReplacement[];
+  summary: string;
+  longDescription: string;
+};
+
+export type NarrativeDesignComponentRenderer = (request: NarrativeDesignComponentRequest) => NarrativeDesignComponentResponse | null;
+
 export type CreateDeckFromMessageMapOptions = {
   title: string;
   locale?: Locale;
@@ -75,6 +104,7 @@ export type CreateDeckFromMessageMapOptions = {
   tokens?: DesignTokens;
   planningMode?: PlanningMode;
   diagramRenderer?: NarrativeDiagramRenderer;
+  designComponentRenderer?: NarrativeDesignComponentRenderer;
 };
 
 type Theme = {
@@ -655,7 +685,9 @@ function slideShell(theme: Theme, intent: SlideIntent, elements: SlideElement[],
     speakerNotes: [
       `Message: ${intent.message}`,
       intent.evidence.length ? `Evidence: ${intent.evidence.join(" / ")}` : "",
+      intent.details?.length ? `Details: ${intent.details.join(" / ")}` : "",
       intent.quietInfo.length ? `Quiet info: ${intent.quietInfo.join(" / ")}` : ""
+      , intent.sourceTrace?.length ? `Source trace: ${intent.sourceTrace.join(" / ")}` : ""
     ]
       .filter(Boolean)
       .join("\n"),
@@ -1176,9 +1208,14 @@ function visualForIntent(theme: Theme, intent: SlideIntent, locale: Locale): [Me
   }
 }
 
+function ownsFullSlideCanvas(elements: SlideElement[]): boolean {
+  return elements.length === 1 && elements[0]?.type === "pptxSlide" && elements[0].x === 0 && elements[0].y === 0 && elements[0].w >= W && elements[0].h >= H;
+}
+
 function narrativeSlideShell(theme: Theme, intent: SlideIntent, elements: SlideElement[], expressionPlan: ExpressionPlan, index: number): Slide {
   const id = intent.slideId;
   const title = slideTopicTitle(intent);
+  const fullSlideComponent = ownsFullSlideCanvas(elements);
   return {
     id,
     title,
@@ -1187,29 +1224,33 @@ function narrativeSlideShell(theme: Theme, intent: SlideIntent, elements: SlideE
     speakerNotes: [
       `Message: ${intent.message}`,
       intent.evidence.length ? `Evidence: ${intent.evidence.join(" / ")}` : "",
+      intent.details?.length ? `Details: ${intent.details.join(" / ")}` : "",
       `Expression: ${expressionPlan.selectedGrammarId}`,
       `Rationale: ${expressionPlan.rationale}`,
-      intent.quietInfo.length ? `Quiet info: ${intent.quietInfo.join(" / ")}` : ""
+      intent.quietInfo.length ? `Quiet info: ${intent.quietInfo.join(" / ")}` : "",
+      intent.sourceTrace?.length ? `Source trace: ${intent.sourceTrace.join(" / ")}` : ""
     ]
       .filter(Boolean)
       .join("\n"),
-    elements: [
-      shape(`${id}-canvas`, "rect", 0, 0, W, H, 0, theme.background, theme.background, { radius: 0 }),
-      icon(`${id}-header-icon`, iconForEvidence(intent.emphasis ?? intent.title, index), 0.7, 0.86, 0.42, 4, theme, {
-        color: theme.accent,
-        decorative: true,
-        bg: theme.accentSoft
-      }),
-      text(`${id}-eyebrow`, "caption", `SLIDE ${String(index + 1).padStart(2, "0")}`, 0.7, 0.38, 1.68, 0.25, 1, theme, {
-        color: theme.accent,
-        bg: theme.background,
-        fontSize: 12,
-        bold: true
-      }),
-      text(`${id}-title`, "title", title, 1.22, 0.72, 3.88, 0.62, 2, theme, { fontSize: 26 }),
-      text(`${id}-message`, "subtitle", intent.message, 5.22, 0.68, 7.12, 0.92, 3, theme, { color: theme.text, fontSize: 20 }),
-      ...elements
-    ]
+    elements: fullSlideComponent
+      ? elements
+      : [
+          shape(`${id}-canvas`, "rect", 0, 0, W, H, 0, theme.background, theme.background, { radius: 0 }),
+          icon(`${id}-header-icon`, iconForEvidence(intent.emphasis ?? intent.title, index), 0.7, 0.86, 0.42, 4, theme, {
+            color: theme.accent,
+            decorative: true,
+            bg: theme.accentSoft
+          }),
+          text(`${id}-eyebrow`, "caption", `SLIDE ${String(index + 1).padStart(2, "0")}`, 0.7, 0.38, 1.68, 0.25, 1, theme, {
+            color: theme.accent,
+            bg: theme.background,
+            fontSize: 12,
+            bold: true
+          }),
+          text(`${id}-title`, "title", title, 1.22, 0.72, 3.88, 0.62, 2, theme, { fontSize: 26 }),
+          text(`${id}-message`, "subtitle", intent.message, 5.22, 0.68, 7.12, 0.92, 3, theme, { color: theme.text, fontSize: 20 }),
+          ...elements
+        ]
   };
 }
 
@@ -1675,6 +1716,30 @@ function narrativeElementsForIntent(theme: Theme, intent: SlideIntent, expressio
   }
 }
 
+function renderDesignComponentSlide(response: NarrativeDesignComponentResponse, id: string, readingOrder: number): SlideElement[] {
+  return [
+    {
+      id: `${id}-design-component`,
+      type: "pptxSlide",
+      templatePath: response.templatePath,
+      sourceSlideIndex: response.sourceSlideIndex,
+      ...(response.textReplacements?.length ? { textReplacements: response.textReplacements } : {}),
+      ...(response.nodeGroups?.length ? { nodeGroups: response.nodeGroups } : {}),
+      ...(response.nodeOperations?.length ? { nodeOperations: response.nodeOperations } : {}),
+      ...(response.recolor?.length ? { recolor: response.recolor } : {}),
+      x: 0,
+      y: 0,
+      w: W,
+      h: H,
+      decorative: false,
+      altText: response.componentName,
+      summary: response.summary,
+      longDescription: response.longDescription,
+      readingOrder
+    }
+  ];
+}
+
 function createCover(theme: Theme, title: string, messageMap: DeckMessageMap): Slide {
   const displayTitle = coverTitleText(titleLabel(title));
   return {
@@ -1789,7 +1854,18 @@ export function createDeckFromMessageMap(messageMap: DeckMessageMap, options: Cr
       const layoutPlan = narrativeArtifacts.layoutPlans[index];
       const authoredComparison = renderComparisonTable(theme, intent);
       const authoredDiagram = authoredComparison ?? renderAuthoredDiagram(theme, intent, options.diagramRenderer);
-      const elements = authoredDiagram ?? narrativeElementsForIntent(theme, intent, expressionPlan, layoutPlan, locale);
+      const designComponent = authoredDiagram
+        ? null
+        : options.designComponentRenderer?.({
+            idPrefix: `${intent.slideId}-dc`,
+            title: slideTopicTitle(intent),
+            intent,
+            expressionPlan,
+            layoutPlan,
+            locale,
+            readingOrderStart: 20
+          });
+      const elements = authoredDiagram ?? (designComponent ? renderDesignComponentSlide(designComponent, intent.slideId, 20) : narrativeElementsForIntent(theme, intent, expressionPlan, layoutPlan, locale));
       slides.push(narrativeSlideShell(theme, intent, elements, expressionPlan, index));
       return;
     }

@@ -94,6 +94,33 @@ describe("narrative planning artifacts", () => {
     expect(artifacts.layoutPlans[0].overflowPolicy).toBe("split");
   });
 
+  it("keeps source details and traces in planning artifacts", () => {
+    const map: DeckMessageMap = {
+      objective: "ID-JAGを説明する",
+      audience: "アーキテクト",
+      desiredAction: "仕様差分を確認する",
+      intents: [
+        {
+          slideId: "jwt-claims",
+          title: "JWTクレーム",
+          message: "ID-JAGはaud/client_id/typで利用先と呼び出し元を縛る。",
+          evidence: ["audはリソースアプリtoken endpoint", "client_idは要求クライアント"],
+          details: ["typ=oauth-id-jag+jwt", "jti/exp/iatを必須にする"],
+          sourceTrace: ["§4.4 ID-JAG JWT のクレーム"],
+          quietInfo: ["RFC 7523 JWT Bearer"],
+          visualType: "detail",
+          emphasis: "aud/client_id/typ"
+        }
+      ]
+    };
+
+    const artifacts = createNarrativePlanArtifacts(map, { locale: "ja-JP", contentMode: "handout" });
+    const informationText = artifacts.slideBriefs[0].informationUnits.map((unit) => unit.text).join("\n");
+
+    expect(informationText).toContain("typ=oauth-id-jag+jwt");
+    expect(informationText).toContain("§4.4 ID-JAG JWT のクレーム");
+  });
+
   it("can generate DeckSpec slides from narrative-v1 grammar layouts", () => {
     const deck = createDeckFromMessageMap(MESSAGE_MAP, {
       title: "Narrative rendering",
