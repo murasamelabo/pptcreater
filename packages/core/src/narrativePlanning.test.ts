@@ -108,6 +108,52 @@ describe("narrative planning artifacts", () => {
     expect(artifacts.expressionPlans[1].selectedGrammarId).toBe("decision-surface");
   });
 
+  it("does not turn map-like requests into spatial diagrams without structural data", () => {
+    const map: DeckMessageMap = {
+      objective: "関係する要素を説明する",
+      audience: "実務担当者",
+      desiredAction: "論点を確認する",
+      intents: [
+        {
+          slideId: "loose-map",
+          title: "関係整理",
+          message: "関係する論点を同じ面で確認する。",
+          evidence: ["論点A", "論点B", "論点C"],
+          quietInfo: [],
+          visualType: "map",
+          emphasis: "論点整理"
+        },
+        {
+          slideId: "structured-map",
+          title: "三者関係",
+          message: "三者の接続関係を示す。",
+          evidence: ["Client", "IdP", "Resource"],
+          quietInfo: [],
+          visualType: "map",
+          emphasis: "三者関係",
+          diagram: {
+            direction: "LR",
+            nodes: [
+              { id: "client", label: "Client" },
+              { id: "idp", label: "IdP" },
+              { id: "resource", label: "Resource" }
+            ],
+            edges: [
+              { from: "client", to: "idp" },
+              { from: "idp", to: "resource" }
+            ],
+            groups: []
+          }
+        }
+      ]
+    };
+
+    const artifacts = createNarrativePlanArtifacts(map, { locale: "ja-JP", contentMode: "handout" });
+
+    expect(artifacts.expressionPlans[0].selectedGrammarId).toBe("evidence-board");
+    expect(artifacts.expressionPlans[1].selectedGrammarId).toBe("spatial-model");
+  });
+
   it("marks dense slides for splitting before layout cramming", () => {
     const denseMap: DeckMessageMap = {
       objective: "情報量の多い手元資料を作る",
@@ -228,8 +274,8 @@ describe("narrative planning artifacts", () => {
     expect(serialized).not.toContain("TABLE TEXT SYSTEM");
     expect(serialized).not.toContain("DECISION SURFACE");
     expect(serialized).not.toContain("SEQUENTIAL PATH");
-    // Roles/relationships must not be forced into a decision scatter; flow keeps a sequence.
-    expect(deck.slides.find((slide) => slide.id === "actors")?.layout).toBe("message-grammar-spatial-model");
+    // Roles/relationships without explicit diagram structure must not be forced into fake maps.
+    expect(deck.slides.find((slide) => slide.id === "actors")?.layout).toBe("message-grammar-evidence-board");
     expect(deck.slides.find((slide) => slide.id === "flow")?.layout).toBe("message-grammar-sequential-path");
     expect(deck.slides.find((slide) => slide.id === "resource")?.layout).toBe("message-grammar-table-text-system");
     expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);

@@ -334,6 +334,7 @@ function grammarForIntent(intent: SlideIntent, contentMode: ContentMode): Visual
     case "map":
     case "ponchi-e":
     case "native-diagram":
+      if (!intent.diagram) return evidenceCount >= 5 ? "table-text-system" : "evidence-board";
       return /階層|レイヤ|layer|stack|基盤|platform|構成/u.test(lower) ? "layered-model" : "spatial-model";
     case "cycle":
       return "spatial-model";
@@ -343,12 +344,12 @@ function grammarForIntent(intent: SlideIntent, contentMode: ContentMode): Visual
 
   // 4. Keyword refinements when the visualType is generic (summary/cards/detail/visual-scaffold).
   if (contentMode === "handout" && (intent.visualType === "detail" || evidenceCount >= 6)) return "detail-reading-page";
-  if (/役割|ロール|三者|登場|関係者|信頼|actor|role|relationship|trust/u.test(lower)) return "spatial-model";
+  if (intent.diagram && /役割|ロール|三者|登場|関係者|信頼|actor|role|relationship|trust/u.test(lower)) return "spatial-model";
   if (/比較|候補|option|vs|選択|違い|差分|before|after/u.test(lower)) return "comparison-field";
   if (/手順|工程|順序|ステップ|ロードマップ|timeline|flow|移行手順|導入手順/u.test(lower)) return "sequential-path";
   if (/階層|layer|stack|architecture|基盤|platform/u.test(lower)) return "layered-model";
   if (impliesTwoAxisSurface(lower)) return "decision-surface";
-  if (/関係|循環|距離|方向|成熟|journey/u.test(lower)) return "spatial-model";
+  if (intent.diagram && /関係|循環|距離|方向|成熟|journey/u.test(lower)) return "spatial-model";
   if (evidenceCount >= 5) return "table-text-system";
   return "evidence-board";
 }

@@ -554,6 +554,36 @@ function matrixPointLabel(value: string): string {
   return cleaned || text;
 }
 
+function matrixPointScore(value: string, index: number): { x: number; y: number } {
+  const text = value.replace(/\s+/g, " ").trim();
+  const fallback = [
+    { x: 0.22, y: 0.18 },
+    { x: 0.42, y: 0.72 },
+    { x: 0.68, y: 0.34 },
+    { x: 0.82, y: 0.82 },
+    { x: 0.58, y: 0.58 },
+    { x: 0.32, y: 0.46 }
+  ];
+  const score = { ...(fallback[index] ?? fallback[fallback.length - 1]) };
+
+  if (/低負荷|低コスト|低費用|低リスク|リスク\s*低|分散リスク\s*低/u.test(text)) score.x = 0.82;
+  if (/高負荷|高コスト|高費用|高リスク|リスク\s*高/u.test(text)) score.x = 0.22;
+  if (/短命|aud固定|集中|最小|監査|失効|許可|MFA|step-up|JWKS|検証|機密|confidential/iu.test(text)) score.x = Math.max(score.x, 0.72);
+  if (/長命|分散|過剰|認証不足|insufficient_user_authentication/u.test(text)) score.x = Math.min(score.x, 0.35);
+
+  if (/高統制|高保護|統制\s*高|保護\s*高/u.test(text)) score.y = 0.84;
+  if (/低統制|低保護|統制\s*低|保護\s*低/u.test(text)) score.y = 0.22;
+  if (/集中|許可|監査|失効|短命|MFA|step-up|JWKS|検証|機密|confidential|aud固定|最小/u.test(text)) score.y = Math.max(score.y, 0.72);
+  if (/長命|分散|過剰|不足|弱い/u.test(text)) score.y = Math.min(score.y, 0.35);
+
+  return score;
+}
+
+function matrixPointPosition(value: string, index: number, frame: { x: number; y: number; w: number; h: number }): [number, number] {
+  const score = matrixPointScore(value, index);
+  return [frame.x + score.x * frame.w, frame.y + (1 - score.y) * frame.h];
+}
+
 function technicalTermLabel(value: string): string | undefined {
   const text = value.replace(/\s+/g, " ").trim();
   if (/ID Token.*ID-JAG.*(?:アクセストークン|Access Token)/iu.test(text)) return "ID Token→ID-JAG→Access Token";
@@ -1111,7 +1141,7 @@ function matrixVisual(theme: Theme, intent: SlideIntent, id: string): SlideEleme
     shape(`${id}-decision-zone`, "roundRect", 4.88, 2.88, 2.28, 0.86, 11, theme.accentSoft, theme.accent, { radius: 0.16, fillOpacity: 0.95 }),
     shape(`${id}-axis-x-line`, "line", 1.55, 4.45, 5.95, 0, 12, "none", theme.line, { width: 1.2, endArrow: true }),
     shape(`${id}-axis-y-line`, "line", 4.55, 2.7, 0.001, 3.45, 13, "none", theme.line, { width: 1.2, beginArrow: true }),
-    text(`${id}-axis-x-label`, "caption", axisLabels.x, 6.35, 4.66, 1.55, 0.2, 14, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 12, align: "right" }),
+    text(`${id}-axis-x-label`, "caption", axisLabels.x, 6.88, 4.78, 1.55, 0.2, 14, theme, { bg: theme.background, color: theme.mutedText, fontSize: 12, align: "right" }),
     text(`${id}-axis-y-label`, "caption", axisLabels.y, 3.65, 2.32, 1.75, 0.2, 15, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 12, align: "center" }),
     text(`${id}-decision-zone-text`, "caption", decisionEmphasisLabel(intent), 5.1, 3.18, 1.84, 0.18, 16, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 12, bold: true, align: "center" }),
     shape(`${id}-insight`, "roundRect", 8.42, 2.18, 3.82, 3.95, 50, theme.accentSoft, theme.line, { radius: 0.18 }),
@@ -1119,16 +1149,10 @@ function matrixVisual(theme: Theme, intent: SlideIntent, id: string): SlideEleme
     text(`${id}-insight-title`, "callout", calloutLabel(topicLabel(intent.emphasis ?? "判断軸")), 9.48, 2.5, 2.42, 0.32, 51, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 21 }),
     text(`${id}-insight-body`, "body", visibleSentence(intent.message), 8.78, 3.24, 3.14, 2.0, 52, theme, { bg: theme.accentSoft, color: theme.text, fontSize: 16 })
   ];
-  const points = [
-    [2.25, 5.35],
-    [3.65, 3.55],
-    [5.65, 5.15],
-    [6.55, 3.25]
-  ] as const;
   items.forEach((item, index) => {
-    const [x, y] = points[index];
+    const [x, y] = matrixPointPosition(item, index, { x: 1.82, y: 3.0, w: 4.95, h: 2.18 });
     elements.push(shape(`${id}-point-${index}`, "ellipse", x, y, 0.32, 0.32, 20 + index * 3, theme.accent, theme.accent));
-    elements.push(text(`${id}-point-label-${index}`, "caption", visibleSentence(pointLabel(item)), x + 0.4, y - 0.1, 2.18, 0.48, 21 + index * 3, theme, { bg: theme.surface, fontSize: 12, color: theme.text }));
+    elements.push(text(`${id}-point-label-${index}`, "caption", matrixPointLabel(item), x + 0.4, y - 0.1, 2.18, 0.48, 21 + index * 3, theme, { bg: theme.surface, fontSize: 12, color: theme.text }));
   });
   return elements;
 }
@@ -1560,8 +1584,7 @@ function narrativeDecisionSurface(theme: Theme, intent: SlideIntent, expressionP
     text(`${id}-decision-note-body`, "body", visibleSentence(intent.message), 9.46, 3.24, 2.42, 1.68, 52, theme, { bg: theme.accentSoft, color: theme.text, fontSize: 15 })
   ];
   items.slice(0, 4).forEach((item, index) => {
-    const positions = [[2.0, 4.95], [2.95, 3.95], [3.95, 4.6], [4.9, 3.6]] as const;
-    const [x, y] = positions[index];
+    const [x, y] = matrixPointPosition(item, index, { x: 1.95, y: 2.98, w: 4.95, h: 2.28 });
     const order = 20 + index * 4;
     elements.push(shape(`${id}-decision-point-${index}`, "ellipse", x, y, 0.3, 0.3, order, theme.accent, theme.accent));
     elements.push(text(`${id}-decision-point-label-${index}`, "caption", matrixPointLabel(item), x - 0.58, y + 0.34, 1.58, 0.34, order + 1, theme, { bg: theme.surface, color: theme.text, fontSize: 11, align: "center" }));

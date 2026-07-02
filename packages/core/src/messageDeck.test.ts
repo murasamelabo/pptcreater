@@ -362,6 +362,43 @@ describe("message map deck generator", () => {
     expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
   });
 
+  it("places native matrix points according to explicit high/low evidence", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "二軸で優先度を決める",
+        audience: "意思決定者",
+        desiredAction: "優先候補を選ぶ",
+        intents: [
+          {
+            slideId: "priority-matrix",
+            title: "優先順位マトリクス",
+            message: "統制強度と実装負荷の二軸で優先度を決める。",
+            evidence: ["低負荷・高統制", "高負荷・低統制", "高負荷・高統制", "低負荷・低統制"],
+            quietInfo: [],
+            visualType: "matrix",
+            emphasis: "二軸で優先度を決める"
+          }
+        ]
+      },
+      { title: "Matrix placement", locale: "ja-JP", contentMode: "decision", planningMode: "narrative-v1" }
+    );
+
+    const slide = deck.slides.find((candidate) => candidate.id === "priority-matrix");
+    const points = [0, 1, 2, 3].map((index) => slide?.elements.find((element) => element.id === `priority-matrix-decision-point-${index}`));
+    const [lowLoadHighControl, highLoadLowControl, highLoadHighControl, lowLoadLowControl] = points;
+
+    expect(slide?.layout).toBe("message-grammar-decision-surface");
+    expect(lowLoadHighControl).toMatchObject({ type: "shape" });
+    expect(highLoadLowControl).toMatchObject({ type: "shape" });
+    if (!lowLoadHighControl || lowLoadHighControl.type !== "shape" || !highLoadLowControl || highLoadLowControl.type !== "shape" || !highLoadHighControl || highLoadHighControl.type !== "shape" || !lowLoadLowControl || lowLoadLowControl.type !== "shape") {
+      throw new Error("Expected native matrix point shapes.");
+    }
+    expect(lowLoadHighControl.x).toBeGreaterThan(highLoadLowControl.x);
+    expect(lowLoadHighControl.y).toBeLessThan(highLoadLowControl.y);
+    expect(highLoadHighControl.y).toBeLessThan(lowLoadLowControl.y);
+    expect(lowLoadLowControl.x).toBeGreaterThan(highLoadHighControl.x);
+  });
+
   it("does not use decision-point wording for onboarding or learning decks", () => {
     const deck = createDeckFromMessageMap(
       {
