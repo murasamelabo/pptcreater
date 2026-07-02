@@ -81,8 +81,18 @@ function visualObjects(slide: Slide): SlideElement[] {
       element.type === "pptxSlide" ||
       element.type === "image" ||
       element.type === "svg" ||
-      (element.type === "shape" && !element.decorative && element.shape !== "line" && element.w >= 0.5 && element.h >= 0.3)
+      (element.type === "shape" && element.shape !== "line" && element.w >= 0.5 && element.h >= 0.3 && (!element.decorative || isGeneratedStructuralShape(element)))
   );
+}
+
+function isGeneratedStructuralShape(element: ShapeElement): boolean {
+  return /-(?:table|ctable)-(?:stage|header|row|r\d+|h\d?|h-label)/u.test(element.id) || /-(?:dg|native-diagram)-(?:node|group|label-bg|connector-label-bg)/u.test(element.id);
+}
+
+function isTinyQualityText(element: TextElement): boolean {
+  const fontSize = element.fontSize ?? 0;
+  if (fontSize <= 0 || fontSize >= 12) return false;
+  return element.altText !== "generated native schematic text";
 }
 
 function nonNeutralFills(slides: Slide[]): Set<string> {
@@ -157,7 +167,7 @@ function buildScoreInput(deck: DeckSpec): ScoreInput {
     colorCount: nonNeutralFills(deck.slides).size,
     repeatedLayoutRuns: visualReport.issues.filter((issue) => issue.code === "visual.repeated-layout-run").length,
     truncatedTextCount: visualReport.issues.filter((issue) => issue.code === "visual.truncated-text").length,
-    tinyTextCount: allTexts.filter((element) => (element.fontSize ?? 0) > 0 && (element.fontSize ?? 0) < 12).length,
+    tinyTextCount: allTexts.filter(isTinyQualityText).length,
     missingAltCount: deck.slides.flatMap((slide) => slide.elements).filter((element) => (element.type === "image" || element.type === "svg" || element.type === "diagram") && !element.decorative && !element.altText).length,
     antiPatternCounts,
     hasAgenda: deck.slides.some((slide) => /agenda|アジェンダ|目次|全体像|本日の流れ/i.test(titleText(slide))),

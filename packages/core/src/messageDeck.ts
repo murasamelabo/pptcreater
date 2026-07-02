@@ -19,7 +19,7 @@ import type {
   PptxSlideColorReplacement,
   TextElement
 } from "./schema.js";
-import { createNarrativePlanArtifacts, type ExpressionPlan, type LayoutPlan, type PlanningMode } from "./narrativePlanning.js";
+import { createNarrativePlanArtifacts, type ChapterPlan, type ExpressionPlan, type LayoutPlan, type PlanningMode } from "./narrativePlanning.js";
 import { getTemplate, recommendTemplateForContentMode, styleProfileTokens, templateForStyleProfile, type StyleProfile } from "./templates.js";
 
 const W = 13.333;
@@ -1387,6 +1387,48 @@ function narrativeSlideShell(theme: Theme, intent: SlideIntent, elements: SlideE
   };
 }
 
+function shouldInsertNarrativeSections(contentMode: ContentMode, intentCount: number): boolean {
+  return intentCount >= 8 && (contentMode === "technical" || contentMode === "handout" || contentMode === "report");
+}
+
+function narrativeSectionHeading(chapter: ChapterPlan, firstIntent: SlideIntent, locale: Locale): string {
+  const firstTitle = slideTopicTitle(firstIntent);
+  if (locale === "ja-JP") {
+    if (chapter.role === "action") return /導入|検証|次/u.test(firstTitle) ? firstTitle : "導入評価";
+    if (chapter.role === "options") return "比較・選択肢";
+    if (chapter.role === "proof") return "根拠";
+    if (chapter.role === "decision") return "判断";
+    if (chapter.role === "context" && chapter.slideIds.length >= 5) return "仕組みと統制";
+    return firstTitle || chapter.title;
+  }
+  if (chapter.role === "action") return /next|action|validation|rollout/i.test(firstTitle) ? firstTitle : "Action plan";
+  if (chapter.role === "options") return "Options";
+  if (chapter.role === "proof") return "Evidence";
+  if (chapter.role === "decision") return "Decision";
+  return firstTitle || chapter.title;
+}
+
+function createNarrativeSectionSlide(theme: Theme, chapter: ChapterPlan, firstIntent: SlideIntent, sectionIndex: number, locale: Locale): Slide {
+  const isJapanese = locale === "ja-JP";
+  const heading = narrativeSectionHeading(chapter, firstIntent, locale);
+  const title = isJapanese ? `第${sectionIndex}部 ${heading}` : `Part ${sectionIndex}: ${heading}`;
+  return {
+    id: `section-${chapter.id}`,
+    title,
+    layout: "section",
+    background: { color: theme.accent },
+    speakerNotes: chapter.keyQuestion,
+    elements: [
+      shape(`section-${chapter.id}-bg`, "rect", 0, 0, W, H, 0, theme.accent, theme.accent, { radius: 0 }),
+      text(`section-${chapter.id}-kicker`, "caption", "SECTION", 0.9, 1.46, 2.4, 0.26, 1, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true }),
+      text(`section-${chapter.id}-title`, "title", title, 0.88, 2.18, 8.8, 0.82, 2, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 34 }),
+      shape(`section-${chapter.id}-rule`, "rect", 0.92, 3.34, 2.0, 0.06, 3, theme.inkOnAccent, theme.inkOnAccent, { radius: 0 }),
+      text(`section-${chapter.id}-question`, "subtitle", chapter.keyQuestion, 0.9, 3.78, 9.8, 0.46, 4, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 20 }),
+      text(`section-${chapter.id}-count`, "caption", isJapanese ? `${chapter.slideIds.length}枚で確認` : `${chapter.slideIds.length} slides`, 0.92, 5.2, 2.6, 0.22, 5, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true })
+    ]
+  };
+}
+
 function hasCodeToken(value: string): boolean {
   return /[A-Za-z0-9][-_/=.:+][A-Za-z0-9]/.test(value) || /[=]|\bRFC\s?\d|urn:|https?:\/\//i.test(value);
 }
@@ -2071,9 +2113,17 @@ export function createDeckFromMessageMap(messageMap: DeckMessageMap, options: Cr
   if (options.includeCover !== false) {
     slides.push(createCover(theme, options.title, messageMap));
   }
+  let narrativeSectionNumber = 0;
 
   messageMap.intents.forEach((intent, index) => {
     if (narrativeArtifacts) {
+      if (shouldInsertNarrativeSections(contentMode, messageMap.intents.length)) {
+        const chapterIndex = narrativeArtifacts.chapters.findIndex((chapter) => chapter.slideIds[0] === intent.slideId);
+        if (chapterIndex > 0 && narrativeArtifacts.chapters[chapterIndex].slideIds.length >= 2) {
+          narrativeSectionNumber += 1;
+          slides.push(createNarrativeSectionSlide(theme, narrativeArtifacts.chapters[chapterIndex], intent, narrativeSectionNumber, locale));
+        }
+      }
       const expressionPlan = narrativeArtifacts.expressionPlans[index];
       const layoutPlan = narrativeArtifacts.layoutPlans[index];
       const authoredComparison = renderComparisonTable(theme, intent);

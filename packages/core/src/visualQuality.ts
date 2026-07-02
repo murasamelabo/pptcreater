@@ -104,6 +104,15 @@ function hasLeadOrEvidence(slide: Slide): boolean {
   );
 }
 
+function layoutFingerprint(slide: Slide): string {
+  const layout = slide.layout ?? "";
+  const component = slide.elements.find((element) => element.type === "pptxSlide");
+  if (component?.type === "pptxSlide") return `${layout}:component:${component.templatePath}:${component.sourceSlideIndex}`;
+  if (slide.elements.some((element) => /-(?:dg|native-diagram)-/u.test(element.id))) return `${layout}:native-diagram`;
+  if (slide.elements.some((element) => /-ctable-/u.test(element.id))) return `${layout}:comparison-table`;
+  return layout;
+}
+
 function nonNeutralFills(slide: Slide): Set<string> {
   const fills = new Set<string>();
   slide.elements.forEach((element) => {
@@ -246,7 +255,7 @@ export function reviewVisualQuality(deck: DeckSpec): VisualQualityReport {
 
   const contentSlides = deck.slides.filter(isContentSlide);
   for (let index = 2; index < contentSlides.length; index += 1) {
-    const layouts = contentSlides.slice(index - 2, index + 1).map((slide) => slide.layout ?? "");
+    const layouts = contentSlides.slice(index - 2, index + 1).map(layoutFingerprint);
     if (layouts.every((layout) => layout && layout === layouts[0])) {
       issues.push({
         severity: "warning",

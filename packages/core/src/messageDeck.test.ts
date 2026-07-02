@@ -2,6 +2,7 @@
 import { createDeckFromMessageMap, MESSAGE_DECK_ARCHETYPES, archetypeForIntent, type NarrativeDiagramRenderRequest } from "./messageDeck.js";
 import { lintDeckSpec } from "./lint.js";
 import { reviewMessageMap } from "./messageMap.js";
+import { reviewSlideQuality } from "./slideQualityReview.js";
 import { reviewVisualQuality } from "./visualQuality.js";
 import type { DeckMessageMap } from "./schema.js";
 
@@ -341,6 +342,108 @@ describe("message map deck generator", () => {
     expect(englishTexts.find((element) => element.id === "english-means-table-row-body-0")?.text).toBe("long-lived secrets");
     expect(englishTexts.find((element) => element.id === "english-means-table-row-label-1")?.text).toBe("Consent review");
     expect(englishTexts.find((element) => element.id === "english-means-table-row-body-1")?.text).toBe("low IT visibility.");
+  });
+
+  it("creates quality-review-friendly narrative handout structure", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "XAAとID-JAGの導入判断に必要な全体像を示す",
+        audience: "ID基盤とセキュリティ設計者",
+        desiredAction: "評価観点と次の検証項目を合意する",
+        intents: [
+          {
+            slideId: "summary",
+            title: "要約",
+            message: "SSO信頼をアプリ間APIアクセスの委任判断へ拡張する。",
+            evidence: ["IdP集中制御", "短命トークン", "監査証跡"],
+            quietInfo: [],
+            visualType: "summary",
+            emphasis: "SSO信頼"
+          },
+          {
+            slideId: "agenda",
+            title: "全体像",
+            message: "背景、仕組み、統制、導入判断の順で読む。",
+            evidence: ["背景", "仕組み", "統制", "導入判断"],
+            quietInfo: [],
+            visualType: "step",
+            emphasis: "読む順序"
+          },
+          {
+            slideId: "why-now",
+            title: "なぜ今か",
+            message: "AIエージェント時代はアプリ間委任の可視性が重要になる。",
+            evidence: ["MCP連携", "AI Agent", "API委任"],
+            quietInfo: [],
+            visualType: "summary",
+            emphasis: "AI委任"
+          },
+          {
+            slideId: "legacy",
+            title: "従来手段",
+            message: "APIキーや同意任せでは統制が分散する。",
+            evidence: ["APIキーは長命・過剰スコープ", "OAuth同意はIT可視性が薄い", "失効管理が分散"],
+            quietInfo: [],
+            visualType: "table",
+            emphasis: "統制分散"
+          },
+          {
+            slideId: "roles",
+            title: "登場ロール",
+            message: "IdP、クライアント、リソースの信頼境界を分けて見る。",
+            evidence: ["IdP", "Client App", "Resource App", "User"],
+            quietInfo: [],
+            visualType: "map",
+            emphasis: "信頼境界"
+          },
+          {
+            slideId: "flow",
+            title: "交換フロー",
+            message: "ID Token、ID-JAG、Access Tokenの順に委任が進む。",
+            evidence: ["ID Token", "ID-JAG", "Access Token", "Resource API"],
+            quietInfo: [],
+            visualType: "flow",
+            emphasis: "委任の流れ"
+          },
+          {
+            slideId: "controls",
+            title: "統制要件",
+            message: "短命化、aud固定、失効、監査をIdP側で集中させる。",
+            evidence: ["短命化", "aud固定", "即時失効", "監査証跡", "MFA step-up"],
+            quietInfo: [],
+            visualType: "table",
+            emphasis: "集中統制"
+          },
+          {
+            slideId: "ecosystem",
+            title: "エコシステム",
+            message: "Microsoft Entra、Okta、Auth0、Keycloakの相互運用が論点になる。",
+            evidence: ["Microsoft Entra", "Okta", "Auth0", "Keycloak"],
+            quietInfo: [],
+            visualType: "table",
+            emphasis: "相互運用"
+          },
+          {
+            slideId: "next",
+            title: "次の検証",
+            message: "仕様候補、IdP実装、Resource側検証、監査要件を確認する。",
+            evidence: ["仕様候補", "IdP実装", "Resource側検証", "監査要件"],
+            quietInfo: [],
+            visualType: "step",
+            emphasis: "検証順"
+          }
+        ]
+      },
+      { title: "XAA quality", locale: "ja-JP", contentMode: "technical", styleProfile: "report", planningMode: "narrative-v1" }
+    );
+
+    const report = reviewSlideQuality(deck, "P4");
+    expect(report.overallScore).toBeGreaterThanOrEqual(90);
+    expect(report.dimensions.D3.score).toBe(4);
+    expect(report.dimensions.D4.score).toBe(4);
+    expect(report.dimensions.D7.score).toBe(4);
+    expect(report.storyFlow?.S2.score).toBe(4);
+    expect(report.storyFlow?.S6.score).toBe(4);
   });
 
   it("renders statement evidence as a primary support card plus secondary rows", () => {
