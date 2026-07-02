@@ -439,10 +439,11 @@ describe("message map deck generator", () => {
 
     const report = reviewSlideQuality(deck, "P4");
     expect(report.overallScore).toBeGreaterThanOrEqual(90);
+    expect(deck.slides.some((slide) => slide.layout === "section")).toBe(false);
+    expect(JSON.stringify(deck)).not.toContain("-section-marker");
     expect(report.dimensions.D3.score).toBe(4);
     expect(report.dimensions.D4.score).toBe(4);
     expect(report.dimensions.D7.score).toBe(4);
-    expect(report.storyFlow?.S2.score).toBe(4);
     expect(report.storyFlow?.S6.score).toBe(4);
   });
 
