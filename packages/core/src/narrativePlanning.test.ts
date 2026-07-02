@@ -69,6 +69,12 @@ describe("narrative planning artifacts", () => {
     }
   });
 
+  it("routes summary intents to a readable evidence-board grammar", () => {
+    const artifacts = createNarrativePlanArtifacts(MESSAGE_MAP, { locale: "ja-JP", contentMode: "decision" });
+
+    expect(artifacts.expressionPlans[0].selectedGrammarId).toBe("evidence-board");
+  });
+
   it("marks dense slides for splitting before layout cramming", () => {
     const denseMap: DeckMessageMap = {
       objective: "情報量の多い手元資料を作る",

@@ -306,6 +306,8 @@ function grammarForIntent(intent: SlideIntent, contentMode: ContentMode): Visual
 
   // 3. Honor the authoring visualType as a grammar prior instead of a fixed legacy archetype.
   switch (intent.visualType) {
+    case "summary":
+      return "evidence-board";
     case "section":
       return "typographic-emphasis";
     case "image":

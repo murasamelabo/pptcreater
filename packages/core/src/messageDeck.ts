@@ -497,6 +497,10 @@ function topicLabel(value: string): string {
     return compactLabel(normalized, 30);
   }
 
+  if (/\b(?:OBO|ID-JAG|XAA|JWT|API|MCP|IdP)\b/u.test(normalized) && /(?:と|vs|VS|比較|対比)/u.test(normalized)) {
+    return compactLabel(normalized, 22);
+  }
+
   const known = ["投資判断", "候補比較", "リスク整理", "ロードマップ", "次の行動"];
   const found = known.find((keyword) => normalized.includes(keyword));
   if (found) {
@@ -528,10 +532,26 @@ function pointLabel(value: string): string {
   return hasJapanese(value) ? compactLabel(value, 10) : compactLabel(value, 10);
 }
 
+function technicalTermLabel(value: string): string | undefined {
+  const text = value.replace(/\s+/g, " ").trim();
+  if (/OAuth Token Exchange/i.test(text)) return "Token ExchangeでID-JAGを要求";
+  if (/JWT Bearer/i.test(text)) return "JWT Bearerで受け渡す";
+  if (/ID-JAG/i.test(text) && /XAA/i.test(text)) return "ID-JAG/XAAを軸に整理";
+  if (/MCP/i.test(text) && /AI/i.test(text)) return "AI/MCP委任に適合";
+  return undefined;
+}
+
+function polishJapaneseFragment(value: string): string {
+  return value.replace(/拡張し$/u, "拡張").replace(/担い$/u, "担う").replace(/適合し$/u, "適合");
+}
+
 function visibleSentence(value: string): string {
-  const text = value.trim();
+  const text = polishJapaneseFragment(technicalTermLabel(value) ?? value.trim());
   if (!text) return text;
   if (/^(対象|観点|表現|口調|材料|読み手|行動|トーン)\s*[:：]/u.test(text) || /[:：]/.test(text) || /[、/／]/.test(text) || text.length <= 18) {
+    return text;
+  }
+  if (!hasJapanese(text) && hasCodeToken(text)) {
     return text;
   }
   if (/[。.!?！？]$/u.test(text) || /(する|した|できる|ある|いる|なる|進める|示す|伝える|確認する|選ぶ)$/u.test(text)) {
@@ -540,8 +560,12 @@ function visibleSentence(value: string): string {
   return hasJapanese(text) ? `${text}。` : `${text} matters.`;
 }
 
+function isGenericSlideTitle(value: string): boolean {
+  return /^(?:要約|まとめ|結論|概要|サマリー|summary|recap|conclusion)$/iu.test(value.trim());
+}
+
 function slideMessageText(intent: SlideIntent): string {
-  const source = intent.emphasis ?? intent.message;
+  const source = isGenericSlideTitle(intent.title) ? intent.message : intent.emphasis ?? intent.message;
   const first = source.replace(/\s+/g, " ").replace(/。$/u, "").split(/[。；;\n]/u)[0]?.trim() || source.trim();
   if (first.length <= 34) {
     return first;
@@ -747,6 +771,9 @@ function slideTopicTitle(intent: SlideIntent): string {
     価格差: "費用比較",
     判断軸: "選択基準"
   };
+  if (isGenericSlideTitle(normalized)) {
+    return compactLabel(intent.emphasis ?? intent.message, hasJapanese(intent.emphasis ?? intent.message) ? 14 : 22);
+  }
   return replacements[normalized] ?? topicLabel(normalized);
 }
 

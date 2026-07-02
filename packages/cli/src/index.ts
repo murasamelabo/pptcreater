@@ -130,7 +130,6 @@ const DESIGN_COMPONENT_BY_VISUAL_TYPE: Record<string, string> = {
   step: "step-p4",
   table: "list-vertical-p5",
   cards: "list-horizontal-p2",
-  summary: "list-horizontal-p2",
   cycle: "cycle-p1",
   "native-diagram": "formula-p1",
   "ponchi-e": "venn-p6"
@@ -183,6 +182,7 @@ const COMMON_PLACEHOLDERS = [
 
 function designComponentIdForRequest(request: NarrativeDesignComponentRequest): string | undefined {
   const context = [request.intent.slideId, request.intent.title, request.intent.message, request.intent.emphasis, ...(request.intent.evidence ?? []), ...(request.intent.details ?? [])].join(" ");
+  if (request.intent.visualType === "summary") return undefined;
   if (request.intent.visualType === "contrast" && (/代替|alternative/i.test(context) || (request.intent.evidence ?? []).length > 3)) return "list-vertical-p5";
   const visualTypeComponentId = DESIGN_COMPONENT_BY_VISUAL_TYPE[request.intent.visualType];
   if (visualTypeComponentId) return visualTypeComponentId;
@@ -211,6 +211,21 @@ function semanticReplacementLabel(value: string | undefined): string | undefined
   const text = value?.replace(/\s+/g, " ").trim();
   if (!text) return undefined;
   if (/MCP.*XAA|XAA.*Authorization Extension/u.test(text)) return "XAA採用";
+  if (/SSO.*信頼.*API|API.*委任.*拡張/u.test(text)) return "SSO信頼をAPI委任へ拡張";
+  if (/IdP.*ユーザー代理.*署名JWT|署名JWT.*証明/u.test(text)) return "署名JWTで証明";
+  if (/OAuth Token Exchange|JWT Bearer/u.test(text)) return "Token Exchange連携";
+  if (/MCP.*AIエージェント|AIエージェント.*委任認可/u.test(text)) return "AI/MCP委任";
+  if (/ID-JAG.*署名付きJWT|OAuth拡張仕様/u.test(text)) return "署名JWT仕様";
+  if (/XAA.*エンタープライズ|呼称\/プロファイル/u.test(text)) return "XAAプロファイル";
+  if (/ユーザー同意画面依存|IdP主導.*短命委任/u.test(text)) return "IdP主導の短命委任";
+  if (/OBO.*単一IdP|単一IdP制約/u.test(text)) return "単一IdP制約を超える";
+  if (/集中可視化|ポリシー.*失効|APIキー分散/u.test(text)) return "集中制御で分散を防ぐ";
+  if (/オンデマンド短命委任/u.test(text)) return "オンデマンド短命委任";
+  if (/評価観点.*クロスドメイン|短命性.*集中統制/u.test(text)) return "評価観点を明確化";
+  if (/単一IdP.*ID-JAG|クロスドメイン.*標準委任/u.test(text)) return "ID-JAGはクロスドメイン委任を標準化";
+  if (/AIエージェント.*同意画面|長命APIキー/u.test(text)) return "AI時代は短命委任が必要";
+  if (/短命.*スコープ.*IdP.*標準/u.test(text)) return "短命・集中制御でサイロを減らす";
+  if (/短命.*aud.*IdP|エージェント時代/u.test(text)) return "短命・集中制御で委任を安全にする";
   if (/同意画面|対話型同意/u.test(text)) return "対話同意で停止";
   if (/長命APIキー|APIキー/u.test(text) && /漏洩|保持|持たせ|安全/u.test(text)) return "長命キーリスク";
   if (/短命|スコープ限定|ユーザー代理/u.test(text)) return "短命・限定委任";
@@ -244,8 +259,16 @@ function compactReplacementText(value: string | undefined, fallback: string, max
   return firstPhrase.slice(0, max);
 }
 
+function isGenericSlideTitle(value: string): boolean {
+  return /^(?:要約|まとめ|結論|概要|サマリー|summary|recap|conclusion)$/iu.test(value.trim());
+}
+
 function slideMessageText(request: NarrativeDesignComponentRequest): string {
-  return compactReplacementText(request.intent.emphasis ?? request.intent.message, request.intent.title, 24);
+  return compactReplacementText(isGenericSlideTitle(request.intent.title) ? request.intent.message : request.intent.emphasis ?? request.intent.message, request.intent.title, 24);
+}
+
+function slideSummaryText(request: NarrativeDesignComponentRequest): string {
+  return compactReplacementText(request.intent.message, request.intent.emphasis ?? request.intent.title, 34);
 }
 
 function badgeForIntent(request: NarrativeDesignComponentRequest): string {
@@ -326,14 +349,26 @@ function replacementValuesForIntent(request: NarrativeDesignComponentRequest, co
       return [compactReplacementText(label, `Step ${index + 1}`, 10), compactReplacementText(description ?? raw, raw, 16)];
     });
   }
-  if (componentId === "list-vertical-p5" || componentId === "list-horizontal-p2") {
+  if (componentId === "list-horizontal-p2") {
+    const items = evidence.length ? evidence : support;
+    return [0, 1, 2].flatMap((index) => {
+      const raw = items[index] ?? intent.title;
+      const [label, body] = raw.split(/[:：]/u, 2);
+      return [
+        compactReplacementText(label, intent.title, 16),
+        compactReplacementText(body ?? details[index] ?? support[index + items.length], intent.message, 18),
+        compactReplacementText(details[index] ?? support[index + items.length + 1], intent.message, 18)
+      ];
+    });
+  }
+  if (componentId === "list-vertical-p5") {
     const items = evidence.length ? evidence : support;
     return [0, 1, 2, 3].flatMap((index) => {
       const raw = items[index] ?? intent.title;
       const [label, body] = raw.split(/[:：]/u, 2);
       return [
-        compactReplacementText(label, intent.title, componentId === "list-horizontal-p2" ? 10 : 14),
-        compactReplacementText(body ?? details[index] ?? support[index + items.length], intent.message, componentId === "list-horizontal-p2" ? 14 : 18)
+        compactReplacementText(label, intent.title, 14),
+        compactReplacementText(body ?? details[index] ?? support[index + items.length], intent.message, 18)
       ];
     });
   }
@@ -377,8 +412,8 @@ const DESIGN_COMPONENT_CAPTIONS: Record<string, string[]> = {
 
 function captionReplacementsForIntent(request: NarrativeDesignComponentRequest, componentId: string): PptxSlideTextReplacement[] {
   const captions = DESIGN_COMPONENT_CAPTIONS[componentId] ?? [];
-  const emphasis = slideMessageText(request);
-  return captions.map((match) => ({ match, to: emphasis }));
+  const summary = slideSummaryText(request);
+  return captions.map((match) => ({ match, to: summary }));
 }
 
 function textReplacements(request: NarrativeDesignComponentRequest, componentId: string, max = 16): PptxSlideTextReplacement[] {

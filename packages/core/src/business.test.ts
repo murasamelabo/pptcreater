@@ -147,6 +147,30 @@ describe("business deck director", () => {
     expect(report.issues.some((issue) => issue.code === "business.weak-final-landing")).toBe(true);
   });
 
+  it("accepts meaningful claim titles backed by summary message-map intents", () => {
+    const deck = deckWithTitles(["SSOをAPI委任へ拡張", "Agenda", "論点", "Next Action"]);
+    deck.metadata.messageMap = {
+      objective: "導入判断を助ける",
+      audience: "意思決定者",
+      desiredAction: "次の判断へ進む",
+      intents: [
+        {
+          slideId: "executive-summary",
+          title: "SSOをAPI委任へ拡張",
+          message: "結論を先に示す。",
+          evidence: ["根拠"],
+          quietInfo: [],
+          visualType: "summary",
+          emphasis: "結論"
+        }
+      ]
+    };
+
+    const report = reviewBusinessDeck(deck, { importantMeeting: true });
+
+    expect(report.issues.some((issue) => issue.code === "business.executive-summary-missing")).toBe(false);
+  });
+
   it("accepts business decks with explicit navigation structure", () => {
     const deck = deckWithTitles([
       "Executive Summary",

@@ -572,6 +572,10 @@ function hasTitleMatching(deck: DeckSpec, pattern: RegExp): boolean {
   return deck.slides.some((slide) => pattern.test(titleText(slide)));
 }
 
+function hasSummaryIntent(deck: DeckSpec): boolean {
+  return Boolean(deck.metadata.messageMap?.intents.some((intent) => intent.visualType === "summary" || /summary|要約|まとめ|結論/i.test(intent.slideId)));
+}
+
 function pushBusinessIssue(issues: BusinessDeckReviewIssue[], issue: BusinessDeckReviewIssue): void {
   issues.push(issue);
 }
@@ -583,7 +587,7 @@ export function reviewBusinessDeck(deck: DeckSpec, brief: BusinessDeckBrief = {}
   const issues: BusinessDeckReviewIssue[] = [];
   const importantMeeting = Boolean(brief.importantMeeting || brief.customerFacing || deck.slides.length >= 7);
 
-  if (importantMeeting && !hasTitleMatching(deck, /executive summary|エグゼクティブ|サマリー|要旨|要約/i)) {
+  if (importantMeeting && !hasTitleMatching(deck, /executive summary|エグゼクティブ|サマリー|要旨|要約/i) && !hasSummaryIntent(deck)) {
     pushBusinessIssue(issues, {
       severity: "warning",
       code: BUSINESS_REVIEW_CODES.executiveSummaryMissing,

@@ -147,6 +147,8 @@ function buildScoreInput(deck: DeckSpec): ScoreInput {
     antiPatternCounts[code] = (antiPatternCounts[code] ?? 0) + 1;
   });
 
+  const hasSummaryIntent = Boolean(deck.metadata.messageMap?.intents.some((intent) => intent.visualType === "summary" || /summary|要約|まとめ|結論/i.test(intent.slideId)));
+
   return {
     contentSlides,
     titleTexts: deck.slides.map(titleText),
@@ -159,7 +161,7 @@ function buildScoreInput(deck: DeckSpec): ScoreInput {
     missingAltCount: deck.slides.flatMap((slide) => slide.elements).filter((element) => (element.type === "image" || element.type === "svg" || element.type === "diagram") && !element.decorative && !element.altText).length,
     antiPatternCounts,
     hasAgenda: deck.slides.some((slide) => /agenda|アジェンダ|目次|全体像|本日の流れ/i.test(titleText(slide))),
-    hasSummary: deck.slides.some((slide) => /executive summary|summary|まとめ|要約|要旨|結論/i.test(titleText(slide))),
+    hasSummary: hasSummaryIntent || deck.slides.some((slide) => /executive summary|summary|まとめ|要約|要旨|結論/i.test(titleText(slide))),
     hasSectionSlide: deck.slides.some((slide) => slide.layout === "section" || /section|章|第[一二三四五六七八九十0-9]+部/i.test(titleText(slide))),
     hasClosingAction: deck.slides.slice(-2).some((slide) => /next|action|次|判断|承認|結論|まとめ/i.test(titleText(slide) + " " + textElements(slide).map((text) => text.text).join(" "))),
     hasMessageMap: Boolean(deck.metadata.messageMap?.intents.length)
