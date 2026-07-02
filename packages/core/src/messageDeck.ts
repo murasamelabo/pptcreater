@@ -1416,14 +1416,44 @@ function splitKeyValue(value: string): { key: string; value: string } | null {
   return { key: match[1].trim(), value: match[2].trim() };
 }
 
+function tableBodyText(value: string): string {
+  const text = value.trim();
+  if (!text || hasJapanese(text) || hasCodeToken(text)) return visibleSentence(text);
+  return /[.!?]$/u.test(text) ? text : `${text}.`;
+}
+
+function splitTableEvidence(value: string, index: number): { label: string; body: string } {
+  const text = value.replace(/\s+/g, " ").trim();
+  const patterns = [
+    /^(.{2,26}?)(?:では、?|には、?)(.+)$/u,
+    /^(.{2,24}?)(?:は|が|を)(.+)$/u,
+    /^(.{2,24}?)(?:と|から(?!の))(.+)$/u,
+    /^(.{2,36}?)(?:\s+(?:is|are|has|have|requires|enables|causes|creates|uses)\s+)(.+)$/iu
+  ];
+  for (const pattern of patterns) {
+    const match = pattern.exec(text);
+    if (!match) continue;
+    const label = match[1]?.replace(/[、,，・／/\s]+$/u, "").trim();
+    const body = match[2]?.replace(/^[、,，・／/\s]+/u, "").trim();
+    if (label && body && label !== body) {
+      return { label: narrativeLabel(label, 22), body: tableBodyText(body) };
+    }
+  }
+  return { label: `${hasJapanese(text) ? "観点" : "Point"} ${String(index + 1).padStart(2, "0")}`, body: tableBodyText(text) };
+}
+
 function tableRowsForIntent(intent: SlideIntent): Array<{ label: string; body: string }> {
   const detailByKey = new Map<string, string>();
+  const parsedDetails: Array<{ key: string; value: string }> = [];
   for (const detail of intent.details ?? []) {
     const parsed = splitKeyValue(detail);
-    if (parsed) detailByKey.set(parsed.key.toLowerCase(), parsed.value);
+    if (parsed) {
+      detailByKey.set(parsed.key.toLowerCase(), parsed.value);
+      parsedDetails.push(parsed);
+    }
   }
   const source = intent.evidence.length ? intent.evidence : intent.details ?? [];
-  const rows = source.slice(0, 6).map((item) => {
+  const rows = source.slice(0, 6).map((item, index) => {
     const parsed = splitKeyValue(item);
     if (parsed) {
       const body = detailByKey.get(parsed.key.toLowerCase()) ?? parsed.value;
@@ -1432,13 +1462,21 @@ function tableRowsForIntent(intent: SlideIntent): Array<{ label: string; body: s
         body: body.trim() === parsed.key.trim() ? visibleSentence(intent.message) : visibleSentence(body)
       };
     }
+    const matchingParsedDetail = parsedDetails.find((detail) => item.includes(detail.key));
+    if (matchingParsedDetail) {
+      return { label: narrativeLabel(matchingParsedDetail.key, 22), body: tableBodyText(matchingParsedDetail.value) };
+    }
+    const positionalDetail = intent.details?.[index]?.trim();
+    const positionalDetailLength = Array.from(positionalDetail ?? "").length;
+    const itemLength = Array.from(item).length;
+    if (positionalDetail && !splitKeyValue(positionalDetail) && positionalDetail !== item && positionalDetailLength <= 32 && positionalDetailLength <= itemLength + 8) {
+      return { label: narrativeLabel(positionalDetail, 24), body: tableBodyText(item) };
+    }
     const matchingDetail = (intent.details ?? []).find((detail) => detail.includes(item.split(/[、・\s]/u)[0] ?? item));
-    const label = narrativeLabel(item, 24);
-    const body = matchingDetail && matchingDetail !== item ? matchingDetail : item;
-    return {
-      label,
-      body: visibleSentence(body)
-    };
+    if (matchingDetail && matchingDetail !== item) {
+      return { label: narrativeLabel(item, 24), body: tableBodyText(matchingDetail) };
+    }
+    return splitTableEvidence(item, index);
   });
   return rows.length ? rows : [{ label: narrativeLabel(intent.emphasis ?? intent.title, 24), body: visibleSentence(intent.message) }];
 }

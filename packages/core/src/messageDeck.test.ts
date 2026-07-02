@@ -278,6 +278,71 @@ describe("message map deck generator", () => {
     expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
   });
 
+  it("keeps narrative table columns semantically distinct", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "従来手段の限界を説明する",
+        audience: "ID基盤の設計者",
+        desiredAction: "XAAの必要性を検討する",
+        intents: [
+          {
+            slideId: "legacy-means",
+            title: "従来手段",
+            message: "APIキーやOAuth同意ではアプリ間APIアクセスの統制が弱い。",
+            evidence: [
+              "APIキーは長命・過剰スコープ・分散管理",
+              "OAuth同意はユーザー任せでIT可視性が薄い",
+              "失効管理が各リソースアプリに分散",
+              "サービスアカウントはユーザー代理性が弱い"
+            ],
+            details: [
+              "APIキー: 長命・過剰スコープ・分散管理",
+              "OAuth同意: 同意疲れ・IT可視性欠如・断片化した失効",
+              "サービスアカウント: ユーザー代理性が弱い"
+            ],
+            quietInfo: [],
+            visualType: "table",
+            emphasis: "従来手段"
+          },
+          {
+            slideId: "english-means",
+            title: "Legacy means",
+            message: "Existing approaches leave enterprise delegation fragmented.",
+            evidence: ["API keys are long-lived secrets", "Consent review has low IT visibility"],
+            quietInfo: [],
+            visualType: "table",
+            emphasis: "Legacy"
+          }
+        ]
+      },
+      { title: "Table semantics", locale: "ja-JP", contentMode: "report", planningMode: "narrative-v1" }
+    );
+
+    const table = deck.slides.find((slide) => slide.id === "legacy-means");
+    expect(table?.layout).toBe("message-grammar-table-text-system");
+    const texts = table?.elements.filter((element): element is Extract<typeof element, { type: "text" }> => element.type === "text") ?? [];
+    const firstLabel = texts.find((element) => element.id === "legacy-means-table-row-label-0")?.text;
+    const firstBody = texts.find((element) => element.id === "legacy-means-table-row-body-0")?.text;
+    expect(firstLabel).toBe("APIキー");
+    expect(firstBody).toBe("長命・過剰スコープ・分散管理");
+    expect(texts.find((element) => element.id === "legacy-means-table-row-label-2")?.text).toBe("失効管理");
+    expect(texts.find((element) => element.id === "legacy-means-table-row-body-2")?.text).toBe("各リソースアプリに分散");
+    for (const index of [0, 1, 2, 3]) {
+      const label = texts.find((element) => element.id === `legacy-means-table-row-label-${index}`)?.text;
+      const body = texts.find((element) => element.id === `legacy-means-table-row-body-${index}`)?.text;
+      expect(label).toBeTruthy();
+      expect(body).toBeTruthy();
+      expect(label).not.toBe(body);
+      expect(body?.startsWith(label ?? "")).toBe(false);
+    }
+
+    const englishTexts = deck.slides.find((slide) => slide.id === "english-means")?.elements.filter((element): element is Extract<typeof element, { type: "text" }> => element.type === "text") ?? [];
+    expect(englishTexts.find((element) => element.id === "english-means-table-row-label-0")?.text).toBe("API keys");
+    expect(englishTexts.find((element) => element.id === "english-means-table-row-body-0")?.text).toBe("long-lived secrets");
+    expect(englishTexts.find((element) => element.id === "english-means-table-row-label-1")?.text).toBe("Consent review");
+    expect(englishTexts.find((element) => element.id === "english-means-table-row-body-1")?.text).toBe("low IT visibility.");
+  });
+
   it("renders statement evidence as a primary support card plus secondary rows", () => {
     const deck = createDeckFromMessageMap(
       {
