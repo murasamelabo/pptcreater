@@ -209,6 +209,9 @@ function uniqueValues(values: Array<string | undefined>): string[] {
 function semanticReplacementLabel(value: string | undefined): string | undefined {
   const text = value?.replace(/\s+/g, " ").trim();
   if (!text) return undefined;
+  if (/ログイン管理.*IdP.*API認可|アプリ間API認可.*意思決定者/u.test(text)) return "IdPがAPI認可を判断";
+  if (/SSOで確立済みのIdP信頼をAPIアクセスへ延伸|エンタープライズ SSO.*API アクセス|SSO.*APIアクセスへ延伸/u.test(text)) return "SSO信頼をAPIアクセスへ延伸";
+  if (/どのアプリがどのユーザーとしてどのAPIへアクセスできるか|どのアプリが、どのユーザーに代わって/u.test(text)) return "IdPがアプリ・ユーザー・APIを管理";
   if (/MCP.*XAA|XAA.*Authorization Extension/u.test(text)) return "XAA採用";
   if (/SSO.*信頼.*API|API.*委任.*拡張/u.test(text)) return "SSO信頼をAPI委任へ拡張";
   if (/IdP.*ユーザー代理.*署名JWT|署名JWT.*証明/u.test(text)) return "署名JWTで証明";
@@ -274,6 +277,12 @@ function slideSummaryText(request: NarrativeDesignComponentRequest): string {
   return compactReplacementText(request.intent.message, request.intent.emphasis ?? request.intent.title, 34);
 }
 
+function formulaSummaryText(request: NarrativeDesignComponentRequest): string {
+  const text = [request.intent.message, ...request.intent.evidence, ...(request.intent.details ?? [])].join(" ");
+  if (/SSO|IdP|API/u.test(text) && /信頼|認可|アクセス|代理/u.test(text)) return "SSOの信頼をAPIアクセスの認可判断へ拡張する";
+  return slideSummaryText(request);
+}
+
 function badgeForIntent(request: NarrativeDesignComponentRequest): string {
   const context = [request.intent.slideId, request.intent.title, request.intent.message, request.intent.emphasis].join(" ");
   if (/AI|MCP/u.test(context)) return "AI";
@@ -323,6 +332,10 @@ function replacementValuesForIntent(request: NarrativeDesignComponentRequest, co
     ];
   }
   if (componentId === "formula-p1") {
+    const context = support.join(" ");
+    if (/SSO|IdP|API/u.test(context) && /信頼|認可|アクセス|代理/u.test(context)) {
+      return ["SSO信頼", "ログイン時の信頼", "IdP判断", "代理APIを管理", "API認可へ延伸", "署名鍵で検証"];
+    }
     return [
       compactReplacementText(intent.title, "概念", 12),
       compactReplacementText(evidence[0] ?? details[0], intent.message, 14),
@@ -415,7 +428,7 @@ const DESIGN_COMPONENT_CAPTIONS: Record<string, string[]> = {
 
 function captionReplacementsForIntent(request: NarrativeDesignComponentRequest, componentId: string): PptxSlideTextReplacement[] {
   const captions = DESIGN_COMPONENT_CAPTIONS[componentId] ?? [];
-  const summary = slideSummaryText(request);
+  const summary = componentId === "formula-p1" ? formulaSummaryText(request) : slideSummaryText(request);
   return captions.map((match) => ({ match, to: summary }));
 }
 

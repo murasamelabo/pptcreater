@@ -1647,14 +1647,17 @@ function renderAuthoredDiagram(theme: Theme, intent: SlideIntent, renderer?: Nar
     accent: theme.accent,
     diagram: intent.diagram
   });
-  return rendered && rendered.length > 0
-    ? [
-        ...(diagramLeadText(intent)
-          ? [text(`${intent.slideId}-diagram-lead`, "caption", diagramLeadText(intent), 1.02, 1.66, 11.1, 0.2, 18, theme, { bg: theme.background, color: theme.mutedText, fontSize: 12, align: "center" })]
-          : []),
-        ...rendered
-      ]
-    : null;
+  if (!rendered || rendered.length === 0) return null;
+
+  const leadText = diagramLeadText(intent);
+  if (!leadText) return rendered;
+
+  const lastReadingOrder = Math.max(...rendered.map((element) => element.readingOrder ?? 0));
+  return [
+    ...rendered,
+    shape(`${intent.slideId}-diagram-message-box`, "roundRect", 1.08, 6.86, 11.16, 0.42, lastReadingOrder + 1, theme.accentSoft, theme.line, { radius: 0.14, fillOpacity: 0.96 }),
+    text(`${intent.slideId}-diagram-message`, "caption", leadText, 1.38, 6.99, 10.56, 0.16, lastReadingOrder + 2, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 12, bold: true, align: "center" })
+  ];
 }
 
 // ---------------------------------------------------------------------------

@@ -741,6 +741,67 @@ describe("authored intent diagrams", () => {
     expect(flow?.elements.some((element) => element.id === "flow-dg-node")).toBe(true);
   });
 
+  it("places supplemental diagram messages below the authored diagram", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "相互運用性を説明する",
+        audience: "アーキテクト",
+        desiredAction: "対応IdPを確認する",
+        intents: [
+          {
+            slideId: "ecosystem",
+            title: "エコシステム",
+            message: "XAAはIdP非依存。Microsoft Entraを含む主要IdP・認可基盤での相互運用を想定。",
+            evidence: ["Microsoft Entra", "Okta", "Auth0", "Keycloak"],
+            quietInfo: [],
+            visualType: "table",
+            emphasis: "相互運用エコシステム",
+            diagram: {
+              direction: "LR",
+              nodes: [
+                { id: "entra", label: "Microsoft Entra" },
+                { id: "okta", label: "Okta" },
+                { id: "auth0", label: "Auth0" },
+                { id: "keycloak", label: "Keycloak" }
+              ],
+              edges: [],
+              groups: []
+            }
+          }
+        ]
+      },
+      {
+        title: "diagram deck",
+        locale: "ja-JP",
+        contentMode: "technical",
+        planningMode: "narrative-v1",
+        diagramRenderer: (request) => [
+          {
+            id: `${request.idPrefix}-stage`,
+            type: "shape",
+            shape: "roundRect",
+            x: request.frame.x,
+            y: request.frame.y,
+            w: request.frame.w,
+            h: request.frame.h,
+            readingOrder: request.readingOrderStart,
+            decorative: true,
+            fill: "#ffffff",
+            altText: "generated native schematic shape"
+          }
+        ]
+      }
+    );
+
+    const ecosystem = deck.slides.find((slide) => slide.id === "ecosystem");
+    const message = ecosystem?.elements.find((element) => element.id === "ecosystem-diagram-message");
+    expect(ecosystem?.elements.some((element) => element.id === "ecosystem-diagram-lead")).toBe(false);
+    expect(ecosystem?.elements.some((element) => element.id === "ecosystem-diagram-message-box")).toBe(true);
+    expect(message).toMatchObject({ type: "text" });
+    expect(message?.type === "text" ? message.text : "").toContain("XAAはIdP非依存");
+    expect(message?.y).toBeGreaterThan(6.8);
+  });
+
   it("falls back to the grammar composer when no diagram renderer is injected", () => {
     const deck = createDeckFromMessageMap(DIAGRAM_MAP, {
       title: "diagram deck",
