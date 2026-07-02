@@ -1,4 +1,5 @@
 ﻿import type { DeckSpec, ShapeElement, Slide, SlideElement, TextElement } from "./schema.js";
+import { SLIDE_ANTI_PATTERNS } from "./slideQualityStandard.js";
 
 export type VisualQualityIssue = {
   severity: "error" | "warning" | "suggestion";
@@ -69,6 +70,62 @@ function overlapArea(a: SlideElement, b: SlideElement): number {
 
 function isGeneratedIcon(element: SlideElement): boolean {
   return element.type === "svg" && (/icon/u.test(element.id) || (element.w <= 0.7 && element.h <= 0.7));
+}
+
+function antiPatternLabel(id: "A2" | "A3" | "A5" | "A6"): string {
+  const pattern = SLIDE_ANTI_PATTERNS.find((item) => item.id === id);
+  return pattern ? `${pattern.id} ${pattern.labelEn}` : id;
+}
+
+function contentTextElements(slide: Slide): TextElement[] {
+  return slide.elements.filter((element): element is TextElement => element.type === "text" && !element.decorative && element.role !== "title" && element.role !== "caption");
+}
+
+function totalTextLength(slide: Slide): number {
+  return contentTextElements(slide).reduce((sum, element) => sum + element.text.trim().length, 0);
+}
+
+function textElementCount(slide: Slide): number {
+  return contentTextElements(slide).length;
+}
+
+function substantiveShapeCount(slide: Slide): number {
+  return slide.elements.filter((element) => element.type === "shape" && !element.decorative && element.shape !== "line" && element.w >= 0.4 && element.h >= 0.25).length;
+}
+
+function nonDecorativeImageCount(slide: Slide): number {
+  return slide.elements.filter((element) => (element.type === "image" || element.type === "svg") && !element.decorative && element.w >= 2.5 && element.h >= 1.5).length;
+}
+
+function hasLeadOrEvidence(slide: Slide): boolean {
+  return slide.elements.some(
+    (element): element is TextElement =>
+      element.type === "text" && !element.decorative && (element.role === "subtitle" || element.role === "callout" || /evidence|根拠|理由|source|出典|because|why/i.test(element.id))
+  );
+}
+
+function nonNeutralFills(slide: Slide): Set<string> {
+  const fills = new Set<string>();
+  slide.elements.forEach((element) => {
+    if (element.type !== "shape" || !element.fill || element.fill === "none") return;
+    const fill = element.fill.toLowerCase();
+    if (!/^#[0-9a-f]{6}$/u.test(fill)) return;
+    const red = Number.parseInt(fill.slice(1, 3), 16);
+    const green = Number.parseInt(fill.slice(3, 5), 16);
+    const blue = Number.parseInt(fill.slice(5, 7), 16);
+    if (Math.max(red, green, blue) - Math.min(red, green, blue) > 18) fills.add(fill);
+  });
+  return fills;
+}
+
+function pushAntiPatternIssue(issues: VisualQualityIssue[], slideIndex: number, antiPattern: "A2" | "A3" | "A5" | "A6", message: string, details?: Record<string, number | string | boolean>): void {
+  issues.push({
+    severity: antiPattern === "A5" ? "error" : "warning",
+    code: `quality.${antiPattern.toLowerCase()}`,
+    message: `${antiPatternLabel(antiPattern)}: ${message}`,
+    path: `slides.${slideIndex}`,
+    details
+  });
 }
 
 export function reviewVisualQuality(deck: DeckSpec): VisualQualityReport {
@@ -151,6 +208,25 @@ export function reviewVisualQuality(deck: DeckSpec): VisualQualityReport {
         message: "Message-generated slides should include at least one icon, image, or diagram element so the deck does not become a plain text-and-box layout.",
         path: `slides.${slideIndex}`
       });
+    }
+
+    const isContent = isContentSlide(slide);
+    const textLength = totalTextLength(slide);
+    const contentTexts = textElementCount(slide);
+    const shapes = substantiveShapeCount(slide);
+    const images = nonDecorativeImageCount(slide);
+    if (isContent && textLength >= 520 && shapes + images < 3) {
+      pushAntiPatternIssue(issues, slideIndex, "A2", "Slide has document-like text volume without enough visual structure. Split, chunk, or turn the relationship into a diagram/table.", { textLength, contentTexts, visualObjects: shapes + images });
+    }
+    if (isContent && textLength >= 700) {
+      pushAntiPatternIssue(issues, slideIndex, "A5", "Slide is likely over-dense. Reduce content, split the slide, or add clear compartments and whitespace.", { textLength, contentTexts });
+    }
+    if (isContent && images > 0 && textLength < 120 && !hasLeadOrEvidence(slide)) {
+      pushAntiPatternIssue(issues, slideIndex, "A3", "Large image/SVG is not paired with enough visible message or evidence. Add a lead sentence and proof next to the image.", { imageCount: images, textLength });
+    }
+    const colorCount = nonNeutralFills(slide).size;
+    if (isContent && colorCount > 3) {
+      pushAntiPatternIssue(issues, slideIndex, "A6", "Slide uses more than three non-neutral fill colors. Reduce to base/main/accent colors and keep color meanings consistent.", { nonNeutralFills: colorCount });
     }
 
     for (const role of ["title", "subtitle", "body", "callout", "caption"] as const) {

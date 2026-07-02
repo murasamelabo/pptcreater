@@ -19,6 +19,11 @@ describe("first-pass slide creation rules", () => {
     expect(rules.visualRules.join("\n")).toContain("矢印は脇役");
     expect(rules.visualRules.join("\n")).toContain("写真や画像頼りにしない");
     expect(rules.visualRules.join("\n")).toContain("黒い塊");
+    expect(rules.hardRules.join("\n")).toContain("C:\\ppptevaluater由来の品質基準");
+    expect(rules.hardRules.join("\n")).toContain("D1 メッセージ・目的適合");
+    expect(rules.hardRules.join("\n")).toContain("P5 経営会議・意思決定");
+    expect(rules.hardRules.join("\n")).toContain("A5 ミチミチ");
+    expect(rules.hardRules.join("\n")).toContain("S7 全体の目的適合");
   });
 
   it("formats English guardrails as a reusable prompt", () => {
@@ -35,5 +40,10 @@ describe("first-pass slide creation rules", () => {
     expect(prompt).toContain("learn from predecessors");
     expect(prompt).toContain("Arrows are supporting actors");
     expect(prompt).toContain("In charts, visual information is the hero");
+    expect(prompt).toContain("C:\\ppptevaluater-derived quality standard");
+    expect(prompt).toContain("D6 Color");
+    expect(prompt).toContain("P4 Read-heavy handout");
+    expect(prompt).toContain("A2 Text-wall");
+    expect(prompt).toContain("S6 Rhythm and pacing");
   });
 });

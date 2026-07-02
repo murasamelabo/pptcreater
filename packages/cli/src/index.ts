@@ -38,7 +38,10 @@ import {
   reviewDeckContent,
   reviewDeck,
   reviewMessageMap,
+  reviewSlideQuality,
+  formatSlideQualityReview,
   reviewVisualQuality,
+  SLIDE_PURPOSE_PROFILE_IDS,
   describeAgentPipeline,
   selectFigure,
   listFigureIntents,
@@ -167,6 +170,14 @@ function parseContentMode(value: string): ContentMode {
   }
 
   throw new InvalidArgumentError("Content mode must be one of: presentation, report, technical, handout, decision.");
+}
+
+function parseSlidePurposeProfile(value: string) {
+  if ((SLIDE_PURPOSE_PROFILE_IDS as readonly string[]).includes(value)) {
+    return value as (typeof SLIDE_PURPOSE_PROFILE_IDS)[number];
+  }
+
+  throw new InvalidArgumentError(`Purpose profile must be one of: ${SLIDE_PURPOSE_PROFILE_IDS.join(", ")}.`);
 }
 
 function parseBusinessStyleMode(value: string): BusinessStyleMode {
@@ -607,6 +618,25 @@ program
     }
     report.issues.forEach((item) => console.log(`${item.severity.toUpperCase()} ${item.code} ${item.path}: ${item.message}`));
     if (!report.ok) process.exitCode = 1;
+  }));
+
+program
+  .command("quality-review")
+  .description("Score a DeckSpec against the ppptevaluater-derived slide quality standard: D1-D9, A1-A6, S1-S7, and purpose profile weights.")
+  .argument("<deck>", "DeckSpec JSON path")
+  .option("--purpose-profile <profile>", "P1 internal, P2 sales, P3 presentation, P4 handout, or P5 executive", parseSlidePurposeProfile)
+  .option("--json", "Emit JSON", false)
+  .action(commandAction(async (deckPath: string, options: { purposeProfile?: (typeof SLIDE_PURPOSE_PROFILE_IDS)[number]; json: boolean }) => {
+    const deck = parseDeckSpec(await readJson(deckPath));
+    const report = reviewSlideQuality(deck, options.purposeProfile);
+    if (options.json) {
+      console.log(JSON.stringify(report, null, 2));
+      if (!report.matrix.fitsTarget || report.verdict === "D" || report.verdict === "E") process.exitCode = 1;
+      return;
+    }
+
+    console.log(formatSlideQualityReview(report));
+    if (!report.matrix.fitsTarget || report.verdict === "D" || report.verdict === "E") process.exitCode = 1;
   }));
 
 program

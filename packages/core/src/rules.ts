@@ -1,5 +1,6 @@
 ﻿import type { ContentMode, Locale } from "./schema.js";
 import { getContentGuidance } from "./content.js";
+import { formatSlideQualityStandard } from "./slideQualityStandard.js";
 
 export type SlideCreationRules = {
   locale: Locale;
@@ -52,6 +53,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
 
   const hardRules = locale === "ja-JP"
     ? [
+        ...formatSlideQualityStandard(locale),
         "1スライド1メッセージ。複数論点・複数判断・複数フローを1枚に詰め込まない。",
         "主役は作り手ではなく聴き手。自分が話したい順ではなく、相手が納得し行動しやすい順に並べる。",
         "スライドはメッセージを伝える手段であり目的ではない。キー・メッセージ・図表の3要素を先に分ける。",
@@ -65,6 +67,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "最終PPTXでは render-blocking lint を force しない。エラーは内容・構造・配置を直して解消する。"
       ]
     : [
+      ...formatSlideQualityStandard(locale),
         "One slide, one message. Do not combine multiple arguments, decisions, or flows on one slide.",
         "The audience is the protagonist. Order content by what helps them understand, agree, and act — not by the author's thinking order.",
         "Slides are a means to convey a message, not the goal. Separate key point, message, and visual/table before designing.",

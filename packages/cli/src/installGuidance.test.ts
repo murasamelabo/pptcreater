@@ -20,12 +20,15 @@ describe("installGuidance", () => {
     expect(skills).toContain("AI agents creating PowerPoint decks");
     expect(skills).toContain("Multi-agent orchestration");
     expect(skills).toContain("deck-director");
+    expect(skills).toContain("review_slide_quality");
+    expect(skills).toContain("D1-D9 dimensions");
     // The installed skills carry the message-first craft method.
     expect(skills).toContain("Slide craft method");
     expect(instructions).toContain("Read .github/pptcreater-skills.md");
     // The instruction block routes non-trivial decks to the Director agent.
     expect(instructions).toContain("Deck Director");
     expect(instructions).toContain(".github/agents");
+    expect(instructions).toContain("quality-review");
   });
 
   it("installs Claude Code guidance", async () => {
@@ -67,6 +70,9 @@ describe("installGuidance", () => {
     const director = await readFile(join(targetDir, ".github", "agents", "deck-director.agent.md"), "utf8");
     expect(director).toContain("name: 'Deck Director'");
     expect(director).toContain("review_deck");
+    const reviewer = await readFile(join(targetDir, ".github", "agents", "deck-reviewer.agent.md"), "utf8");
+    expect(reviewer).toContain("review_slide_quality");
+    expect(reviewer).toContain("D1-D9");
     // All six agent files exist with frontmatter.
     for (const file of [
       "deck-director.agent.md",

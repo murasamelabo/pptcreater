@@ -156,4 +156,60 @@ describe("visual quality review", () => {
     expect(report.ok).toBe(false);
     expect(report.issues.map((issue) => issue.code)).toContain("visual.icon-text-overlap");
   });
+
+  it("flags ppptevaluater anti-patterns for over-dense and over-colored slides", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].layout = "message-detail";
+    deck.slides[0].elements = [
+      {
+        id: "title",
+        type: "text",
+        role: "title",
+        text: "詳細説明",
+        x: 0.8,
+        y: 0.4,
+        w: 8,
+        h: 0.5,
+        fontSize: 28,
+        bold: true,
+        decorative: false,
+        readingOrder: 1
+      }
+    ];
+    for (let index = 0; index < 8; index += 1) {
+      deck.slides[0].elements.push({
+        id: `paragraph-${index}`,
+        type: "text",
+        role: "body",
+        text: "これは長い説明文です。背景、前提、論点、補足、例外、注意事項を同じスライド内に詰め込み、読む人が要点を探しにくくなる状態を再現しています。視線の入口がなく、文章量だけで理解を求めるため、ミチミチな資料として扱うべき状態です。",
+        x: 0.9,
+        y: 1.2 + index * 0.45,
+        w: 7.8,
+        h: 0.35,
+        fontSize: 13,
+        bold: false,
+        decorative: false,
+        readingOrder: 2 + index
+      });
+    }
+    ["#2563eb", "#16a34a", "#dc2626", "#f97316"].forEach((fill, index) => {
+      deck.slides[0].elements.push({
+        id: `color-${index}`,
+        type: "shape",
+        shape: "rect",
+        x: 9,
+        y: 1 + index * 0.5,
+        w: 0.5,
+        h: 0.3,
+        fill,
+        decorative: true,
+        readingOrder: 20 + index
+      });
+    });
+
+    const report = reviewVisualQuality(deck);
+
+    expect(report.ok).toBe(false);
+    expect(report.issues.map((issue) => issue.code)).toEqual(expect.arrayContaining(["quality.a2", "quality.a5", "quality.a6"]));
+  });
 });

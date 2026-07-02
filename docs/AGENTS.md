@@ -15,8 +15,10 @@ early, see [`narrative-authoring-pipeline.md`](narrative-authoring-pipeline.md).
 visual grammar metadata, expression selection, and layout composition before concrete objects are
 created.
 
-Run `pptcreater agents` (or the MCP tool `list_agent_roles`) to print the live role definitions, and
-`pptcreater review <deck.json>` (or the MCP tool `review_deck`) to run the aggregated quality gate.
+Run `pptcreater agents` (or the MCP tool `list_agent_roles`) to print the live role definitions,
+`pptcreater review <deck.json>` (or the MCP tool `review_deck`) to run the aggregated quality gate,
+and `pptcreater quality-review <deck.json>` (or MCP `review_slide_quality`) to score a finished deck
+against the ppptevaluater D1-D9 / P1-P5 / A1-A6 / S1-S7 standard.
 
 ## Custom agents (`.github/agents/`)
 
@@ -66,7 +68,7 @@ others; or invoke a specialist directly when you only need that slice.
 | 3 | **Content Strategist** | Per-slide message, info, figure kind, data | `DeckOutline` → `SlidePlan[]` |
 | 4 | **Designer** | Layout, template, figures, colour, icons, placement | `SlidePlan` → slide elements |
 | 5 | **Copywriter** | Titles, leads, labels, captions, alt text | slide elements → finalised copy |
-| 6 | **Reviewer** | Accessibility / structure / copy / layout scoring | `DeckSpec` → `DeckReviewReport` |
+| 6 | **Reviewer** | Accessibility / structure / copy / layout scoring plus finished-deck ppptevaluater scoring | `DeckSpec` → `DeckReviewReport` + `SlideQualityReviewReport` |
 
 The Reviewer step is implemented deterministically by `reviewDeck` (see below), so the loop
 terminates on objective criteria rather than model judgement. The other five roles are LLM agents
@@ -88,7 +90,8 @@ DeckBrief
       generate_section_divider, suggest_icon,
       recommend_template, polish_deck_layout)
   └──────────────→ DeckSpec (draft) ←───────┘
-  ▼ 6. Reviewer → DeckReviewReport         (review_deck = lint + content + business, routed)
+  ▼ 6. Reviewer → DeckReviewReport         (review_deck = lint + content + business + visual, routed)
+  ▼             → SlideQualityReviewReport (quality-review / review_slide_quality = D1-D9 + A1-A6 + S1-S7)
   │     ├─ ok = false → dispatch each blocking issue to its owner role, then re-run (max N loops)
   │     └─ ok = true
   ▼ 1. Director — finalize_deck → render_pptx → final .pptx
@@ -136,12 +139,15 @@ ambiguity stays inside each agent, not between them.
 
 ## The review gate (`reviewDeck`)
 
-`reviewDeck(deck, options)` runs three existing reviewers in one pass and routes every finding to the
+`reviewDeck(deck, options)` runs the deterministic reviewers in one pass and routes every finding to the
 role that must fix it:
 
 - **lint** (`lintDeckSpec`) — accessibility (contrast, font size, alt text), layout (overflow,
   overlap, bounds, shape-over-text), visual richness, diagram editability.
 - **content** (`reviewDeckContent`) — one-message titles, prose vs. slide phrasing, bullet counts.
+- **visual quality** (`reviewVisualQuality`) — truncation, repeated generated-looking layouts,
+  icon/text overlap, and ppptevaluater anti-patterns such as A2 text-wall, A5 over-dense, and A6
+  over-decorated.
 - **business** (`reviewBusinessDeck`) — executive summary, agenda/section pacing, lead sentences,
   equal emphasis, final landing, source traceability. Optional via `includeBusinessReview`.
 
@@ -155,6 +161,12 @@ Each finding becomes a `RoutedReviewIssue` with:
 **Stop condition:** the deck is ready when `report.ok === true` (no blocking issues). Polish-fixable
 items are resolved automatically by `finalize_deck`; advisory notes are optional improvements.
 
+For human-quality judgement after the deterministic gate, the Reviewer should also run
+`review_slide_quality` / `pptcreater quality-review`. It scores the deck against the ppptevaluater
+standard: D1-D9 dimensions, P1-P5 purpose weights/pass lines, A1-A6 anti-patterns, and S1-S7 deck
+story flow. Use its `topFixes` for the next design/content loop; use `review_deck` for blocking
+render/content defects and `quality-review` for purpose-relative goodness.
+
 ### Routing summary
 
 | Finding family | Owner |
@@ -162,7 +174,8 @@ items are resolved automatically by `finalize_deck`; advisory notes are optional
 | `layout.*`, `visual.*`, `diagram.*`, `element.*`, `business.equal-emphasis` | **Designer** |
 | `text.*`, `content.*`, `*alt-text*`, `*low-contrast*`, `*small-font*`, `layout.bad-line-break` | **Copywriter** |
 | `slide.title-duplicate`, most `business.*` | **Story Architect** |
-| `source.*`, `slide.text-density`, `business.source-traceability` | **Content Strategist** |
+| `source.*`, `slide.text-density`, `business.source-traceability`, `quality.a2`, `quality.a5` | **Content Strategist** |
+| other `quality.*` anti-pattern findings | **Designer** |
 
 ## Implementation status
 

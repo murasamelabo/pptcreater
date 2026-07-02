@@ -1,4 +1,4 @@
-import type { DeckSpec, Locale, ContentMode } from "./schema.js";
+﻿import type { DeckSpec, Locale, ContentMode } from "./schema.js";
 import { lintDeckSpec, classifyLintReport, type LintIssue } from "./lint.js";
 import { reviewDeckContent, type ContentReviewIssue } from "./content.js";
 import { reviewVisualQuality, type VisualQualityIssue } from "./visualQuality.js";
@@ -221,6 +221,8 @@ function ownerForCode(source: ReviewSource, code: string): AgentRoleId {
   // Prefix fallbacks for lint codes.
   if (code.startsWith("layout.")) return "designer";
   if (code.startsWith("visual.")) return "designer";
+  if (code === "quality.a2" || code === "quality.a5") return "content-strategist";
+  if (code.startsWith("quality.")) return "designer";
   if (code.startsWith("diagram.")) return "designer";
   if (code.startsWith("text.")) return "copywriter";
   if (code.startsWith("source.")) return "content-strategist";

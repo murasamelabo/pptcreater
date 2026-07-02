@@ -22,5 +22,7 @@ export * from "./patternGallery.js";
 export * from "./messageMap.js";
 export * from "./messageDeck.js";
 export * from "./narrativePlanning.js";
+export * from "./slideQualityStandard.js";
+export * from "./slideQualityReview.js";
 export * from "./visualGrammarRegistry.js";
 export * from "./visualQuality.js";

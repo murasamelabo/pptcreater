@@ -160,7 +160,8 @@ Before creating a DeckSpec, clarify these points when they are not already speci
 14. Create a visual DeckSpec with editable PowerPoint shapes/text where possible.
 15. Run \`review_business_deck\` for business storyline, section flow, page emphasis, and final landing checks.
 16. Run \`review_content\` (or CLI \`pptcreater content-review\`) before linting. It applies locale/content-mode writing rules: Japanese report/technical/handout decks use a short topic title + slide message, Japanese presentation/decision decks allow concise assertion titles, and English decks prefer action titles.
-17. Run \`lint_deck\`, then \`review_deck\` as the REQUIRED quality gate before declaring the deck done: it aggregates lint + content + business reviews, classifies findings (blocking / polish-fixable / advisory), and routes each blocking issue to its owner role. Fix every blocking finding and re-run until \`ok\` is true. A generic code review is not a substitute for \`review_deck\`.
+17. Run \`lint_deck\`, then \`review_deck\` as the REQUIRED deterministic quality gate before declaring the deck render-ready: it aggregates lint + content + business + visual-quality reviews, classifies findings (blocking / polish-fixable / advisory), and routes each blocking issue to its owner role. Fix every blocking finding and re-run until \`ok\` is true. A generic code review is not a substitute for \`review_deck\`.
+17b. For finished-deck judgment, run \`review_slide_quality\` (or CLI \`pptcreater quality-review <deck.json> --purpose-profile P?\`). It applies the ppptevaluater standard: D1-D9 dimensions, P1-P5 purpose profiles, A1-A6 anti-patterns, and S1-S7 deck story flow. Use this when evaluating whether a deck is actually good for its purpose, not merely lint-clean.
 18. Run \`polish_deck_layout\` when layout issues or overflow risks are present. \`render_pptx\` also applies this safeguard automatically.
 19. Render with \`render_pptx\` / \`render_powerpoint\` or preview with \`render_studio\`. If text still cannot fit after polish, shorten or split the slide; do not force-render a broken layout.
 20. If MCP render tools are not visible in the current tool selection, use the CLI fallback: \`pptcreater render <deck.json> --output <deck.pptx> --polish\`.
@@ -267,11 +268,15 @@ How routing works:
   control-plane / ponchi-e), or \`generate_intent_diagram\` (known composition). Timeline and
   architecture diagrams are allowed; what is discouraged is hand-built connector geometry.
 3. \`review_deck\` is the REQUIRED, deterministic stop condition (a generic code review is not a
-   substitute): it runs lint + content + business reviews, classifies each finding (blocking /
+  substitute): it runs lint + content + business + visual-quality reviews, classifies each finding (blocking /
    polish-fixable / advisory), scores the deck, and routes each blocking issue to its owner role
    (\`layout.*\`/\`visual.*\`/\`diagram.*\` -> Designer; \`text.*\`/\`content.*\` -> Copywriter;
-   \`slide.*\`/most \`business.*\` -> Story Architect; \`source.*\` -> Content Strategist). Fix blocking
+  \`slide.*\`/most \`business.*\` -> Story Architect; \`source.*\`/\`quality.a2\`/\`quality.a5\` -> Content Strategist;
+  other \`quality.*\` -> Designer). Fix blocking
    issues, re-run, and only finalize when \`ok\` is true.
+4. \`review_slide_quality\` / CLI \`quality-review\` is the finished-deck quality score. Select P1-P5
+  by purpose and use its D1-D9 scores, A1-A6 anti-patterns, S1-S7 story flow, pass line, and
+  \`topFixes\` to decide the next improvement loop.
 
 Do NOT author your own script that imports \`@pptcreater/core\` (or any pptcreater package) to build or
 render a deck, and do NOT use PowerPoint COM or ad-hoc PPTX assembly. Always go through the pptcreater
@@ -293,7 +298,7 @@ When creating slides, use the pptcreater MCP. If purpose, audience, delivery for
 
 For every figure (flow, process, timeline, comparison, hierarchy, cycle, matrix, architecture, etc.), call recommend_figure first and use what it returns: when renderer is "design-pack", use render_design_component with a curated zukai component of the recommended kind; when renderer is "schematic", use generate_schematic; when renderer is "native-diagram", use generate_native_diagram. Use generate_intent_diagram when the intended concept composition/granularity is known. Timeline and architecture diagrams are allowed; never hand-place node boxes + connector lines for a complex connected diagram.
 
-After the brief is clear, create a visual DeckSpec with editable PowerPoint objects, run review_content and lint_deck, and run review_deck as the required quality gate before declaring the deck done — fix every blocking finding and re-run until ok is true (a generic code review is not a substitute for review_deck). Then render with render_pptx/render_powerpoint or finalize_deck, or CLI: pptcreater render <deck.json> --output <deck.pptx> --polish.
+After the brief is clear, create a visual DeckSpec with editable PowerPoint objects, run review_content and lint_deck, and run review_deck as the required quality gate before declaring the deck render-ready — fix every blocking finding and re-run until ok is true (a generic code review is not a substitute for review_deck). For finished-deck evaluation, also run review_slide_quality / CLI quality-review with the closest P1-P5 purpose profile and use its topFixes for the improvement loop. Then render with render_pptx/render_powerpoint or finalize_deck, or CLI: pptcreater render <deck.json> --output <deck.pptx> --polish.
 ${COPILOT_BLOCK_END}`;
 }
 
@@ -305,7 +310,7 @@ For multi-slide, important, executive, or customer-facing decks, you MUST delega
 
 Do NOT build decks by writing your own script that imports @pptcreater/core (or any pptcreater package) and calls render/generation functions directly, and do NOT use PowerPoint COM or ad-hoc PPTX assembly. Always go through the pptcreater MCP tools (or the pptcreater CLI). Hand-writing a generator script bypasses the figure tools and is the main cause of clipped text and broken connectors.
 
-Use the pptcreater MCP for slide work. Start by clarifying purpose, audience, delivery mode, volume, and available source assets when they are unclear. Prefer editable PowerPoint shapes/text over flattened images. For every figure (flow, comparison, timeline, hierarchy, cycle, matrix, architecture, etc.), call recommend_figure first: when renderer is "design-pack", use render_design_component with a curated zukai component of the recommended kind; when renderer is "schematic", use generate_schematic; when renderer is "native-diagram", use generate_native_diagram. Use generate_intent_diagram when the intended concept composition/granularity is known. Timeline and architecture diagrams are allowed; never hand-place node boxes + connector lines for a complex connected diagram. Run review_content and lint_deck, and run review_deck as the required quality gate before declaring the deck done (a generic code review does not replace review_deck) — fix every blocking finding and re-run until ok is true. Render with render_pptx/render_powerpoint or finalize_deck, or CLI \`pptcreater render <deck.json> --output <deck.pptx> --polish\`.
+Use the pptcreater MCP for slide work. Start by clarifying purpose, audience, delivery mode, volume, and available source assets when they are unclear. Prefer editable PowerPoint shapes/text over flattened images. For every figure (flow, comparison, timeline, hierarchy, cycle, matrix, architecture, etc.), call recommend_figure first: when renderer is "design-pack", use render_design_component with a curated zukai component of the recommended kind; when renderer is "schematic", use generate_schematic; when renderer is "native-diagram", use generate_native_diagram. Use generate_intent_diagram when the intended concept composition/granularity is known. Timeline and architecture diagrams are allowed; never hand-place node boxes + connector lines for a complex connected diagram. Run review_content and lint_deck, and run review_deck as the required quality gate before declaring the deck render-ready (a generic code review does not replace review_deck) — fix every blocking finding and re-run until ok is true. For finished-deck evaluation, also run review_slide_quality / CLI quality-review with the closest P1-P5 purpose profile and use D1-D9/A1-A6/S1-S7 topFixes for improvements. Render with render_pptx/render_powerpoint or finalize_deck, or CLI \`pptcreater render <deck.json> --output <deck.pptx> --polish\`.
 ${CLAUDE_BLOCK_END}`;
 }
 
@@ -524,7 +529,7 @@ describes meaning, not appearance. Fix \`text.*\`/\`content.*\`/alt-text/contras
   {
     file: "deck-reviewer.agent.md",
     contents: `---
-description: 'Scores a PowerPoint DeckSpec on accessibility, structure, copy, and layout, then routes each issue back to the owning agent role. The deterministic stop condition for the deck-building loop, using pptcreater review_deck.'
+description: 'Scores a PowerPoint DeckSpec on accessibility, structure, copy, layout, and ppptevaluater slide quality, then routes each issue back to the owning agent role. Uses pptcreater review_deck plus quality-review.'
 name: 'Deck Reviewer'
 tools: ['search', 'pptcreater']
 ---
@@ -541,16 +546,24 @@ You are the deck's quality gate. You do not edit the deck; you evaluate it and r
 2. Verdict: \`ok === true\` → ready to finalize (list advisory notes). \`ok === false\` → for each
    blocking issue name the \`owner\` role and the fix, and ask the Director to dispatch it.
 3. After fixes, re-run \`review_deck\` until \`ok\` is true (cap ~3 iterations; otherwise escalate).
+4. For finished-deck evaluation, call \`review_slide_quality\` (CLI: \`pptcreater quality-review\`) with
+  the closest purpose profile: P1 internal report, P2 proposal, P3 live presentation, P4 handout, or
+  P5 executive decision. It scores D1-D9, flags A1-A6 anti-patterns, and scores S1-S7 deck flow.
+  Use its \`topFixes\` as improvement requests even when \`review_deck.ok === true\`.
 
 ## Routing
 
 - \`layout.*\`/\`visual.*\`/\`diagram.*\`/\`element.*\`/\`business.equal-emphasis\` → **Designer**
 - \`text.*\`/\`content.*\`/alt-text/low-contrast/small-font/\`layout.bad-line-break\` → **Copywriter**
 - \`slide.title-duplicate\`/most \`business.*\` → **Story Architect**
-- \`source.*\`/\`slide.text-density\`/\`business.source-traceability\` → **Content Strategist**
+- \`source.*\`/\`slide.text-density\`/\`business.source-traceability\`/\`quality.a2\`/\`quality.a5\` →
+  **Content Strategist**
+- other \`quality.*\` anti-pattern findings → **Designer**
 
 Be objective: the gate passes only with no blocking issues. Don't fix; route. Polish-fixable items
 are resolved by \`finalize_deck\`.
+Do not treat lint-clean as design-good. Use \`quality-review\` to judge purpose fit, anti-patterns,
+story flow, and whether the deck clears the selected purpose pass line.
 `
   }
 ];

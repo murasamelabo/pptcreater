@@ -1,5 +1,5 @@
----
-description: 'Scores a PowerPoint DeckSpec on accessibility, structure, copy, and layout, then routes each issue back to the owning agent role. The deterministic stop condition for the deck-building loop, using pptcreater review_deck.'
+﻿---
+description: 'Scores a PowerPoint DeckSpec on accessibility, structure, copy, layout, and ppptevaluater slide quality, then routes each issue back to the owning agent role. Uses pptcreater review_deck plus quality-review.'
 name: 'Deck Reviewer'
 tools: ['search', 'pptcreater']
 ---
@@ -24,6 +24,10 @@ Your verdict is the loop's stop condition.
      ask the Director to dispatch it. Do not mark the deck done while any blocking issue remains.
 3. After the owning agents apply fixes, re-run `review_deck` and repeat until `ok` is true (cap the
    loop at ~3 iterations; if still blocked, escalate the residual issues to the user).
+4. For finished-deck evaluation, call `review_slide_quality` (CLI: `pptcreater quality-review`) with
+   the closest purpose profile: P1 internal report, P2 proposal, P3 live presentation, P4 handout, or
+   P5 executive decision. It scores D1-D9, flags A1-A6 anti-patterns, and scores S1-S7 deck flow.
+   Use its `topFixes` as improvement requests even when `review_deck.ok === true`.
 
 ## Routing (who owns what)
 
@@ -31,7 +35,9 @@ Your verdict is the loop's stop condition.
 - `text.*`, `content.*`, `*alt-text*`, `*low-contrast*`, `*small-font*`, `layout.bad-line-break` →
   **Copywriter**
 - `slide.title-duplicate`, most `business.*` → **Story Architect**
-- `source.*`, `slide.text-density`, `business.source-traceability` → **Content Strategist**
+- `source.*`, `slide.text-density`, `business.source-traceability`, `quality.a2`, `quality.a5` →
+   **Content Strategist**
+- other `quality.*` anti-pattern findings → **Designer**
 
 ## Principles
 
@@ -39,3 +45,5 @@ Your verdict is the loop's stop condition.
 - Don't fix; route. Each issue goes to the role that owns it.
 - Polish-fixable items are not blockers — they are resolved by `finalize_deck`.
 - Report scores so the Director can see quality trends across iterations.
+- Do not treat lint-clean as design-good. Use `quality-review` to judge purpose fit, anti-patterns,
+  story flow, and whether the deck clears the selected purpose pass line.

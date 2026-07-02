@@ -42,7 +42,9 @@ import {
   reviewDeck,
   reviewDeckContent,
   reviewMessageMap,
+  reviewSlideQuality,
   reviewVisualQuality,
+  SLIDE_PURPOSE_PROFILE_IDS,
   describeAgentPipeline,
   selectFigure,
   listFigureIntents,
@@ -532,6 +534,20 @@ export function createPptcreaterMcpServer(): McpServer {
       }
     },
     async ({ deck }) => jsonText(reviewVisualQuality(parseDeckSpec(deck)))
+  );
+
+  server.registerTool(
+    "review_slide_quality",
+    {
+      title: "Review slide quality standard",
+      description:
+        "Score a DeckSpec against the ppptevaluater-derived slide quality standard: D1-D9 dimensions, purpose profiles P1-P5, anti-patterns A1-A6, and deck-story axes S1-S7. Use this after render/finalize when evaluating whether a finished deck is actually good, not only lint-clean.",
+      inputSchema: {
+        deck: DeckSpecSchema,
+        purposeProfile: z.enum(SLIDE_PURPOSE_PROFILE_IDS).optional()
+      }
+    },
+    async ({ deck, purposeProfile }) => jsonText(reviewSlideQuality(parseDeckSpec(deck), purposeProfile))
   );
 
   server.registerTool(
