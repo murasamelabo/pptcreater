@@ -260,7 +260,7 @@ function shape(
   readingOrder: number,
   fill: ShapeElement["fill"],
   lineColor: string,
-  options: { width?: number; radius?: number; fillOpacity?: number; endArrow?: boolean } = {}
+  options: { width?: number; radius?: number; fillOpacity?: number; beginArrow?: boolean; endArrow?: boolean } = {}
 ): ShapeElement {
   const altText =
     shapeType === "line" && (/connector/u.test(id) || /step-line/u.test(id) || /axis-[xy]-line/u.test(id))
@@ -285,6 +285,7 @@ function shape(
     line: {
       color: lineColor,
       width: options.width ?? 0.9,
+      beginArrowType: options.beginArrow ? "triangle" : undefined,
       endArrowType: options.endArrow ? "triangle" : undefined
     }
   };
@@ -530,6 +531,27 @@ function calloutLabel(value: string): string {
 
 function pointLabel(value: string): string {
   return hasJapanese(value) ? compactLabel(value, 10) : compactLabel(value, 10);
+}
+
+function matrixPointLabel(value: string): string {
+  const text = value.replace(/\s+/g, " ").trim();
+  if (/アプリ間連携|集中ビュー/u.test(text)) return "集中ビュー";
+  if (/このClient|Client.*Resource App|クライアント.*リソース/u.test(text)) return "Client確認";
+  if (/セキュリティチーム|許可\/拒否|許可|拒否/u.test(text)) return "許可/拒否";
+  if (/短命|自動失効|クレデンシャル/u.test(text)) return "短命認証";
+  if (/監査|誰がいつ/u.test(text)) return "監査証跡";
+  if (/キルスイッチ|即時失効/u.test(text)) return "即時失効";
+  if (/confidential client|コンフィデンシャルクライアント/iu.test(text)) return "機密Client";
+  if (/insufficient_user_authentication|認証文脈不足/u.test(text)) return "認証不足";
+  if (/audience-bound|aud.*token endpoint|aud固定/u.test(text)) return "aud固定";
+  if (/自分のID-JAG|redeem/u.test(text)) return "自己redeem禁止";
+  if (/JWKS|署名検証/u.test(text)) return "JWKS検証";
+  if (/接続可否|接続してよい/u.test(text)) return "接続可否";
+  if (/scope|スコープ|最小権限/u.test(text)) return "最小scope";
+  if (/MFA|step-up|ステップアップ/u.test(text)) return "MFA条件";
+  if (/グループ/u.test(text)) return "許可グループ";
+  const cleaned = narrativeLabel(text, 14).replace(/…$/u, "");
+  return cleaned || text;
 }
 
 function technicalTermLabel(value: string): string | undefined {
@@ -1083,13 +1105,14 @@ function tableVisual(theme: Theme, intent: SlideIntent, id: string): SlideElemen
 
 function matrixVisual(theme: Theme, intent: SlideIntent, id: string): SlideElement[] {
   const items = evidenceItems(intent, 4).slice(0, 4);
+  const axisLabels = matrixAxisLabels(intent);
   const elements: SlideElement[] = [
     shape(`${id}-matrix-bg`, "roundRect", 1.0, 1.95, 7.2, 4.8, 10, theme.surface, theme.line, { radius: 0.18 }),
     shape(`${id}-decision-zone`, "roundRect", 4.88, 2.88, 2.28, 0.86, 11, theme.accentSoft, theme.accent, { radius: 0.16, fillOpacity: 0.95 }),
     shape(`${id}-axis-x-line`, "line", 1.55, 4.45, 5.95, 0, 12, "none", theme.line, { width: 1.2, endArrow: true }),
-    shape(`${id}-axis-y-line`, "line", 4.55, 2.7, 0.001, 3.45, 13, "none", theme.line, { width: 1.2, endArrow: true }),
-    text(`${id}-axis-x-label`, "caption", "柔軟性", 6.55, 4.66, 1.0, 0.2, 14, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 12, align: "right" }),
-    text(`${id}-axis-y-label`, "caption", "費用負担", 3.85, 2.32, 1.3, 0.2, 15, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 12, align: "center" }),
+    shape(`${id}-axis-y-line`, "line", 4.55, 2.7, 0.001, 3.45, 13, "none", theme.line, { width: 1.2, beginArrow: true }),
+    text(`${id}-axis-x-label`, "caption", axisLabels.x, 6.35, 4.66, 1.55, 0.2, 14, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 12, align: "right" }),
+    text(`${id}-axis-y-label`, "caption", axisLabels.y, 3.65, 2.32, 1.75, 0.2, 15, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 12, align: "center" }),
     text(`${id}-decision-zone-text`, "caption", decisionEmphasisLabel(intent), 5.1, 3.18, 1.84, 0.18, 16, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 12, bold: true, align: "center" }),
     shape(`${id}-insight`, "roundRect", 8.42, 2.18, 3.82, 3.95, 50, theme.accentSoft, theme.line, { radius: 0.18 }),
     icon(`${id}-insight-icon`, "scale", 8.92, 2.42, 0.42, 50, theme, { color: theme.accent, decorative: true }),
@@ -1108,6 +1131,13 @@ function matrixVisual(theme: Theme, intent: SlideIntent, id: string): SlideEleme
     elements.push(text(`${id}-point-label-${index}`, "caption", visibleSentence(pointLabel(item)), x + 0.4, y - 0.1, 2.18, 0.48, 21 + index * 3, theme, { bg: theme.surface, fontSize: 12, color: theme.text }));
   });
   return elements;
+}
+
+function matrixAxisLabels(intent: SlideIntent): { x: string; y: string } {
+  const context = [intent.title, intent.message, intent.emphasis, ...intent.evidence, ...(intent.details ?? [])].join(" ");
+  if (/統制|ポリシー|監査|失効|集中/u.test(context)) return { x: "分散リスク 低", y: "統制強度 高" };
+  if (/セキュリティ|短命|aud|JWT|confidential|認証|検証|JWKS/u.test(context)) return { x: "リスク 低", y: "保護強度 高" };
+  return { x: "実装負荷 低", y: "適合度 高" };
 }
 
 type HubPanel = {
@@ -1516,23 +1546,25 @@ function narrativeComparisonField(theme: Theme, intent: SlideIntent, expressionP
 function narrativeDecisionSurface(theme: Theme, intent: SlideIntent, expressionPlan: ExpressionPlan): SlideElement[] {
   const id = intent.slideId;
   const items = narrativeItems(intent, 4, 6);
+  const axisLabels = matrixAxisLabels(intent);
   const elements: SlideElement[] = [
     shape(`${id}-decision-stage`, "roundRect", 0.92, 1.96, 8.02, 4.86, 10, theme.surface, theme.line, { radius: 0.18 }),
-    text(`${id}-decision-grammar`, "caption", visualKickerLabel(intent), 1.24, 2.24, 3.5, 0.18, 11, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true }),
     shape(`${id}-decision-x-axis`, "line", 1.62, 5.78, 6.52, 0, 12, "none", theme.accent, { width: 1.4, endArrow: true }),
-    shape(`${id}-decision-y-axis`, "line", 1.62, 5.78, 0.001, -3.08, 13, "none", theme.accent, { width: 1.4, endArrow: true }),
+    shape(`${id}-decision-y-axis`, "line", 1.62, 2.7, 0.001, 3.08, 13, "none", theme.accent, { width: 1.4, beginArrow: true }),
     shape(`${id}-decision-zone`, "roundRect", 5.62, 2.66, 1.9, 1.06, 14, theme.accentSoft, theme.accent, { radius: 0.18, fillOpacity: 0.88 }),
     text(`${id}-decision-zone-label`, "caption", decisionEmphasisLabel(intent), 5.82, 3.04, 1.5, 0.18, 15, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 12, bold: true, align: "center" }),
-    shape(`${id}-decision-note`, "roundRect", 9.32, 2.32, 2.88, 3.8, 50, theme.accentSoft, theme.line, { radius: 0.18 }),
-    text(`${id}-decision-note-title`, "callout", topicLabel(intent.emphasis ?? intent.title), 9.66, 2.74, 2.18, 0.34, 51, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 21 }),
-    text(`${id}-decision-note-body`, "body", visibleSentence(intent.message), 9.66, 3.52, 2.12, 1.34, 52, theme, { bg: theme.accentSoft, color: theme.text, fontSize: 16 })
+    text(`${id}-decision-x-axis-label`, "caption", axisLabels.x, 6.68, 5.98, 1.86, 0.18, 16, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true, align: "right" }),
+    text(`${id}-decision-y-axis-label`, "caption", axisLabels.y, 1.0, 2.34, 1.54, 0.18, 17, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true, align: "center" }),
+    shape(`${id}-decision-note`, "roundRect", 9.16, 2.14, 3.1, 4.12, 50, theme.accentSoft, theme.line, { radius: 0.18 }),
+    text(`${id}-decision-note-title`, "callout", topicLabel(intent.emphasis ?? intent.title), 9.46, 2.54, 2.48, 0.34, 51, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 20 }),
+    text(`${id}-decision-note-body`, "body", visibleSentence(intent.message), 9.46, 3.24, 2.42, 1.68, 52, theme, { bg: theme.accentSoft, color: theme.text, fontSize: 15 })
   ];
   items.slice(0, 4).forEach((item, index) => {
     const positions = [[2.0, 4.95], [2.95, 3.95], [3.95, 4.6], [4.9, 3.6]] as const;
     const [x, y] = positions[index];
     const order = 20 + index * 4;
     elements.push(shape(`${id}-decision-point-${index}`, "ellipse", x, y, 0.3, 0.3, order, theme.accent, theme.accent));
-    elements.push(text(`${id}-decision-point-label-${index}`, "caption", narrativeLabel(item, 12), x - 0.5, y + 0.34, 1.3, 0.24, order + 1, theme, { bg: theme.surface, color: theme.text, fontSize: 11, align: "center" }));
+    elements.push(text(`${id}-decision-point-label-${index}`, "caption", matrixPointLabel(item), x - 0.58, y + 0.34, 1.58, 0.34, order + 1, theme, { bg: theme.surface, color: theme.text, fontSize: 11, align: "center" }));
   });
   return elements;
 }

@@ -320,7 +320,7 @@ function grammarForIntent(intent: SlideIntent, contentMode: ContentMode): Visual
       // Two-sided contrast reads as a comparison; three or more distinct options read as a board.
       return intent.evidence.length >= 3 ? "evidence-board" : "comparison-field";
     case "matrix":
-      return impliesTradeoff(lower) ? "decision-surface" : "evidence-board";
+      return "decision-surface";
     case "table":
       return "table-text-system";
     case "map":

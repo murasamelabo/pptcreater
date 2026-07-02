@@ -182,11 +182,11 @@ function designComponentIdForRequest(request: NarrativeDesignComponentRequest): 
   const context = [request.intent.slideId, request.intent.title, request.intent.message, request.intent.emphasis, ...(request.intent.evidence ?? []), ...(request.intent.details ?? [])].join(" ");
   if (request.intent.visualType === "table" || request.expressionPlan.selectedGrammarId === "table-text-system") return undefined;
   if (request.intent.visualType === "summary") return undefined;
+  if (request.intent.visualType === "matrix" || request.expressionPlan.selectedGrammarId === "decision-surface") return undefined;
   if (request.intent.visualType === "contrast" && (/代替|alternative/i.test(context) || (request.intent.evidence ?? []).length > 3)) return "list-vertical-p5";
   const visualTypeComponentId = DESIGN_COMPONENT_BY_VISUAL_TYPE[request.intent.visualType];
   if (visualTypeComponentId) return visualTypeComponentId;
   if (/APIキー|従来|改善|Before|After|転換/u.test(context)) return "before-after-p1";
-  if (/ポリシー|評価|統制|判断|優先/u.test(context)) return "matrix-p6";
   if (/OBO|比較|代替|vs|違い/u.test(context)) return "comparison-p3";
   if (/Token Exchange|JWT Bearer|フロー|手順|導入評価|次/u.test(context)) return "flow-horizontal-p3";
   if (/基本概念|掛け合わせ|拡張|信頼/u.test(context)) return "formula-p1";
