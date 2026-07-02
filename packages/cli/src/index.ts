@@ -212,6 +212,7 @@ function semanticReplacementLabel(value: string | undefined): string | undefined
   if (/ログイン管理.*IdP.*API認可|アプリ間API認可.*意思決定者/u.test(text)) return "IdPがAPI認可を判断";
   if (/SSOで確立済みのIdP信頼をAPIアクセスへ延伸|エンタープライズ SSO.*API アクセス|SSO.*APIアクセスへ延伸/u.test(text)) return "SSO信頼をAPIアクセスへ延伸";
   if (/どのアプリがどのユーザーとしてどのAPIへアクセスできるか|どのアプリが、どのユーザーに代わって/u.test(text)) return "IdPがアプリ・ユーザー・APIを管理";
+  if (/ID-JAG.*標準仕様.*XAA.*企業向け|ID-JAG.*標準.*XAA.*プロファイル/u.test(text)) return "ID-JAG=標準、XAA=企業プロファイル";
   if (/MCP.*XAA|XAA.*Authorization Extension/u.test(text)) return "XAA採用";
   if (/SSO.*信頼.*API|API.*委任.*拡張/u.test(text)) return "SSO信頼をAPI委任へ拡張";
   if (/IdP.*ユーザー代理.*署名JWT|署名JWT.*証明/u.test(text)) return "署名JWTで証明";
@@ -228,6 +229,11 @@ function semanticReplacementLabel(value: string | undefined): string | undefined
   if (/AIエージェント.*同意画面|長命APIキー/u.test(text)) return "AI時代は短命委任が必要";
   if (/短命.*スコープ.*IdP.*標準/u.test(text)) return "短命・集中制御でサイロを減らす";
   if (/短命.*aud.*IdP|エージェント時代/u.test(text)) return "短命・集中制御で委任を安全にする";
+  if (/confidential client|コンフィデンシャルクライアント/iu.test(text)) return "機密Client";
+  if (/insufficient_user_authentication|認証文脈不足/u.test(text)) return "認証不足エラー";
+  if (/audience-bound|aud.*token endpoint|audがtoken endpoint|aud固定/u.test(text)) return "aud固定";
+  if (/自分のID-JAG|redeem/u.test(text)) return "自己redeem禁止";
+  if (/JWKS|署名検証/u.test(text)) return "JWKS署名検証";
   if (/同意画面|対話型同意/u.test(text)) return "対話同意で停止";
   if (/長命APIキー|APIキー/u.test(text) && /漏洩|保持|持たせ|安全/u.test(text)) return "長命キーリスク";
   if (/短命|スコープ限定|ユーザー代理/u.test(text)) return "短命・限定委任";
@@ -305,6 +311,52 @@ function headerReplacementsForIntent(request: NarrativeDesignComponentRequest): 
     { at: 1, to: badgeForIntent(request) },
     { at: 2, to: slideMessageText(request) }
   ];
+}
+
+function matrixAxisReplacements(request: NarrativeDesignComponentRequest): PptxSlideTextReplacement[] {
+  const context = [request.intent.title, request.intent.message, request.intent.emphasis, ...request.intent.evidence, ...(request.intent.details ?? [])].join(" ");
+  const axis = /統制|ポリシー|監査|失効|集中/u.test(context)
+    ? { y: "統制強度  高  →", x: "分散リスク  低  →" }
+    : /セキュリティ|短命|aud|JWT|confidential|認証|検証|JWKS/u.test(context)
+      ? { y: "保護強度  高  →", x: "リスク  低  →" }
+      : { y: "適合度  高  →", x: "実装負荷  低  →" };
+  return [
+    { match: "効果  高  →", to: axis.y },
+    { match: "コスト  低  →", to: axis.x },
+    { match: "★", to: "重点" }
+  ];
+}
+
+function comparisonP3TextReplacements(request: NarrativeDesignComponentRequest): PptxSlideTextReplacement[] {
+  const context = [request.intent.title, request.intent.message, request.intent.emphasis, ...request.intent.evidence, ...(request.intent.details ?? [])].join(" ");
+  const summary = slideSummaryText(request);
+  const values = /ID-JAG|XAA/u.test(context)
+    ? [
+        "比較観点", "ID-JAG", "共通点", "XAA",
+        "位置づけ", "OAuth拡張仕様", "同じ認可方式", "企業向け呼称",
+        "標準化", "IETF標準化中", "vendor-neutral", "Okta主導で普及",
+        "用途", "技術仕様", "API委任", "エコシステム名",
+        "実務上", "標準名", "ほぼ同義", "普及名",
+        "補足", "署名JWT仕様", "相互運用", "企業プロファイル"
+      ]
+    : comparisonFallbackValues(request);
+  return [
+    ...headerReplacementsForIntent(request),
+    ...values.map((to, index) => ({ at: index + 3, to }) satisfies PptxSlideTextReplacement),
+    { at: 27, to: summary }
+  ];
+}
+
+function comparisonFallbackValues(request: NarrativeDesignComponentRequest): string[] {
+  const support = uniqueValues([...request.intent.evidence, ...(request.intent.details ?? []), request.intent.message, request.intent.emphasis]);
+  const [first = request.intent.title, second = request.intent.emphasis ?? request.intent.title, third = request.intent.message] = support;
+  const rowLabels = ["観点", "要点", "根拠", "違い", "補足"];
+  const columns = [compactReplacementText(first, request.intent.title, 14), compactReplacementText(second, request.intent.emphasis ?? request.intent.title, 14), compactReplacementText(third, request.intent.message, 14)];
+  const rows = rowLabels.flatMap((label, rowIndex) => {
+    const base = support[rowIndex + 3] ?? support[rowIndex] ?? request.intent.message;
+    return [label, compactReplacementText(base, request.intent.message, 12), compactReplacementText(support[rowIndex + 4] ?? base, request.intent.message, 12), compactReplacementText(support[rowIndex + 5] ?? base, request.intent.message, 12)];
+  });
+  return ["比較観点", ...columns, ...rows].slice(0, 24);
 }
 
 function replacementValuesForIntent(request: NarrativeDesignComponentRequest, componentId: string): string[] {
@@ -433,6 +485,7 @@ function captionReplacementsForIntent(request: NarrativeDesignComponentRequest, 
 }
 
 function textReplacements(request: NarrativeDesignComponentRequest, componentId: string, max = 16): PptxSlideTextReplacement[] {
+  if (componentId === "comparison-p3") return comparisonP3TextReplacements(request);
   const values = replacementValuesForIntent(request, componentId);
   const cleaned = values.map((value) => value.trim()).filter(Boolean).slice(0, max);
   const placeholders = DESIGN_COMPONENT_PLACEHOLDERS[componentId] ?? COMMON_PLACEHOLDERS;
@@ -441,6 +494,7 @@ function textReplacements(request: NarrativeDesignComponentRequest, componentId:
     replacements.push({ match: placeholders[index], to: cleaned[index] });
   }
   replacements.push(...captionReplacementsForIntent(request, componentId));
+  if (componentId === "matrix-p6") replacements.push(...matrixAxisReplacements(request));
   return replacements;
 }
 
