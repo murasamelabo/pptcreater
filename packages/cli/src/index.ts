@@ -364,6 +364,23 @@ const DESIGN_COMPONENT_PLACEHOLDERS: Record<string, string[]> = {
   "list-horizontal-p2": ["高品質", "徹底した品質管理と", "第三者レビュー体制", "高速対応", "自動化の徹底により", "短納期を安定実現", "柔軟拡張", "成長に合わせ機能を", "段階的に拡張"]
 };
 
+const DESIGN_COMPONENT_CAPTIONS: Record<string, string[]> = {
+  "flow-horizontal-p3": ["時間軸の上に節目を置くタイムライン型。日付や期間と相性が良い。"],
+  "before-after-p1": ["左右パネルを並べた基本形。改善前後を一目で対比できる王道レイアウト。"],
+  "matrix-p6": ["1象限だけを強調し、打ち手を1つに絞る。意思決定を促す結論型。"],
+  "formula-p1": ["異なる強みを掛け合わせると、単なる足し算を超えた成果が生まれる。", "掛け算の構図。相乗効果で成果を最大化する関係を表す。"],
+  "comparison-p3": ["3案を同じ項目で横並び比較。中央の推奨案を色帯で際立たせる構成。"],
+  "step-p4": ["等間隔のカードに達成度バーを添え、進捗の積み上がりを定量的に表示。"],
+  "list-vertical-p5": ["大きな番号で順序を強調し、見出しと補足を分けて読みやすく。"],
+  "list-horizontal-p2": ["要素を3つに絞り、アイコンを大きく。サービスの主要特長の訴求に。"]
+};
+
+function captionReplacementsForIntent(request: NarrativeDesignComponentRequest, componentId: string): PptxSlideTextReplacement[] {
+  const captions = DESIGN_COMPONENT_CAPTIONS[componentId] ?? [];
+  const emphasis = slideMessageText(request);
+  return captions.map((match) => ({ match, to: emphasis }));
+}
+
 function textReplacements(request: NarrativeDesignComponentRequest, componentId: string, max = 16): PptxSlideTextReplacement[] {
   const values = replacementValuesForIntent(request, componentId);
   const cleaned = values.map((value) => value.trim()).filter(Boolean).slice(0, max);
@@ -372,6 +389,7 @@ function textReplacements(request: NarrativeDesignComponentRequest, componentId:
   for (let index = 0; index < Math.min(placeholders.length, cleaned.length); index += 1) {
     replacements.push({ match: placeholders[index], to: cleaned[index] });
   }
+  replacements.push(...captionReplacementsForIntent(request, componentId));
   return replacements;
 }
 
