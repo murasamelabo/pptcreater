@@ -447,6 +447,52 @@ describe("message map deck generator", () => {
     expect(report.storyFlow?.S6.score).toBe(4);
   });
 
+  it("renders detailed report slides as read-heavy report pages", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "AI時代のサイバー防御レポートを説明する",
+        audience: "セキュリティリーダーと経営層",
+        desiredAction: "推奨対策の優先度を決める",
+        intents: [
+          {
+            slideId: "exploit-report",
+            title: "未修正システムの悪用",
+            message: "脆弱性悪用は初期アクセスの信頼性が高く、優先的な対策が必要である。",
+            evidence: [
+              "脆弱性悪用は初期アクセスの主要手段である。",
+              "攻撃者は認証基盤やリモート管理ツールを狙う。",
+              "侵害後は権限昇格、横展開、永続化へ進む。",
+              "防御側は高速パッチ、管理面の隔離、悪用検知を組み合わせる必要がある。"
+            ],
+            details: [
+              "背景: 攻撃者はユーザー操作に依存しない入口を好む。",
+              "観測: インターネット公開システムとリモートアクセス製品が狙われやすい。",
+              "影響: 成功した悪用は管理者権限や横展開につながる。",
+              "Recommendations: パッチを早く適用する / 管理インターフェースを隔離する / 悪用後の振る舞いを検知する"
+            ],
+            sourceTrace: ["Microsoft Digital Defense Report 2025 style reference"],
+            quietInfo: ["Patch fast, patch early", "Isolate management interfaces", "Employ exploit detection"],
+            visualType: "detail",
+            emphasis: "未修正システムの悪用"
+          }
+        ]
+      },
+      { title: "Digital Defense Detail", locale: "ja-JP", contentMode: "handout", styleProfile: "report", planningMode: "narrative-v1" }
+    );
+
+    const slide = deck.slides.find((candidate) => candidate.id === "exploit-report");
+    expect(slide?.layout).toBe("message-grammar-detail-reading-page");
+    const texts = slide?.elements.filter((element): element is Extract<typeof element, { type: "text" }> => element.type === "text") ?? [];
+    expect(texts.some((element) => element.id === "exploit-report-report-nav" && element.text.includes("Contents"))).toBe(true);
+    expect(texts.some((element) => element.id === "exploit-report-report-kicker" && /continued|詳細/u.test(element.text))).toBe(true);
+    expect(texts.some((element) => element.id === "exploit-report-report-quote")).toBe(true);
+    expect(texts.some((element) => element.id === "exploit-report-report-rec-title" && element.text === "Recommendations")).toBe(true);
+    expect(texts.filter((element) => /report-body-\d/u.test(element.id))).toHaveLength(4);
+    expect(slide?.elements.some((element) => element.id === "exploit-report-report-quote-panel" && element.type === "shape")).toBe(true);
+    expect(slide?.elements.some((element) => element.id === "exploit-report-report-rec-panel" && element.type === "shape")).toBe(true);
+    expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
+  });
+
   it("renders statement evidence as a primary support card plus secondary rows", () => {
     const deck = createDeckFromMessageMap(
       {

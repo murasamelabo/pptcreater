@@ -86,7 +86,7 @@ function visualObjects(slide: Slide): SlideElement[] {
 }
 
 function isGeneratedStructuralShape(element: ShapeElement): boolean {
-  return /-(?:table|ctable)-(?:stage|header|row|r\d+|h\d?|h-label)/u.test(element.id) || /-(?:dg|native-diagram)-(?:node|group|label-bg|connector-label-bg)/u.test(element.id);
+  return /-(?:table|ctable)-(?:stage|header|row|r\d+|h\d?|h-label)/u.test(element.id) || /-(?:dg|native-diagram)-(?:node|group|label-bg|connector-label-bg)/u.test(element.id) || /-report-(?:quote|rec)-panel$/u.test(element.id);
 }
 
 function isTinyQualityText(element: TextElement): boolean {

@@ -78,7 +78,6 @@ const DESIGN_COMPONENT_BY_GRAMMAR: Record<string, string> = {
   "comparison-field": "comparison-p3",
   "decision-surface": "matrix-p6",
   "layered-model": "step-p3",
-  "detail-reading-page": "list-vertical-p3",
   "evidence-board": "list-horizontal-p2",
   "typographic-emphasis": "scale-p4",
   "spatial-model": "formula-p1"
@@ -144,6 +143,7 @@ const COMMON_PLACEHOLDERS = [
 function designComponentIdForRequest(request: NarrativeDesignComponentRequest): string | undefined {
   const context = [request.intent.slideId, request.intent.title, request.intent.message, request.intent.emphasis, ...(request.intent.evidence ?? []), ...(request.intent.details ?? [])].join(" ");
   if (request.intent.visualType === "table" || request.expressionPlan.selectedGrammarId === "table-text-system") return undefined;
+  if (request.intent.visualType === "detail" || request.expressionPlan.selectedGrammarId === "detail-reading-page") return undefined;
   if (request.intent.visualType === "summary") return undefined;
   if (request.intent.visualType === "matrix" || request.expressionPlan.selectedGrammarId === "decision-surface") return undefined;
   if (request.intent.visualType === "contrast" && (/代替|alternative/i.test(context) || (request.intent.evidence ?? []).length > 3)) return "list-vertical-p5";

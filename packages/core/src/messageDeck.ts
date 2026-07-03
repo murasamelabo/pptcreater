@@ -1344,7 +1344,11 @@ function visualForIntent(theme: Theme, intent: SlideIntent, locale: Locale): [Me
 }
 
 function ownsFullSlideCanvas(elements: SlideElement[]): boolean {
-  return elements.length === 1 && elements[0]?.type === "pptxSlide" && elements[0].x === 0 && elements[0].y === 0 && elements[0].w >= W && elements[0].h >= H;
+  const first = elements[0];
+  return Boolean(
+    (elements.length === 1 && first?.type === "pptxSlide" && first.x === 0 && first.y === 0 && first.w >= W && first.h >= H) ||
+      (first?.type === "shape" && first.shape === "rect" && first.x === 0 && first.y === 0 && first.w >= W && first.h >= H && /-report-bg$/u.test(first.id))
+  );
 }
 
 function narrativeSlideShell(theme: Theme, intent: SlideIntent, elements: SlideElement[], expressionPlan: ExpressionPlan, index: number): Slide {
@@ -1652,20 +1656,55 @@ function narrativeLayeredModel(theme: Theme, intent: SlideIntent, expressionPlan
 
 function narrativeDetailPage(theme: Theme, intent: SlideIntent, expressionPlan: ExpressionPlan): SlideElement[] {
   const id = intent.slideId;
-  const items = narrativeItems(intent, 4, 6);
+  const details = intent.details ?? [];
+  const recommendationDetail = details.find((item) => /^Recommendations?\s*[:：]/iu.test(item));
+  const recommendations = (recommendationDetail ? recommendationDetail.replace(/^Recommendations?\s*[:：]\s*/iu, "") : intent.quietInfo.join(" / "))
+    .split(/\s+[／/]\s+|\s*\/\s*|、|;|；/u)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+  const bodyItems = [
+    ...details.filter((item) => item !== recommendationDetail).map((item) => visibleSentence(item)),
+    ...intent.evidence.map((item) => visibleSentence(item))
+  ].slice(0, 4);
+  const quote = visibleSentence(intent.message).replace(/。$/u, "").replace(/優先的な対策が必要である/u, "優先対策が必要");
+  const nav = "Contents   Introduction   The threat landscape   The defense landscape   Appendix";
+  const recText = (item: string): string => item.replace(/パッチを早く適用する/u, "パッチを早く適用").replace(/管理インターフェースを隔離する/u, "管理面を隔離").replace(/悪用後の振る舞いを検知する/u, "悪用後を検知");
   const elements: SlideElement[] = [
-    shape(`${id}-detail-page`, "roundRect", 0.92, 1.96, 11.48, 4.88, 10, theme.surface, theme.line, { radius: 0.16 }),
-    text(`${id}-detail-grammar`, "caption", visualKickerLabel(intent), 1.28, 2.26, 3.4, 0.18, 11, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true }),
-    text(`${id}-detail-lead`, "body", visibleSentence(intent.message), 1.28, 2.72, 10.32, 0.54, 12, theme, { bg: theme.surface, color: theme.text, fontSize: 18 })
+    shape(`${id}-report-bg`, "rect", 0, 0, W, H, 0, theme.background, theme.background, { radius: 0 }),
+    shape(`${id}-report-top-rule`, "rect", 0, 1.48, W, 0.02, 8, theme.accent, theme.accent, { radius: 0 }),
+    text(`${id}-report-title`, "caption", "Microsoft Digital Defense Report style", 0.42, 0.36, 2.74, 0.18, 9, theme, { bg: theme.background, color: theme.accent, fontSize: 12, bold: true }),
+    text(`${id}-report-nav`, "caption", nav, 3.46, 0.36, 6.2, 0.18, 10, theme, { bg: theme.background, color: theme.text, fontSize: 11, align: "center" }),
+    text(`${id}-report-page`, "caption", "20", 12.48, 0.36, 0.34, 0.18, 11, theme, { bg: theme.background, color: theme.accent, fontSize: 11, bold: true, align: "right" }),
+    text(`${id}-report-kicker`, "caption", `${slideTopicTitle(intent)} continued`, 0.42, 1.56, 5.2, 0.18, 12, theme, { bg: theme.background, color: theme.accent, fontSize: 12, bold: true }),
+    text(`${id}-report-heading`, "callout", slideTopicTitle(intent), 0.42, 2.08, 3.0, 0.44, 13, theme, { bg: theme.background, color: theme.accent, fontSize: 20 }),
+    shape(`${id}-report-quote-panel`, "rect", 7.64, 1.98, 2.12, 4.74, 40, theme.accentSoft, theme.accent, { radius: 0, width: 0.9 }),
+    text(`${id}-report-quote-mark`, "callout", "“", 7.76, 2.1, 0.42, 0.32, 41, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 24, bold: true }),
+    text(`${id}-report-quote`, "callout", quote, 7.74, 2.62, 1.72, 2.2, 42, theme, { bg: theme.accentSoft, color: theme.text, fontSize: 17 }),
+    shape(`${id}-report-rec-panel`, "rect", 9.92, 1.98, 2.98, 4.74, 50, mix(theme.accent, theme.background, 0.9), theme.accent, { radius: 0, width: 0.9 }),
+    text(`${id}-report-rec-title`, "caption", "Recommendations", 10.1, 2.14, 2.38, 0.32, 51, theme, { bg: mix(theme.accent, theme.background, 0.9), color: theme.text, fontSize: 16, bold: true }),
+    shape(`${id}-report-rec-rule`, "rect", 10.1, 2.58, 2.46, 0.02, 52, theme.text, theme.text, { radius: 0 })
   ];
-  items.forEach((item, index) => {
+  bodyItems.forEach((item, index) => {
     const column = index % 2;
     const row = Math.floor(index / 2);
-    const x = 1.28 + column * 5.34;
-    const y = 3.62 + row * 0.82;
-    const order = 20 + index * 4;
-    elements.push(shape(`${id}-detail-marker-${index}`, "rect", x, y + 0.04, 0.08, 0.38, order, theme.accent, theme.accent, { radius: 0 }));
-    elements.push(text(`${id}-detail-item-${index}`, "body", visibleSentence(item), x + 0.28, y, 4.58, 0.34, order + 1, theme, { bg: theme.surface, color: theme.text, fontSize: 15 }));
+    const x = 0.42 + column * 3.18;
+    const y = 2.76 + row * 1.34;
+    const order = 20 + index * 3;
+    const parsed = splitKeyValue(item);
+    const body = (parsed ? parsed.value : item).replace(/成功した悪用は管理者権限や横展開につながる/u, "成功した悪用は権限昇格・横展開を招く").replace(/管理者権限や横展開につながる/u, "権限昇格・横展開を招く").replace(/狙われやすい。/u, "狙われる。");
+    elements.push(text(`${id}-report-body-${index}`, "body", body, x, y + (parsed ? 0.32 : 0), 2.78, parsed ? 0.78 : 1.04, order, theme, { bg: theme.background, color: theme.mutedText, fontSize: 14 }));
+    if (parsed) {
+      elements.push(text(`${id}-report-body-heading-${index}`, "caption", parsed.key, x, y, 2.7, 0.18, order + 1, theme, { bg: theme.background, color: theme.accent, fontSize: 12, bold: true }));
+    }
+  });
+  recommendations.forEach((item, index) => {
+    const y = 2.82 + index * 1.08;
+    const order = 60 + index * 3;
+    elements.push(text(`${id}-report-rec-heading-${index}`, "caption", recText(item), 10.1, y, 2.42, 0.22, order, theme, { bg: mix(theme.accent, theme.background, 0.9), color: theme.text, fontSize: 12, bold: true }));
+    if (index < recommendations.length - 1) {
+      elements.push(shape(`${id}-report-rec-sep-${index}`, "rect", 10.1, y + 0.74, 2.46, 0.01, order + 1, theme.line, theme.line, { radius: 0 }));
+    }
   });
   return elements;
 }
