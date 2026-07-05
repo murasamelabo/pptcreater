@@ -19,7 +19,8 @@ import {
   type DesignTokens,
   type PowerPointTemplatePackage,
   type TemplateManifest,
-  type SlideElement
+  type SlideElement,
+  type PptxSlideTextReplacement
 } from "@pptcreater/core";
 import { themeColor } from "./templateImport.js";
 import { applyPptxSlideNodeOperations } from "./pptxSlideNodes.js";
@@ -1043,6 +1044,184 @@ function decodeXmlText(value: string): string {
 
 type PptxSlideTextReplacementEntry = { match: string; to: string } | { at: number; to: string };
 
+export type PptxSlideTextFitIssue = {
+  severity: "error" | "warning";
+  code: string;
+  message: string;
+  path: string;
+  details: Record<string, number | string | boolean>;
+};
+
+export type PptxSlideTextSlotProfile = {
+  at: number;
+  text: string;
+  wInches: number;
+  hInches: number;
+  fontSize: number;
+  shapeName: string;
+  iconLike: boolean;
+};
+
+function templateTextUnits(value: string): number {
+  return Array.from(value).reduce((sum, char) => {
+    if (/\s/u.test(char)) return sum + 0.35;
+    if (/[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}\u30FC\u30FB\uFF01-\uFF60\uFFE0-\uFFE6]/u.test(char)) return sum + 1;
+    return sum + 0.62;
+  }, 0);
+}
+
+function textCapacityForSlot(slot: PptxSlideTextSlotProfile): { capacity: number; maxLines: number; estimatedLines: (value: string) => number } {
+  const capacity = Math.max(1, (Math.max(0.05, slot.wInches - 0.04) * 72) / (slot.fontSize * 0.55));
+  const maxLines = Math.max(1, Math.floor((slot.hInches * 72) / (slot.fontSize * 1.2)));
+  return {
+    capacity,
+    maxLines,
+    estimatedLines: (value: string) => Math.max(1, Math.ceil(templateTextUnits(value) / capacity))
+  };
+}
+
+function pptxSlideTextFitProblem(value: string, slot: PptxSlideTextSlotProfile): { estimatedLines: number; maxLines: number; capacity: number; reason: "icon-text" | "overflow" } | undefined {
+  const normalized = value.replace(/\s+/gu, " ").trim();
+  if (!normalized) return undefined;
+  const { capacity, maxLines, estimatedLines } = textCapacityForSlot(slot);
+  const lineCount = estimatedLines(normalized);
+  const isLongForIcon = slot.iconLike && (templateTextUnits(normalized) > Math.max(2.2, capacity * maxLines * 0.9) || /\s|[:：]/u.test(normalized) || /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(normalized));
+  if (isLongForIcon) {
+    return { estimatedLines: lineCount, maxLines, capacity, reason: "icon-text" };
+  }
+  if (!slot.iconLike && normalized.length > 14 && lineCount > maxLines) {
+    return { estimatedLines: lineCount, maxLines, capacity, reason: "overflow" };
+  }
+  return undefined;
+}
+
+function compactIconText(value: string, slot: PptxSlideTextSlotProfile): string {
+  const normalized = value.replace(/\s+/gu, " ").trim();
+  const number = /(?<![A-Za-z0-9])([-+]?\d[\d,.]*(?:\.\d+)?)(?:\s*(%|x|倍|K\+?|M\+?|B\+?))?/iu.exec(normalized);
+  if (number) {
+    const amount = number[1].replace(/,/gu, "");
+    const unit = number[2] ?? "";
+    const candidate = /^%$/u.test(unit) ? amount : `${amount}${unit}`;
+    if (!pptxSlideTextFitProblem(candidate, slot)) return candidate;
+    return amount;
+  }
+  const acronym = normalized.match(/\b[A-Z][A-Z0-9+-]{1,4}\b/u)?.[0];
+  if (acronym && !pptxSlideTextFitProblem(acronym, slot)) return acronym;
+  const firstToken = normalized.split(/[\s:：/／・|｜-]+/u).find(Boolean) ?? normalized;
+  const chars = Array.from(firstToken);
+  for (const length of [4, 3, 2, 1]) {
+    const candidate = chars.slice(0, length).join("");
+    if (candidate && !pptxSlideTextFitProblem(candidate, slot)) return candidate;
+  }
+  return chars[0] ?? "";
+}
+
+function compactTextForSlot(value: string, slot: PptxSlideTextSlotProfile): string {
+  if (slot.iconLike) return compactIconText(value, slot);
+  const normalized = value.replace(/\s+/gu, " ").trim();
+  const words = normalized.split(/\s+/u).filter(Boolean);
+  const candidates = [words.slice(0, 2).join(" "), words[0], Array.from(normalized).slice(0, 14).join(""), Array.from(normalized).slice(0, 10).join("")].filter(Boolean);
+  return candidates.find((candidate) => !pptxSlideTextFitProblem(candidate, slot)) ?? candidates.at(-1) ?? normalized;
+}
+
+function shapeTextSlotProfiles(xml: string): PptxSlideTextSlotProfile[] {
+  const slots: PptxSlideTextSlotProfile[] = [];
+  let runIndex = -1;
+  for (const shapeMatch of xml.matchAll(/<p:sp\b[\s\S]*?<\/p:sp>/g)) {
+    const shape = shapeMatch[0];
+    const name = /<p:cNvPr\b[^>]*\bname="([^"]*)"/i.exec(shape)?.[1] ?? "";
+    const ext = /<a:ext\b[^>]*\bcx="([^"]+)"[^>]*\bcy="([^"]+)"/i.exec(shape);
+    const wInches = Number(ext?.[1] ?? 0) / 914400;
+    const hInches = Number(ext?.[2] ?? 0) / 914400;
+    const iconLike = (wInches <= 0.9 && hInches <= 0.9) || (wInches <= 1.2 && hInches <= 0.55);
+    for (const runMatch of shape.matchAll(/<a:r\b[\s\S]*?<\/a:r>/g)) {
+      const run = runMatch[0];
+      const textMatch = /<a:t>([\s\S]*?)<\/a:t>/i.exec(run);
+      if (!textMatch) continue;
+      runIndex += 1;
+      const fontSize = Number(/<a:rPr\b[^>]*\bsz="([^"]+)"/i.exec(run)?.[1] ?? 1200) / 100;
+      slots.push({
+        at: runIndex,
+        text: decodeXmlText(textMatch[1]),
+        wInches,
+        hInches,
+        fontSize,
+        shapeName: decodeXmlText(name),
+        iconLike
+      });
+    }
+  }
+  return slots;
+}
+
+function replacementForSlot(replacements: ReadonlyArray<PptxSlideTextReplacementEntry> | undefined, slot: PptxSlideTextSlotProfile): string | undefined {
+  if (!replacements) return undefined;
+  let next: string | undefined;
+  for (const replacement of replacements) {
+    if ("at" in replacement && replacement.at === slot.at) next = replacement.to;
+    if ("match" in replacement && replacement.match === slot.text) next = replacement.to;
+  }
+  return next;
+}
+
+export function constrainPptxSlideTextReplacements(
+  replacements: ReadonlyArray<PptxSlideTextReplacement> | undefined,
+  slots: ReadonlyArray<PptxSlideTextSlotProfile>
+): PptxSlideTextReplacement[] | undefined {
+  if (!replacements || replacements.length === 0) return replacements ? [...replacements] : undefined;
+  return replacements.map((replacement) => {
+    const slot = "at" in replacement ? slots.find((item) => item.at === replacement.at) : slots.find((item) => item.text === replacement.match);
+    if (!slot || !pptxSlideTextFitProblem(replacement.to, slot)) return { ...replacement };
+    return { ...replacement, to: compactTextForSlot(replacement.to, slot) };
+  });
+}
+
+async function pptxSlideTextSlotProfiles(element: Extract<SlideElement, { type: "pptxSlide" }>): Promise<PptxSlideTextSlotProfile[]> {
+  const sourceZip = await JSZip.loadAsync(await pptxSlideTemplateBuffer(element));
+  const sourceSlideXml = await readZipXml(sourceZip, sourceSlidePath(element.sourceSlideIndex));
+  const rawChildren = slideSpTreeChildren(sourceSlideXml);
+  const structuredChildren = applyPptxSlideNodeOperations(rawChildren, element.nodeGroups, element.nodeOperations);
+  return shapeTextSlotProfiles(structuredChildren);
+}
+
+export async function reviewPptxSlideTextFit(deck: DeckSpec): Promise<PptxSlideTextFitIssue[]> {
+  const issues: PptxSlideTextFitIssue[] = [];
+  for (const [slideIndex, slide] of deck.slides.entries()) {
+    for (const [elementIndex, element] of slide.elements.entries()) {
+      if (element.type !== "pptxSlide") continue;
+      const slots = await pptxSlideTextSlotProfiles(element);
+      for (const slot of slots) {
+        const replacement = replacementForSlot(element.textReplacements, slot);
+        if (replacement === undefined) continue;
+        const problem = pptxSlideTextFitProblem(replacement, slot);
+        if (!problem) continue;
+        issues.push({
+          severity: "error",
+          code: problem.reason === "icon-text" ? "visual.pptx-slide-icon-text-overflow" : "visual.pptx-slide-text-overflow",
+          message: problem.reason === "icon-text"
+            ? "A design-component icon/badge slot receives text that is too long. Keep the icon to a short marker or number and move the full meaning to a nearby label/caption replacement."
+            : "A design-component text replacement is likely to overflow its original PowerPoint textbox. Shorten the replacement or choose a roomier component.",
+          path: `slides.${slideIndex}.elements.${elementIndex}.textReplacements.${slot.at}`,
+          details: {
+            slide: slideIndex + 1,
+            elementId: element.id,
+            runIndex: slot.at,
+            originalText: slot.text,
+            replacementText: replacement,
+            wInches: Number(slot.wInches.toFixed(3)),
+            hInches: Number(slot.hInches.toFixed(3)),
+            fontSize: Number(slot.fontSize.toFixed(1)),
+            estimatedLines: problem.estimatedLines,
+            maxLines: problem.maxLines,
+            iconLike: slot.iconLike
+          }
+        });
+      }
+    }
+  }
+  return issues;
+}
+
 function applyPptxSlideTextReplacements(
   xml: string,
   replacements: ReadonlyArray<PptxSlideTextReplacementEntry> | undefined
@@ -1254,8 +1433,10 @@ async function transplantPptxSlideElement(
   const { relIdMap, copiedParts } = await copySlideRelationships(sourceZip, targetZip, sourceRels, targetRels, sourceContentTypesXml);
   const rawChildren = slideSpTreeChildren(sourceSlideXml);
   const structuredChildren = applyPptxSlideNodeOperations(rawChildren, element.nodeGroups, element.nodeOperations);
+  const textSlotProfiles = shapeTextSlotProfiles(structuredChildren);
+  const constrainedTextReplacements = constrainPptxSlideTextReplacements(element.textReplacements, textSlotProfiles);
   const renumbered = renumberShapeIds(rewriteRelationshipIds(structuredChildren, relIdMap), maxShapeId(targetSlideXml) + 1);
-  const copiedChildren = applyPptxSlideRecolor(applyPptxSlideTextReplacements(renumbered, element.textReplacements), element.recolor);
+  const copiedChildren = applyPptxSlideRecolor(applyPptxSlideTextReplacements(renumbered, constrainedTextReplacements), element.recolor);
   const patched = targetSlideXml.replace("</p:spTree>", `${copiedChildren}</p:spTree>`);
   if (copiedParts.length > 0) {
     const contentTypesXml = await readZipXml(targetZip, "[Content_Types].xml");

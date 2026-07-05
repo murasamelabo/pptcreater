@@ -59,7 +59,7 @@ import {
   type PptxSlideColorReplacement,
   type PptxSlideTextReplacement
 } from "@pptcreater/core";
-import { importNotPersistedWarning, importTemplateFromPptx, renderDeckToPptx } from "@pptcreater/render-pptx";
+import { importNotPersistedWarning, importTemplateFromPptx, renderDeckToPptx, reviewPptxSlideTextFit } from "@pptcreater/render-pptx";
 import { renderStudioHtml } from "@pptcreater/studio";
 
 function jsonText(value: unknown) {
@@ -969,7 +969,14 @@ export function createPptcreaterMcpServer(): McpServer {
         deck: DeckSpecSchema
       }
     },
-    async ({ deck }) => jsonText(reviewVisualQuality(parseDeckSpec(deck)))
+    async ({ deck }) => {
+      const parsedDeck = parseDeckSpec(deck);
+      const report = reviewVisualQuality(parsedDeck);
+      const pptxSlideIssues = await reviewPptxSlideTextFit(parsedDeck);
+      report.issues.push(...pptxSlideIssues);
+      report.ok = report.issues.every((issue) => issue.severity !== "error");
+      return jsonText(report);
+    }
   );
 
   server.registerTool(

@@ -21,7 +21,7 @@ import {
   schematicTemplateForStyleProfile,
   type SchematicKind
 } from "@pptcreater/diagram";
-import { importTemplateFromPptx, renderDeckToPptx } from "./index.js";
+import { importTemplateFromPptx, renderDeckToPptx, reviewPptxSlideTextFit } from "./index.js";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
@@ -196,6 +196,22 @@ async function buildPptxSlideTemplate(): Promise<Buffer> {
 <p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>
     <p:sp><p:nvSpPr><p:cNvPr id="2" name="Template Box"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="914400" y="914400"/><a:ext cx="5486400" cy="914400"/></a:xfrm><a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="EAF2FF"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr sz="2400" b="1"><a:solidFill><a:srgbClr val="111827"/></a:solidFill></a:rPr><a:t>CURATED TREE COMPONENT</a:t></a:r></a:p></p:txBody></p:sp>
+  </p:spTree></p:cSld>
+</p:sld>`
+  );
+  zip.file("ppt/slides/_rels/slide1.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>`);
+  return zip.generateAsync({ type: "nodebuffer" });
+}
+
+async function buildPptxSlideTemplateWithTinyBadge(): Promise<Buffer> {
+  const zip = new JSZip();
+  zip.file(
+    "ppt/slides/slide1.xml",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>
+    <p:sp><p:nvSpPr><p:cNvPr id="2" name="Metric Badge"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="914400" y="914400"/><a:ext cx="457200" cy="457200"/></a:xfrm><a:prstGeom prst="ellipse"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="E0922F"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr sz="1800" b="1"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:rPr><a:t>57%</a:t></a:r></a:p></p:txBody></p:sp>
+    <p:sp><p:nvSpPr><p:cNvPr id="3" name="Metric Label"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="1600200" y="914400"/><a:ext cx="2743200" cy="457200"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr sz="1800" b="1"><a:solidFill><a:srgbClr val="111827"/></a:solidFill></a:rPr><a:t>Metric label</a:t></a:r></a:p></p:txBody></p:sp>
   </p:spTree></p:cSld>
 </p:sld>`
   );
@@ -1096,6 +1112,69 @@ describe("PPTX renderer", () => {
     const slide = (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
     expect(slide).toContain("新しいラベル &amp; 記号&lt;&gt;");
     expect(slide).not.toContain("CURATED TREE COMPONENT");
+  });
+
+  it("reviews unsafe text replacements inside tiny pptxSlide icon slots", async () => {
+    const sourceDataUri = `data:application/vnd.openxmlformats-officedocument.presentationml.presentation;base64,${(await buildPptxSlideTemplateWithTinyBadge()).toString("base64")}`;
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "badge-component",
+      type: "pptxSlide",
+      templateDataUri: sourceDataUri,
+      sourceSlideIndex: 1,
+      textReplacements: [
+        { at: 0, to: "AI coding tools use: 92%" },
+        { at: 1, to: "AI coding tools use" }
+      ],
+      x: 0,
+      y: 0,
+      w: 13.333,
+      h: 7.5,
+      summary: "Badge component",
+      longDescription: "A tiny badge must not receive a full metric sentence.",
+      altText: "Badge component",
+      decorative: false,
+      readingOrder: 20
+    });
+
+    const issues = await reviewPptxSlideTextFit(deck);
+
+    expect(issues.map((issue) => issue.code)).toContain("visual.pptx-slide-icon-text-overflow");
+    expect(issues[0]?.message).toContain("move the full meaning to a nearby label");
+  });
+
+  it("compacts unsafe tiny pptxSlide icon text while preserving the nearby label", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-pptx-slide-badge-"));
+    const sourceDataUri = `data:application/vnd.openxmlformats-officedocument.presentationml.presentation;base64,${(await buildPptxSlideTemplateWithTinyBadge()).toString("base64")}`;
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "badge-component",
+      type: "pptxSlide",
+      templateDataUri: sourceDataUri,
+      sourceSlideIndex: 1,
+      textReplacements: [
+        { at: 0, to: "AI coding tools use: 92%" },
+        { at: 1, to: "AI coding tools use" }
+      ],
+      x: 0,
+      y: 0,
+      w: 13.333,
+      h: 7.5,
+      summary: "Badge component",
+      longDescription: "A tiny badge is rendered as a compact marker while its meaning stays in the adjacent label.",
+      altText: "Badge component",
+      decorative: false,
+      readingOrder: 20
+    });
+    const outputPath = join(outputDir, "badge-output.pptx");
+
+    await renderDeckToPptx(deck, outputPath);
+
+    const zip = await JSZip.loadAsync(await readFile(outputPath));
+    const slide = (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
+    expect(slide).toContain("<a:t>92</a:t>");
+    expect(slide).toContain("<a:t>AI coding tools use</a:t>");
+    expect(slide).not.toContain("AI coding tools use: 92%");
   });
 
   it("re-tones a transplanted pptxSlide figure with scoped color remaps", async () => {

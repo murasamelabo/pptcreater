@@ -62,7 +62,7 @@ import {
   type StyleProfile,
   type TemplateRegistryEntry
 } from "@pptcreater/core";
-import { importNotPersistedWarning, importPersistenceSuffix, importTemplateFromPptx, renderDeckToPptx } from "@pptcreater/render-pptx";
+import { importNotPersistedWarning, importPersistenceSuffix, importTemplateFromPptx, renderDeckToPptx, reviewPptxSlideTextFit } from "@pptcreater/render-pptx";
 import { renderStudioHtml } from "@pptcreater/studio";
 import { installGuidance } from "./installGuidance.js";
 
@@ -1058,6 +1058,9 @@ program
   .action(commandAction(async (deckPath: string, options: { json: boolean }) => {
     const deck = parseDeckSpec(await readJson(deckPath));
     const report = reviewVisualQuality(deck);
+    const pptxSlideIssues = await reviewPptxSlideTextFit(deck);
+    report.issues.push(...pptxSlideIssues);
+    report.ok = report.issues.every((issue) => issue.severity !== "error");
     if (options.json) {
       console.log(JSON.stringify(report, null, 2));
       if (!report.ok) process.exitCode = 1;
