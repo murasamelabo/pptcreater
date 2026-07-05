@@ -38,6 +38,7 @@ const CARD_SIDE_PADDING = 0.16;
 // 0.34 content inset guarantees the text never touches the colored bar (>=0.12in clearance) while
 // keeping every card in a row aligned to the same content margin.
 const CARD_ACCENT_CONTENT_INSET = 0.34;
+const COMPACT_LABEL_MAX_UNITS = 10;
 const BAD_LINE_START_PATTERN = /^[、。，．・,，!?！？:：;；）」』】\]\})]/;
 const BAD_LINE_END_PATTERN = /[（「『【\[\({]$/;
 // Characters that must not start a line (closing punctuation, small kana, prolonged sound mark,
@@ -47,6 +48,7 @@ const NO_BREAK_BEFORE_PATTERN = /[、。，．・,.!?！？:：;；)\]\}）」�
 const NO_BREAK_AFTER_PATTERN = /[（「『【〔｛(\[\{〈《]/;
 // Letters, digits, kana, and kanji count as line "content"; punctuation does not.
 const CONTENT_CHAR_PATTERN = /[A-Za-z0-9\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
+const ORPHAN_CONTENT_CHAR_LIMIT = 2;
 const JAPANESE_SCRIPT_PATTERN = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
 // Full-width glyphs (kana, kanji, prolonged-sound mark, middle dot, full-width forms) take ~1 em.
 const FULL_WIDTH_PATTERN = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}\u30FC\u30FB\uFF01-\uFF60\uFFE0-\uFFE6]/u;
@@ -389,7 +391,7 @@ function repairHardWrappedLines(lines: string[]): string[] {
       continue;
     }
 
-    if (contentCharacterCount(current) <= 1 && repaired[index - 1].trim().length > 1) {
+    if (contentCharacterCount(current) <= ORPHAN_CONTENT_CHAR_LIMIT && repaired[index - 1].trim().length > 1) {
       const [previous, next] = movePreviousTailToLine(repaired[index - 1], current);
       repaired[index - 1] = previous;
       repaired[index] = next;
@@ -463,7 +465,7 @@ function isBadContinuationLine(previous: string, current: string): boolean {
   }
 
   const currentContentChars = contentCharacterCount(trimmed);
-  if (currentContentChars <= 1 && !isAcceptableShortLine(trimmed)) {
+  if (currentContentChars <= ORPHAN_CONTENT_CHAR_LIMIT && !isAcceptableShortLine(trimmed)) {
     return true;
   }
 
@@ -493,8 +495,7 @@ function isAcceptableShortLine(value: string): boolean {
 }
 
 function isCompactManualStructure(element: TextElement, lines: string[]): boolean {
-  const compactStructureLimit = 10;
-  return element.role !== "title" && lines.length === 2 && lines.every((line) => textUnits(line.trim()) <= compactStructureLimit);
+  return element.role !== "title" && lines.length === 2 && lines.every((line) => textUnits(line.trim()) <= COMPACT_LABEL_MAX_UNITS);
 }
 
 /**
@@ -718,7 +719,7 @@ export function findTextLineBreakIssue(element: TextElement): string | undefined
   }
 
   const previousMaxUnits = Math.max(...lines.slice(0, -1).map(textUnits), 0);
-  const isCompactLabelValue = isCompactManualStructure(element, lines) && previousMaxUnits <= 6;
+  const isCompactLabelValue = isCompactManualStructure(element, lines) && previousMaxUnits <= COMPACT_LABEL_MAX_UNITS;
   for (let index = 1; index < lines.length; index += 1) {
     const line = lines[index];
     const contentChars = Array.from(line).filter((char) => CONTENT_CHAR_PATTERN.test(char)).length;
@@ -726,7 +727,7 @@ export function findTextLineBreakIssue(element: TextElement): string | undefined
       return `Line "${line}" looks like a broken continuation; rebalance the line break, widen the box, or shorten the copy.`;
     }
 
-    if (contentChars <= 1 && !isAcceptableShortLine(line) && !isCompactLabelValue) {
+    if (contentChars <= ORPHAN_CONTENT_CHAR_LIMIT && !isAcceptableShortLine(line) && !isCompactLabelValue) {
       return `Line "${line}" is an orphan; rebalance the line break, widen the box, or shorten the copy.`;
     }
   }
@@ -876,6 +877,93 @@ function refitAdjustedText(element: TextElement, tokens: DesignTokens): TextElem
     );
   }
   return fitted;
+}
+
+function normalizeInlineText(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function comparableInlineText(value: string): string {
+  return normalizeInlineText(value).replace(/\s+/g, "");
+}
+
+function normalizeGeneratedTablePart(value: string): string {
+  const text = normalizeInlineText(value);
+  return JAPANESE_SCRIPT_PATTERN.test(text) ? text.replace(/\s+/g, "") : text;
+}
+
+function splitGeneratedTableSentence(value: string): { label: string; body: string } | undefined {
+  const text = normalizeInlineText(value);
+  const patterns = [
+    /^(.{2,26}?)(?:では、?|には、?)(.+)$/u,
+    /^(.{2,24}?)(?:は|が|を)(.+)$/u,
+    /^(.{2,24}?)(?:と|から(?!の))(.+)$/u,
+    /^(.{2,36}?)(?:\s+(?:is|are|has|have|requires|enables|causes|creates|uses)\s+)(.+)$/iu
+  ];
+
+  for (const pattern of patterns) {
+    const match = pattern.exec(text);
+    if (!match) {
+      continue;
+    }
+
+    const label = normalizeGeneratedTablePart(match[1]?.replace(/[、,，・／/\s]+$/u, "") ?? "");
+    const body = normalizeGeneratedTablePart(match[2]?.replace(/^[、,，・／/\s]+/u, "") ?? "");
+    if (label && body && label !== body) {
+      return { label, body };
+    }
+  }
+
+  return undefined;
+}
+
+function repairGeneratedTableRows(elements: SlideElement[]): SlideElement[] {
+  const replacements = new Map<string, string>();
+  for (const element of elements) {
+    if (element.type !== "text") {
+      continue;
+    }
+
+    const labelMatch = /^(.*-table-row)-label-(\d+)$/u.exec(element.id);
+    if (!labelMatch) {
+      continue;
+    }
+
+    const bodyId = `${labelMatch[1]}-body-${labelMatch[2]}`;
+    const body = elements.find((candidate): candidate is TextElement => candidate.type === "text" && candidate.id === bodyId);
+    if (!body) {
+      continue;
+    }
+
+    const labelText = normalizeInlineText(element.text);
+    const bodyText = normalizeInlineText(body.text);
+    const comparableLabel = comparableInlineText(labelText);
+    const comparableBody = comparableInlineText(bodyText);
+    if (comparableLabel !== comparableBody && !comparableLabel.startsWith(comparableBody) && !comparableBody.startsWith(comparableLabel)) {
+      continue;
+    }
+
+    const split = splitGeneratedTableSentence(labelText.length >= bodyText.length ? labelText : bodyText);
+    if (!split) {
+      continue;
+    }
+
+    replacements.set(element.id, split.label);
+    replacements.set(body.id, split.body);
+  }
+
+  if (replacements.size === 0) {
+    return elements;
+  }
+
+  return elements.map((element) => {
+    if (element.type !== "text") {
+      return element;
+    }
+
+    const text = replacements.get(element.id);
+    return text ? { ...element, text } : element;
+  });
 }
 
 // Keep a card's inner text/markers comfortably inside the card and clear of a left accent bar.
@@ -1140,7 +1228,7 @@ function fitElementToSlide(element: SlideElement, tokens: DesignTokens): SlideEl
 }
 
 export function normalizeSlideLayout(slide: Slide, tokens: DesignTokens = defaultTokens("en-US")): Slide {
-  const fittedElements = slide.elements.map((element) => fitElementToSlide(element, tokens));
+  const fittedElements = repairGeneratedTableRows(slide.elements).map((element) => fitElementToSlide(element, tokens));
   const { elements: insetElements } = insetCardContentForBars(fittedElements, tokens);
   return normalizeReadingOrder({
     ...slide,

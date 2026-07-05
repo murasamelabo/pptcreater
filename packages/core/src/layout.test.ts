@@ -1041,6 +1041,112 @@ describe("layout polish", () => {
     expect(label.h).toBeGreaterThanOrEqual(0.42);
   });
 
+  it("reflows Japanese shape labels that leave a two-character orphan line", () => {
+    const slide: Slide = {
+      id: "orphan-label",
+      title: "Orphan label",
+      layout: "title-content",
+      elements: [
+        {
+          id: "row-label",
+          type: "text",
+          role: "caption",
+          text: "失効管理が各リソースアプリに\n分散",
+          x: 1,
+          y: 1,
+          w: 2.54,
+          h: 0.61,
+          fontSize: 12,
+          bold: false,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const label = normalized.elements[0];
+
+    const orphanLines = label.type === "text" ? label.text.split(/\r?\n/u).filter((line, index) => index > 0 && /^[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]{1,2}$/u.test(line.trim())) : ["missing"];
+
+    expect(orphanLines).toEqual([]);
+  });
+
+  it("shortens dense Japanese table labels when reflow cannot remove orphan lines", () => {
+    const slide: Slide = {
+      id: "dense-table-label",
+      title: "Dense table label",
+      layout: "title-content",
+      elements: [
+        {
+          id: "row-label",
+          type: "text",
+          role: "caption",
+          text: "失効管理が各リソースアプリに\n分散",
+          x: 1,
+          y: 1,
+          w: 2.54,
+          h: 0.41,
+          fontSize: 12,
+          bold: false,
+          decorative: false,
+          readingOrder: 1
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const label = normalized.elements[0];
+    const orphanLines = label.type === "text" ? label.text.split(/\r?\n/u).filter((line, index) => index > 0 && /^[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]{1,2}$/u.test(line.trim())) : [];
+
+    expect(orphanLines).toEqual([]);
+  });
+
+  it("repairs generated table row labels that duplicated the row body", () => {
+    const slide: Slide = {
+      id: "generated-table",
+      title: "Generated table",
+      layout: "title-content",
+      elements: [
+        {
+          id: "legacy-problems-table-row-label-2",
+          type: "text",
+          role: "body",
+          text: "失効管理が各リソースアプリに\n分散",
+          x: 2.08,
+          y: 4.2,
+          w: 2.4,
+          h: 0.61,
+          fontSize: 12,
+          bold: true,
+          decorative: false,
+          readingOrder: 1
+        },
+        {
+          id: "legacy-problems-table-row-body-2",
+          type: "text",
+          role: "caption",
+          text: "失効管理が各リソースアプリに分散",
+          x: 4.7,
+          y: 4.22,
+          w: 6.9,
+          h: 0.2,
+          fontSize: 12,
+          bold: false,
+          decorative: false,
+          readingOrder: 2
+        }
+      ]
+    };
+
+    const normalized = normalizeSlideLayout(slide);
+    const label = normalized.elements.find((element) => element.id === "legacy-problems-table-row-label-2");
+    const body = normalized.elements.find((element) => element.id === "legacy-problems-table-row-body-2");
+
+    expect(label?.type === "text" ? label.text : "").toBe("失効管理");
+    expect(body?.type === "text" ? body.text : "").toBe("各リソースアプリに分散");
+  });
+
   it("does not silently truncate copy that cannot fit", () => {
     const slide: Slide = {
       id: "overflow",

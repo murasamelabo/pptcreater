@@ -328,6 +328,8 @@ describe("message map deck generator", () => {
     expect(firstBody).toBe("長命・過剰スコープ・分散管理");
     expect(texts.find((element) => element.id === "legacy-means-table-row-label-2")?.text).toBe("失効管理");
     expect(texts.find((element) => element.id === "legacy-means-table-row-body-2")?.text).toBe("各リソースアプリに分散");
+    expect(texts.find((element) => element.id === "legacy-means-table-row-label-3")?.text).toBe("サービスアカウント");
+    expect(texts.find((element) => element.id === "legacy-means-table-row-body-3")?.text).toBe("ユーザー代理性が弱い");
     for (const index of [0, 1, 2, 3]) {
       const label = texts.find((element) => element.id === `legacy-means-table-row-label-${index}`)?.text;
       const body = texts.find((element) => element.id === `legacy-means-table-row-body-${index}`)?.text;
