@@ -1177,6 +1177,40 @@ describe("PPTX renderer", () => {
     expect(slide).not.toContain("AI coding tools use: 92%");
   });
 
+  it("drops unit suffixes from tiny pptxSlide badges when they would wrap", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-pptx-slide-unit-badge-"));
+    const sourceDataUri = `data:application/vnd.openxmlformats-officedocument.presentationml.presentation;base64,${(await buildPptxSlideTemplateWithTinyBadge()).toString("base64")}`;
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].elements.push({
+      id: "badge-component",
+      type: "pptxSlide",
+      templateDataUri: sourceDataUri,
+      sourceSlideIndex: 1,
+      textReplacements: [
+        { at: 0, to: "All GitHub contributions: 5.6B" },
+        { at: 1, to: "All GitHub contributions" }
+      ],
+      x: 0,
+      y: 0,
+      w: 13.333,
+      h: 7.5,
+      summary: "Badge component",
+      longDescription: "Unit suffixes are moved out of tiny badges when PowerPoint would wrap them.",
+      altText: "Badge component",
+      decorative: false,
+      readingOrder: 20
+    });
+    const outputPath = join(outputDir, "unit-badge-output.pptx");
+
+    await renderDeckToPptx(deck, outputPath);
+
+    const zip = await JSZip.loadAsync(await readFile(outputPath));
+    const slide = (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
+    expect(slide).toContain("<a:t>5.6</a:t>");
+    expect(slide).toContain("<a:t>All GitHub contributions</a:t>");
+    expect(slide).not.toContain("5.6B");
+  });
+
   it("re-tones a transplanted pptxSlide figure with scoped color remaps", async () => {
     const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-pptx-recolor-"));
     const sourceDataUri = `data:application/vnd.openxmlformats-officedocument.presentationml.presentation;base64,${(await buildPptxSlideTemplate()).toString("base64")}`;

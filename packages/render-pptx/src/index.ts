@@ -1085,7 +1085,8 @@ function pptxSlideTextFitProblem(value: string, slot: PptxSlideTextSlotProfile):
   if (!normalized) return undefined;
   const { capacity, maxLines, estimatedLines } = textCapacityForSlot(slot);
   const lineCount = estimatedLines(normalized);
-  const isLongForIcon = slot.iconLike && (templateTextUnits(normalized) > Math.max(2.2, capacity * maxLines * 0.9) || /\s|[:：]/u.test(normalized) || /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(normalized));
+  const iconSafeUnits = Math.max(1.8, capacity * 0.72);
+  const isLongForIcon = slot.iconLike && (lineCount > 1 || templateTextUnits(normalized) > iconSafeUnits || /\s|[:：]/u.test(normalized) || /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(normalized));
   if (isLongForIcon) {
     return { estimatedLines: lineCount, maxLines, capacity, reason: "icon-text" };
   }
@@ -1103,7 +1104,7 @@ function compactIconText(value: string, slot: PptxSlideTextSlotProfile): string 
     const unit = number[2] ?? "";
     const candidate = /^%$/u.test(unit) ? amount : `${amount}${unit}`;
     if (!pptxSlideTextFitProblem(candidate, slot)) return candidate;
-    return amount;
+    if (!pptxSlideTextFitProblem(amount, slot)) return amount;
   }
   const acronym = normalized.match(/\b[A-Z][A-Z0-9+-]{1,4}\b/u)?.[0];
   if (acronym && !pptxSlideTextFitProblem(acronym, slot)) return acronym;
