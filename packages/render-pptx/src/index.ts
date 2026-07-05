@@ -1165,6 +1165,22 @@ function replacementForSlot(replacements: ReadonlyArray<PptxSlideTextReplacement
   return next;
 }
 
+function hasExplanatoryReplacementText(value: string): boolean {
+  const normalized = value.replace(/\s+/gu, " ").trim();
+  if (normalized.length >= 18) return true;
+  if (/[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(normalized) && Array.from(normalized).length >= 10) return true;
+  return /[。.!?？]|(?:because|therefore|means|drives|reduces|shows|explains)\b/iu.test(normalized);
+}
+
+function hasExplanatorySlideText(slide: DeckSpec["slides"][number]): boolean {
+  return slide.elements.some((element) => element.type === "text" && !element.decorative && hasExplanatoryReplacementText(element.text));
+}
+
+function hasUsefulSpeakerNotes(value: string | undefined): boolean {
+  const normalized = (value ?? "").replace(/\s+/gu, " ").trim();
+  return normalized.length >= 80 && /(?:このスライド|説明|示す|伝える|読み方|speaker|explain|show|message)/iu.test(normalized);
+}
+
 export function constrainPptxSlideTextReplacements(
   replacements: ReadonlyArray<PptxSlideTextReplacement> | undefined,
   slots: ReadonlyArray<PptxSlideTextSlotProfile>
@@ -1191,6 +1207,36 @@ export async function reviewPptxSlideTextFit(deck: DeckSpec): Promise<PptxSlideT
     for (const [elementIndex, element] of slide.elements.entries()) {
       if (element.type !== "pptxSlide") continue;
       const slots = await pptxSlideTextSlotProfiles(element);
+      const replacementTexts = slots
+        .map((slot) => ({ slot, replacement: replacementForSlot(element.textReplacements, slot) }))
+        .filter((item): item is { slot: PptxSlideTextSlotProfile; replacement: string } => item.replacement !== undefined);
+      const explanatoryReplacement = replacementTexts.find((item) => !item.slot.iconLike && hasExplanatoryReplacementText(item.replacement));
+      if (!explanatoryReplacement && !hasExplanatorySlideText(slide)) {
+        issues.push({
+          severity: "warning",
+          code: "visual.pptx-slide-message-text-missing",
+          message: "A design-component slide has only compact labels/markers. Add at least one visible explanatory text-box/caption replacement so the figure communicates the slide message without relying only on speaker narration.",
+          path: `slides.${slideIndex}.elements.${elementIndex}.textReplacements`,
+          details: {
+            slide: slideIndex + 1,
+            elementId: element.id,
+            replacementCount: replacementTexts.length
+          }
+        });
+      }
+      if (!hasUsefulSpeakerNotes(slide.speakerNotes)) {
+        issues.push({
+          severity: "warning",
+          code: "visual.pptx-slide-speaker-notes-thin",
+          message: "A design-component slide should include speaker notes that first explain, in prose, what this slide is meant to communicate and how to read the figure.",
+          path: `slides.${slideIndex}.speakerNotes`,
+          details: {
+            slide: slideIndex + 1,
+            elementId: element.id,
+            notesLength: slide.speakerNotes?.length ?? 0
+          }
+        });
+      }
       for (const slot of slots) {
         const replacement = replacementForSlot(element.textReplacements, slot);
         if (replacement === undefined) continue;
@@ -1347,6 +1393,14 @@ function ensureDefaultContentTypes(xml: string, parts: { extension: string; cont
   return next;
 }
 
+function insertPptxSlideChildrenBehindDeckElements(targetSlideXml: string, copiedChildren: string): string {
+  const groupProps = /(<p:spTree\b[^>]*>[\s\S]*?<\/p:nvGrpSpPr>\s*(?:<p:grpSpPr\b[^>]*\/>|<p:grpSpPr\b[\s\S]*?<\/p:grpSpPr>))/i;
+  if (groupProps.test(targetSlideXml)) {
+    return targetSlideXml.replace(groupProps, `$1${copiedChildren}`);
+  }
+  return targetSlideXml.replace("</p:spTree>", `${copiedChildren}</p:spTree>`);
+}
+
 interface CopiedRelationshipResult {
   relIdMap: Map<string, string>;
   copiedParts: { extension: string; contentType: string }[];
@@ -1438,7 +1492,7 @@ async function transplantPptxSlideElement(
   const constrainedTextReplacements = constrainPptxSlideTextReplacements(element.textReplacements, textSlotProfiles);
   const renumbered = renumberShapeIds(rewriteRelationshipIds(structuredChildren, relIdMap), maxShapeId(targetSlideXml) + 1);
   const copiedChildren = applyPptxSlideRecolor(applyPptxSlideTextReplacements(renumbered, constrainedTextReplacements), element.recolor);
-  const patched = targetSlideXml.replace("</p:spTree>", `${copiedChildren}</p:spTree>`);
+  const patched = insertPptxSlideChildrenBehindDeckElements(targetSlideXml, copiedChildren);
   if (copiedParts.length > 0) {
     const contentTypesXml = await readZipXml(targetZip, "[Content_Types].xml");
     targetZip.file("[Content_Types].xml", ensureDefaultContentTypes(contentTypesXml, copiedParts));

@@ -147,6 +147,12 @@ export async function renderDesignComponentDeck(
   const recolor = options.recolor !== undefined ? options.recolor : toneDefaults.recolor;
   const isDark = tone === "dark";
   const slideTextColor = isDark ? "#f8fafc" : "#111827";
+  const bestForText = component.bestFor.length ? component.bestFor.join(" / ") : `${component.kind} figure`;
+  const speakerNotes = [
+    `このスライドでは、${component.name} を使って ${bestForText} を説明する。`,
+    "まず図解の主題を一文で説明し、その後に各ラベルが何を表すかを順番に読む。",
+    "小さいアイコンやバッジは分類・番号・短い指標だけを示し、詳しい意味は隣接するラベルやキャプションで補足する。"
+  ].join("\n");
   const backdropElement = backdropColor
     ? [
         {
@@ -186,7 +192,7 @@ export async function renderDesignComponentDeck(
         title: options.title ?? component.name,
         layout: "design-component",
         ...(backdropColor ? { background: { color: backdropColor } } : {}),
-        speakerNotes: `${component.name}: ${component.bestFor.join(" / ")}`,
+        speakerNotes,
         elements: [
           ...backdropElement,
           {

@@ -1138,9 +1138,10 @@ describe("PPTX renderer", () => {
     });
 
     const issues = await reviewPptxSlideTextFit(deck);
+    const iconIssue = issues.find((issue) => issue.code === "visual.pptx-slide-icon-text-overflow");
 
     expect(issues.map((issue) => issue.code)).toContain("visual.pptx-slide-icon-text-overflow");
-    expect(issues[0]?.message).toContain("move the full meaning to a nearby label");
+    expect(iconIssue?.message).toContain("move the full meaning to a nearby label");
   });
 
   it("compacts unsafe tiny pptxSlide icon text while preserving the nearby label", async () => {
@@ -1209,6 +1210,73 @@ describe("PPTX renderer", () => {
     expect(slide).toContain("<a:t>5.6</a:t>");
     expect(slide).toContain("<a:t>All GitHub contributions</a:t>");
     expect(slide).not.toContain("5.6B");
+  });
+
+  it("allows overlay message text to explain a transplanted pptxSlide figure", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pptcreater-pptx-slide-overlay-"));
+    const sourceDataUri = `data:application/vnd.openxmlformats-officedocument.presentationml.presentation;base64,${(await buildPptxSlideTemplate()).toString("base64")}`;
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].speakerNotes = [
+      "このスライドでは、テンプレート図解の中央要素を使って、Copilot導入で何を説明したいかを文章で先に伝える。",
+      "読み方は、図形の短いラベルを見たあと、右下の説明ボックスで主張と根拠を確認する。"
+    ].join("\n");
+    deck.slides[0].elements.push(
+      {
+        id: "tree-component",
+        type: "pptxSlide",
+        templateDataUri: sourceDataUri,
+        sourceSlideIndex: 1,
+        textReplacements: [{ at: 0, to: "Agent" }],
+        x: 0,
+        y: 0,
+        w: 13.333,
+        h: 7.5,
+        summary: "Curated tree component",
+        longDescription: "A curated PowerPoint slide component transplanted as editable shape and text XML.",
+        altText: "Curated tree component",
+        decorative: false,
+        readingOrder: 20
+      },
+      {
+        id: "component-message-box",
+        type: "shape",
+        shape: "roundRect",
+        x: 7.7,
+        y: 5.85,
+        w: 4.8,
+        h: 0.72,
+        fill: "#ffffff",
+        fillOpacity: 0.92,
+        line: { color: "#cbd5e1", width: 0.8 },
+        decorative: true,
+        readingOrder: 30
+      },
+      {
+        id: "component-message-text",
+        type: "text",
+        role: "body",
+        text: "Copilot導入は役割と統制を階層で整理して読み解く。",
+        x: 7.95,
+        y: 5.98,
+        w: 4.28,
+        h: 0.38,
+        fontSize: 12,
+        color: "#111827",
+        bold: true,
+        decorative: false,
+        readingOrder: 31
+      }
+    );
+    const outputPath = join(outputDir, "overlay-output.pptx");
+
+    const issues = await reviewPptxSlideTextFit(deck);
+    await renderDeckToPptx(deck, outputPath);
+
+    const zip = await JSZip.loadAsync(await readFile(outputPath));
+    const slide = (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
+    expect(issues.map((issue) => issue.code)).not.toContain("visual.pptx-slide-message-text-missing");
+    expect(issues.map((issue) => issue.code)).not.toContain("visual.pptx-slide-speaker-notes-thin");
+    expect(slide.indexOf("Agent")).toBeLessThan(slide.indexOf("Copilot導入は役割と統制"));
   });
 
   it("re-tones a transplanted pptxSlide figure with scoped color remaps", async () => {
