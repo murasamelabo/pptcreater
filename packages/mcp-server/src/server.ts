@@ -1078,7 +1078,7 @@ export function createPptcreaterMcpServer(): McpServer {
     {
       title: "Recommend a figure for a slide",
       description:
-        "Content Strategist → Designer bridge: given a slide's one-sentence message (and/or an explicit figure kind), recommend whether to use a curated editable design-pack component (render_design_component), a generated schematic (generate_schematic), or an editable native architecture/ponchi-e diagram (generate_native_diagram), the concrete kind, tool, expected item-count range, rationale, and alternatives. Timeline/gantt and architecture diagrams are valid figure intents. Pass `list: true` to enumerate every supported figure intent.",
+        "Content Strategist → Designer bridge: given a slide's one-sentence message (and/or an explicit figure kind), recommend whether to use a curated editable design-pack component (render_design_component), a generated schematic (generate_schematic), an editable native architecture/ponchi-e diagram (generate_native_diagram), or a text-rich message layout. Returns the concrete kind/tool, expected item-count range, useWhen/avoidWhen guidance, and MessageSpec direction (slideRole, visualType, visualGrammarId) so agents know whether the slide is explanation, comparison, detail, process, decision, etc. Pass `list: true` to enumerate every supported figure intent and when to use it.",
       inputSchema: {
         message: z.string().optional(),
         figureKind: z.string().optional(),

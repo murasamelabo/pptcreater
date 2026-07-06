@@ -1,4 +1,4 @@
-﻿import type { ContentMode, DeckMessageMap, Locale, SlideIntent } from "./schema.js";
+﻿import type { ContentMode, DeckMessageMap, Locale, SlideIntent, SlideRole } from "./schema.js";
 import { getVisualGrammarSpec, listVisualGrammarSpecs, type VisualGrammarId, type VisualGrammarSpec } from "./visualGrammarRegistry.js";
 
 export type PlanningMode = "legacy" | "narrative-v1";
@@ -207,6 +207,19 @@ function densityForIntent(intent: SlideIntent): SlideBrief["densityTarget"] {
   return "balanced";
 }
 
+function slideRoleForIntent(intent: SlideIntent): SlideRole {
+  if (intent.slideRole) return intent.slideRole;
+  const text = slideText(intent).toLowerCase();
+  if (intent.visualType === "detail" || /詳細|詳説|説明文|policy|detail|text-rich|structured/u.test(text)) return "detail";
+  if (intent.visualType === "contrast" || intent.visualType === "before-after" || /比較|対比|vs|違い|compare|option/u.test(text)) return "comparison";
+  if (intent.visualType === "flow" || intent.visualType === "step" || intent.visualType === "cycle" || /手順|工程|プロセス|timeline|roadmap|process/u.test(text)) return "process";
+  if (intent.visualType === "matrix" || /判断|意思決定|優先|decision|trade-off/u.test(text)) return "decision";
+  if (/根拠|証拠|kpi|roi|数値|実績|proof|evidence/u.test(text)) return "evidence";
+  if (/次|action|実行|確認|承認/u.test(text)) return "action";
+  if (intent.visualType === "summary" || /overview|全体像|要約|まとめ/u.test(text)) return "overview";
+  return "explanation";
+}
+
 function chapterRoleForIntent(intent: SlideIntent, index: number, total: number): ChapterPlan["role"] {
   const text = slideText(intent).toLowerCase();
   if (index === 0 || /背景|why|context|overview|summary|要約/u.test(text)) return "setup";
@@ -305,6 +318,16 @@ function grammarForIntent(intent: SlideIntent, contentMode: ContentMode): Visual
   const text = slideText(intent);
   const lower = text.toLowerCase();
   const evidenceCount = intent.evidence.length;
+  const slideRole = slideRoleForIntent(intent);
+
+  if (intent.slideRole) {
+    if (slideRole === "detail") return "detail-reading-page";
+    if (slideRole === "comparison") return intent.visualType === "matrix" || impliesTwoAxisSurface(lower) ? "decision-surface" : "comparison-field";
+    if (slideRole === "process") return intent.visualType === "cycle" ? "spatial-model" : "sequential-path";
+    if (slideRole === "decision") return impliesTwoAxisSurface(lower) ? "decision-surface" : "evidence-board";
+    if (slideRole === "data") return "table-text-system";
+    if (slideRole === "evidence" && hasStrongMetric(text) && evidenceCount <= 4) return "typographic-emphasis";
+  }
 
   // 1. Real asset anchor only when a concrete image/screenshot/photo is implied.
   if (intent.visualAsset || /写真|スクリーンショット|現場写真|product shot|photo|screenshot/u.test(lower)) return "photo-product-anchor";
@@ -414,7 +437,7 @@ function slideBriefForIntent(intent: SlideIntent, chapterId: string): SlideBrief
   return {
     id: intent.slideId,
     chapterId,
-    role: intent.visualType,
+    role: slideRoleForIntent(intent),
     primaryMessage: intent.message,
     readerTakeaway: intent.emphasis ?? compact(intent.message, 36),
     informationUnits: informationUnitsForIntent(intent),

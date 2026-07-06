@@ -321,6 +321,19 @@ export const SlideVisualTypeSchema = z.enum([
   "cards"
 ]);
 
+export const SlideRoleSchema = z.enum([
+  "overview",
+  "explanation",
+  "comparison",
+  "process",
+  "decision",
+  "evidence",
+  "detail",
+  "data",
+  "case-study",
+  "action"
+]);
+
 export const SlideVisualAssetSchema = z
   .object({
     type: z.enum(["image", "svg"]).default("image"),
@@ -390,6 +403,12 @@ export const SlideIntentSchema = z.object({
   slideId: z.string().min(1),
   title: z.string().min(1),
   message: z.string().min(1),
+  /**
+   * Semantic role of the slide before figure selection. Use this to distinguish explanation,
+   * comparison, detail-reading, decision, process, evidence, or action slides even when visualType is
+   * still generic. The narrative planner uses it as a figure-selection prior.
+   */
+  slideRole: SlideRoleSchema.optional(),
   evidence: z.array(z.string().min(1)).default([]),
   /**
    * Supporting details that should survive source-to-message-map condensation but do not all need to
@@ -464,6 +483,7 @@ export type PptxSlideColorReplacement = z.infer<typeof PptxSlideColorReplacement
 export type Slide = z.infer<typeof SlideSchema>;
 export type DeckSpec = z.infer<typeof DeckSpecSchema>;
 export type SlideVisualType = z.infer<typeof SlideVisualTypeSchema>;
+export type SlideRole = z.infer<typeof SlideRoleSchema>;
 export type SlideIntent = z.infer<typeof SlideIntentSchema>;
 export type SlideIntentDiagram = z.infer<typeof SlideIntentDiagramSchema>;
 export type SlideIntentDiagramNode = z.infer<typeof SlideIntentDiagramNodeSchema>;

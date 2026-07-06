@@ -75,6 +75,41 @@ describe("narrative planning artifacts", () => {
     expect(artifacts.expressionPlans[0].selectedGrammarId).toBe("evidence-board");
   });
 
+  it("uses SlideIntent slideRole as a visual grammar prior", () => {
+    const map: DeckMessageMap = {
+      objective: "スライド役割ごとに表現を選ぶ",
+      audience: "資料作成者",
+      desiredAction: "MessageSpecにslideRoleを入れる",
+      intents: [
+        {
+          slideId: "policy-detail",
+          title: "ポリシー詳細",
+          message: "例外条件は本文で読める形にする。",
+          slideRole: "detail",
+          evidence: ["対象", "例外", "承認条件"],
+          quietInfo: [],
+          visualType: "summary",
+          emphasis: "本文で読める"
+        },
+        {
+          slideId: "plan-compare",
+          title: "プラン比較",
+          message: "FreeとProは統制要件で選び分ける。",
+          slideRole: "comparison",
+          evidence: ["Free", "Pro", "Enterprise"],
+          quietInfo: [],
+          visualType: "summary",
+          emphasis: "統制要件"
+        }
+      ]
+    };
+
+    const artifacts = createNarrativePlanArtifacts(map, { locale: "ja-JP", contentMode: "handout" });
+
+    expect(artifacts.slideBriefs.map((brief) => brief.role)).toEqual(["detail", "comparison"]);
+    expect(artifacts.expressionPlans.map((plan) => plan.selectedGrammarId)).toEqual(["detail-reading-page", "comparison-field"]);
+  });
+
   it("does not force list-like matrix intents into repeated two-axis maps", () => {
     const map: DeckMessageMap = {
       objective: "統制要件を整理する",

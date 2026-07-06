@@ -1203,7 +1203,7 @@ program
         return;
       }
       intents.forEach((i) =>
-        console.log(`${i.intent.padEnd(20)} ${i.renderer.padEnd(14)} ${i.tool.padEnd(24)} ${i.kind.padEnd(18)} ${i.labelEn} (${i.itemRange.min}-${i.itemRange.max})`)
+        console.log(`${i.intent.padEnd(20)} ${i.renderer.padEnd(14)} ${i.tool.padEnd(24)} ${i.kind.padEnd(18)} ${i.labelEn} (${i.itemRange.min}-${i.itemRange.max}) role=${i.messageSpecDirection.slideRole} use=${i.useWhen[0]}`)
       );
       return;
     }
@@ -1216,6 +1216,9 @@ program
     console.log(`renderer:  ${rec.renderer}  kind: ${rec.kind}  schematic: ${rec.schematicKind}`);
     console.log(`tool:      ${rec.tool}`);
     console.log(`items:     ${rec.itemRange.min}-${rec.itemRange.max}`);
+    console.log(`role:      ${rec.messageSpecDirection.slideRole}  visualType: ${rec.messageSpecDirection.visualType}  grammar: ${rec.messageSpecDirection.visualGrammarId ?? "-"}`);
+    console.log(`use when:  ${rec.useWhen.join(" / ")}`);
+    console.log(`avoid:     ${rec.avoidWhen.join(" / ")}`);
     console.log(`rationale: ${rec.rationale}`);
     console.log(`alternatives: ${rec.alternatives.join(", ")}`);
   }));

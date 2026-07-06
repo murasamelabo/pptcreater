@@ -30,6 +30,13 @@ describe("selectFigure", () => {
     expect(rec.schematicKind).toBe("radar");
   });
 
+  it("maps two-axis decision wording to a matrix figure", () => {
+    const rec = selectFigure({ message: "2軸で導入優先度を判断する", itemCount: 4 });
+
+    expect(rec.intent).toBe("matrix");
+    expect(rec.messageSpecDirection).toMatchObject({ slideRole: "decision", visualType: "matrix" });
+  });
+
   it("maps timeline wording to a curated gantt/timeline figure", () => {
     const rec = selectFigure({ message: "導入マイルストーンをタイムラインで示す", itemCount: 4 });
     expect(rec.intent).toBe("timeline");
@@ -79,14 +86,32 @@ describe("selectFigure", () => {
     expect(tooFew.rationale).toMatch(/below/);
   });
 
+  it("returns usage guidance and MessageSpec direction for figure choice", () => {
+    const rec = selectFigure({ message: "詳細解説として、利用ポリシーと例外条件を文章で説明する" });
+
+    expect(rec.intent).toBe("text-explanation");
+    expect(rec.renderer).toBe("message-layout");
+    expect(rec.tool).toBe("create_deck_from_message_map");
+    expect(rec.useWhen.join(" ")).toContain("文章");
+    expect(rec.avoidWhen.length).toBeGreaterThan(0);
+    expect(rec.messageSpecDirection).toMatchObject({
+      slideRole: "detail",
+      visualType: "detail",
+      visualGrammarId: "detail-reading-page"
+    });
+  });
+
   it("lists every intent with renderer and item range", () => {
     const intents = listFigureIntents();
     expect(intents).toHaveLength(FIGURE_INTENTS.length);
     for (const entry of intents) {
-      expect(["design-pack", "schematic", "native-diagram", "intent-diagram"]).toContain(entry.renderer);
-      expect(["render_design_component", "generate_schematic", "generate_native_diagram", "generate_intent_diagram"]).toContain(entry.tool);
+      expect(["design-pack", "schematic", "native-diagram", "intent-diagram", "message-layout"]).toContain(entry.renderer);
+      expect(["render_design_component", "generate_schematic", "generate_native_diagram", "generate_intent_diagram", "create_deck_from_message_map"]).toContain(entry.tool);
       expect(entry.itemRange.min).toBeLessThanOrEqual(entry.itemRange.max);
       expect(entry.kind.length).toBeGreaterThan(0);
+      expect(entry.useWhen.length).toBeGreaterThan(0);
+      expect(entry.avoidWhen.length).toBeGreaterThan(0);
+      expect(entry.messageSpecDirection.slideRole).toBeTruthy();
     }
   });
 

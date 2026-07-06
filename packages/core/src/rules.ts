@@ -31,23 +31,23 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
     ? [
         "最初にこの get_slide_creation_rules / pptcreater rules の内容を読み、以後の DeckSpec 生成制約として扱う。",
         "目的・聴衆・contentMode・枚数・出典・使うテンプレート/ブランドが曖昧なら、DeckSpec を書く前に確認または合理的に仮定する。",
-        "DeckSpecを書く前にMessage Map / SlideIntentを作り、各スライドのmessage・evidence・details・sourceTrace・visualType・emphasisを決める。手元資料/技術資料では元資料の定義・数値・制約・検証観点をdetails/sourceTraceに残し、薄い1文メモにしない。メッセージが曖昧ならヒアリングしてから進める。",
+        "DeckSpecを書く前にMessage Map / SlideIntentを作り、各スライドのmessage・slideRole・evidence・details・sourceTrace・visualType・emphasisを決める。slideRoleは overview / explanation / comparison / process / decision / evidence / detail / data / case-study / action から選び、説明・比較・詳細解説などの方向性を図解選定前に残す。手元資料/技術資料では元資料の定義・数値・制約・検証観点をdetails/sourceTraceに残し、薄い1文メモにしない。メッセージが曖昧ならヒアリングしてから進める。",
         "PDF知見: いきなりPowerPointを立ち上げない。先に「聴き手に何を納得/行動してもらうか」「贈り物として何を渡すか」を紙・メモ・Message Mapで決める。",
         "経営向け・顧客向け・重要会議・コンサル風資料では plan_business_deck を先に実行し、章構成と各スライドの役割を決める。",
         "search_templates / recommend_template で template を決め、search_assets で既存アイコン・クラウドプリセットを先に探す。",
         "PDF知見: 先人に学ぶ。ゼロから自由配置で発明せず、既存テンプレート、schematic、intent diagram、side-image など近い型を選んでから内容を当てはめる。",
-        "意図した構図・粒度がある図解は generate_intent_diagram を先に使い、それ以外は list_schematic_presets で型を選んで generate_schematic、または generate_native_diagram でテキスト・カード・矢印・ラベルを編集可能な形で作る。",
+        "意図した構図・粒度がある図解は generate_intent_diagram を先に使い、それ以外は recommend_figure / list_schematic_presets で型を選んで generate_schematic、または generate_native_diagram でテキスト・カード・矢印・ラベルを編集可能な形で作る。recommend_figure は useWhen / avoidWhen / messageSpecDirection を返すので、SlideIntentのslideRole・visualTypeに反映する。",
         "DeckSpec 作成後は finalize_deck（または CLI `pptcreater finalize <deck.json> --output <deck.pptx>`）で polish→lint→render を1回でまとめて実行する。改行・はみ出し・小さすぎる文字・読み上げ順などの polishFixable 項目は polish が自動修正するので手作業で直さない。blockingErrors（本当に直すべき項目）だけを修正して再実行する。lint/polish/render を別々に何度も呼ぶ非効率なループは避ける。"
       ]
     : [
         "Read these get_slide_creation_rules / pptcreater rules first and treat them as constraints for the DeckSpec you are about to write.",
         "If purpose, audience, contentMode, slide count, sources, template, or brand constraints are unclear, clarify or make explicit assumptions before writing DeckSpec.",
-        "Before writing DeckSpec, create a Message Map / SlideIntent set that defines message, evidence, details, sourceTrace, visualType, and emphasis for each slide. For handouts and technical/source-backed decks, preserve definitions, figures, constraints, and validation points in details/sourceTrace instead of compressing the source into thin one-line notes. If the message is unclear, interview first.",
+        "Before writing DeckSpec, create a Message Map / SlideIntent set that defines message, slideRole, evidence, details, sourceTrace, visualType, and emphasis for each slide. Choose slideRole from overview / explanation / comparison / process / decision / evidence / detail / data / case-study / action so figure selection knows whether the slide is explanatory, comparative, detailed prose, a process, or a decision. For handouts and technical/source-backed decks, preserve definitions, figures, constraints, and validation points in details/sourceTrace instead of compressing the source into thin one-line notes. If the message is unclear, interview first.",
         "PDF-derived rule: do not open PowerPoint first. Decide what the audience should understand/do and what 'gift' the slide gives them using paper, notes, or Message Map before layout.",
         "For executive, customer-facing, important-meeting, or consulting-style decks, run plan_business_deck first to define sections and slide roles.",
         "Choose the template through search_templates / recommend_template, and search_assets before creating new icons or cloud pictograms.",
         "PDF-derived rule: learn from predecessors. Do not invent freeform layouts from scratch; choose the nearest existing template, schematic, intent diagram, or side-image pattern, then adapt content.",
-        "Use generate_intent_diagram first when a diagram has a known intended composition/granularity; otherwise call list_schematic_presets and use generate_schematic, or use generate_native_diagram so diagrams, cards, arrows, and labels remain editable.",
+        "Use generate_intent_diagram first when a diagram has a known intended composition/granularity; otherwise call recommend_figure / list_schematic_presets and use generate_schematic, or use generate_native_diagram so diagrams, cards, arrows, and labels remain editable. recommend_figure returns useWhen / avoidWhen / messageSpecDirection; copy its slideRole and visualType into the SlideIntent.",
         "After DeckSpec creation, run finalize_deck (or CLI `pptcreater finalize <deck.json> --output <deck.pptx>`) to polish, lint, and render in a single pass. polishFixable items (line breaks, overflow, too-small text, reading order) are auto-resolved by polish — do not hand-edit them; fix only the blockingErrors and re-run. Avoid the slow loop of calling lint, polish, and render separately and repeatedly."
       ];
 
@@ -107,7 +107,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
 
   const visualRules = locale === "ja-JP"
     ? [
-        "通常の本文スライドはプレーンなテキストだけにしない。少なくともカード、アイコン、表、図解、フロー、ツリー、タイムライン、または Slideland 風 schematic パターンのいずれかを入れる。詳細説明・Q&A・得られることなど、読むこと自体が目的のスライドは detail/prose/structured-text として扱い、見出し、インデント、太字、色、余白で認知負荷を下げる。",
+        "通常の本文スライドはプレーンなテキストだけにしない。少なくともカード、アイコン、表、図解、フロー、ツリー、タイムライン、または Slideland 風 schematic パターンのいずれかを入れる。詳細説明・Q&A・得られることなど、読むこと自体が目的のスライドは slideRole: detail / visualType: detail の文字主役パターンとして扱い、見出し、インデント、太字、色、余白で認知負荷を下げる。",
         "図解を別途作らない本文スライドには generate_visual_scaffold で右側に編集可能なコンセプトビジュアル(パネル＋アイコン/モノグラム＋見出し＋観点チップ)を付け、テキストのみ・低リッチネスを避ける。観点チップは短いフレーズ(目安24字以内)に絞る。",
         "色付きライン付きカードを3つ以上並べるだけの表現を避ける。カードは主役1つの強調に留め、比較は table/contrast、判断は matrix、流れは flow、全体像は map/ponchi-e に変換する。",
         "公式画像・製品画面・現地写真・調査したイメージ図を使える場合は、visualType: image と visualAsset(altText/sourceId/citation/placement)で左右どちらかに画像、反対側にメッセージと根拠を置く。権利が不明な画像は貼らず、編集可能なイメージ図として再作成する。",
@@ -123,7 +123,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "文字が黒い塊に見える場合は、文章を短くするだけでなく、意味のかたまり、見出し、余白、数字の強調、図表化で読み始めやすくする。"
       ]
     : [
-        "Plain content slides should not be text-only. Include cards, icons, tables, diagrams, flows, trees, timelines, or Slideland-style schematic patterns. When reading is the point (detail explanation, Q&A, benefits, policy text), use a detail/prose/structured-text layout and reduce cognitive load with headings, indentation, bold emphasis, color, and whitespace.",
+        "Plain content slides should not be text-only. Include cards, icons, tables, diagrams, flows, trees, timelines, or Slideland-style schematic patterns. When reading is the point (detail explanation, Q&A, benefits, policy text), use slideRole: detail / visualType: detail as a text-first pattern and reduce cognitive load with headings, indentation, bold emphasis, color, and whitespace.",
         "For content slides without a dedicated diagram, attach an editable right-rail concept visual (panel + icon/monogram + heading + aspect chips) via generate_visual_scaffold to avoid text-only/low-richness slides. Keep aspect chips to short phrases (~24 chars max).",
         "Do not build slides by repeating three or more colored accent-bar cards. Keep accent bars for at most one focal card; convert comparisons to table/contrast, decisions to matrix, processes to flow, and overviews to map/ponchi-e.",
         "When an official image, product screenshot, field photo, or researched illustration is appropriate and rights are clear, use visualType: image with visualAsset (altText/sourceId/citation/placement): image on one side, message/evidence on the other. If rights are unclear, recreate the idea as an editable illustration instead of embedding the source image.",
