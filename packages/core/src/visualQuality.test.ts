@@ -157,6 +157,57 @@ describe("visual quality review", () => {
     expect(report.issues.map((issue) => issue.code)).toContain("visual.icon-text-overlap");
   });
 
+  it("warns when large overlays cover full-slide design components", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].layout = "design-component-gallery";
+    deck.slides[0].elements = [
+      {
+        id: "component-slide",
+        type: "pptxSlide",
+        templateDataUri: "data:application/vnd.openxmlformats-officedocument.presentationml.presentation;base64,AA==",
+        sourceSlideIndex: 1,
+        x: 0,
+        y: 0,
+        w: 13.333,
+        h: 7.5,
+        decorative: false,
+        summary: "component",
+        longDescription: "full slide component",
+        readingOrder: 1
+      },
+      {
+        id: "component-message-box",
+        type: "shape",
+        shape: "roundRect",
+        x: 8.2,
+        y: 6.02,
+        w: 4.35,
+        h: 0.62,
+        fill: "#ffffff",
+        decorative: true,
+        readingOrder: 2
+      },
+      {
+        id: "component-message-text",
+        type: "text",
+        role: "body",
+        text: "図解の上に大きく重なる説明文",
+        x: 8.45,
+        y: 6.12,
+        w: 3.86,
+        h: 0.32,
+        fontSize: 11,
+        bold: true,
+        decorative: false,
+        readingOrder: 3
+      }
+    ];
+
+    const report = reviewVisualQuality(deck);
+
+    expect(report.issues.map((issue) => issue.code)).toContain("visual.pptx-slide-overlay-covers-figure");
+  });
+
   it("flags ppptevaluater anti-patterns for over-dense and over-colored slides", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     deck.slides[0].layout = "message-detail";

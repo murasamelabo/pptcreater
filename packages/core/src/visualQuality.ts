@@ -68,6 +68,19 @@ function overlapArea(a: SlideElement, b: SlideElement): number {
   return x * y;
 }
 
+function isFullSlidePptxComponent(element: SlideElement): boolean {
+  return element.type === "pptxSlide" && element.x <= 0.05 && element.y <= 0.05 && element.w >= 12.5 && element.h >= 7;
+}
+
+function isLargeDesignComponentOverlay(element: SlideElement): boolean {
+  if (element.type !== "text" && element.type !== "shape") return false;
+  if (element.type === "shape" && element.shape === "rect" && element.x <= 0.05 && element.y <= 0.05 && element.w >= 12.5 && element.h >= 7) return false;
+  const area = element.w * element.h;
+  const middleOfSlide = element.y > 1.2 && element.y + element.h < 7.15;
+  const messageLike = /message|caption|note|説明|本文|lead|summary/i.test(element.id);
+  return middleOfSlide && area >= 0.8 && (element.type === "text" || messageLike);
+}
+
 function isGeneratedIcon(element: SlideElement): boolean {
   return element.type === "svg" && (/icon/u.test(element.id) || (element.w <= 0.7 && element.h <= 0.7));
 }
@@ -193,6 +206,19 @@ export function reviewVisualQuality(deck: DeckSpec): VisualQualityReport {
     });
 
     const texts = slide.elements.filter((element): element is TextElement => element.type === "text");
+    const fullSlideComponent = slide.elements.find(isFullSlidePptxComponent);
+    if (fullSlideComponent) {
+      slide.elements.forEach((element, elementIndex) => {
+        if (element === fullSlideComponent || !isLargeDesignComponentOverlay(element)) return;
+        issues.push({
+          severity: "warning",
+          code: "visual.pptx-slide-overlay-covers-figure",
+          message: "A large DeckSpec text/shape overlay sits on top of a full-slide design component. Put the message into an existing roomy template text slot, reserve a real panel in the layout, or move the detail to speaker notes instead of covering the figure.",
+          path: `slides.${slideIndex}.elements.${elementIndex}`,
+          details: { area: Number((element.w * element.h).toFixed(2)), x: Number(element.x.toFixed(2)), y: Number(element.y.toFixed(2)) }
+        });
+      });
+    }
     const icons = slide.elements.filter(isGeneratedIcon);
     icons.forEach((icon, iconIndex) => {
       texts.forEach((textElement, textIndex) => {
