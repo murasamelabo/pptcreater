@@ -320,6 +320,10 @@ function grammarForIntent(intent: SlideIntent, contentMode: ContentMode): Visual
   const evidenceCount = intent.evidence.length;
   const slideRole = slideRoleForIntent(intent);
 
+  if (intent.diagram && (intent.visualType === "native-diagram" || intent.visualType === "map" || intent.visualType === "ponchi-e")) {
+    return /階層|レイヤ|layer|stack|基盤|platform|構成/u.test(lower) ? "layered-model" : "spatial-model";
+  }
+
   if (intent.slideRole) {
     if (slideRole === "detail") return "detail-reading-page";
     if (slideRole === "comparison") return intent.visualType === "matrix" || impliesTwoAxisSurface(lower) ? "decision-surface" : "comparison-field";

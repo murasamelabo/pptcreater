@@ -1408,8 +1408,12 @@ function narrativeLabel(value: string, max = 26): string {
   return compactLabel(text, max);
 }
 
+function isContextEvidenceRow(value: string): boolean {
+  return /^(?:確認対象|理解対象|流れで見る入力|処理で追う値|入力契約|返却項目|判定先|設定ファイル|運用キー|運用確認|制約確認|通信前提|移行前提|方式判定|連携設計|移行判断|返却と権限|提供範囲|接続先|照会先)\s*[:：]/u.test(value);
+}
+
 function narrativeItems(intent: SlideIntent, min = 3, max = 6, labelMax = 26): string[] {
-  const values = intent.evidence.map((item) => narrativeLabel(item, labelMax)).filter(Boolean);
+  const values = intent.evidence.map((item) => (isContextEvidenceRow(item) ? compactLabel(item, 58) : narrativeLabel(item, labelMax))).filter(Boolean);
   while (values.length < min) values.push(narrativeLabel(intent.emphasis ?? intent.message, labelMax));
   return values.slice(0, max);
 }
@@ -1492,6 +1496,21 @@ function diagramLeadText(intent: SlideIntent): string {
   return lead;
 }
 
+function shortStableId(value: string): string {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  }
+  const cleaned = value.replace(/[^a-zA-Z0-9._-]/gu, "-");
+  const safe = /^[a-zA-Z0-9]/u.test(cleaned) ? cleaned : `d-${cleaned}`;
+  const suffix = hash.toString(36).slice(0, 6);
+  return safe.length > 47 ? `${safe.slice(0, 47)}-${suffix}` : safe;
+}
+
+function diagramIdPrefix(slideId: string): string {
+  return `${shortStableId(slideId)}-dg`;
+}
+
 function conceptMarkSvg(ink: string): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 150" role="img"><circle cx="42" cy="75" r="17" fill="none" stroke="${ink}" stroke-width="6"/><circle cx="164" cy="42" r="15" fill="${ink}" opacity="0.92"/><circle cx="164" cy="112" r="15" fill="none" stroke="${ink}" stroke-width="6"/><path d="M60 68 L146 46 M60 82 L146 106" fill="none" stroke="${ink}" stroke-width="5" stroke-linecap="round"/></svg>`;
 }
@@ -1529,9 +1548,10 @@ function narrativeEvidenceBoard(theme: Theme, intent: SlideIntent, _expressionPl
     const y = 2.38 + index * 0.78;
     const order = 30 + index * 4;
     const fill = index === 0 ? theme.accentSoft : index % 2 === 0 ? theme.background : theme.surface;
+    const isRequiredTermRow = isContextEvidenceRow(item);
     elements.push(shape(`${id}-narrative-proof-${index}`, "roundRect", 7.08, y, 4.82, 0.55, order, fill, theme.line, { radius: 0.14 }));
     elements.push(icon(`${id}-narrative-proof-icon-${index}`, iconForEvidence(item, index), 7.3, y + 0.14, 0.26, order + 1, theme, { color: theme.accent, decorative: true }));
-    elements.push(text(`${id}-narrative-proof-text-${index}`, "body", visibleSentence(item), 7.76, y + 0.1, 3.68, 0.24, order + 2, theme, { bg: fill, color: theme.text, fontSize: 15 }));
+    elements.push(text(`${id}-narrative-proof-text-${index}`, "body", visibleSentence(item), 7.76, y + 0.09, 3.68, isRequiredTermRow ? 0.32 : 0.24, order + 2, theme, { bg: fill, color: theme.text, fontSize: isRequiredTermRow ? 12 : 15 }));
   });
   return elements;
 }
@@ -1559,14 +1579,32 @@ function narrativeTypographic(theme: Theme, intent: SlideIntent, expressionPlan:
 
 function narrativeSequentialPath(theme: Theme, intent: SlideIntent, _expressionPlan: ExpressionPlan): SlideElement[] {
   const id = intent.slideId;
-  const items = narrativeItems(intent, 3, 6, 18);
+  const rowMode = Math.max(intent.evidence.length, 3) >= 5;
+  const items = narrativeItems(intent, 3, 6, rowMode ? 52 : 18);
   const count = items.length;
   const stageX = 0.92;
   const stageW = 11.48;
   const elements: SlideElement[] = [
-    shape(`${id}-path-stage`, "roundRect", stageX, 2.0, stageW, 4.72, 10, theme.surface, theme.line, { radius: 0.18 }),
+    shape(`${id}-path-stage`, "roundRect", stageX, 1.96, stageW, 4.98, 10, theme.surface, theme.line, { radius: 0.18 }),
     text(`${id}-path-kicker`, "caption", visualKickerLabel(intent), 1.26, 2.3, 3.4, 0.2, 11, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true })
   ];
+  if (rowMode) {
+    const rowX = stageX + 0.5;
+    const rowW = stageW - 1.0;
+    const rowH = 0.62;
+    const gapY = 0.08;
+    const startY = 2.7;
+    items.forEach((item, index) => {
+      const y = startY + index * (rowH + gapY);
+      const order = 20 + index * 5;
+      const fill = index % 2 === 0 ? mix(theme.accent, theme.background, 0.95) : theme.surface;
+      elements.push(shape(`${id}-path-row-${index}`, "roundRect", rowX, y, rowW, rowH, order, fill, theme.line, { radius: 0.13 }));
+      elements.push(shape(`${id}-path-row-badge-${index}`, "ellipse", rowX + 0.22, y + 0.13, 0.32, 0.32, order + 1, theme.accent, theme.accent));
+      elements.push(text(`${id}-path-row-number-${index}`, "caption", String(index + 1), rowX + 0.22, y + 0.22, 0.32, 0.14, order + 2, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true, align: "center", valign: "middle" }));
+      elements.push(text(`${id}-path-row-label-${index}`, "body", item, rowX + 0.76, y + 0.12, rowW - 1.04, 0.34, order + 3, theme, { bg: fill, color: theme.text, fontSize: 18, bold: false }));
+    });
+    return elements;
+  }
   const marginX = 0.5;
   const gap = 0.42;
   const usableW = stageW - marginX * 2;
@@ -1656,6 +1694,7 @@ function narrativeLayeredModel(theme: Theme, intent: SlideIntent, expressionPlan
 
 function narrativeDetailPage(theme: Theme, intent: SlideIntent, expressionPlan: ExpressionPlan): SlideElement[] {
   const id = intent.slideId;
+  const isJapanese = hasJapanese([intent.title, intent.message, intent.emphasis ?? "", ...intent.evidence, ...(intent.details ?? [])].join(" "));
   const details = intent.details ?? [];
   const recommendationDetail = details.find((item) => /^Recommendations?\s*[:：]/iu.test(item));
   const recommendations = (recommendationDetail ? recommendationDetail.replace(/^Recommendations?\s*[:：]\s*/iu, "") : intent.quietInfo.join(" / "))
@@ -1668,34 +1707,33 @@ function narrativeDetailPage(theme: Theme, intent: SlideIntent, expressionPlan: 
     ...intent.evidence.map((item) => visibleSentence(item))
   ].slice(0, 4);
   const quote = visibleSentence(intent.message).replace(/。$/u, "").replace(/優先的な対策が必要である/u, "優先対策が必要");
-  const nav = "Contents   Introduction   The threat landscape   The defense landscape   Appendix";
+  const continuedLabel = isJapanese ? "文章で読む" : "Reading notes";
+  const recommendationsLabel = isJapanese ? "確認事項" : "Recommendations";
   const recText = (item: string): string => item.replace(/パッチを早く適用する/u, "パッチを早く適用").replace(/管理インターフェースを隔離する/u, "管理面を隔離").replace(/悪用後の振る舞いを検知する/u, "悪用後を検知");
   const elements: SlideElement[] = [
-    shape(`${id}-report-bg`, "rect", 0, 0, W, H, 0, theme.background, theme.background, { radius: 0 }),
-    shape(`${id}-report-top-rule`, "rect", 0, 1.48, W, 0.02, 8, theme.accent, theme.accent, { radius: 0 }),
-    text(`${id}-report-title`, "caption", "Microsoft Digital Defense Report style", 0.42, 0.36, 2.74, 0.18, 9, theme, { bg: theme.background, color: theme.accent, fontSize: 12, bold: true }),
-    text(`${id}-report-nav`, "caption", nav, 3.46, 0.36, 6.2, 0.18, 10, theme, { bg: theme.background, color: theme.text, fontSize: 11, align: "center" }),
-    text(`${id}-report-page`, "caption", "20", 12.48, 0.36, 0.34, 0.18, 11, theme, { bg: theme.background, color: theme.accent, fontSize: 11, bold: true, align: "right" }),
-    text(`${id}-report-kicker`, "caption", `${slideTopicTitle(intent)} continued`, 0.42, 1.56, 5.2, 0.18, 12, theme, { bg: theme.background, color: theme.accent, fontSize: 12, bold: true }),
-    text(`${id}-report-heading`, "callout", slideTopicTitle(intent), 0.42, 2.08, 3.0, 0.44, 13, theme, { bg: theme.background, color: theme.accent, fontSize: 20 }),
-    shape(`${id}-report-quote-panel`, "rect", 7.64, 1.98, 2.12, 4.74, 40, theme.accentSoft, theme.accent, { radius: 0, width: 0.9 }),
+    shape(`${id}-report-frame`, "roundRect", 0.92, 1.9, 6.42, 4.92, 10, theme.surface, theme.line, { radius: 0.16 }),
+    text(`${id}-report-kicker`, "caption", continuedLabel, 1.22, 2.16, 2.64, 0.18, 12, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true }),
+    text(`${id}-report-heading`, "callout", slideTopicTitle(intent), 1.22, 2.52, 4.9, 0.38, 13, theme, { bg: theme.surface, color: theme.accent, fontSize: 20 }),
+    shape(`${id}-report-rule`, "rect", 1.22, 3.02, 5.58, 0.02, 14, theme.accent, theme.accent, { radius: 0 }),
+    shape(`${id}-report-quote-panel`, "roundRect", 7.64, 1.9, 2.12, 4.92, 40, theme.accentSoft, theme.accent, { radius: 0.14, width: 0.9 }),
     text(`${id}-report-quote-mark`, "callout", "“", 7.76, 2.1, 0.42, 0.32, 41, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 24, bold: true }),
     text(`${id}-report-quote`, "callout", quote, 7.74, 2.62, 1.72, 2.2, 42, theme, { bg: theme.accentSoft, color: theme.text, fontSize: 17 }),
-    shape(`${id}-report-rec-panel`, "rect", 9.92, 1.98, 2.98, 4.74, 50, mix(theme.accent, theme.background, 0.9), theme.accent, { radius: 0, width: 0.9 }),
-    text(`${id}-report-rec-title`, "caption", "Recommendations", 10.1, 2.14, 2.38, 0.32, 51, theme, { bg: mix(theme.accent, theme.background, 0.9), color: theme.text, fontSize: 16, bold: true }),
+    shape(`${id}-report-rec-panel`, "roundRect", 9.92, 1.9, 2.98, 4.92, 50, mix(theme.accent, theme.background, 0.9), theme.accent, { radius: 0.14, width: 0.9 }),
+    text(`${id}-report-rec-title`, "caption", recommendationsLabel, 10.1, 2.14, 2.38, 0.32, 51, theme, { bg: mix(theme.accent, theme.background, 0.9), color: theme.text, fontSize: 16, bold: true }),
     shape(`${id}-report-rec-rule`, "rect", 10.1, 2.58, 2.46, 0.02, 52, theme.text, theme.text, { radius: 0 })
   ];
   bodyItems.forEach((item, index) => {
     const column = index % 2;
     const row = Math.floor(index / 2);
-    const x = 0.42 + column * 3.18;
-    const y = 2.76 + row * 1.34;
+    const x = 1.22 + column * 3.0;
+    const y = 3.24 + row * 1.28;
     const order = 20 + index * 3;
     const parsed = splitKeyValue(item);
     const body = (parsed ? parsed.value : item).replace(/成功した悪用は管理者権限や横展開につながる/u, "成功した悪用は権限昇格・横展開を招く").replace(/管理者権限や横展開につながる/u, "権限昇格・横展開を招く").replace(/狙われやすい。/u, "狙われる。");
-    elements.push(text(`${id}-report-body-${index}`, "body", body, x, y + (parsed ? 0.32 : 0), 2.78, parsed ? 0.78 : 1.04, order, theme, { bg: theme.background, color: theme.mutedText, fontSize: 14 }));
+    elements.push(text(`${id}-report-body-${index}`, "body", body, x, y + (parsed ? 0.32 : 0), 2.58, parsed ? 0.72 : 0.96, order, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 14 }));
     if (parsed) {
-      elements.push(text(`${id}-report-body-heading-${index}`, "caption", parsed.key, x, y, 2.7, 0.18, order + 1, theme, { bg: theme.background, color: theme.accent, fontSize: 12, bold: true }));
+      const heading = parsed.key.replace(/^補足\s+/u, "");
+      elements.push(text(`${id}-report-body-heading-${index}`, "caption", heading, x, y, 2.5, 0.18, order + 1, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true }));
     }
   });
   recommendations.forEach((item, index) => {
@@ -1769,12 +1807,14 @@ function renderAuthoredDiagram(theme: Theme, intent: SlideIntent, renderer?: Nar
   const summary = (intent.emphasis ?? intent.message).trim() || intent.title;
   const longDescriptionRaw = [intent.message, ...intent.evidence].filter(Boolean).join(" ").trim();
   const longDescription = longDescriptionRaw.length >= 20 ? longDescriptionRaw : `${intent.title}: ${summary} ${longDescriptionRaw}`.trim();
+  const hasRail = [...intent.evidence, ...(intent.details ?? [])].length > 0;
+  const diagramFrame = hasRail ? { x: 0.92, y: 1.98, w: 7.72, h: 4.82 } : { x: 0.92, y: 1.98, w: 11.48, h: 4.82 };
   const rendered = renderer({
-    idPrefix: `${intent.slideId}-dg`,
+    idPrefix: diagramIdPrefix(intent.slideId),
     title: slideTopicTitle(intent),
     summary,
     longDescription,
-    frame: { x: 0.92, y: 1.98, w: 11.48, h: 4.82 },
+    frame: diagramFrame,
     readingOrderStart: 20,
     accent: theme.accent,
     diagram: intent.diagram
@@ -1782,14 +1822,52 @@ function renderAuthoredDiagram(theme: Theme, intent: SlideIntent, renderer?: Nar
   if (!rendered || rendered.length === 0) return null;
 
   const leadText = diagramLeadText(intent);
-  if (!leadText) return rendered;
-
   const lastReadingOrder = Math.max(...rendered.map((element) => element.readingOrder ?? 0));
+  const rail = hasRail ? diagramTextRail(theme, intent, 8.86, 2.02, 3.5, 4.74, lastReadingOrder + 1) : [];
+  const messageOrder = lastReadingOrder + rail.length + 1;
   return [
     ...rendered,
-    shape(`${intent.slideId}-diagram-message-box`, "roundRect", 1.08, 6.86, 11.16, 0.42, lastReadingOrder + 1, theme.accentSoft, theme.line, { radius: 0.14, fillOpacity: 0.96 }),
-    text(`${intent.slideId}-diagram-message`, "caption", leadText, 1.38, 6.99, 10.56, 0.16, lastReadingOrder + 2, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 12, bold: true, align: "center" })
+    ...rail,
+    ...(leadText
+      ? [
+          shape(`${intent.slideId}-diagram-message-box`, "roundRect", 1.08, 6.86, 11.16, 0.42, messageOrder, theme.accentSoft, theme.line, { radius: 0.14, fillOpacity: 0.96 }),
+          text(`${intent.slideId}-diagram-message`, "caption", leadText, 1.38, 6.99, 10.56, 0.16, messageOrder + 1, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 12, bold: true, align: "center" })
+        ]
+      : [])
   ];
+}
+
+function diagramRailRows(intent: SlideIntent): Array<{ label: string; body: string }> {
+  const railBody = (value: string): string => {
+    const text = value.replace(/\s+/gu, " ").replace(/。$/u, "").trim();
+    return text.length <= 42 ? text : text.slice(0, 42).replace(/[、,，・／/\s]+$/u, "");
+  };
+  const rows = [...intent.evidence, ...(intent.details ?? [])]
+    .map((item, index) => {
+      const parsed = splitKeyValue(item);
+      if (parsed) return { label: narrativeLabel(parsed.key, 12), body: railBody(parsed.value) };
+      return { label: `要点 ${index + 1}`, body: railBody(item) };
+    })
+    .filter((row, index, array) => array.findIndex((candidate) => candidate.label === row.label && candidate.body === row.body) === index);
+  return rows.slice(0, 4);
+}
+
+function diagramTextRail(theme: Theme, intent: SlideIntent, x: number, y: number, w: number, h: number, readingOrderStart: number): SlideElement[] {
+  const rows = diagramRailRows(intent);
+  if (rows.length === 0) return [];
+  const elements: SlideElement[] = [
+    shape(`${intent.slideId}-diagram-rail`, "roundRect", x, y, w, h, readingOrderStart, theme.surface, theme.line, { radius: 0.16, fillOpacity: 0.96 }),
+    text(`${intent.slideId}-diagram-rail-title`, "caption", "読み解き", x + 0.24, y + 0.24, w - 0.48, 0.18, readingOrderStart + 1, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true })
+  ];
+  rows.forEach((row, index) => {
+    const rowY = y + 0.7 + index * 0.92;
+    const order = readingOrderStart + 2 + index * 4;
+    const fill = index === 0 ? theme.accentSoft : index % 2 === 0 ? theme.background : theme.surface;
+    elements.push(shape(`${intent.slideId}-diagram-rail-row-${index}`, "roundRect", x + 0.18, rowY, w - 0.36, 0.72, order, fill, theme.line, { radius: 0.12 }));
+    elements.push(text(`${intent.slideId}-diagram-rail-label-${index}`, "caption", row.label, x + 0.38, rowY + 0.12, 1.02, 0.16, order + 1, theme, { bg: fill, color: theme.accent, fontSize: 12, bold: true }));
+    elements.push(text(`${intent.slideId}-diagram-rail-body-${index}`, "caption", visibleSentence(row.body), x + 1.42, rowY + 0.12, w - 1.82, 0.36, order + 2, theme, { bg: fill, color: theme.text, fontSize: 12 }));
+  });
+  return elements;
 }
 
 // ---------------------------------------------------------------------------
@@ -2094,6 +2172,191 @@ function chooseTokens(locale: Locale, contentMode: ContentMode, options: CreateD
   };
 }
 
+function shouldUseDenseExecutiveHandout(messageMap: DeckMessageMap, contentMode: ContentMode, options: CreateDeckFromMessageMapOptions): boolean {
+  return options.planningMode === "narrative-v1" && (contentMode === "handout" || contentMode === "report") && messageMap.intents.length >= 18;
+}
+
+function denseHandoutTargetIntentCount(intentCount: number): number {
+  if (intentCount >= 22) return 14;
+  return 16;
+}
+
+function mergeableDenseGroup(group: SlideIntent[]): boolean {
+  return group.length < 3 && !group.some((intent) => intent.diagram || intent.visualAsset || intent.visualType === "flow" || intent.visualType === "step" || intent.slideRole === "process");
+}
+
+function denseGroupTitle(group: SlideIntent[]): string {
+  if (group.length === 1) return group[0].title;
+  const titles = group.map((intent) => titleLabel(intent.title));
+  if (titles.every((title) => /認証結果コード/u.test(title))) return "認証結果コード";
+  if (titles.some((title) => /上り|送信/u.test(title)) && titles.some((title) => /返却|レスポンス/u.test(title))) return "外部インターフェース";
+  if (titles.some((title) => /AD必須|属性/u.test(title)) && titles.some((title) => /アプリ/u.test(title))) return "属性と責務";
+  if (titles.some((title) => /内部|設定/u.test(title)) && titles.some((title) => /キャッシュ/u.test(title))) return "内部実装とキャッシュ";
+  if (titles.some((title) => /運用/u.test(title)) && titles.some((title) => /セキュリティ|リスク/u.test(title))) return "運用とリスク";
+  if (titles.some((title) => /移行方針/u.test(title)) && titles.some((title) => /棚卸し|現行/u.test(title))) return "移行方針と棚卸し";
+  if (titles.some((title) => /Entra/u.test(title)) && titles.some((title) => /移行後|認証方式/u.test(title))) return "Entra設計と方式";
+  if (titles.some((title) => /移行後/u.test(title)) && titles.some((title) => /認可|属性/u.test(title))) return "移行後の方式と認可";
+  if (titles.some((title) => /認可|属性/u.test(title)) && titles.some((title) => /統制|監査/u.test(title))) return "認可と統制";
+  return titleLabel(`${titles[0]} / ${titles[titles.length - 1]}`);
+}
+
+function denseGroupMessage(group: SlideIntent[]): string {
+  if (group.length === 1) return group[0].message;
+  const title = denseGroupTitle(group);
+  if (/インターフェース/u.test(title)) return "送信値と返却値を同じ契約として確認する。";
+  if (/認証結果コード/u.test(title)) return "正常系と異常系をコードで判定する。";
+  if (/内部実装/u.test(title)) return "設定とキャッシュが運用挙動を決める。";
+  if (/移行後/u.test(title)) return "接続方式と認可モデルを合わせて設計する。";
+  return `${title}を同じ面で確認する。`;
+}
+
+function denseGroupEvidenceLines(group: SlideIntent[]): string[] {
+  if (group.length === 1) return group[0].evidence;
+  const perIntent = group.length >= 3 ? 2 : 3;
+  const lines = group.flatMap((intent) => {
+    const label = titleLabel(intent.title);
+    return intent.evidence.slice(0, perIntent).map((item, index) => {
+      const detail = intent.details?.[index];
+      const body = detail && detail !== item ? `${item} / ${detail}` : item;
+      return `${label}: ${body}`;
+    });
+  });
+  return lines.slice(0, 6);
+}
+
+function denseGroupDiagram(group: SlideIntent[]): SlideIntentDiagram | undefined {
+  const title = denseGroupTitle(group);
+  const context = [title, ...group.flatMap((intent) => [intent.title, intent.message, intent.emphasis ?? "", ...intent.evidence, ...(intent.details ?? [])])].join(" ");
+  const hasArchitectureIntent = group.some((intent) => intent.slideId === "architecture" || /全体構成|アーキテクチャ|architecture/u.test(intent.title));
+  const hasEntraDesignIntent = group.some((intent) => /^(entra-design|future-auth-method|authorization-design|security-compliance)$/u.test(intent.slideId));
+  const hasRoadmapIntent = group.some((intent) => /^(roadmap-operations|deliverables-next-actions)$/u.test(intent.slideId));
+  if (hasArchitectureIntent && /認証Web|CRANE|Active Directory|\bAD\b|ゲストシステム|アプリ/u.test(context)) {
+    return {
+      direction: "LR",
+      nodes: [
+        { id: "user", label: "ユーザー", sublabel: "ID/PW入力", kind: "actor" },
+        { id: "app", label: "アプリ", sublabel: "appName送信", kind: "system" },
+        { id: "auth", label: "認証Web", sublabel: "認証代行", kind: "process", emphasis: true },
+        { id: "ad", label: "CRANE AD", sublabel: "LDAPS照会", kind: "system" },
+        { id: "decision", label: "権限判断", sublabel: "属性・グループ", kind: "note" }
+      ],
+      edges: [
+        { from: "user", to: "app", label: "入力" },
+        { from: "app", to: "auth", label: "HTTPS POST" },
+        { from: "auth", to: "ad" },
+        { from: "auth", to: "decision", label: "返却" },
+        { from: "decision", to: "app" }
+      ],
+      groups: [{ id: "auth-boundary", label: "認証基盤", nodeIds: ["auth", "ad"] }]
+    };
+  }
+  if (hasEntraDesignIntent && /Entra|OIDC|OAuth|SAML|Managed Identity|Graph API|アプリロール|条件付きアクセス|MFA|認可/u.test(context)) {
+    return {
+      direction: "LR",
+      nodes: [
+        { id: "current", label: "現行AD", sublabel: "属性・グループ", kind: "system" },
+        { id: "entra", label: "Entra ID", sublabel: "認証・統制", kind: "cloud", emphasis: true },
+        { id: "appreg", label: "アプリ登録", sublabel: "OIDC/SAML", kind: "process" },
+        { id: "authz", label: "認可モデル", sublabel: "ロール/属性", kind: "data" },
+        { id: "audit", label: "監査・運用", sublabel: "ログ/MFA", kind: "note" }
+      ],
+      edges: [
+        { from: "current", to: "entra", label: "同期/再設計" },
+        { from: "entra", to: "appreg", label: "接続方式" },
+        { from: "appreg", to: "authz", label: "クレーム" },
+        { from: "entra", to: "audit", label: "条件付きアクセス" }
+      ],
+      groups: [{ id: "target", label: "移行後ID基盤", nodeIds: ["entra", "appreg", "authz", "audit"] }]
+    };
+  }
+  if (hasRoadmapIntent && /移行方針|棚卸し|ロードマップ|PoC|切り戻し|体制/u.test(context)) {
+    return {
+      direction: "LR",
+      nodes: [
+        { id: "inventory", label: "棚卸し", sublabel: "利用/責任者", kind: "data" },
+        { id: "classify", label: "方式判定", sublabel: "難易度/重要度", kind: "process", emphasis: true },
+        { id: "poc", label: "PoC", sublabel: "先行対象", kind: "process" },
+        { id: "roadmap", label: "ロードマップ", sublabel: "段階移行", kind: "note" }
+      ],
+      edges: [
+        { from: "inventory", to: "classify", label: "現行把握" },
+        { from: "classify", to: "poc", label: "先行検証" },
+        { from: "poc", to: "roadmap", label: "移行計画" }
+      ],
+      groups: []
+    };
+  }
+  return undefined;
+}
+
+function denseGroupVisualType(group: SlideIntent[]): SlideIntent["visualType"] {
+  if (denseGroupDiagram(group)) return "native-diagram";
+  if (group.some((intent) => intent.visualType === "contrast" || intent.visualType === "before-after" || intent.slideRole === "comparison")) return "contrast";
+  if (group.some((intent) => intent.visualType === "matrix" || intent.slideRole === "decision")) return "table";
+  return "table";
+}
+
+function denseGroupSlideRole(group: SlideIntent[]): SlideIntent["slideRole"] {
+  if (group.some((intent) => intent.slideRole === "comparison")) return "comparison";
+  if (group.some((intent) => intent.slideRole === "decision")) return "decision";
+  if (group.some((intent) => intent.slideRole === "action")) return "action";
+  return "data";
+}
+
+function mergeDenseIntentGroup(group: SlideIntent[]): SlideIntent {
+  if (group.length === 1) return group[0];
+  const diagram = denseGroupDiagram(group);
+  return {
+    slideId: group.map((intent) => intent.slideId).join("-plus-"),
+    title: denseGroupTitle(group),
+    message: denseGroupMessage(group),
+    slideRole: diagram ? "process" : denseGroupSlideRole(group),
+    visualType: diagram ? "native-diagram" : denseGroupVisualType(group),
+    emphasis: group.map((intent) => intent.emphasis ?? titleLabel(intent.title)).filter(Boolean).slice(0, 2).join(" / "),
+    evidence: denseGroupEvidenceLines(group),
+    details: group.flatMap((intent) => [intent.message, ...intent.evidence, ...(intent.details ?? [])]),
+    quietInfo: group.flatMap((intent) => intent.quietInfo),
+    sourceTrace: group.flatMap((intent) => intent.sourceTrace ?? []),
+    ...(diagram ? { diagram } : {})
+  };
+}
+
+function denseExecutiveHandoutIntents(intents: SlideIntent[], targetCount: number): SlideIntent[] {
+  const groups: SlideIntent[][] = intents.map((intent) => [intent]);
+  let index = 2;
+  while (groups.length > targetCount && index < groups.length - 1) {
+    const combined = [...groups[index], ...groups[index + 1]];
+    if (combined.length <= 3 && denseGroupDiagram(combined)) {
+      groups[index] = combined;
+      groups.splice(index + 1, 1);
+      continue;
+    }
+    index += 1;
+  }
+  index = 2;
+  while (groups.length > targetCount && index < groups.length - 1) {
+    if (mergeableDenseGroup(groups[index]) && mergeableDenseGroup(groups[index + 1])) {
+      groups[index] = [...groups[index], ...groups[index + 1]];
+      groups.splice(index + 1, 1);
+      index += 1;
+      continue;
+    }
+    index += 1;
+  }
+  index = 2;
+  while (groups.length > targetCount && index < groups.length - 1) {
+    const left = groups[index];
+    const right = groups[index + 1];
+    if (left.length + right.length <= 3 && !left.some((intent) => intent.diagram || intent.visualAsset) && !right.some((intent) => intent.diagram || intent.visualAsset)) {
+      groups[index] = [...left, ...right];
+      groups.splice(index + 1, 1);
+      continue;
+    }
+    index += 1;
+  }
+  return groups.map(mergeDenseIntentGroup);
+}
+
 export function createDeckFromMessageMap(messageMap: DeckMessageMap, options: CreateDeckFromMessageMapOptions): DeckSpec {
   if (messageMap.intents.length === 0) {
     throw new Error("messageMap.intents must contain at least one SlideIntent.");
@@ -2103,14 +2366,17 @@ export function createDeckFromMessageMap(messageMap: DeckMessageMap, options: Cr
   const contentMode = options.contentMode ?? "report";
   const { templateId, tokens, styleProfile } = chooseTokens(locale, contentMode, options);
   const theme = buildTheme(tokens);
+  const authoringMessageMap = shouldUseDenseExecutiveHandout(messageMap, contentMode, options)
+    ? { ...messageMap, intents: denseExecutiveHandoutIntents(messageMap.intents, denseHandoutTargetIntentCount(messageMap.intents.length)) }
+    : messageMap;
   const narrativeArtifacts = options.planningMode === "narrative-v1"
-    ? createNarrativePlanArtifacts(messageMap, { title: options.title, locale, contentMode })
+    ? createNarrativePlanArtifacts(authoringMessageMap, { title: options.title, locale, contentMode })
     : undefined;
   const slides: Slide[] = [];
   if (options.includeCover !== false) {
     slides.push(createCover(theme, options.title, messageMap));
   }
-  messageMap.intents.forEach((intent, index) => {
+  authoringMessageMap.intents.forEach((intent, index) => {
     if (narrativeArtifacts) {
       const expressionPlan = narrativeArtifacts.expressionPlans[index];
       const layoutPlan = narrativeArtifacts.layoutPlans[index];

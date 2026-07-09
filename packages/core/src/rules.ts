@@ -35,6 +35,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "PDF知見: いきなりPowerPointを立ち上げない。先に「聴き手に何を納得/行動してもらうか」「贈り物として何を渡すか」を紙・メモ・Message Mapで決める。",
         "経営向け・顧客向け・重要会議・コンサル風資料では plan_business_deck を先に実行し、章構成と各スライドの役割を決める。",
         "search_templates / recommend_template で template を決め、search_assets で既存アイコン・クラウドプリセットを先に探す。",
+        "DESIGN.md や DESIGN.md 風の参照がある場合は、Web UI部品としてコピーせず、色・タイポ・余白・密度・面の扱い・Do/Don'tをスライド用Design Briefへ翻訳してからgrammar選択へ渡す。",
         "PDF知見: 先人に学ぶ。ゼロから自由配置で発明せず、既存テンプレート、schematic、intent diagram、side-image など近い型を選んでから内容を当てはめる。",
         "意図した構図・粒度がある図解は generate_intent_diagram を先に使い、それ以外は recommend_figure / list_schematic_presets で型を選んで generate_schematic、または generate_native_diagram でテキスト・カード・矢印・ラベルを編集可能な形で作る。recommend_figure は useWhen / avoidWhen / messageSpecDirection を返すので、SlideIntentのslideRole・visualTypeに反映する。",
         "DeckSpec 作成後は finalize_deck（または CLI `pptcreater finalize <deck.json> --output <deck.pptx>`）で polish→lint→render を1回でまとめて実行する。改行・はみ出し・小さすぎる文字・読み上げ順などの polishFixable 項目は polish が自動修正するので手作業で直さない。blockingErrors（本当に直すべき項目）だけを修正して再実行する。lint/polish/render を別々に何度も呼ぶ非効率なループは避ける。"
@@ -46,6 +47,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "PDF-derived rule: do not open PowerPoint first. Decide what the audience should understand/do and what 'gift' the slide gives them using paper, notes, or Message Map before layout.",
         "For executive, customer-facing, important-meeting, or consulting-style decks, run plan_business_deck first to define sections and slide roles.",
         "Choose the template through search_templates / recommend_template, and search_assets before creating new icons or cloud pictograms.",
+        "If a DESIGN.md or DESIGN.md-style reference is provided, do not copy web UI widgets; translate color, typography, whitespace, density, surface vocabulary, and do/don't rules into a slide Design Brief before grammar selection.",
         "PDF-derived rule: learn from predecessors. Do not invent freeform layouts from scratch; choose the nearest existing template, schematic, intent diagram, or side-image pattern, then adapt content.",
         "Use generate_intent_diagram first when a diagram has a known intended composition/granularity; otherwise call recommend_figure / list_schematic_presets and use generate_schematic, or use generate_native_diagram so diagrams, cards, arrows, and labels remain editable. recommend_figure returns useWhen / avoidWhen / messageSpecDirection; copy its slideRole and visualType into the SlideIntent.",
         "After DeckSpec creation, run finalize_deck (or CLI `pptcreater finalize <deck.json> --output <deck.pptx>`) to polish, lint, and render in a single pass. polishFixable items (line breaks, overflow, too-small text, reading order) are auto-resolved by polish — do not hand-edit them; fix only the blockingErrors and re-run. Avoid the slow loop of calling lint, polish, and render separately and repeatedly."
@@ -87,6 +89,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "PDF知見: レイアウトは思考を映す鏡。行き当たりばったりで要素を置かず、タテ・ヨコの軸、視線の流れ、意味のかたまりを先に決める。",
         "余白は余った白ではなく設計要素。スライド端まで詰めず、主役以外を弱めることでメッセージを際立たせる。",
         "横書きスライドでは左上から右へ、次に下へ向かう視線のストーリーを意識する。Z型/横方向の流れに沿わない配置は、見出し・番号・矢印・余白で順路を明示する。",
+        "日本語DESIGN.md由来のタイポ指定がある場合は、和文フォント優先、欧文混植、広めの行間、禁則処理、語の途中切れ回避をスライド本文・ラベルへ反映する。",
         "6枚を超えるデッキでは、主要な章の冒頭に generate_section_divider で扉スライド(layout: section)を挿入し、章の切り替えを明示する。扉スライドは視覚リッチネス判定の対象外。",
         "タイトルは原則30pt以上、リード/メッセージは18pt以上、本文は14pt以上、ラベル/注釈は12pt以上を目安にする。",
         "テキストボックスは最初から十分な幅・高さを取る。短い高さの横長カードに長文を入れない。",
@@ -98,6 +101,7 @@ export function getSlideCreationRules(locale: Locale = "ja-JP", contentMode: Con
         "PDF-derived rule: layout mirrors thinking. Do not place objects ad hoc; decide vertical/horizontal axes, eye flow, and semantic chunks first.",
         "Whitespace is a designed element, not leftover space. Avoid edge-to-edge clutter and weaken supporting elements so the message stands out.",
         "For horizontal slides, plan the eye-flow story from upper-left to right, then downward. If the layout breaks the Z/left-to-right flow, clarify the route with headings, numbers, arrows, or whitespace.",
+        "When a Japanese DESIGN.md informs typography, preserve Japanese-first font fallback, mixed Latin/CJK handling, wider line-height, kinsoku-aware line breaks, and avoidance of split compound nouns in slide body and labels.",
         "For decks longer than six slides, insert section divider slides (layout 'section') via generate_section_divider at the start of each major section to signal chapter changes; divider slides are exempt from the visual-richness gate.",
         "Use roughly >=30pt titles, >=18pt leads/messages, >=14pt body text, and >=12pt labels/notes.",
         "Allocate enough width and height up front. Do not put long copy into shallow horizontal cards.",

@@ -9,6 +9,7 @@ import {
   applyTemplateContentDesign,
   BUSINESS_STYLE_MODES,
   createDeckFromMessageMap,
+  type NarrativeDiagramRenderRequest,
   type NarrativeDesignComponentRequest,
   type NarrativeDesignComponentResponse,
   createEditWithCopilotPrompt,
@@ -57,7 +58,8 @@ import {
   TemplateManifestSchema,
   type DeckSpec,
   type PptxSlideColorReplacement,
-  type PptxSlideTextReplacement
+  type PptxSlideTextReplacement,
+  type SlideElement
 } from "@pptcreater/core";
 import { importNotPersistedWarning, importTemplateFromPptx, renderDeckToPptx, reviewPptxSlideTextFit } from "@pptcreater/render-pptx";
 import { renderStudioHtml } from "@pptcreater/studio";
@@ -72,6 +74,39 @@ function jsonText(value: unknown) {
     ]
   };
 }
+
+const messageMapDiagramRenderer = (request: NarrativeDiagramRenderRequest) => {
+  const result = renderNativePonchiDiagram(
+    {
+      title: request.title,
+      summary: request.summary,
+      longDescription: request.longDescription,
+      direction: request.diagram.direction,
+      nodes: request.diagram.nodes.map((node) => ({
+        id: node.id,
+        label: node.label,
+        ...(node.sublabel ? { sublabel: node.sublabel } : {}),
+        ...(node.kind ? { kind: node.kind } : {}),
+        ...(node.emphasis ? { emphasis: node.emphasis } : {})
+      })),
+      arrows: request.diagram.edges.map((edge) => ({
+        from: edge.from,
+        to: edge.to,
+        ...(edge.label ? { label: edge.label } : {}),
+        ...(edge.dashed ? { dashed: edge.dashed } : {}),
+        ...(edge.bidirectional ? { bidirectional: edge.bidirectional } : {})
+      })),
+      groups: request.diagram.groups.map((group) => ({ id: group.id, label: group.label, nodeIds: group.nodeIds }))
+    },
+    {
+      frame: request.frame,
+      idPrefix: request.idPrefix,
+      readingOrderStart: request.readingOrderStart,
+      ...(request.accent ? { accent: request.accent } : {})
+    }
+  );
+  return result.elements as unknown as SlideElement[];
+};
 
 const DESIGN_COMPONENT_BY_GRAMMAR: Record<string, string> = {
   "sequential-path": "flow-horizontal-p3",
@@ -854,7 +889,7 @@ export function createPptcreaterMcpServer(): McpServer {
           includeCover,
           includeClosing,
           planningMode: "narrative-v1",
-          designComponentRenderer: await createZukaiDesignComponentRenderer()
+          diagramRenderer: messageMapDiagramRenderer
         })
       );
     }

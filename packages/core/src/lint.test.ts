@@ -304,6 +304,34 @@ describe("DeckSpec linting", () => {
     expect(report.ok).toBe(false);
   });
 
+  it("counts native narrative flow grammars as expression variety", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1, contentMode: "technical" });
+    deck.skillPack = "slide-craft-ja";
+    deck.slides = Array.from({ length: 8 }, (_, slideIndex) => ({
+      id: `flow-${slideIndex}`,
+      title: `フロー ${slideIndex + 1}`,
+      layout: slideIndex < 2 ? "message-grammar-sequential-path" : "title-content",
+      elements: [
+        { id: `flow-${slideIndex}-title`, type: "text" as const, role: "title" as const, text: `フロー ${slideIndex + 1}`, x: 0.7, y: 0.45, w: 8, h: 0.5, fontSize: 28, bold: true, decorative: false, readingOrder: 1 },
+        { id: `flow-${slideIndex}-lead`, type: "text" as const, role: "subtitle" as const, text: "カードだけで情報を並べています。", x: 0.7, y: 1.05, w: 10, h: 0.4, fontSize: 20, bold: false, decorative: false, readingOrder: 2 },
+        ...Array.from({ length: 6 }, (_, cardIndex) => {
+          const x = 0.8 + (cardIndex % 3) * 4.0;
+          const y = 1.8 + Math.floor(cardIndex / 3) * 1.7;
+          const ro = 10 + cardIndex * 3;
+          return [
+            { id: `flow-${slideIndex}-card-${cardIndex}`, type: "shape" as const, shape: "roundRect" as const, fill: "#ffffff", x, y, w: 3.4, h: 1.25, decorative: true, readingOrder: ro },
+            { id: `flow-${slideIndex}-card-title-${cardIndex}`, type: "text" as const, role: "callout" as const, text: `見出し ${cardIndex + 1}`, x: x + 0.2, y: y + 0.15, w: 3, h: 0.3, fontSize: 20, bold: true, decorative: false, readingOrder: ro + 1 },
+            { id: `flow-${slideIndex}-card-body-${cardIndex}`, type: "text" as const, role: "body" as const, text: "説明を短く入れるカードです。", x: x + 0.2, y: y + 0.55, w: 3, h: 0.45, fontSize: 20, bold: false, decorative: false, readingOrder: ro + 2 }
+          ];
+        }).flat()
+      ]
+    }));
+
+    const report = lintDeckSpec(parseDeckSpec(deck));
+
+    expect(report.issues.find((issue) => issue.code === "visual.expression-variety")).toBeUndefined();
+  });
+
   it("flags square accent bars flush with rounded card edges", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     deck.slides[0].elements = [

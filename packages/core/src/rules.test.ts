@@ -12,9 +12,11 @@ describe("first-pass slide creation rules", () => {
     expect(rules.visualRules.join("\n")).toContain("色付きライン付きカード");
     expect(rules.hardRules.join("\n")).toContain("1スライド1メッセージ");
     expect(rules.workflow.join("\n")).toContain("いきなりPowerPointを立ち上げない");
+    expect(rules.workflow.join("\n")).toContain("DESIGN.md");
     expect(rules.hardRules.join("\n")).toContain("主役は作り手ではなく聴き手");
     expect(rules.layoutRules.join("\n")).toContain("余白は余った白ではなく設計要素");
     expect(rules.layoutRules.join("\n")).toContain("視線のストーリー");
+    expect(rules.layoutRules.join("\n")).toContain("日本語DESIGN.md");
     expect(rules.visualRules.join("\n")).toContain("表は罫線ではなく文字が主役");
     expect(rules.visualRules.join("\n")).toContain("矢印は脇役");
     expect(rules.visualRules.join("\n")).toContain("写真や画像頼りにしない");
@@ -36,6 +38,7 @@ describe("first-pass slide creation rules", () => {
     expect(prompt).toContain("Do not force render-blocking lint errors");
     expect(prompt).toContain("colored accent-bar cards");
     expect(prompt).toContain("do not open PowerPoint first");
+    expect(prompt).toContain("DESIGN.md");
     expect(prompt).toContain("Whitespace is a designed element");
     expect(prompt).toContain("learn from predecessors");
     expect(prompt).toContain("Arrows are supporting actors");

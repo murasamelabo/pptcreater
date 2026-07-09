@@ -421,9 +421,16 @@ function hasGeneratedNativeDiagram(slide: Slide): boolean {
   return hasGeneratedNode && hasGeneratedConnector;
 }
 
+function hasNarrativeVisualGrammar(slide: Slide): boolean {
+  return /^message-grammar-(?:sequential-path|comparison-field|decision-surface|spatial-model|layered-model|typographic-emphasis|photo-product-anchor|detail-reading-page)$/u.test(
+    slide.layout ?? ""
+  );
+}
+
 function hasSubstantiveVisualModality(slide: Slide): boolean {
   return (
     hasGeneratedNativeDiagram(slide) ||
+    hasNarrativeVisualGrammar(slide) ||
     slide.elements.some((element) => {
       if (element.decorative) {
         return false;

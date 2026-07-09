@@ -11,10 +11,12 @@ import {
   classifyFinalizeLintReports,
   cliMessage,
   createDeckFromMessageMap,
+  createMessageSpecFromDocSpec,
   type NarrativeDesignComponentRequest,
   type NarrativeDesignComponentResponse,
   type NarrativeDiagramRenderRequest,
   type SlideElement,
+  deckMessageMapFromMessageSpec,
   createNarrativePlanArtifacts,
   createEditWithCopilotPrompt,
   createSampleDeck,
@@ -28,6 +30,7 @@ import {
   getDefaultTemplateRegistryPath,
   getSlideCreationRules,
   DeckMessageMapSchema,
+  extractDocSpecFromMarkdown,
   listAllTemplates,
   listSkillPacks,
   lintDeckSpec,
@@ -40,6 +43,7 @@ import {
   reviewDeckContent,
   reviewDeck,
   reviewMessageMap,
+  reviewMessageSpec,
   reviewSlideQuality,
   formatSlideQualityReview,
   reviewVisualQuality,
@@ -848,8 +852,7 @@ program
       keywords,
       sources,
       planningMode: options.planningMode,
-      diagramRenderer: messageMapDiagramRenderer,
-      designComponentRenderer: options.planningMode === "narrative-v1" ? await createZukaiDesignComponentRenderer() : undefined
+      diagramRenderer: messageMapDiagramRenderer
     });
     let planningArtifacts: ReturnType<typeof createNarrativePlanArtifacts> | undefined;
     if (options.planningMode === "narrative-v1" || options.planningOutputDir) {
@@ -1324,6 +1327,117 @@ program
       console.log(`ERROR ${item.code} ${item.path}: ${item.message}`);
     });
     printTemplateWarnings(renderWarnings);
+  }));
+
+program
+  .command("from-markdown")
+  .description("Create a DeckSpec from Markdown using DocSpec -> MessageSpec -> DeckMessageMap planning before rendering.")
+  .argument("<markdown>", "Markdown source path")
+  .requiredOption("-o, --output <path>", "Output DeckSpec path")
+  .requiredOption("--title <title>", "Deck title")
+  .option("--locale <locale>", "Deck locale", "ja-JP")
+  .option("--content-mode <mode>", "presentation, report, technical, handout, or decision", parseContentMode, "handout")
+  .option("--style <profile>", "Force a style: minimal, stylish, report, presentation, technical", parseStyleProfile)
+  .option("--template <id>", "Template id")
+  .option("--author <name>", "Deck author")
+  .option("--planning-output-dir <path>", "Write DocSpec, MessageSpec, MessageMap, and narrative-v1 planning artifacts to this directory")
+  .option("--no-cover", "Skip the generated cover slide")
+  .option("--no-closing", "Skip the generated closing slide")
+  .option("--json", "Emit JSON result", false)
+  .action(commandAction(async (markdownPath: string, options: {
+    output: string;
+    title: string;
+    locale: string;
+    contentMode: ContentMode;
+    style?: StyleProfile;
+    template?: string;
+    author?: string;
+    planningOutputDir?: string;
+    cover: boolean;
+    closing: boolean;
+    json: boolean;
+  }) => {
+    const markdown = await readFile(markdownPath, "utf8");
+    const parsedLocale = asLocale(options.locale);
+    const docSpec = extractDocSpecFromMarkdown(markdown, { sourceId: markdownPath, title: options.title });
+    const messageSpec = createMessageSpecFromDocSpec(docSpec, { audience: docSpec.title, desiredAction: "確認事項を整理する" });
+    const messageSpecReview = reviewMessageSpec(messageSpec);
+    if (!messageSpecReview.ok) {
+      throw new Error(`MessageSpec review failed before DeckSpec generation:\n${messageSpecReview.issues.map((issue) => `${issue.severity.toUpperCase()} ${issue.code} ${issue.path}: ${issue.message}`).join("\n")}`);
+    }
+    const messageMap = deckMessageMapFromMessageSpec(messageSpec);
+    const sources = [{ id: docSpec.sourceId, title: docSpec.title, url: markdownPath, usage: "quote" as const }];
+    const reviewProbe = createSampleDeck(parsedLocale, {
+      slideCount: Math.max(1, Math.min(40, messageMap.intents.length)),
+      contentMode: options.contentMode,
+      styleProfile: options.style
+    });
+    reviewProbe.slides = messageMap.intents.map((intent, index) => ({
+      id: intent.slideId,
+      title: intent.title,
+      layout: "message-map-probe",
+      elements: [
+        {
+          id: `${intent.slideId}-probe-title`,
+          type: "text",
+          role: "title",
+          text: intent.title,
+          x: 0.5,
+          y: 0.5,
+          w: 10,
+          h: 0.5,
+          fontSize: 24,
+          bold: true,
+          readingOrder: index + 1,
+          decorative: false
+        }
+      ]
+    }));
+    reviewProbe.metadata = { ...reviewProbe.metadata, contentMode: options.contentMode, sources, messageMap };
+    const messageMapReview = reviewMessageMap(reviewProbe);
+    if (!messageMapReview.ok) {
+      throw new Error(`Message Map review failed before DeckSpec generation:\n${messageMapReview.issues.map((issue) => `${issue.severity.toUpperCase()} ${issue.code} ${issue.path}: ${issue.message}`).join("\n")}`);
+    }
+    const deck = createDeckFromMessageMap(messageMap, {
+      title: options.title,
+      locale: parsedLocale,
+      contentMode: options.contentMode,
+      styleProfile: options.style,
+      template: options.template,
+      author: options.author,
+      includeCover: options.cover,
+      includeClosing: options.closing,
+      sources,
+      planningMode: "narrative-v1",
+      diagramRenderer: messageMapDiagramRenderer
+    });
+    const planningArtifacts = createNarrativePlanArtifacts(messageMap, {
+      title: options.title,
+      request: options.title,
+      locale: parsedLocale,
+      contentMode: options.contentMode
+    });
+    if (options.planningOutputDir) {
+      await mkdir(options.planningOutputDir, { recursive: true });
+      await writeJson(`${options.planningOutputDir}/doc-spec.json`, docSpec);
+      await writeJson(`${options.planningOutputDir}/message-spec.json`, messageSpec);
+      await writeJson(`${options.planningOutputDir}/message-spec-review.json`, messageSpecReview);
+      await writeJson(`${options.planningOutputDir}/message-map.json`, messageMap);
+      await writeJson(`${options.planningOutputDir}/deck-planning-input.json`, planningArtifacts.planningInput);
+      await writeJson(`${options.planningOutputDir}/deck-brief.json`, planningArtifacts.deckBrief);
+      await writeJson(`${options.planningOutputDir}/chapter-plan.json`, planningArtifacts.chapters);
+      await writeJson(`${options.planningOutputDir}/slide-briefs.json`, planningArtifacts.slideBriefs);
+      await writeJson(`${options.planningOutputDir}/slide-text-plan.json`, planningArtifacts.slideTextPlans);
+      await writeJson(`${options.planningOutputDir}/expression-plan.json`, planningArtifacts.expressionPlans);
+      await writeJson(`${options.planningOutputDir}/layout-plan.json`, planningArtifacts.layoutPlans);
+      await writeJson(`${options.planningOutputDir}/visual-grammar-registry.json`, planningArtifacts.visualGrammars);
+    }
+    await writeJson(options.output, deck);
+    if (options.json) {
+      console.log(JSON.stringify({ outputPath: options.output, planningOutputDir: options.planningOutputDir, docSpec, messageSpec, messageSpecReview, messageMap, planningArtifacts, deck }, null, 2));
+      return;
+    }
+    console.log(cliMessage(outputLocale(deck.locale), "cli.created", { path: options.output }));
   }));
 
 program

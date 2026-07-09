@@ -15,6 +15,12 @@ early, see [`narrative-authoring-pipeline.md`](narrative-authoring-pipeline.md).
 visual grammar metadata, expression selection, and layout composition before concrete objects are
 created.
 
+When a user supplies a `DESIGN.md` or a DESIGN.md-style reference collection, translate it into a
+slide design brief before rendering. See
+[`design-md-slide-translation.md`](design-md-slide-translation.md). Use it for palette, typography,
+spacing, density, surface hierarchy, and do/don't guardrails, but do not copy web UI widgets or brand
+identity wholesale.
+
 Run `pptcreater agents` (or the MCP tool `list_agent_roles`) to print the live role definitions,
 `pptcreater review <deck.json>` (or the MCP tool `review_deck`) to run the aggregated quality gate,
 and `pptcreater quality-review <deck.json>` (or MCP `review_slide_quality`) to score a finished deck

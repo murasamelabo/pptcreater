@@ -20,6 +20,8 @@ export * from "./figureSelector.js";
 export * from "./typography.js";
 export * from "./patternGallery.js";
 export * from "./messageMap.js";
+export * from "./docSpec.js";
+export * from "./messageSpec.js";
 export * from "./messageDeck.js";
 export * from "./narrativePlanning.js";
 export * from "./slideQualityStandard.js";

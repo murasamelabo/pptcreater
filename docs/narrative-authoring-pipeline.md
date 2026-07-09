@@ -4,6 +4,8 @@
 
 This proposal changes pptcreater's deck-generation approach from selecting fixed diagram patterns early to planning the deck as a communication artifact first, then choosing an expression strategy for each slide.
 
+For a more source-faithful redesign of the upstream `DocSpec` / `MessageSpec` generation layer, see [MessageSpec / DocSpec Generation Improvement Plan](message-spec-generation-improvement-plan.md).
+
 The user problem is not only layout quality. The current pipeline can make many decks look structurally similar because `MessageMap.visualType` is quickly collapsed into a small set of `message-*` archetypes. That makes the system improve by swapping patterns rather than by reasoning about what the audience needs to understand.
 
 ## Current Constraint
@@ -22,6 +24,8 @@ This is reliable, but it bakes visual choice too early into the workflow. The re
 Do not start from existing diagram patterns.
 
 Start from narrative, information, visible copy, and communicative relationship. Use visual grammars as metadata describing what a type of expression can communicate, not as prebuilt slide templates. A grammar may later render into text, table, shape composition, spatial model, chart, photo-led slide, or a fully custom native-object composition.
+
+If a `DESIGN.md` or DESIGN.md-style design reference is supplied, do not treat it as a web component catalog. Translate it into a slide design brief first: mood, palette roles, type hierarchy, CJK typography rules, spacing discipline, surface/depth vocabulary, density tolerance, and do/don't guardrails. See [DESIGN.md to Slide Design Brief](design-md-slide-translation.md).
 
 Existing schematic/design-pack patterns may remain as legacy fallback, regression baselines, or optional renderers. They should not be the first selection primitive in the new authoring path.
 

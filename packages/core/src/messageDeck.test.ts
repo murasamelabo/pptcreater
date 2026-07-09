@@ -485,14 +485,93 @@ describe("message map deck generator", () => {
     const slide = deck.slides.find((candidate) => candidate.id === "exploit-report");
     expect(slide?.layout).toBe("message-grammar-detail-reading-page");
     const texts = slide?.elements.filter((element): element is Extract<typeof element, { type: "text" }> => element.type === "text") ?? [];
-    expect(texts.some((element) => element.id === "exploit-report-report-nav" && element.text.includes("Contents"))).toBe(true);
-    expect(texts.some((element) => element.id === "exploit-report-report-kicker" && /continued|詳細/u.test(element.text))).toBe(true);
+    expect(texts.some((element) => element.id === "exploit-report-eyebrow" && element.text === "SLIDE 01")).toBe(true);
+    expect(texts.some((element) => element.id === "exploit-report-header-badge-text")).toBe(true);
+    expect(texts.some((element) => element.id === "exploit-report-report-page")).toBe(false);
+    expect(texts.some((element) => element.id === "exploit-report-report-nav")).toBe(false);
+    expect(texts.some((element) => element.id === "exploit-report-report-kicker" && /文章で読む|Reading notes/u.test(element.text))).toBe(true);
     expect(texts.some((element) => element.id === "exploit-report-report-quote")).toBe(true);
-    expect(texts.some((element) => element.id === "exploit-report-report-rec-title" && element.text === "Recommendations")).toBe(true);
+    expect(texts.some((element) => element.id === "exploit-report-report-rec-title" && element.text === "確認事項")).toBe(true);
     expect(texts.filter((element) => /report-body-\d/u.test(element.id))).toHaveLength(4);
     expect(slide?.elements.some((element) => element.id === "exploit-report-report-quote-panel" && element.type === "shape")).toBe(true);
     expect(slide?.elements.some((element) => element.id === "exploit-report-report-rec-panel" && element.type === "shape")).toBe(true);
     expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
+  });
+
+  it("preserves contextual term rows in evidence-board grammar", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "移行論点を可視化する",
+        audience: "移行担当者",
+        desiredAction: "方式判定と連携設計を確認する",
+        intents: [
+          {
+            slideId: "term-board",
+            title: "移行設計",
+            message: "移行論点を成果物へ落とす。",
+            evidence: [
+              "方式判定: OAuth / PKCE / Managed Identity で選ぶ",
+              "連携設計: Graph API / Entra ID / memberOf で詰める",
+              "推奨フロー: 認可コードフローへ移行できるか。"
+            ],
+            quietInfo: [],
+            visualType: "summary",
+            slideRole: "decision",
+            emphasis: "ロードマップ"
+          }
+        ]
+      },
+      { title: "Required Terms", locale: "ja-JP", contentMode: "handout", styleProfile: "report", planningMode: "narrative-v1", includeCover: false, includeClosing: false }
+    );
+
+    const slide = deck.slides.find((candidate) => candidate.id === "term-board");
+    expect(slide?.layout).toBe("message-grammar-evidence-board");
+    const proofText = slide?.elements.filter((element): element is Extract<typeof element, { type: "text" }> => element.type === "text" && element.id.includes("proof-text")).map((element) => element.text).join("\n") ?? "";
+    const normalizedProofText = proofText.replace(/\s+/gu, " ");
+
+    expect(normalizedProofText).toContain("Managed Identity");
+    expect(normalizedProofText).toContain("Graph API");
+    expect(proofText).not.toMatch(/Managed Identi$/mu);
+  });
+
+  it("renders long sequential path rows with consistent sizing", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "認証処理の流れを示す",
+        audience: "アプリ担当者",
+        desiredAction: "処理順を確認する",
+        intents: [
+          {
+            slideId: "auth-flow",
+            title: "認証処理",
+            message: "入力検証、キャッシュ確認、AD照会の順で進む",
+            evidence: [
+              "処理で追う値: userName / userPassword / appName を見る",
+              "照会先: Active Directory を見る",
+              "入力: userName / userPassword / appNameを受け取る",
+              "検証: 必須入力とGET禁止を確認",
+              "照会: Active Directoryへ認証問い合わせ",
+              "返却: 結果コードと属性情報を返す"
+            ],
+            quietInfo: [],
+            visualType: "flow",
+            slideRole: "process",
+            emphasis: "処理順"
+          }
+        ]
+      },
+      { title: "Sequential path", locale: "ja-JP", contentMode: "handout", styleProfile: "report", planningMode: "narrative-v1", includeCover: false, includeClosing: false }
+    );
+
+    const slide = deck.slides.find((candidate) => candidate.id === "auth-flow");
+    const rowShapes = slide?.elements.filter((element): element is Extract<typeof element, { type: "shape" }> => element.type === "shape" && /^auth-flow-path-row-\d+$/u.test(element.id)) ?? [];
+    const rowTexts = slide?.elements.filter((element): element is Extract<typeof element, { type: "text" }> => element.type === "text" && /^auth-flow-path-row-label-\d+$/u.test(element.id)) ?? [];
+
+    expect(rowShapes.map((element) => element.h)).toEqual([0.62, 0.62, 0.62, 0.62, 0.62, 0.62]);
+    expect(new Set(rowTexts.map((element) => element.fontSize))).toEqual(new Set([18]));
+    expect(rowTexts.every((element) => element.bold !== true)).toBe(true);
+    expect(rowTexts.map((element) => element.text).join("\n")).toContain("userPassword / appName");
+    expect(rowTexts.map((element) => element.text).join("\n")).toContain("Active Directoryへ認証問い合わせ");
   });
 
   it("renders statement evidence as a primary support card plus secondary rows", () => {
@@ -1093,6 +1172,176 @@ describe("authored intent diagrams", () => {
 
     expect(slide?.speakerNotes).toContain("Details: typ=oauth-id-jag+jwt / jti/exp/iatが必須");
     expect(slide?.speakerNotes).toContain("Source trace: §4.4 ID-JAG JWT のクレーム");
+  });
+
+  it("condenses long narrative handouts into dense executive slides", () => {
+    const intents: DeckMessageMap["intents"] = [
+      {
+        slideId: "summary",
+        title: "結論",
+        message: "認証基盤の仕様理解が移行判断の前提である。",
+        evidence: ["共通基盤", "移行判断", "リスク確認"],
+        quietInfo: [],
+        visualType: "summary",
+        slideRole: "overview",
+        emphasis: "仕様理解"
+      },
+      {
+        slideId: "agenda",
+        title: "全体像",
+        message: "章順に仕様と移行論点を確認する。",
+        evidence: ["目的", "処理", "実装", "移行"],
+        quietInfo: [],
+        visualType: "step",
+        slideRole: "overview",
+        emphasis: "章順"
+      },
+      ...Array.from({ length: 22 }, (_, index) => ({
+        slideId: `topic-${index + 1}`,
+        title: `論点 ${index + 1}`,
+        message: `論点 ${index + 1} は同じ文脈で確認する。`,
+        evidence: [`確認項目A ${index + 1}`, `確認項目B ${index + 1}`, `確認項目C ${index + 1}`],
+        details: [`詳細A ${index + 1}`, `詳細B ${index + 1}`],
+        quietInfo: [],
+        sourceTrace: [`section-${index + 1}`],
+        visualType: index === 3 || index === 10 ? "flow" : "table",
+        slideRole: index === 3 || index === 10 ? "process" : "data",
+        emphasis: `要点 ${index + 1}`
+      } satisfies DeckMessageMap["intents"][number]))
+    ];
+
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "仕様理解",
+        audience: "担当者",
+        desiredAction: "確認事項を整理する",
+        intents
+      },
+      { title: "dense handout", locale: "ja-JP", contentMode: "handout", planningMode: "narrative-v1" }
+    );
+
+    expect(deck.metadata.messageMap?.intents).toHaveLength(24);
+    expect(deck.slides.length).toBeLessThanOrEqual(18);
+    expect(deck.slides.some((slide) => slide.id.includes("-plus-"))).toBe(true);
+    expect(deck.slides.some((slide) => slide.layout === "message-grammar-sequential-path")).toBe(true);
+    expect(deck.slides.some((slide) => slide.elements.some((element) => element.type === "pptxSlide"))).toBe(false);
+
+    const mergedSlide = deck.slides.find((slide) => slide.id.includes("-plus-"));
+    expect(mergedSlide?.speakerNotes).toContain("詳細A");
+    expect(mergedSlide?.elements.some((element) => element.type === "text" && element.text.includes(" / "))).toBe(true);
+  });
+
+  it("synthesizes architecture diagrams for dense handout concept groups", () => {
+    const intents: DeckMessageMap["intents"] = [
+      {
+        slideId: "summary",
+        title: "結論",
+        message: "認証Webの仕様理解が移行判断の前提である。",
+        evidence: ["共通基盤", "移行判断", "リスク確認"],
+        quietInfo: [],
+        visualType: "summary",
+        slideRole: "overview",
+        emphasis: "仕様理解"
+      },
+      {
+        slideId: "agenda",
+        title: "全体像",
+        message: "章順に仕様と移行論点を確認する。",
+        evidence: ["目的", "構成", "実装", "移行"],
+        quietInfo: [],
+        visualType: "step",
+        slideRole: "overview",
+        emphasis: "章順"
+      },
+      {
+        slideId: "purpose",
+        title: "システムの目的",
+        message: "認証WebはCRANE AD利用を共通化する入口である。",
+        evidence: ["ユーザーID・PW・アプリID", "ADへ代理問い合わせ", "属性とグループ返却"],
+        quietInfo: [],
+        visualType: "table",
+        slideRole: "data",
+        emphasis: "AD利用の共通入口"
+      },
+      {
+        slideId: "architecture",
+        title: "全体構成",
+        message: "アプリとADの間に認証Webが入り、認証を代行する。",
+        evidence: ["ユーザー", "アプリ", "認証Web", "CRANE Active Directory"],
+        quietInfo: [],
+        visualType: "flow",
+        slideRole: "process",
+        emphasis: "認証WebがAD照会を代行"
+      },
+      {
+        slideId: "functions",
+        title: "提供機能",
+        message: "認証Webは認証代行と属性返却を提供する。",
+        evidence: ["認証代行", "ユーザー情報取得", "所属グループ取得"],
+        quietInfo: [],
+        visualType: "table",
+        slideRole: "data",
+        emphasis: "提供機能"
+      },
+      ...Array.from({ length: 14 }, (_, index) => ({
+        slideId: `topic-${index + 1}`,
+        title: `論点 ${index + 1}`,
+        message: `論点 ${index + 1} を確認する。`,
+        evidence: [`確認項目A ${index + 1}`, `確認項目B ${index + 1}`, `確認項目C ${index + 1}`],
+        details: [`詳細A ${index + 1}`, `詳細B ${index + 1}`],
+        quietInfo: [],
+        visualType: "table" as const,
+        slideRole: "data" as const,
+        emphasis: `要点 ${index + 1}`
+      }))
+    ];
+
+    const deck = createDeckFromMessageMap(
+      { objective: "仕様理解", audience: "担当者", desiredAction: "確認事項を整理する", intents },
+      {
+        title: "architecture dense handout",
+        locale: "ja-JP",
+        contentMode: "handout",
+        planningMode: "narrative-v1",
+        diagramRenderer: (request) => [
+          {
+            id: `${request.idPrefix}-diagram-box`,
+            type: "shape",
+            shape: "roundRect",
+            x: request.frame.x,
+            y: request.frame.y,
+            w: request.frame.w,
+            h: request.frame.h,
+            fill: "#ffffff",
+            decorative: true,
+            altText: "generated native schematic shape",
+            readingOrder: request.readingOrderStart
+          },
+          {
+            id: `${request.idPrefix}-diagram-labels`,
+            type: "text",
+            role: "body",
+            text: request.diagram.nodes.map((node) => node.label).join(" / "),
+            x: request.frame.x + 0.2,
+            y: request.frame.y + 0.2,
+            w: request.frame.w - 0.4,
+            h: 0.5,
+            fontSize: 18,
+            bold: true,
+            decorative: false,
+            readingOrder: request.readingOrderStart + 1
+          }
+        ]
+      }
+    );
+
+    const architectureSlide = deck.slides.find((slide) => slide.id.includes("purpose-plus-architecture"));
+    expect(architectureSlide?.layout).toMatch(/^message-grammar-(?:spatial-model|layered-model)$/u);
+    expect(architectureSlide?.elements.some((element) => element.id.includes("-dg-diagram-labels") && element.type === "text" && element.text.includes("認証Web"))).toBe(true);
+    expect(architectureSlide?.elements.some((element) => element.id.endsWith("-diagram-rail-title") && element.type === "text" && element.text === "読み解き")).toBe(true);
+    expect(architectureSlide?.elements.some((element) => element.id.includes("-diagram-rail-body-") && element.type === "text" && element.text.length > 0)).toBe(true);
+    expect(architectureSlide?.elements.find((element) => element.id.includes("-dg-diagram-box"))?.w).toBeLessThan(8);
+    expect(architectureSlide?.elements.some((element) => element.type === "pptxSlide")).toBe(false);
   });
 
   it("can realize narrative-v1 slides with curated design-pack pptxSlide components", () => {
