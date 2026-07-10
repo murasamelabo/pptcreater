@@ -52,6 +52,7 @@ describe("narrative planning artifacts", () => {
     expect(artifacts.chapters.length).toBeGreaterThan(0);
     expect(artifacts.slideBriefs).toHaveLength(MESSAGE_MAP.intents.length);
     expect(artifacts.slideTextPlans).toHaveLength(MESSAGE_MAP.intents.length);
+    expect(artifacts.expressionCandidateSets).toHaveLength(MESSAGE_MAP.intents.length);
     expect(artifacts.expressionPlans).toHaveLength(MESSAGE_MAP.intents.length);
     expect(artifacts.layoutPlans).toHaveLength(MESSAGE_MAP.intents.length);
     expect(artifacts.visualGrammars.length).toBeGreaterThan(5);
@@ -146,11 +147,13 @@ describe("narrative planning artifacts", () => {
 
     const candidateSet = artifacts.expressionCandidateSets[0];
     expect(candidateSet.slideId).toBe("responsibility-boundary");
+    expect(candidateSet.selectionPolicy).toBe("primary-grammar-until-rendered");
     expect(candidateSet.candidates.length).toBeGreaterThanOrEqual(2);
     expect(candidateSet.selectedCandidateId).toBe(candidateSet.candidates[0].id);
     expect(candidateSet.candidates[0].grammarId).toBe("comparison-field");
     expect(candidateSet.candidates[0].scores.accuracy).toBeGreaterThanOrEqual(90);
     expect(candidateSet.candidates[0].accuracyGate.passed).toBe(true);
+    expect(candidateSet.candidates.map((candidate) => candidate.scoreRank).sort()).toEqual([1, 2, 3]);
     expect(candidateSet.candidates.every((candidate) => candidate.scores.total >= 0 && candidate.scores.total <= 100)).toBe(true);
     expect(artifacts.expressionPlans[0].selectedCandidateId).toBe(candidateSet.selectedCandidateId);
   });

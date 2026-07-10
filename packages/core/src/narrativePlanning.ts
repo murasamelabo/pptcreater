@@ -129,12 +129,41 @@ export type SlideCommunicationContract = {
 export type ExpressionPlan = {
   slideId: string;
   communicationContractId: string;
+  selectedCandidateId: string;
   selectedGrammarId: VisualGrammarId;
   rationale: string;
   rejectedAlternatives: { grammarId: VisualGrammarId; reason: string }[];
   visualRoles: VisualRole[];
   variationKnobs: Record<string, string | number | boolean>;
   riskTags: string[];
+};
+
+export type ExpressionCandidateScore = {
+  accuracy: number;
+  clarity: number;
+  beauty: number;
+  total: number;
+};
+
+export type ExpressionCandidate = {
+  id: string;
+  grammarId: VisualGrammarId;
+  scoreRank: number;
+  scores: ExpressionCandidateScore;
+  accuracyGate: {
+    passed: boolean;
+    minimum: number;
+    reasons: string[];
+  };
+  selectionReasons: string[];
+};
+
+export type ExpressionCandidateSet = {
+  slideId: string;
+  communicationContractId: string;
+  selectionPolicy: "primary-grammar-until-rendered";
+  selectedCandidateId: string;
+  candidates: ExpressionCandidate[];
 };
 
 export type LayoutRegion = {
@@ -179,6 +208,7 @@ export type NarrativePlanArtifacts = {
   slideBriefs: SlideBrief[];
   communicationContracts: SlideCommunicationContract[];
   slideTextPlans: SlideTextPlan[];
+  expressionCandidateSets: ExpressionCandidateSet[];
   expressionPlans: ExpressionPlan[];
   layoutPlans: LayoutPlan[];
   visualGrammars: VisualGrammarSpec[];
@@ -509,6 +539,121 @@ function grammarForIntent(intent: SlideIntent, contentMode: ContentMode, contrac
   return "evidence-board";
 }
 
+const RELATION_GRAMMAR_CANDIDATES: Record<CommunicationRelation, VisualGrammarId[]> = {
+  sequence: ["sequential-path", "spatial-model", "detail-reading-page"],
+  comparison: ["comparison-field", "table-text-system", "evidence-board"],
+  tradeoff: ["decision-surface", "comparison-field", "evidence-board"],
+  causality: ["spatial-model", "sequential-path", "evidence-board"],
+  hierarchy: ["layered-model", "spatial-model", "table-text-system"],
+  responsibility: ["comparison-field", "table-text-system", "evidence-board"],
+  classification: ["evidence-board", "table-text-system", "detail-reading-page"],
+  evidence: ["evidence-board", "typographic-emphasis", "table-text-system"],
+  detail: ["detail-reading-page", "table-text-system", "evidence-board"]
+};
+
+const RELATION_GRAMMAR_ACCURACY: Record<CommunicationRelation, Partial<Record<VisualGrammarId, number>>> = {
+  sequence: { "sequential-path": 100, "spatial-model": 84, "detail-reading-page": 72 },
+  comparison: { "comparison-field": 100, "table-text-system": 90, "evidence-board": 70 },
+  tradeoff: { "decision-surface": 100, "comparison-field": 74, "evidence-board": 58 },
+  causality: { "spatial-model": 100, "sequential-path": 88, "evidence-board": 68 },
+  hierarchy: { "layered-model": 100, "spatial-model": 90, "table-text-system": 66 },
+  responsibility: { "comparison-field": 100, "table-text-system": 92, "evidence-board": 64 },
+  classification: { "evidence-board": 96, "table-text-system": 90, "detail-reading-page": 84 },
+  evidence: { "evidence-board": 100, "typographic-emphasis": 90, "table-text-system": 84 },
+  detail: { "detail-reading-page": 100, "table-text-system": 88, "evidence-board": 74 }
+};
+
+function clampScore(value: number): number {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function candidateGrammarIds(primary: VisualGrammarId, contract: SlideCommunicationContract): VisualGrammarId[] {
+  return unique([primary, ...RELATION_GRAMMAR_CANDIDATES[contract.relation]]).slice(0, 3) as VisualGrammarId[];
+}
+
+function accuracyScore(grammarId: VisualGrammarId, primary: VisualGrammarId, contract: SlideCommunicationContract): number {
+  if (grammarId === primary) return 100;
+  return Math.min(96, RELATION_GRAMMAR_ACCURACY[contract.relation][grammarId] ?? 50);
+}
+
+function clarityScore(grammar: VisualGrammarSpec, intent: SlideIntent): number {
+  const itemCount = intent.evidence.length + (intent.details?.length ?? 0);
+  let result = 92;
+  if (itemCount < grammar.minItems) result -= (grammar.minItems - itemCount) * 12;
+  if (itemCount > grammar.maxItems) result -= (itemCount - grammar.maxItems) * 10;
+  const density = densityForIntent(intent);
+  if (density === "dense" && grammar.densityTolerance === "low") result -= 24;
+  if (density === "dense" && grammar.densityTolerance === "medium") result -= 8;
+  return clampScore(result);
+}
+
+function beautyScore(grammar: VisualGrammarSpec, intent: SlideIntent): number {
+  const variationValue = Math.min(18, grammar.variationKnobs.length * 3);
+  const focalValue = grammar.layoutConstraints.some((constraint) => /dominant|focal|highlight|distinct|clear/iu.test(constraint)) ? 8 : 3;
+  const repetitionPenalty = intent.evidence.length > grammar.maxItems ? 10 : 0;
+  return clampScore(68 + variationValue + focalValue - repetitionPenalty);
+}
+
+function expressionCandidateFor(
+  intent: SlideIntent,
+  contract: SlideCommunicationContract,
+  primary: VisualGrammarId,
+  grammarId: VisualGrammarId
+): ExpressionCandidate {
+  const grammar = getVisualGrammarSpec(grammarId);
+  const accuracy = accuracyScore(grammarId, primary, contract);
+  const clarity = clarityScore(grammar, intent);
+  const beauty = beautyScore(grammar, intent);
+  const minimum = 80;
+  const passed = accuracy >= minimum;
+  return {
+    id: `${intent.slideId}-${grammarId}-candidate`,
+    grammarId,
+    scoreRank: 0,
+    scores: {
+      accuracy,
+      clarity,
+      beauty,
+      total: clampScore(accuracy * 0.5 + clarity * 0.3 + beauty * 0.2)
+    },
+    accuracyGate: {
+      passed,
+      minimum,
+      reasons: passed
+        ? [`${grammarId} preserves the ${contract.relation} communication relation.`]
+        : [`${grammarId} does not preserve the ${contract.relation} relation strongly enough.`]
+    },
+    selectionReasons: [
+      `Communication relation: ${contract.relation}.`,
+      `Grammar supports ${grammar.expresses.slice(0, 2).join(" / ")}.`,
+      `Item count ${intent.evidence.length + (intent.details?.length ?? 0)} is evaluated against ${grammar.minItems}-${grammar.maxItems}.`
+    ]
+  };
+}
+
+function expressionCandidateSetForIntent(intent: SlideIntent, contentMode: ContentMode, contract: SlideCommunicationContract): ExpressionCandidateSet {
+  const primary = grammarForIntent(intent, contentMode, contract);
+  const rankedCandidates = candidateGrammarIds(primary, contract)
+    .map((grammarId) => expressionCandidateFor(intent, contract, primary, grammarId))
+    .sort((left, right) => {
+      if (left.accuracyGate.passed !== right.accuracyGate.passed) return left.accuracyGate.passed ? -1 : 1;
+      return right.scores.total - left.scores.total || right.scores.accuracy - left.scores.accuracy || left.id.localeCompare(right.id);
+    })
+    .map((candidate, index) => ({ ...candidate, scoreRank: index + 1 }));
+  const selected = rankedCandidates.find((candidate) => candidate.grammarId === primary && candidate.accuracyGate.passed);
+  if (!selected) {
+    throw new Error(`No expression candidate passed the accuracy gate for slide ${intent.slideId}.`);
+  }
+  const candidates = [selected, ...rankedCandidates.filter((candidate) => candidate.id !== selected.id)];
+  return {
+    slideId: intent.slideId,
+    communicationContractId: contract.id,
+    selectionPolicy: "primary-grammar-until-rendered",
+    selectedCandidateId: selected.id,
+    candidates
+  };
+}
+
 function rejectedAlternativesFor(selected: VisualGrammarId, intent: SlideIntent): ExpressionPlan["rejectedAlternatives"] {
   const candidates: VisualGrammarId[] = ["evidence-board", "comparison-field", "sequential-path", "decision-surface", "detail-reading-page", "table-text-system"].filter((id) => id !== selected) as VisualGrammarId[];
   return candidates.slice(0, 2).map((grammarId) => ({
@@ -534,14 +679,19 @@ function riskTagsForIntent(intent: SlideIntent, grammarId: VisualGrammarId): str
   return risks;
 }
 
-function expressionPlanForIntent(intent: SlideIntent, contentMode: ContentMode, contract: SlideCommunicationContract): ExpressionPlan {
-  const selectedGrammarId = grammarForIntent(intent, contentMode, contract);
+function expressionPlanForIntent(intent: SlideIntent, contract: SlideCommunicationContract, candidateSet: ExpressionCandidateSet): ExpressionPlan {
+  const selectedCandidate = candidateSet.candidates.find((candidate) => candidate.id === candidateSet.selectedCandidateId);
+  if (!selectedCandidate) {
+    throw new Error(`Selected expression candidate is missing for slide ${intent.slideId}.`);
+  }
+  const selectedGrammarId = selectedCandidate.grammarId;
   const grammar = getVisualGrammarSpec(selectedGrammarId);
   return {
     slideId: intent.slideId,
     communicationContractId: contract.id,
+    selectedCandidateId: selectedCandidate.id,
     selectedGrammarId,
-    rationale: `Selected ${grammar.label} because communication relation "${contract.relation}" needs to express ${grammar.expresses.slice(0, 2).join(" / ")} from message semantics and ${intent.evidence.length} evidence unit(s), rather than directly rendering visualType "${intent.visualType}".`,
+    rationale: `Selected ${grammar.label} after accuracy-first candidate ranking because communication relation "${contract.relation}" needs to express ${grammar.expresses.slice(0, 2).join(" / ")} from message semantics and ${intent.evidence.length} evidence unit(s), rather than directly rendering visualType "${intent.visualType}".`,
     rejectedAlternatives: rejectedAlternativesFor(selectedGrammarId, intent),
     visualRoles: visualRolesForGrammar(selectedGrammarId),
     variationKnobs: {
@@ -655,7 +805,8 @@ export function createNarrativePlanArtifacts(messageMap: DeckMessageMap, options
   const slideBriefs = messageMap.intents.map((intent) => slideBriefForIntent(intent, chapterIdForSlide(chapters, intent.slideId)));
   const communicationContracts = messageMap.intents.map(communicationContractForIntent);
   const slideTextPlans = messageMap.intents.map(slideTextPlanForIntent);
-  const expressionPlans = messageMap.intents.map((intent, index) => expressionPlanForIntent(intent, planningInput.deliveryMode, communicationContracts[index]));
+  const expressionCandidateSets = messageMap.intents.map((intent, index) => expressionCandidateSetForIntent(intent, planningInput.deliveryMode, communicationContracts[index]));
+  const expressionPlans = messageMap.intents.map((intent, index) => expressionPlanForIntent(intent, communicationContracts[index], expressionCandidateSets[index]));
   const layoutPlans = messageMap.intents.map((intent, index) => layoutPlanForIntent(intent, expressionPlans[index]));
 
   return {
@@ -665,6 +816,7 @@ export function createNarrativePlanArtifacts(messageMap: DeckMessageMap, options
     slideBriefs,
     communicationContracts,
     slideTextPlans,
+    expressionCandidateSets,
     expressionPlans,
     layoutPlans,
     visualGrammars: listVisualGrammarSpecs()
