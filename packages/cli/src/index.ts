@@ -69,7 +69,14 @@ import {
 } from "@pptcreater/core";
 import { importNotPersistedWarning, importPersistenceSuffix, importTemplateFromPptx, renderDeckToPptx, reviewPptxSlideTextFit } from "@pptcreater/render-pptx";
 import { renderStudioHtml } from "@pptcreater/studio";
-import { buildCandidateSnapshotPlan, captureCandidateSnapshots } from "./candidateSnapshots.js";
+import {
+  buildCandidateSnapshotPlan,
+  captureCandidateSnapshots,
+  recommendRenderedCandidate,
+  type RenderedCandidateRecommendation,
+  type RenderedSnapshotMetrics,
+  type RenderedSnapshotScore
+} from "./candidateSnapshots.js";
 import { installGuidance } from "./installGuidance.js";
 
 async function readJson(path: string): Promise<unknown> {
@@ -937,8 +944,8 @@ program
         pptxPath: options.renderPptx ? `${options.outputDir}/${stem}.pptx` : undefined,
         studioPath: options.renderStudio || options.snapshotImages ? `${options.outputDir}/${stem}.studio.html` : undefined,
         snapshotPath: undefined as string | undefined,
-        snapshotMetrics: undefined as unknown,
-        snapshotScore: undefined as unknown,
+        snapshotMetrics: undefined as RenderedSnapshotMetrics | undefined,
+        snapshotScore: undefined as RenderedSnapshotScore | undefined,
         renderWarnings: [] as string[],
         evaluation: candidate.evaluation,
         deck: candidate.deck
@@ -955,6 +962,7 @@ program
         await writeFile(artifact.studioPath, renderStudioHtml(artifact.deck, outputLocale(artifact.deck.locale)), "utf8");
       }
     }
+    let renderedRecommendation: RenderedCandidateRecommendation | undefined;
     if (options.snapshotImages) {
       const snapshotPlan = buildCandidateSnapshotPlan(options.outputDir, candidateArtifacts);
       const snapshots = await captureCandidateSnapshots(snapshotPlan, { browserPath: options.browserPath });
@@ -965,11 +973,20 @@ program
         artifact.snapshotMetrics = snapshot.metrics;
         artifact.snapshotScore = snapshot.score;
       }
+      renderedRecommendation = recommendRenderedCandidate(
+        candidateArtifacts.map((artifact) => ({
+          candidateId: artifact.candidateId,
+          accuracy: artifact.evaluation.accuracy,
+          accuracyGatePassed: artifact.evaluation.accuracyGatePassed
+        })),
+        snapshots.map((snapshot) => ({ candidateId: snapshot.candidateId, ...snapshot.score }))
+      );
     }
     const summary = {
       slideId: result.slideId,
       selectionPolicy: result.selectionPolicy,
       selectedCandidateId: result.selectedCandidateId,
+      renderedRecommendation,
       planningCandidateSet: result.planningCandidateSet,
       candidates: candidateArtifacts.map(({ deck, ...artifact }) => artifact)
     };

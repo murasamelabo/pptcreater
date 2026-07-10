@@ -36,6 +36,13 @@ export type CapturedCandidateSnapshot = CandidateSnapshotPlanItem & {
   score: RenderedSnapshotScore;
 };
 
+export type RenderedCandidateRecommendation = {
+  recommendedCandidateId: string;
+  eligibleCandidateIds: string[];
+  ranked: Array<{ candidateId: string; accuracy: number; clarity: number; beauty: number; total: number }>;
+  rejected: Array<{ candidateId: string; reason: "accuracy-gate" | "render-blocking" | "snapshot-missing" }>;
+};
+
 function normalizedPath(value: string): string {
   return value.replace(/\\/gu, "/");
 }
@@ -64,6 +71,52 @@ export function scoreRenderedSnapshotMetrics(metrics: RenderedSnapshotMetrics): 
     clarity: clampScore(100 - overflowPenalty - overlapPenalty - excessiveTextPenalty - densityPenalty * 0.35),
     beauty: clampScore(100 - densityPenalty - focalPenalty - overlapPenalty * 0.75 - excessiveTextPenalty * 0.5),
     blocking: metrics.overflowElementCount > 0 || metrics.overlapPairCount > 0
+  };
+}
+
+export function recommendRenderedCandidate(
+  candidates: Array<{ candidateId: string; accuracy: number; accuracyGatePassed: boolean }>,
+  snapshots: Array<{ candidateId: string; clarity: number; beauty: number; blocking: boolean }>
+): RenderedCandidateRecommendation {
+  const snapshotsById = new Map(snapshots.map((snapshot) => [snapshot.candidateId, snapshot]));
+  const rejected: RenderedCandidateRecommendation["rejected"] = [];
+  const ranked = candidates.flatMap((candidate) => {
+    if (!candidate.accuracyGatePassed) {
+      rejected.push({ candidateId: candidate.candidateId, reason: "accuracy-gate" });
+      return [];
+    }
+    const snapshot = snapshotsById.get(candidate.candidateId);
+    if (!snapshot) {
+      rejected.push({ candidateId: candidate.candidateId, reason: "snapshot-missing" });
+      return [];
+    }
+    if (snapshot.blocking) {
+      rejected.push({ candidateId: candidate.candidateId, reason: "render-blocking" });
+      return [];
+    }
+    return [{
+      candidateId: candidate.candidateId,
+      accuracy: candidate.accuracy,
+      clarity: snapshot.clarity,
+      beauty: snapshot.beauty,
+      total: clampScore(candidate.accuracy * 0.5 + snapshot.clarity * 0.3 + snapshot.beauty * 0.2)
+    }];
+  }).sort((left, right) =>
+    right.total - left.total ||
+    right.accuracy - left.accuracy ||
+    right.clarity - left.clarity ||
+    right.beauty - left.beauty ||
+    left.candidateId.localeCompare(right.candidateId)
+  );
+  const recommended = ranked[0];
+  if (!recommended) {
+    throw new Error("No rendered expression candidate passed both the accuracy gate and rendered blocking checks.");
+  }
+  return {
+    recommendedCandidateId: recommended.candidateId,
+    eligibleCandidateIds: ranked.map((candidate) => candidate.candidateId),
+    ranked,
+    rejected
   };
 }
 
