@@ -236,7 +236,8 @@ export function reviewVisualQuality(deck: DeckSpec): VisualQualityReport {
       });
     });
 
-    if ((slide.layout ?? "").startsWith("message-") && !hasIconOrImage(slide)) {
+    const structuredProse = slide.elements.some((element) => element.id.endsWith("-prose-frame"));
+    if ((slide.layout ?? "").startsWith("message-") && !structuredProse && !hasIconOrImage(slide)) {
       issues.push({
         severity: "warning",
         code: "visual.message-slide-icon-missing",

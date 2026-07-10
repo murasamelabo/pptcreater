@@ -1612,14 +1612,14 @@ program
       audience: docSpec.title,
       desiredAction: "確認事項を整理する"
     });
-    const messageSpecReview = reviewMessageSpec(messageSpec, { maxSlides: messageSpec.strategy === "generic-technical-report" ? 40 : undefined });
+    const messageSpecReview = reviewMessageSpec(messageSpec, { maxSlides: messageSpec.strategy === "generic-technical-report" ? 48 : undefined });
     if (!messageSpecReview.ok) {
       throw new Error(`MessageSpec review failed before DeckSpec generation:\n${messageSpecReview.issues.map((issue) => `${issue.severity.toUpperCase()} ${issue.code} ${issue.path}: ${issue.message}`).join("\n")}`);
     }
     const messageMap = deckMessageMapFromMessageSpec(messageSpec);
     const sources = [{ id: docSpec.sourceId, title: docSpec.title, url: markdownPath, usage: "quote" as const }];
     const reviewProbe = createSampleDeck(parsedLocale, {
-      slideCount: Math.max(1, Math.min(40, messageMap.intents.length)),
+      slideCount: Math.max(1, Math.min(48, messageMap.intents.length)),
       contentMode: options.contentMode,
       styleProfile: options.style
     });

@@ -334,6 +334,8 @@ export const SlideRoleSchema = z.enum([
   "action"
 ]);
 
+export const SlideContentStructureSchema = z.enum(["prose", "list", "key-value", "table", "mixed"]);
+
 export const SlideVisualAssetSchema = z
   .object({
     type: z.enum(["image", "svg"]).default("image"),
@@ -409,7 +411,11 @@ export const SlideIntentSchema = z.object({
    * still generic. The narrative planner uses it as a figure-selection prior.
    */
   slideRole: SlideRoleSchema.optional(),
+  /** Source-level content shape, decided before visual grammar selection. */
+  contentStructure: SlideContentStructureSchema.optional(),
   evidence: z.array(z.string().min(1)).default([]),
+  /** Visible prose that explains a table or figure but must not be converted into rows or nodes. */
+  context: z.array(z.string().min(1)).optional(),
   /**
    * Supporting details that should survive source-to-message-map condensation but do not all need to
    * appear on the slide face. Use this for definitions, protocol parameters, caveats, numeric context,
@@ -484,6 +490,7 @@ export type Slide = z.infer<typeof SlideSchema>;
 export type DeckSpec = z.infer<typeof DeckSpecSchema>;
 export type SlideVisualType = z.infer<typeof SlideVisualTypeSchema>;
 export type SlideRole = z.infer<typeof SlideRoleSchema>;
+export type SlideContentStructure = z.infer<typeof SlideContentStructureSchema>;
 export type SlideIntent = z.infer<typeof SlideIntentSchema>;
 export type SlideIntentDiagram = z.infer<typeof SlideIntentDiagramSchema>;
 export type SlideIntentDiagramNode = z.infer<typeof SlideIntentDiagramNodeSchema>;

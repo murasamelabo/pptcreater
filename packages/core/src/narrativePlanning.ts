@@ -477,6 +477,9 @@ function grammarForIntent(intent: SlideIntent, contentMode: ContentMode, contrac
     return /階層|レイヤ|layer|stack|基盤|platform|構成|architecture/u.test(lower) ? "layered-model" : "spatial-model";
   }
 
+  if (intent.contentStructure === "prose" || intent.contentStructure === "mixed") return "detail-reading-page";
+  if (intent.contentStructure === "table" || intent.contentStructure === "key-value") return "table-text-system";
+
   if (contract.relation === "responsibility") return "comparison-field";
   if (contract.relation === "tradeoff") return "decision-surface";
   if (contract.relation === "sequence") return intent.visualType === "cycle" ? "spatial-model" : "sequential-path";
@@ -535,7 +538,8 @@ function grammarForIntent(intent: SlideIntent, contentMode: ContentMode, contrac
   if (/階層|layer|stack|architecture|基盤|platform/u.test(lower)) return "layered-model";
   if (impliesTwoAxisSurface(lower)) return "decision-surface";
   if (intent.diagram && /関係|循環|距離|方向|成熟|journey/u.test(lower)) return "spatial-model";
-  if (evidenceCount >= 5) return "table-text-system";
+  const structuredEvidenceCount = intent.evidence.filter((item) => /^.{1,32}?[:：]\s*.+$/u.test(item)).length;
+  if (evidenceCount >= 5 && structuredEvidenceCount === evidenceCount && intent.contentStructure !== "list") return "table-text-system";
   return "evidence-board";
 }
 

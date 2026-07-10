@@ -1,4 +1,4 @@
-﻿import type { DeckMessageMap, SlideIntent, SlideRole } from "./schema.js";
+﻿import type { DeckMessageMap, SlideContentStructure, SlideIntent, SlideRole } from "./schema.js";
 import type { DocQuestion, DocSection, DocSpec, DocTable, RequiredTerm } from "./docSpec.js";
 
 export type LedgerChapter = {
@@ -58,6 +58,7 @@ export type MessageBlock = {
   id: string;
   label: string;
   text: string;
+  structure?: "prose" | "list-item" | "key-value" | "table-row";
   sourceSectionIds: string[];
   requiredTerms: string[];
 };
@@ -72,6 +73,7 @@ export type MessageSlideSpec = {
   semanticTitle: string;
   headline: string;
   slideRole: SlideRole;
+  contentStructure?: SlideContentStructure;
   chapterId: string;
   visibleBudget: VisibleTextBudget;
   sourceSections: string[];
@@ -582,13 +584,12 @@ export function createMessageSpecFromDocSpec(docSpec: DocSpec, options: MessageS
   return strategy === "auth-web-spec" ? createAuthWebMessageSpec(docSpec, options) : createGenericTechnicalReportMessageSpec(docSpec, options);
 }
 
-function genericFigureNeed(section: DocSection, tables: DocTable[]): FigureNeed {
+function genericFigureNeed(section: DocSection, tables: DocTable[], blocks: MessageBlock[], hasDiagram: boolean): FigureNeed {
   const value = `${section.title}\n${section.text}`;
   if (tables.length > 0) return { kind: "table", rationale: "Preserve the source table as structured visible evidence." };
-  if (/比較|差分|代替|対比|versus|\bvs\.?\b/iu.test(value)) return { kind: "detail", rationale: "Retain the comparison prose until explicit axes and comparable columns are available." };
-  if (/フロー|手順|ステップ|処理|交換|シーケンス/u.test(value)) return { kind: "process", rationale: "The source section explains ordered behavior." };
-  if (/構成|アーキテクチャ|登場ロール|信頼|関係/u.test(value)) return { kind: "architecture", rationale: "The source section explains actors or structural relationships." };
-  if (/まとめ|要約|結論/u.test(value)) return { kind: "summary", rationale: "The source section summarizes the report." };
+  if (hasDiagram) return { kind: /フロー|手順|ステップ|処理|交換|シーケンス/u.test(value) ? "process" : "architecture", rationale: "Use the explicit source diagram instead of inferring structure from prose." };
+  if (/比較|差分|代替|対比|versus|\bvs\.?\b/iu.test(value)) return { kind: "detail", rationale: "Retain comparison prose until explicit axes and comparable values are available." };
+  if (/まとめ|要約|結論/u.test(value) && blocks.length >= 3 && blocks.every((block) => block.structure === "list-item")) return { kind: "summary", rationale: "The source provides an explicit summary list." };
   return { kind: "detail", rationale: "Retain the source explanation as a readable technical detail page." };
 }
 
@@ -619,21 +620,54 @@ function genericSemanticLabel(line: string, sectionTitle: string, index: number)
   return displaySectionTitle(sectionTitle);
 }
 
-function genericLineUnits(line: string): string[] {
-  const text = line.trim();
-  if (text.length <= 60 || /https?:\/\/|^\s*[{[]|urn:|```/iu.test(text)) return [text];
-  const sentences = text.match(/[^。！？]+[。！？]?/gu)?.map((item) => item.trim()).filter((item) => item.length >= 4) ?? [];
-  if (sentences.length > 1) return sentences;
-  const parenthetical = /^(.*?)[(（]([^()（）]{8,})[)）](.*)$/u.exec(text);
-  const examples = parenthetical?.[2]?.trim();
-  const outside = parenthetical ? `${parenthetical[1]}${parenthetical[3]}` : text;
-  const clauses = outside
-    .replace(/(?:だが|しかし|一方で?)、?/gu, "。")
-    .match(/[^。！？]+[。！？]?/gu)
-    ?.map((item) => item.trim())
-    .filter((item) => item.length >= 4) ?? [];
-  if (examples) clauses.splice(Math.min(1, clauses.length), 0, `利用例: ${examples}`);
-  return clauses.length > 1 ? clauses : [text];
+function genericSectionUnits(section: DocSection): Array<{ text: string; structure: NonNullable<MessageBlock["structure"]> }> {
+  return section.text
+    .split(/\n+/u)
+    .map((sourceLine) => {
+      const trimmed = sourceLine.trim();
+      const listItem = /^[-*+]\s+(.+)$/u.exec(trimmed);
+      const text = (listItem?.[1] ?? trimmed).replace(/^>\s*/u, "").trim();
+      const structure: NonNullable<MessageBlock["structure"]> = listItem
+        ? "list-item"
+        : /^.{1,32}?[:：]\s*.+$/u.test(text)
+          ? "key-value"
+          : "prose";
+      return { text, structure };
+    })
+    .filter((unit) => unit.text.length >= 4)
+    .filter((unit) => !isFillerLine(unit.text))
+    .filter((unit) => !/^\|.+\|$/u.test(unit.text) && !/\s\|\s/u.test(unit.text))
+    .filter((unit) => !/^(?:sequenceDiagram|flowchart|participant\b|classDiagram|stateDiagram|erDiagram|gantt\b|%%|```)/iu.test(unit.text))
+    .filter((unit) => !/^[A-Za-z0-9_-]+\s*(?:--?>|--\||->>|->|=>|:\s*)/u.test(unit.text));
+}
+
+function contentStructureFor(blocks: MessageBlock[], tables: DocTable[]): SlideContentStructure {
+  if (tables.length > 0 || blocks.every((block) => block.structure === "table-row")) return "table";
+  const structures = new Set(blocks.map((block) => block.structure));
+  if (structures.size === 1 && structures.has("prose")) return "prose";
+  if (structures.size === 1 && structures.has("key-value")) return "key-value";
+  if (structures.size === 1 && structures.has("list-item")) {
+    return blocks.some((block) => Array.from(block.text).length > 100) ? "prose" : "list";
+  }
+  return "mixed";
+}
+
+function splitBlocksAtParagraphBoundaries(blocks: MessageBlock[], maxChars: number): MessageBlock[][] {
+  const groups: MessageBlock[][] = [];
+  let current: MessageBlock[] = [];
+  let currentChars = 0;
+  for (const block of blocks) {
+    const blockChars = Array.from(`${block.label}${block.text}`).length;
+    if (current.length > 0 && currentChars + blockChars > maxChars) {
+      groups.push(current);
+      current = [];
+      currentChars = 0;
+    }
+    current.push(block);
+    currentChars += blockChars;
+  }
+  if (current.length > 0) groups.push(current);
+  return groups.length ? groups : [[]];
 }
 
 function genericPrimaryClaim(section: DocSection, lines: string[]): string {
@@ -653,12 +687,14 @@ function genericPrimaryClaim(section: DocSection, lines: string[]): string {
 
 function genericBlocks(docSpec: DocSpec, sections: DocSection[], tables: DocTable[], terms: RequiredTerm[]): MessageBlock[] {
   const sectionIds = sections.map((section) => section.id);
-  const lineBlocks = sections.flatMap((section) => sectionLines(section).flatMap(genericLineUnits).map((line, index) => {
+  const lineBlocks = sections.flatMap((section) => genericSectionUnits(section).map((unit, index) => {
+    const line = unit.text;
     const match = /^(.{1,32}?)(?:[:：])\s*(.+)$/u.exec(line);
     return {
       id: `${section.id}-line-${index + 1}`,
       label: match?.[1] ?? genericSemanticLabel(line, section.title, index),
       text: match?.[2] ?? line,
+      structure: unit.structure,
       sourceSectionIds: [section.id],
       requiredTerms: termsInText(terms, line)
     } satisfies MessageBlock;
@@ -667,6 +703,7 @@ function genericBlocks(docSpec: DocSpec, sections: DocSection[], tables: DocTabl
     id: `${table.id}-row-${index + 1}`,
     label: row[0]?.trim() || table.headers[0]?.trim() || `Row ${index + 1}`,
     text: row.slice(1).filter(Boolean).join(" / "),
+    structure: "table-row",
     sourceSectionIds: [table.sectionId],
     requiredTerms: termsInText(terms, row.join(" "))
   } satisfies MessageBlock)));
@@ -742,32 +779,44 @@ function genericPlanningUnits(docSpec: DocSpec): GenericPlanningUnit[] {
 }
 
 function createGenericTechnicalReportMessageSpec(docSpec: DocSpec, options: MessageSpecOptions): MessageSpec {
-  const contentSlides = genericPlanningUnits(docSpec).map((unit) => {
+  const contentSlides = genericPlanningUnits(docSpec).flatMap((unit) => {
     const { section, sections } = unit;
     const sourceSections = [...new Set([...unit.attributedSectionIds, ...sections.map((item) => item.id)])];
-    const sourceText = sections.map(sectionText).filter(Boolean).join("\n");
     const lines = sections.flatMap(sectionLines);
     const tables = docSpec.tables.filter((table) => sourceSections.includes(table.sectionId));
-    const supportingBlocks = genericBlocks(docSpec, sections, tables, docSpec.requiredTerms);
-    const inferredFigureNeed = genericFigureNeed(section, tables);
+    const allBlocks = genericBlocks(docSpec, sections, tables, docSpec.requiredTerms);
+    const supportingBlocks = tables.length > 0 ? allBlocks.filter((block) => block.structure === "table-row") : allBlocks;
+    const companionNotes = tables.length > 0 ? allBlocks.filter((block) => block.structure !== "table-row") : [];
+    const inferredFigureNeed = genericFigureNeed(section, tables, supportingBlocks, docSpec.diagrams.some((diagram) => sourceSections.includes(diagram.sectionId)));
     const figureNeed = supportingBlocks.length < 3 && ["architecture", "process", "comparison"].includes(inferredFigureNeed.kind)
       ? { kind: "detail" as const, rationale: "Retain the short source section as prose because it lacks enough structured evidence for a figure." }
       : inferredFigureNeed;
     const primaryClaim = genericPrimaryClaim(section, lines);
-    return {
-      id: section.id,
-      semanticTitle: displaySectionTitle(section.title),
-      headline: primaryClaim,
-      primaryClaim,
-      slideRole: genericSlideRole(figureNeed),
+    const contentStructure = contentStructureFor(supportingBlocks, tables);
+    const mustVisibleTerms = new Set(docSpec.requiredTerms.filter((term) => term.visibility === "must-visible").map((term) => term.term));
+    const visibleCompanions = companionNotes.filter((block) => block.requiredTerms.some((term) => mustVisibleTerms.has(term)));
+    const passiveNotes = companionNotes.filter((block) => !visibleCompanions.includes(block));
+    const segments: Array<{ blocks: MessageBlock[]; structure: SlideContentStructure; figure: FigureNeed; notes: MessageBlock[] }> = tables.length > 0
+      ? [{ blocks: [...supportingBlocks, ...visibleCompanions], structure: "table", figure: figureNeed, notes: passiveNotes }]
+      : (contentStructure === "prose" || contentStructure === "mixed"
+          ? splitBlocksAtParagraphBoundaries(supportingBlocks, 600)
+          : [supportingBlocks])
+        .map((blocks) => ({ blocks, structure: contentStructure, figure: figureNeed, notes: [] }));
+    return segments.map((segment, index) => ({
+      id: index === 0 ? section.id : `${section.id}-continued-${index + 1}`,
+      semanticTitle: `${displaySectionTitle(section.title)}${index === 0 ? "" : `（続き${index + 1}）`}`,
+      headline: index === 0 ? primaryClaim : `${displaySectionTitle(section.title)}の説明を続ける。`,
+      primaryClaim: index === 0 ? primaryClaim : `${displaySectionTitle(section.title)}の説明を続ける。`,
+      slideRole: genericSlideRole(segment.figure),
+      contentStructure: segment.structure,
       chapterId: section.parentId ?? section.id,
       visibleBudget: TECHNICAL_BUDGET,
       sourceSections,
-      requiredTerms: termsInText(docSpec.requiredTerms, sourceText),
-      supportingBlocks,
-      figureNeed,
-      notesBlocks: []
-    } satisfies MessageSlideSpec;
+      requiredTerms: termsInText(docSpec.requiredTerms, segment.blocks.map((block) => block.text).join("\n")),
+      supportingBlocks: segment.blocks,
+      figureNeed: segment.figure,
+      notesBlocks: segment.notes
+    } satisfies MessageSlideSpec));
   });
   const chapterGroups = genericChapterGroups(docSpec);
   const agendaSlide = slide(
@@ -1027,18 +1076,32 @@ export function deckMessageMapFromMessageSpec(messageSpec: MessageSpec): DeckMes
     audience: messageSpec.audience,
     desiredAction: messageSpec.desiredAction,
     intents: messageSpec.slides.map((slideSpec) => {
-      const evidence = [...requiredTermEvidence(slideSpec), ...slideSpec.supportingBlocks.map((block) => `${block.label}: ${block.text}`)];
+      const genericStrategy = messageSpec.strategy === "generic-technical-report";
+      const tableContext = slideSpec.contentStructure === "table"
+        ? slideSpec.supportingBlocks.filter((block) => block.structure !== "table-row").map((block) => block.text)
+        : [];
+      const evidenceBlocks = slideSpec.contentStructure === "table"
+        ? slideSpec.supportingBlocks.filter((block) => block.structure === "table-row")
+        : slideSpec.supportingBlocks;
+      const evidence = [
+        ...(genericStrategy ? [] : requiredTermEvidence(slideSpec)),
+        ...evidenceBlocks.map((block) => slideSpec.contentStructure === "prose" || block.structure === "prose" ? block.text : `${block.label}: ${block.text}`)
+      ];
       const details = slideSpec.notesBlocks.length
         ? slideSpec.notesBlocks.map((block) => `補足 ${block.label}: ${block.text}`)
-        : slideSpec.supportingBlocks.slice(4).map((block) => `補足 ${block.label}: ${block.text}`);
+        : genericStrategy
+          ? []
+          : slideSpec.supportingBlocks.slice(4).map((block) => `補足 ${block.label}: ${block.text}`);
       return {
         slideId: slideSpec.id,
         title: slideSpec.semanticTitle,
         message: slideSpec.primaryClaim,
         slideRole: slideSpec.slideRole,
+        contentStructure: slideSpec.contentStructure,
         visualType: visualTypeForFigure(slideSpec.figureNeed),
         emphasis: slideSpec.headline,
         evidence,
+        ...(tableContext.length > 0 ? { context: tableContext } : {}),
         details,
         sourceTrace: slideSpec.sourceSections,
         quietInfo: slideSpec.requiredTerms,

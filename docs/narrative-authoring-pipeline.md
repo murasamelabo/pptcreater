@@ -79,6 +79,20 @@ Each slide brief contains:
 - Density target
 - Expected reader action or interpretation
 
+### 2.5 Content Structure Classifier
+
+Before visual grammar selection, classify each source unit as one of:
+
+- `prose`: one or more complete explanatory paragraphs
+- `list`: independent peer items
+- `key-value`: explicit labels paired with values
+- `table`: rows and columns authored in the source
+- `mixed`: prose plus another structure that must remain distinguishable
+
+This classification is authoritative. Evidence count alone must never turn prose into cards, numbered steps, or table rows. Process language inside a paragraph does not make the paragraph a sequence; a sequential grammar requires explicit ordered steps or an authored diagram. A source table may use a table grammar, but prose before or after that table belongs in a separate visible context rail or in notes, not in invented rows.
+
+When prose exceeds the visible budget, split only between complete paragraphs. Never split a sentence or clause into separate objects merely to satisfy an existing layout.
+
 ### 3. Slide Message And Copy Planner
 
 Before visual selection, decide visible text.
@@ -97,6 +111,8 @@ Output:
 - Source references
 
 The copy planner should create complete, visible, human-readable text. It may produce too much text at first, because the next stages can shorten, split, or move detail into notes with traceability.
+
+Labels are created only for genuine list items, key-value pairs, and table rows. Prose paragraphs remain prose text objects; semantic keywords extracted from a sentence must not replace or fragment that sentence.
 
 ### 4. Visual Grammar Selector
 

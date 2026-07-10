@@ -157,6 +157,19 @@ describe("visual quality review", () => {
     expect(report.issues.map((issue) => issue.code)).toContain("visual.icon-text-overlap");
   });
 
+  it("allows an intentional structured prose page without a decorative icon", () => {
+    const deck = createSampleDeck("ja-JP", { slideCount: 1 });
+    deck.slides[0].layout = "message-grammar-detail-reading-page";
+    deck.slides[0].elements = [
+      { id: "explanation-prose-frame", type: "shape", shape: "roundRect", x: 0.9, y: 1.9, w: 11.4, h: 4.9, fill: "#ffffff", decorative: true, readingOrder: 1 },
+      { id: "explanation-prose-paragraph-0", type: "text", role: "body", text: "一文で続く技術説明を、単一の段落オブジェクトとして表示する。", x: 1.4, y: 3, w: 10, h: 1, fontSize: 17, bold: false, decorative: false, readingOrder: 2 }
+    ];
+
+    const report = reviewVisualQuality(deck);
+
+    expect(report.issues.some((issue) => issue.code === "visual.message-slide-icon-missing")).toBe(false);
+  });
+
   it("warns when large overlays cover full-slide design components", () => {
     const deck = createSampleDeck("ja-JP", { slideCount: 1 });
     deck.slides[0].layout = "design-component-gallery";

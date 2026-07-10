@@ -76,6 +76,36 @@ describe("narrative planning artifacts", () => {
     expect(artifacts.expressionPlans[0].selectedGrammarId).toBe("evidence-board");
   });
 
+  it("does not turn unstructured prose fragments into a table based on count alone", () => {
+    const map: DeckMessageMap = {
+      objective: "技術概念を説明する",
+      audience: "設計者",
+      desiredAction: "概念を理解する",
+      intents: [{
+        slideId: "prose-explanation",
+        title: "エグゼクティブサマリ",
+        message: "ID-JAGの位置づけを説明する。",
+        evidence: [
+          "ID-JAGはOAuth拡張です。",
+          "企業のIdPが許可を判断します。",
+          "短命JWTを発行します。",
+          "Resource Appが署名を検証します。",
+          "従来の長命APIキーを置き換えます。",
+          "監査可能な委任を実現します。"
+        ],
+        contentStructure: "prose",
+        quietInfo: [],
+        visualType: "summary",
+        emphasis: "短命な委任"
+      }]
+    };
+
+    const artifacts = createNarrativePlanArtifacts(map, { locale: "ja-JP", contentMode: "technical" });
+
+    expect(artifacts.expressionPlans[0].selectedGrammarId).toBe("detail-reading-page");
+    expect(artifacts.expressionPlans[0].selectedGrammarId).not.toBe("table-text-system");
+  });
+
   it("uses SlideIntent slideRole as a visual grammar prior", () => {
     const map: DeckMessageMap = {
       objective: "スライド役割ごとに表現を選ぶ",

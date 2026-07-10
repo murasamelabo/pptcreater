@@ -202,6 +202,97 @@ describe("message map deck generator", () => {
     expect(deck.slides[0]?.speakerNotes).toContain("https://datatracker.ietf.org/doc/draft-ietf-oauth-identity-assertion-authz-grant/");
   });
 
+  it("renders prose as continuous paragraphs instead of table rows or numbered cards", () => {
+    const paragraph = "ID-JAGは、企業のIdPがアプリ間APIアクセスを許可したことを署名付きJWTで証明するOAuth拡張仕様です。";
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "技術概念を説明する",
+        audience: "設計者",
+        desiredAction: "位置づけを理解する",
+        intents: [{
+          slideId: "prose-page",
+          title: "エグゼクティブサマリ",
+          message: "ID-JAGの位置づけを説明する。",
+          slideRole: "detail",
+          contentStructure: "prose",
+          evidence: [paragraph],
+          quietInfo: [],
+          visualType: "detail",
+          emphasis: "短命な委任"
+        }]
+      },
+      { title: "Prose page", locale: "ja-JP", contentMode: "technical", planningMode: "narrative-v1", includeCover: false, includeClosing: false }
+    );
+    const slide = deck.slides[0];
+    const paragraphElements = slide.elements.filter((element): element is Extract<typeof element, { type: "text" }> => element.type === "text" && element.id.includes("prose-paragraph"));
+
+    expect(slide.layout).toBe("message-grammar-detail-reading-page");
+    expect(paragraphElements).toHaveLength(1);
+    expect(paragraphElements[0].text.replace(/\s+/gu, "")).toBe(paragraph.replace(/\s+/gu, ""));
+    expect(slide.elements.some((element) => element.id.includes("table-row") || element.id.includes("path-number"))).toBe(false);
+  });
+
+  it("keeps continuation titles unique after topic compaction", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "レスポンスを説明する",
+        audience: "実装者",
+        desiredAction: "仕様を確認する",
+        intents: ["", "（続き2）"].map((suffix, index) => ({
+          slideId: `response-${index + 1}`,
+          title: `Token Exchange レスポンス(ID-JAG発行)${suffix}`,
+          message: "レスポンス仕様を説明する。",
+          slideRole: "detail" as const,
+          contentStructure: "prose" as const,
+          evidence: [`説明${index + 1}`],
+          quietInfo: [],
+          visualType: "detail" as const,
+          emphasis: "レスポンス"
+        }))
+      },
+      { title: "Continuation", locale: "ja-JP", contentMode: "technical", planningMode: "narrative-v1", includeCover: false, includeClosing: false }
+    );
+
+    expect(deck.slides.map((slide) => slide.title)).toEqual(["Token Exchange", "Token Exchange（続き2）"]);
+  });
+
+  it("renders table context outside the row system", () => {
+    const context = "actor_tokenとactor_token_typeは使用しない。client_assertionでクライアント認証する。";
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "交換要求を説明する",
+        audience: "実装者",
+        desiredAction: "パラメータを確認する",
+        intents: [{
+          slideId: "request-table",
+          title: "Token Exchangeリクエスト",
+          message: "必須パラメータと補足条件を分けて読む。",
+          slideRole: "data",
+          contentStructure: "table",
+          evidence: ["grant_type: token-exchange", "XAA(Cross-App Access): ID-JAG をエンタープライズ向けにプロファイルした呼称/エコシステム名"],
+          context: [context],
+          details: ["補足 grant_type: この説明でsource table rowを上書きしない"],
+          quietInfo: [],
+          visualType: "table",
+          emphasis: "交換要求"
+        }]
+      },
+      { title: "Table context", locale: "ja-JP", contentMode: "technical", planningMode: "narrative-v1", includeCover: false, includeClosing: false }
+    );
+    const slide = deck.slides[0];
+    const contextElements = slide.elements.filter((element): element is Extract<typeof element, { type: "text" }> => element.type === "text" && element.id.includes("table-context"));
+
+    expect(contextElements).toHaveLength(1);
+    expect(contextElements[0].text.replace(/\s+/gu, "")).toBe(context.replace(/\s+/gu, ""));
+    expect(slide.elements.filter((element) => element.id.includes("table-row-label"))).toHaveLength(2);
+    const rowBodies = slide.elements.filter((element): element is Extract<typeof element, { type: "text" }> => element.type === "text" && element.id.includes("table-row-body")).map((element) => element.text);
+    expect(rowBodies[0]).toContain("token-exchange");
+    expect(rowBodies[0]).not.toContain("上書きしない");
+    expect(rowBodies[1]).toContain("ID-JAG をエンタープライズ向けにプロファイルした呼称");
+    expect(rowBodies[1]).not.toBe("ID-JAG/XAAを軸に整理");
+    expect(slide.elements.find((element) => element.id === "request-table-table-row-0")?.h).toBeGreaterThan(0.8);
+  });
+
   it("uses dark ink on bright accent colors to preserve contrast", () => {
     const tokens = defaultTokens("ja-JP");
     tokens.colors.accent = "#38bdf8";

@@ -172,23 +172,54 @@ describe("MessageSpec generation", () => {
     expect(contentSlide?.supportingBlocks.map((block) => block.label)).not.toContain("項目 2");
   });
 
-  it("splits long source prose into multiple source-traced information units", () => {
+  it("preserves a source paragraph as one prose block instead of splitting sentences into rows", () => {
     const markdown = `# Report\n\n## 課題\n\nエンタープライズではアプリ間連携が不可欠です。従来のAPIキーは長命で分散管理されます。中央失効が難しく、監査証跡も不足します。ID-JAGは短命な委任へ移行します。`;
     const docSpec = extractDocSpecFromMarkdown(markdown, { sourceId: "long-prose", title: "Report" });
     const messageSpec = createMessageSpecFromDocSpec(docSpec, { strategy: "generic-technical-report" });
     const contentSlide = messageSpec.slides.find((slide) => slide.semanticTitle === "課題");
 
-    expect(contentSlide?.supportingBlocks.length).toBeGreaterThanOrEqual(4);
-    expect(new Set(contentSlide?.supportingBlocks.map((block) => block.sourceSectionIds[0])).size).toBe(1);
+    expect(contentSlide?.supportingBlocks).toHaveLength(1);
+    expect(contentSlide?.supportingBlocks[0].structure).toBe("prose");
+    expect(contentSlide?.supportingBlocks[0].text).toBe("エンタープライズではアプリ間連携が不可欠です。従来のAPIキーは長命で分散管理されます。中央失効が難しく、監査証跡も不足します。ID-JAGは短命な委任へ移行します。");
   });
 
-  it("splits parenthetical examples and contrast clauses into semantic units", () => {
+  it("keeps parenthetical examples and contrast clauses in their original sentence", () => {
     const markdown = `# Report\n\n## 課題\n\nエンタープライズではアプリ間連携(管理ツールがCRMを参照、CI/CDがリポジトリへpush)が不可欠だが、従来手段はスケールしない。`;
     const docSpec = extractDocSpecFromMarkdown(markdown, { sourceId: "contrast-prose", title: "Report" });
     const messageSpec = createMessageSpecFromDocSpec(docSpec, { strategy: "generic-technical-report" });
     const contentSlide = messageSpec.slides.find((slide) => slide.semanticTitle === "課題");
 
-    expect(contentSlide?.supportingBlocks.map((block) => block.label)).toEqual(["業務要件", "利用例", "従来手段の限界"]);
+    expect(contentSlide?.supportingBlocks).toHaveLength(1);
+    expect(contentSlide?.supportingBlocks[0].structure).toBe("prose");
+    expect(contentSlide?.supportingBlocks[0].text).toContain("管理ツールがCRMを参照、CI/CDがリポジトリへpush");
+    expect(contentSlide?.supportingBlocks[0].text).toContain("従来手段はスケールしない");
+  });
+
+  it("does not inject artificial required-term rows into generic prose", () => {
+    const markdown = `# Report\n\n## エグゼクティブサマリ\n\nID-JAG(Identity Assertion JWT Authorization Grant)は、企業のIdPがアプリ間アクセスを許可するためのOAuth拡張です。`;
+    const docSpec = extractDocSpecFromMarkdown(markdown, { sourceId: "summary-prose", title: "Report" });
+    const messageSpec = createMessageSpecFromDocSpec(docSpec, { strategy: "generic-technical-report" });
+    const messageMap = deckMessageMapFromMessageSpec(messageSpec);
+    const summary = messageMap.intents.find((intent) => intent.title === "エグゼクティブサマリ");
+
+    expect(summary?.slideRole).toBe("detail");
+    expect(summary?.contentStructure).toBe("prose");
+    expect(summary?.visualType).toBe("detail");
+    expect(summary?.evidence).toEqual(["ID-JAG(Identity Assertion JWT Authorization Grant)は、企業のIdPがアプリ間アクセスを許可するためのOAuth拡張です。"]);
+    expect(summary?.evidence.some((item) => item.startsWith("確認対象:"))).toBe(false);
+  });
+
+  it("splits long prose only at complete paragraph boundaries", () => {
+    const paragraph = (label: string) => `- **${label}** は、${"技術的な説明を文章として連続して保持します。".repeat(20)}`;
+    const markdown = `# Report\n\n## Summary\n\n${["A", "B", "C", "D"].map(paragraph).join("\n")}`;
+    const docSpec = extractDocSpecFromMarkdown(markdown, { sourceId: "paragraph-split", title: "Report" });
+    const messageSpec = createMessageSpecFromDocSpec(docSpec, { strategy: "generic-technical-report" });
+    const summarySlides = messageSpec.slides.filter((slide) => slide.semanticTitle.startsWith("Summary"));
+
+    expect(summarySlides.length).toBeGreaterThan(1);
+    expect(summarySlides.every((slide) => slide.contentStructure === "prose")).toBe(true);
+    expect(summarySlides.flatMap((slide) => slide.supportingBlocks)).toHaveLength(4);
+    expect(summarySlides.flatMap((slide) => slide.supportingBlocks).every((block) => block.text.includes("技術的な説明を文章として連続して保持します。"))).toBe(true);
   });
 
   it("rejects unexplained source omissions in generic technical reports", () => {

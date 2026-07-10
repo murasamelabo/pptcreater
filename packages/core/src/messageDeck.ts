@@ -914,6 +914,7 @@ function slideShell(theme: Theme, intent: SlideIntent, elements: SlideElement[],
       `Message: ${intent.message}`,
       intent.evidence.length ? `Evidence: ${intent.evidence.join(" / ")}` : "",
       intent.details?.length ? `Details: ${intent.details.join(" / ")}` : "",
+      intent.context?.length ? `Context: ${intent.context.join(" / ")}` : "",
       intent.quietInfo.length ? `Quiet info: ${intent.quietInfo.join(" / ")}` : ""
       , intent.sourceTrace?.length ? `Source trace: ${intent.sourceTrace.join(" / ")}` : ""
     ]
@@ -941,6 +942,7 @@ function slideShell(theme: Theme, intent: SlideIntent, elements: SlideElement[],
 
 function slideTopicTitle(intent: SlideIntent): string {
   const normalized = intent.title.trim();
+  const continuation = normalized.match(/[（(]続き\s*\d+[）)]/u)?.[0];
   const replacements: Record<string, string> = {
     結論: "推奨方針",
     制度: "利用制度",
@@ -952,9 +954,10 @@ function slideTopicTitle(intent: SlideIntent): string {
     return compactLabel(intent.emphasis ?? intent.message, hasJapanese(intent.emphasis ?? intent.message) ? 14 : 22);
   }
   const contextual = contextualTopicTitle(intent);
-  if (contextual) return contextual;
+  if (contextual) return continuation ? `${contextual}${continuation}` : contextual;
   const title = replacements[normalized] ?? topicLabel(normalized);
-  return title.replace(/[（(][^）)]*$/u, "").trim() || title.replace(/[（(]/gu, "").trim();
+  const compacted = title.replace(/[（(][^）)]*$/u, "").trim() || title.replace(/[（(]/gu, "").trim();
+  return continuation && !compacted.includes(continuation) ? `${compacted}${continuation}` : compacted;
 }
 
 function evidenceItems(intent: SlideIntent, min = 3): string[] {
@@ -1582,11 +1585,20 @@ function splitKeyValue(value: string): { key: string; value: string } | null {
 }
 
 function tableBodyText(value: string): string {
-  const text = value.trim();
+  const text = polishJapaneseFragment(normalizeVisibleCopy(value));
   if (!text) return text;
-  if (hasCodeToken(text) && Array.from(normalizeVisibleCopy(text)).length <= 72) return visibleSentence(text);
-  const visible = leadSentence(text, 72);
-  return !hasJapanese(visible) && !/[.!?]$/u.test(visible) ? `${visible}.` : visible;
+  const finish = (candidate: string): string => !hasJapanese(candidate) && !/[.!?]$/u.test(candidate) ? `${candidate}.` : candidate;
+  if (hasCodeToken(text) && Array.from(text).length <= 72) return text;
+  if (Array.from(text).length <= 72) return finish(text);
+  const first = text.split(/[。；;\n]/u)[0]?.trim() || text;
+  if (Array.from(first).length <= 72) return finish(first);
+  const chars = Array.from(first);
+  let clipped = chars.slice(0, 72).join("").trimEnd();
+  const next = chars[72] ?? "";
+  if (/[A-Za-z0-9_./:=+-]/u.test(next) && /[A-Za-z0-9_./:=+-]$/u.test(clipped)) {
+    clipped = clipped.replace(/\s+[A-Za-z0-9_./:=+-]+$/u, "").trimEnd() || clipped;
+  }
+  return finish(clipped.replace(/[（【「『(\[{:：/、,;；]+$/u, "").trimEnd());
 }
 
 function splitTableEvidence(value: string, index: number): { label: string; body: string } {
@@ -1610,6 +1622,7 @@ function splitTableEvidence(value: string, index: number): { label: string; body
 }
 
 function tableRowsForIntent(intent: SlideIntent): Array<{ label: string; body: string }> {
+  const authoritativeTable = intent.contentStructure === "table";
   const detailByKey = new Map<string, string>();
   const parsedDetails: Array<{ key: string; value: string }> = [];
   for (const detail of intent.details ?? []) {
@@ -1623,23 +1636,23 @@ function tableRowsForIntent(intent: SlideIntent): Array<{ label: string; body: s
   const rows = selectVisibleItems(source, 6).visible.map((item, index) => {
     const parsed = splitKeyValue(item);
     if (parsed) {
-      const body = detailByKey.get(parsed.key.toLowerCase()) ?? parsed.value;
+      const body = authoritativeTable ? parsed.value : detailByKey.get(parsed.key.toLowerCase()) ?? parsed.value;
       return {
         label: /^(?:確認対象|補足)$/u.test(normalizeVisibleCopy(parsed.key)) ? semanticDetailLabel(`${parsed.key} ${body}`, index) : compactTechnicalLabel(parsed.key, 22),
-        body: body.trim() === parsed.key.trim() ? visibleSentence(intent.message) : visibleSentence(body)
+        body: body.trim() === parsed.key.trim() ? tableBodyText(intent.message) : tableBodyText(body)
       };
     }
-    const matchingParsedDetail = parsedDetails.find((detail) => item.includes(detail.key));
+    const matchingParsedDetail = authoritativeTable ? undefined : parsedDetails.find((detail) => item.includes(detail.key));
     if (matchingParsedDetail) {
       return { label: compactTechnicalLabel(matchingParsedDetail.key, 22), body: tableBodyText(matchingParsedDetail.value) };
     }
-    const positionalDetail = intent.details?.[index]?.trim();
+    const positionalDetail = authoritativeTable ? undefined : intent.details?.[index]?.trim();
     const positionalDetailLength = Array.from(positionalDetail ?? "").length;
     const itemLength = Array.from(item).length;
     if (positionalDetail && !splitKeyValue(positionalDetail) && positionalDetail !== item && positionalDetailLength <= 32 && positionalDetailLength <= itemLength + 8) {
       return { label: narrativeLabel(positionalDetail, 24), body: tableBodyText(item) };
     }
-    const matchingDetail = (intent.details ?? []).find((detail) => detail.includes(item.split(/[、・\s]/u)[0] ?? item));
+    const matchingDetail = authoritativeTable ? undefined : (intent.details ?? []).find((detail) => detail.includes(item.split(/[、・\s]/u)[0] ?? item));
     if (matchingDetail && matchingDetail !== item) {
       return { label: narrativeLabel(item, 24), body: tableBodyText(matchingDetail) };
     }
@@ -1652,7 +1665,8 @@ function tableRowsForIntent(intent: SlideIntent): Array<{ label: string; body: s
     if (!bodies.includes(row.body)) bodies.push(row.body);
     merged.set(row.label, bodies);
   }
-  return [...merged.entries()].map(([label, bodies]) => ({ label, body: tableBodyText(bodies.join(" / ")) }));
+  const finalRows = [...merged.entries()].map(([label, bodies]) => ({ label, body: tableBodyText(bodies.join(" / ")) }));
+  return finalRows;
 }
 
 function tableHeaderText(intent: SlideIntent): string {
@@ -1868,11 +1882,12 @@ function narrativeLayeredModel(theme: Theme, intent: SlideIntent, expressionPlan
   return elements;
 }
 
-type DetailPageVariant = "reading-board" | "checklist" | "brief";
+type DetailPageVariant = "prose" | "reading-board" | "checklist" | "brief";
 
 function detailPageVariant(intent: SlideIntent): DetailPageVariant {
   const text = [intent.slideId, intent.title, intent.message, intent.emphasis ?? "", ...intent.evidence, ...(intent.details ?? [])].join(" ");
   const decisionText = [intent.title, intent.message, intent.emphasis ?? ""].join(" ");
+  if (intent.contentStructure === "prose" || intent.contentStructure === "mixed") return "prose";
   if (/キャッシュ|MemoryCache|Expiration/iu.test(text)) return "brief";
   if (/リスク|制約|チェックリスト|MFA|PCIDSS|ROPC|禁止|漏洩|risk|constraint|checklist/iu.test(decisionText)) return "checklist";
   if (/仕様|契約|形式|項目|設定|キャッシュ|MemoryCache|Expiration|parameter|contract|spec|config/iu.test(text)) return "brief";
@@ -1957,9 +1972,32 @@ function parsedDetailItemsForIntent(intent: SlideIntent, max: number): Array<{ l
 
 function narrativeDetailPage(theme: Theme, intent: SlideIntent, expressionPlan: ExpressionPlan): SlideElement[] {
   const variant = detailPageVariant(intent);
+  if (variant === "prose") return narrativeProsePage(theme, intent);
   if (variant === "checklist") return narrativeDetailChecklist(theme, intent, expressionPlan);
   if (variant === "brief") return narrativeDetailBrief(theme, intent, expressionPlan);
   return narrativeDetailReadingBoard(theme, intent, expressionPlan);
+}
+
+function narrativeProsePage(theme: Theme, intent: SlideIntent): SlideElement[] {
+  const id = intent.slideId;
+  const paragraphs = selectVisibleItems(intent.evidence.map(normalizeVisibleCopy).filter(Boolean), 4).visible;
+  const count = Math.max(paragraphs.length, 1);
+  const availableHeight = 3.7;
+  const gap = 0.18;
+  const paragraphHeight = (availableHeight - gap * (count - 1)) / count;
+  const elements: SlideElement[] = [
+    shape(`${id}-prose-frame`, "roundRect", 0.92, 1.9, 11.44, 4.92, 10, theme.surface, theme.line, { radius: 0.16 }),
+    text(`${id}-prose-kicker`, "caption", "技術解説", 1.24, 2.16, 2.64, 0.18, 11, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true }),
+    text(`${id}-prose-heading`, "callout", slideTopicTitle(intent), 1.24, 2.5, 6.4, 0.38, 12, theme, { bg: theme.surface, color: theme.accent, fontSize: 20 }),
+    text(`${id}-prose-lead`, "body", compactVisibleBody(intent.message, 72), 7.64, 2.34, 4.24, 0.62, 13, theme, { bg: theme.surface, color: theme.text, fontSize: 14 }),
+    shape(`${id}-prose-rule`, "rect", 1.24, 3.0, 10.72, 0.02, 14, theme.accent, theme.accent, { radius: 0 })
+  ];
+  paragraphs.forEach((paragraph, index) => {
+    const y = 3.28 + index * (paragraphHeight + gap);
+    elements.push(shape(`${id}-prose-accent-${index}`, "rect", 1.24, y, 0.04, paragraphHeight, 20 + index * 2, theme.accent, theme.accent, { radius: 0 }));
+    elements.push(text(`${id}-prose-paragraph-${index}`, "body", paragraph, 1.52, y + 0.02, 10.18, paragraphHeight - 0.04, 21 + index * 2, theme, { bg: theme.surface, color: theme.text, fontSize: count === 1 ? 17 : 14 }));
+  });
+  return elements;
 }
 
 function narrativeDetailReadingBoard(theme: Theme, intent: SlideIntent, expressionPlan: ExpressionPlan): SlideElement[] {
@@ -2045,7 +2083,7 @@ function narrativeDetailChecklist(theme: Theme, intent: SlideIntent, _expression
 
 function narrativeDetailBrief(theme: Theme, intent: SlideIntent, _expressionPlan: ExpressionPlan): SlideElement[] {
   const id = intent.slideId;
-  const items = parsedDetailItemsForIntent(intent, 4).map((item) => ({ ...item, body: compactVisibleBody(item.body, 54) }));
+  const items = parsedDetailItemsForIntent(intent, 4).map((item) => ({ ...item, body: compactVisibleBody(item.body, 72) }));
   const elements: SlideElement[] = [
     shape(`${id}-brief-frame`, "roundRect", 0.92, 1.9, 11.44, 4.92, 10, theme.surface, theme.line, { radius: 0.16 }),
     text(`${id}-brief-kicker`, "caption", "仕様メモ", 1.24, 2.16, 2.64, 0.18, 11, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true }),
@@ -2062,7 +2100,7 @@ function narrativeDetailBrief(theme: Theme, intent: SlideIntent, _expressionPlan
     const fill = index === 0 ? theme.accentSoft : index % 2 === 0 ? mix(theme.accent, theme.background, 0.95) : theme.background;
     elements.push(shape(`${id}-brief-card-${index}`, "roundRect", x, y, 4.86, 1.02, order, fill, theme.line, { radius: 0.14 }));
     elements.push(text(`${id}-brief-card-label-${index}`, "caption", item.label, x + 0.24, y + 0.18, 4.2, 0.16, order + 1, theme, { bg: fill, color: theme.accent, fontSize: 12, bold: true }));
-    elements.push(text(`${id}-brief-card-body-${index}`, "body", item.body, x + 0.24, y + 0.46, 4.22, 0.4, order + 2, theme, { bg: fill, color: theme.text, fontSize: 13 }));
+    elements.push(text(`${id}-brief-card-body-${index}`, "body", item.body, x + 0.24, y + 0.44, 4.22, 0.46, order + 2, theme, { bg: fill, color: theme.text, fontSize: 12 }));
   });
   return elements;
 }
@@ -2084,19 +2122,27 @@ function narrativePhotoAnchor(theme: Theme, intent: SlideIntent, expressionPlan:
 function narrativeTableTextSystem(theme: Theme, intent: SlideIntent, expressionPlan: ExpressionPlan): SlideElement[] {
   const id = intent.slideId;
   const rows = tableRowsForIntent(intent);
+  const rowHeight = rows.length <= 3 ? 0.92 : rows.length === 4 ? 0.72 : 0.52;
+  const rowStep = rowHeight + 0.12;
   const elements: SlideElement[] = [
     shape(`${id}-table-stage`, "roundRect", 0.96, 2.02, 11.42, 4.62, 10, theme.surface, theme.line, { radius: 0.16 }),
     shape(`${id}-table-header`, "rect", 0.96, 2.02, 11.42, 0.58, 11, theme.accent, theme.accent, { radius: 0 }),
     text(`${id}-table-header-text`, "caption", tableHeaderText(intent), 1.28, 2.18, 10.8, 0.2, 12, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 13, bold: true })
   ];
   rows.forEach((row, index) => {
-    const y = 2.82 + index * 0.64;
+    const y = 2.82 + index * rowStep;
     const fill = index % 2 === 0 ? theme.background : theme.surface;
     const order = 20 + index * 4;
-    elements.push(shape(`${id}-table-row-${index}`, "rect", 1.18, y, 10.98, 0.52, order, fill, fill, { radius: 0 }));
-    elements.push(text(`${id}-table-row-index-${index}`, "caption", String(index + 1).padStart(2, "0"), 1.42, y + 0.17, 0.42, 0.12, order + 1, theme, { bg: fill, color: theme.accent, fontSize: 11, bold: true }));
-    elements.push(text(`${id}-table-row-label-${index}`, "body", row.label, 2.08, y + 0.1, 2.4, 0.2, order + 2, theme, { bg: fill, color: theme.text, fontSize: 14, bold: true }));
-    elements.push(text(`${id}-table-row-body-${index}`, "caption", compactVisibleBody(row.body, 64), 4.7, y + 0.1, 6.9, 0.28, order + 3, theme, { bg: fill, color: theme.mutedText, fontSize: 11 }));
+    elements.push(shape(`${id}-table-row-${index}`, "rect", 1.18, y, 10.98, rowHeight, order, fill, fill, { radius: 0 }));
+    elements.push(text(`${id}-table-row-index-${index}`, "caption", String(index + 1).padStart(2, "0"), 1.42, y + (rowHeight - 0.12) / 2, 0.42, 0.12, order + 1, theme, { bg: fill, color: theme.accent, fontSize: 11, bold: true, valign: "middle" }));
+    elements.push(text(`${id}-table-row-label-${index}`, "body", row.label, 2.08, y + 0.1, 2.4, rowHeight - 0.2, order + 2, theme, { bg: fill, color: theme.text, fontSize: rows.length <= 3 ? 13 : 12, bold: true, valign: "middle" }));
+    elements.push(text(`${id}-table-row-body-${index}`, "caption", row.body, 4.7, y + 0.1, 6.9, rowHeight - 0.2, order + 3, theme, { bg: fill, color: theme.mutedText, fontSize: rows.length <= 3 ? 12 : 10, valign: "middle" }));
+  });
+  const contextItems = selectVisibleItems(intent.context ?? [], 2).visible;
+  contextItems.forEach((item, index) => {
+    const x = 1.18 + index * 5.5;
+    const contextY = Math.min(6.72, 2.82 + rows.length * rowStep + 0.06);
+    elements.push(text(`${id}-table-context-${index}`, "caption", compactVisibleBody(item, 72), x, contextY, 5.18, 0.5, 80 + index, theme, { bg: theme.background, color: theme.mutedText, fontSize: 9 }));
   });
   return elements;
 }
