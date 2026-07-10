@@ -151,10 +151,10 @@ export const VISUAL_GRAMMAR_REGISTRY: VisualGrammarSpec[] = [
     audienceFit: ["handout", "report", "policy", "technical detail"],
     copyRequirements: ["complete prose", "section headings", "short callout"],
     layoutConstraints: ["line length is controlled", "heading hierarchy is clear", "detail is not forced into tiny labels"],
-    variationKnobs: ["column count", "callout placement", "heading scale", "indent rhythm"],
+    variationKnobs: ["reading board", "checklist board", "two-column brief", "callout placement", "heading scale", "indent rhythm"],
     antiPatterns: ["wall of text", "paragraphs without headings", "body text below readable size"],
     reviewChecks: ["body copy remains readable", "sections are scannable", "slide is intentionally text-rich"],
-    rendererPolicy: "text-only"
+    rendererPolicy: "native-shapes"
   },
   {
     id: "photo-product-anchor",

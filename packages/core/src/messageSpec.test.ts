@@ -33,6 +33,10 @@ flowchart LR
 
 ## 返却形式
 
+接続先URLにより、以下3種類の返却形式を選択できます。
+返却される主な情報は以下です。
+認証結果コード
+
 | 形式 | 内容 |
 | --- | --- |
 | 改行区切り形式 | LF区切り |
@@ -101,6 +105,11 @@ describe("MessageSpec generation", () => {
     expect(resultCodes?.evidence).toEqual(expect.arrayContaining(["01: ADログイン不可 / ID・PW不正"]));
     expect(resultCodes?.details?.some((detail) => detail.startsWith("01:"))).toBe(false);
     expect(resultCodes?.details).toEqual(expect.arrayContaining(["補足 01: ADログイン不可 / ID・PW不正"]));
+
+    const responseFormat = messageMap.intents.find((intent) => intent.slideId === "response-format");
+    expect(responseFormat?.evidence).toContain("形式選択: 接続先URLで3種類から選択");
+    expect(responseFormat?.evidence.some((item) => /返却内容: 返却される主な情報/u.test(item))).toBe(false);
+    expect(responseFormat?.evidence).not.toContain("結果コード: 認証結果コード");
 
     const visibleText = messageMap.intents.flatMap((intent) => [intent.title, intent.message, intent.emphasis ?? "", ...intent.evidence]).join("\n");
     for (const term of ["Active Directory", "memberOf", "GroupName", "Expiration", "PCIDSS", "OAuth", "PKCE", "Managed Identity", "Graph API"]) {

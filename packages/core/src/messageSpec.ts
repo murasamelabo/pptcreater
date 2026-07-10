@@ -138,11 +138,16 @@ function sectionText(section: DocSection | undefined): string {
   return section?.text.trim() ?? "";
 }
 
+function isFillerLine(line: string): boolean {
+  return /(?:以下です|以下です。|以下のとおりです|以下の通りです)$/u.test(line.trim()) || /^認証結果コード$/u.test(line.trim());
+}
+
 function sectionLines(section: DocSection | undefined): string[] {
   return sectionText(section)
     .split(/\n+/u)
     .map((line) => line.replace(/^[-*]\s+/u, "").trim())
     .filter((line) => line.length >= 4)
+    .filter((line) => !isFillerLine(line))
     .filter((line) => !/^\|.+\|$/u.test(line))
     .filter((line) => !/\s\|\s/u.test(line))
     .filter((line) => !/^(?:sequenceDiagram|flowchart|participant\b|classDiagram|stateDiagram|erDiagram|gantt\b|%%|```)/iu.test(line))
@@ -197,12 +202,17 @@ function blockBodyText(line: string): string {
   if (/所属セキュリティグループ情報の取得/u.test(line)) return "所属グループ情報を取得";
   if (/Active Directoryからのユーザー情報取得/u.test(line)) return "ADからユーザー情報を取得";
   if (/ユーザーID・パスワードによる認証代行/u.test(line)) return "ID・パスワード認証を代行";
+  if (/接続先URL.*返却形式/u.test(line)) return "接続先URLで3種類から選択";
   return line;
 }
 
 function fallbackBlockLabel(idPrefix: string, line: string, index: number): string {
   if (/ユーザーID|パスワード|認証代行/u.test(line)) return "認証代行";
   if (/送信する主なパラメータ|パラメータ/u.test(line)) return "送信項目";
+  if (/URLエンコード|二重エンコード|エンコード/u.test(line)) return "エンコード";
+  if (/sAMAccountName|ログオン名/u.test(line)) return "ログオン名";
+  if (/^姓\s|`sn`|\bsn\b/u.test(line)) return "姓";
+  if (/givenName|名\s/u.test(line)) return "名";
   if (/Active Directoryから|属性/u.test(line)) return "属性取得";
   if (/グループ/u.test(line)) return "グループ取得";
   if (/キャッシュ|MemoryCache/u.test(line)) return "キャッシュ";
@@ -241,12 +251,12 @@ function questionBlocks(idPrefix: string, questions: DocQuestion[], terms: Requi
 
 function questionBody(text: string): string {
   if (/OIDC|OAuth|SAML|Application Proxy|接続/u.test(text)) return "OIDC/OAuth・SAML等で接続方式を選定";
-  if (/C\/S|レガシー|ブラウザ/u.test(text)) return "C/S・レガシーアプリのブラウザ認証対応を見る";
-  if (/ROPC|認可コード|PKCE/u.test(text)) return "ROPC廃止と認可コード+PKCE移行を見る";
+  if (/C\/S|レガシー|ブラウザ/u.test(text)) return "C/S・レガシーアプリのブラウザ認証対応可否";
+  if (/ROPC|認可コード|PKCE/u.test(text)) return "ROPC廃止と認可コード+PKCE移行可否";
   if (/API|Managed Identity|権限/u.test(text)) return "ユーザー委任・アプリ権限・Managed Identityを選ぶ";
   if (/シングルサインオン|サインアウト|セッション|トークン/u.test(text)) return "SSO・サインアウト・トークン期限を決める";
   if (/ADグループ|Entra IDグループ|同期/u.test(text)) return "ADグループの移行・同期・再設計を決める";
-  if (/MFA|条件付きアクセス|パスワードレス/u.test(text)) return "MFA・条件付きアクセス・パスワードレス前提を見る";
+  if (/MFA|条件付きアクセス|パスワードレス/u.test(text)) return "MFA・条件付きアクセス・パスワードレス前提";
   return text;
 }
 
@@ -549,7 +559,7 @@ export function createMessageSpecFromDocSpec(docSpec: DocSpec, options: MessageS
     slide(
       "overview",
       "本資料で整理すること",
-      "仕組み・責務・運用リスク・移行確認を同じ流れで見る",
+      "仕組み・責務・運用リスク・移行確認を一続きで整理",
       "資料全体を理解順に整理する。",
       "overview",
       { kind: "summary", rationale: "Set reading order before details." },
@@ -575,7 +585,7 @@ export function createMessageSpecFromDocSpec(docSpec: DocSpec, options: MessageS
       )
     ),
     slide("architecture", "全体構成", "認証WebがアプリとCRANE ADの間で認証を代行", "認証WebがアプリとActive Directoryの間で認証を代行する。", "process", { kind: "architecture", rationale: "Show actors and handoff before detailed contracts." }, architecture ? [architecture.id] : [], termsInText(terms, sectionText(architecture)), blocksFromLines("architecture", ["ユーザー: ID/PW入力", "アプリ: userName / userPassword / appName", "認証Web: 入力検証・AD照会・結果整形", "CRANE AD: LDAPS"], architecture ? [architecture.id] : [], terms), blocksFromLines("architecture-notes", sectionLines(architecture), architecture ? [architecture.id] : [], terms)),
-    slide("capabilities", "提供機能", "認証代行・属性取得・グループ取得・返却・キャッシュを提供", "認証Webの提供範囲を確認する。", "evidence", { kind: "summary", rationale: "Capabilities are better read as a proof board than a contract table." }, capabilities ? [capabilities.id] : [], termsInText(terms, sectionText(capabilities)), blocksFromLines("capabilities", sectionLines(capabilities), capabilities ? [capabilities.id] : [], terms, 6)),
+    slide("capabilities", "提供機能", "認証代行・属性取得・グループ取得・返却・キャッシュを提供", "認証Webの提供範囲は認証代行と情報取得まで。", "evidence", { kind: "summary", rationale: "Capabilities are better read as a proof board than a contract table." }, capabilities ? [capabilities.id] : [], termsInText(terms, sectionText(capabilities)), blocksFromLines("capabilities", sectionLines(capabilities), capabilities ? [capabilities.id] : [], terms, 6)),
     slide("auth-flow", "認証処理の流れ", "入力検証、キャッシュ確認、AD照会の順で進む", "認証処理は検証とキャッシュを挟んで進む。", "process", { kind: "process", rationale: "Flow steps need sequence." }, authFlow ? [authFlow.id] : [], termsInText(terms, sectionText(authFlow)), authFlowBlocks(authFlow ? [authFlow.id] : [], terms)),
     slide(
       "external-interface",
@@ -592,7 +602,7 @@ export function createMessageSpecFromDocSpec(docSpec: DocSpec, options: MessageS
       "response-format",
       "返却形式と主な返却項目",
       "返却形式は3種類、返却内容は属性とグループ情報",
-      "返却形式と返却項目を同じ契約として確認する。",
+      "返却形式と返却項目は同じインターフェース契約に含まれる。",
       "data",
       { kind: "table", rationale: "Response formats and fields belong together." },
       sectionFamilyIds(docSpec, response),
@@ -685,19 +695,19 @@ export function deckMessageMapFromMessageSpec(messageSpec: MessageSpec): DeckMes
     const has = (term: string) => sorted.includes(term);
     const group = (label: string, candidates: string[], suffix = "を確認"): string | undefined => {
       const picked = candidates.filter(has).slice(0, 4);
-      return picked.length ? `${label}: ${picked.join(" / ")} ${suffix}` : undefined;
+      return picked.length ? `${label}: ${picked.join(" / ")} ${suffix}`.trim() : undefined;
     };
     const groupsBySlide: Record<string, Array<string | undefined>> = {
-      "system-purpose": [group("理解対象", ["Active Directory", "Entra ID"], "との関係を見る")],
-      architecture: [group("流れで見る入力", ["userName", "userPassword", "appName"], "の受け渡し"), group("接続先", ["Active Directory", "LDAPS"], "を見る")],
+      "system-purpose": [group("理解対象", ["Active Directory", "Entra ID"], "との関係")],
+      architecture: [group("入力値", ["userName", "userPassword", "appName"], "の受け渡し"), group("接続先", ["Active Directory", "LDAPS"], "")],
       capabilities: [group("提供範囲", ["Active Directory", "memberOf", "GroupName"], "までを確認")],
-      "auth-flow": [group("処理で追う値", ["userName", "userPassword", "appName"], "を見る"), group("照会先", ["Active Directory", "LDAPS"], "を見る")],
-      "external-interface": [group("入力契約", ["userName", "username", "userPassword", "appName"], "として確認")],
-      "response-format": [group("返却項目", ["sAMAccountName", "memberOf", "GroupName"], "として確認")],
-      "result-codes": [group("判定先", ["Active Directory"], "との結果を見る")],
+      "auth-flow": [group("処理値", ["userName", "userPassword", "appName"], ""), group("照会先", ["Active Directory", "LDAPS"], "")],
+      "external-interface": [group("入力契約", ["userName", "username", "userPassword", "appName"], "")],
+      "response-format": [group("返却項目", ["sAMAccountName", "memberOf", "GroupName"], "")],
+      "result-codes": [group("判定先", ["Active Directory"], "")],
       implementation: [group("設定ファイル", ["Web.config", "Application.config", "NLog.config"], "を確認"), group("運用キー", ["MemoryCache", "Expiration"], "を確認")],
-      cache: [group("運用確認", ["MemoryCache", "Expiration"], "で見る")],
-      risks: [group("制約確認", ["ROPC", "MFA", "PCIDSS"], "で判断"), group("通信前提", ["Active Directory", "HTTPS", "BIG-IP"], "を見る")],
+      cache: [group("運用対象", ["MemoryCache", "Expiration"], "")],
+      risks: [group("制約確認", ["ROPC", "MFA", "PCIDSS"], "で判断"), group("通信前提", ["Active Directory", "HTTPS", "BIG-IP"], "")],
       "kickoff-questions": [group("移行前提", ["Entra ID", "MFA", "ROPC"], "を先に確認")],
       "delivery-questions": [group("方式判定", ["OAuth", "PKCE", "Managed Identity"], "で選ぶ"), group("連携設計", ["Graph API", "Entra ID", "memberOf"], "で詰める")],
       summary: [group("移行判断", ["OAuth", "PKCE", "Managed Identity", "Graph API"], "へつなげる"), group("返却と権限", ["memberOf", "sAMAccountName", "PCIDSS"], "を棚卸し")]
@@ -708,7 +718,7 @@ export function deckMessageMapFromMessageSpec(messageSpec: MessageSpec): DeckMes
     }
     const chunks: string[] = [];
     for (let index = 0; index < sorted.length && chunks.length < 2; index += 3) {
-      chunks.push(`確認対象: ${sorted.slice(index, index + 3).join(" / ")} を見る`);
+      chunks.push(`確認対象: ${sorted.slice(index, index + 3).join(" / ")}`);
     }
     return chunks;
   };

@@ -487,15 +487,75 @@ describe("message map deck generator", () => {
     const texts = slide?.elements.filter((element): element is Extract<typeof element, { type: "text" }> => element.type === "text") ?? [];
     expect(texts.some((element) => element.id === "exploit-report-eyebrow" && element.text === "SLIDE 01")).toBe(true);
     expect(texts.some((element) => element.id === "exploit-report-header-badge-text")).toBe(true);
+    expect(texts.some((element) => element.id === "exploit-report-message")).toBe(false);
     expect(texts.some((element) => element.id === "exploit-report-report-page")).toBe(false);
     expect(texts.some((element) => element.id === "exploit-report-report-nav")).toBe(false);
-    expect(texts.some((element) => element.id === "exploit-report-report-kicker" && /文章で読む|Reading notes/u.test(element.text))).toBe(true);
+    expect(texts.some((element) => element.id === "exploit-report-report-kicker" && /説明メモ|Briefing notes/u.test(element.text))).toBe(true);
     expect(texts.some((element) => element.id === "exploit-report-report-quote")).toBe(true);
     expect(texts.some((element) => element.id === "exploit-report-report-rec-title" && element.text === "確認事項")).toBe(true);
     expect(texts.filter((element) => /report-body-\d/u.test(element.id))).toHaveLength(4);
     expect(slide?.elements.some((element) => element.id === "exploit-report-report-quote-panel" && element.type === "shape")).toBe(true);
     expect(slide?.elements.some((element) => element.id === "exploit-report-report-rec-panel" && element.type === "shape")).toBe(true);
     expect(reviewVisualQuality(deck).issues.filter((issue) => issue.severity === "error")).toEqual([]);
+  });
+
+  it("renders risk detail slides as checklist-style text diagrams", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "リスクを確認する",
+        audience: "運用担当者",
+        desiredAction: "制約を確認する",
+        intents: [
+          {
+            slideId: "risk-detail",
+            title: "リスク",
+            message: "ROPC方式はMFAとPCIDSS観点で制約が大きい。",
+            evidence: ["制約確認: ROPC / MFA / PCIDSSで判断", "通信前提: HTTPSとBIG-IP", "利用条件: AD登録ユーザーのみ"],
+            details: ["MFA: MFAを利用できない", "PCIDSS: 要件を満たせない可能性", "ROPC: アプリがID/PWを直接扱う"],
+            quietInfo: [],
+            visualType: "detail",
+            slideRole: "detail",
+            emphasis: "制約確認"
+          }
+        ]
+      },
+      { title: "Risk detail", locale: "ja-JP", contentMode: "handout", styleProfile: "report", planningMode: "narrative-v1", includeCover: false, includeClosing: false }
+    );
+
+    const slide = deck.slides.find((candidate) => candidate.id === "risk-detail");
+    expect(slide?.layout).toBe("message-grammar-detail-reading-page");
+    expect(slide?.elements.some((element) => element.id === "risk-detail-check-frame")).toBe(true);
+    expect(slide?.elements.some((element) => element.id === "risk-detail-check-row-0")).toBe(true);
+    expect(slide?.elements.some((element) => element.type === "text" && element.text === "判断ポイント")).toBe(true);
+  });
+
+  it("renders specification detail slides as two-column brief text diagrams", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "仕様を確認する",
+        audience: "開発担当者",
+        desiredAction: "設定値を確認する",
+        intents: [
+          {
+            slideId: "cache-detail",
+            title: "キャッシュ仕様",
+            message: "MemoryCacheでAD問い合わせを抑え、運用影響に注意する。",
+            evidence: ["方式: .NET MemoryCache", "有効期限: Expiration 10分 / 600秒", "効果: AD問い合わせを抑制", "注意: ADロック挙動を確認"],
+            quietInfo: [],
+            visualType: "detail",
+            slideRole: "detail",
+            emphasis: "MemoryCache"
+          }
+        ]
+      },
+      { title: "Cache detail", locale: "ja-JP", contentMode: "handout", styleProfile: "report", planningMode: "narrative-v1", includeCover: false, includeClosing: false }
+    );
+
+    const slide = deck.slides.find((candidate) => candidate.id === "cache-detail");
+    expect(slide?.layout).toBe("message-grammar-detail-reading-page");
+    expect(slide?.elements.some((element) => element.id === "cache-detail-brief-frame")).toBe(true);
+    expect(slide?.elements.filter((element) => element.id.includes("brief-card-")).length).toBeGreaterThanOrEqual(4);
+    expect(slide?.elements.some((element) => element.type === "text" && element.text === "仕様メモ")).toBe(true);
   });
 
   it("preserves contextual term rows in evidence-board grammar", () => {
@@ -534,6 +594,37 @@ describe("message map deck generator", () => {
     expect(proofText).not.toMatch(/Managed Identi$/mu);
   });
 
+  it("uses non-duplicative table headers for table-text-system slides", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "返却形式を説明する",
+        audience: "アプリ担当者",
+        desiredAction: "返却契約を確認する",
+        intents: [
+          {
+            slideId: "response-format",
+            title: "返却形式",
+            message: "返却形式は3種類、返却内容は属性とグループ情報",
+            evidence: ["返却項目: sAMAccountName / memberOf / GroupName", "改行区切り形式: 各項目をLFで返却", "簡易XML形式: ユーザー情報をXMLで返却"],
+            quietInfo: [],
+            visualType: "table",
+            slideRole: "data",
+            emphasis: "返却形式は3種類、返却内容は属性とグループ情報"
+          }
+        ]
+      },
+      { title: "Table header", locale: "ja-JP", contentMode: "handout", styleProfile: "report", planningMode: "narrative-v1", includeCover: false, includeClosing: false }
+    );
+
+    const slide = deck.slides.find((candidate) => candidate.id === "response-format");
+    const texts = slide?.elements.filter((element): element is Extract<typeof element, { type: "text" }> => element.type === "text") ?? [];
+    const header = texts.find((element) => element.id === "response-format-table-header-text");
+    const message = texts.find((element) => element.id === "response-format-message");
+
+    expect(header?.text).toBe("返却形式 / 内容");
+    expect(header?.text).not.toBe(message?.text);
+  });
+
   it("renders long sequential path rows with consistent sizing", () => {
     const deck = createDeckFromMessageMap(
       {
@@ -546,8 +637,8 @@ describe("message map deck generator", () => {
             title: "認証処理",
             message: "入力検証、キャッシュ確認、AD照会の順で進む",
             evidence: [
-              "処理で追う値: userName / userPassword / appName を見る",
-              "照会先: Active Directory を見る",
+              "処理値: userName / userPassword / appName",
+              "照会先: Active Directory",
               "入力: userName / userPassword / appNameを受け取る",
               "検証: 必須入力とGET禁止を確認",
               "照会: Active Directoryへ認証問い合わせ",
