@@ -72,3 +72,34 @@ Until candidate DeckSpecs are actually rendered and visually compared, the produ
 | 8 | `scoreRank` records score order independently from provisional production selection. | PASS |
 | 9 | Existing grammar output remains unchanged until rendered candidate comparison is implemented. | PASS |
 | 10 | Both CLI planning paths persist `expression-candidates.json`. | PASS |
+
+## Candidate Deck Materialization Slice
+
+The third slice turns each planning candidate into an isolated one-slide DeckSpec using its candidate grammar. It then runs deterministic deck, visual, and slide-quality reviews and records post-materialization Accuracy, Clarity, Beauty, total score, and review evidence.
+
+The CLI command `materialize-candidates` writes `candidate-summary.json`, one `.deck.json`, and one `.evaluation.json` per candidate. Optional `--render-pptx` and `--render-studio` flags also produce actual PPTX and Studio HTML artifacts.
+
+| Stage | Evidence |
+| --- | --- |
+| RED | `npm test -- packages/core/src/narrativePlanning.test.ts --reporter=dot` failed because `materializeExpressionCandidateDecks` did not exist. |
+| RED commit | `158a275 test: define candidate deck materialization` |
+| Focused GREEN | Planning and message-deck tests passed 47 tests. |
+| Full GREEN | `npm test -- --reporter=dot` passed 29 files / 439 tests. |
+| Core/CLI commit | `f7a5126 Materialize expression candidate decks` |
+| DeckSpec smoke | Three candidates produced three distinct layouts: `comparison-field`, `table-text-system`, and `evidence-board`. |
+| Render smoke | Three PPTX and three Studio HTML files were generated; all PPTX files had ZIP headers and no render warnings. |
+| Render commit | `8c4d06e Render materialized expression candidates` |
+
+### Additional Guarantees
+
+| # | Guarantee | Result |
+| --- | --- | --- |
+| 11 | Candidate grammar overrides affect only the targeted slide and do not mutate the source Message Map. | PASS |
+| 12 | Multi-intent Message Maps require an explicit `slideId` for candidate materialization. | PASS |
+| 13 | Candidate review evidence is isolated from cover, closing, and unrelated slides. | PASS |
+| 14 | CLI candidate artifacts keep deterministic score-rank filenames and summary links. | PASS |
+| 15 | Candidate PPTX and Studio HTML artifacts can be generated in one command. | PASS |
+
+### Remaining Render Boundary
+
+The current pptcreater render API produces PPTX, not PNG slide images. Image-based candidate comparison therefore still requires a snapshot adapter, most likely Studio HTML to PNG through Playwright. Until that adapter exists, `selectionPolicy` remains `primary-grammar-until-rendered`; deterministic DeckSpec reviews and PPTX package checks do not claim to be human visual evaluation.
