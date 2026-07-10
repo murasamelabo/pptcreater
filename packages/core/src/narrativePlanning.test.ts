@@ -110,6 +110,67 @@ describe("narrative planning artifacts", () => {
     expect(artifacts.expressionPlans.map((plan) => plan.selectedGrammarId)).toEqual(["detail-reading-page", "comparison-field"]);
   });
 
+  it("creates slide communication contracts before selecting visual grammar", () => {
+    const map: DeckMessageMap = {
+      objective: "認証Webとアプリの責任分界を合意する",
+      audience: "アプリ開発者と認証基盤担当者",
+      desiredAction: "実装責任を確認する",
+      intents: [
+        {
+          slideId: "responsibility-boundary",
+          title: "責任分界",
+          message: "認証Webは本人確認、アプリは認可判断を担う。",
+          slideRole: "comparison",
+          evidence: [
+            "本人確認: 認証Web / アプリは結果を利用",
+            "認可判断: 認証Webは対象外 / アプリが実施"
+          ],
+          quietInfo: ["認証結果コードを境界にする"],
+          visualType: "table",
+          emphasis: "本人確認と認可判断を分離"
+        }
+      ]
+    };
+
+    const artifacts = createNarrativePlanArtifacts(map, { locale: "ja-JP", contentMode: "handout" });
+    const contract = artifacts.communicationContracts[0];
+
+    expect(contract.slideId).toBe("responsibility-boundary");
+    expect(contract.relation).toBe("responsibility");
+    expect(contract.entities).toEqual(expect.arrayContaining(["認証Web", "アプリ"]));
+    expect(contract.comparisonAxes).toEqual(expect.arrayContaining(["本人確認", "認可判断"]));
+    expect(contract.readerTest).toContain("誰が");
+    expect(contract.forbiddenLosses).toEqual(expect.arrayContaining(["認証結果コードを境界にする"]));
+    expect(artifacts.expressionPlans[0].communicationContractId).toBe(contract.id);
+    expect(artifacts.expressionPlans[0].rationale).toContain("responsibility");
+  });
+
+  it("uses an explicit two-axis communication relation for decision surfaces", () => {
+    const map: DeckMessageMap = {
+      objective: "優先順位を決める",
+      audience: "意思決定者",
+      desiredAction: "PoC対象を選ぶ",
+      intents: [
+        {
+          slideId: "priority-matrix",
+          title: "優先順位",
+          message: "統制強度と実装負荷の二軸でPoC対象を選ぶ。",
+          slideRole: "decision",
+          evidence: ["低負荷・高統制", "高負荷・高統制", "低負荷・低統制"],
+          quietInfo: [],
+          visualType: "summary",
+          emphasis: "二軸で選ぶ"
+        }
+      ]
+    };
+
+    const artifacts = createNarrativePlanArtifacts(map, { locale: "ja-JP", contentMode: "decision" });
+
+    expect(artifacts.communicationContracts[0].relation).toBe("tradeoff");
+    expect(artifacts.communicationContracts[0].comparisonAxes).toEqual(["統制強度", "実装負荷"]);
+    expect(artifacts.expressionPlans[0].selectedGrammarId).toBe("decision-surface");
+  });
+
   it("does not force list-like matrix intents into repeated two-axis maps", () => {
     const map: DeckMessageMap = {
       objective: "統制要件を整理する",
