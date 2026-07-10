@@ -266,7 +266,7 @@ describe("narrative planning artifacts", () => {
       candidate.deck.slides[0].elements.map((element) => element.id)
     ]));
 
-    expect(elementsByGrammar.get("comparison-field")).toEqual(expect.arrayContaining(["responsibility-comparison-left"]));
+    expect(elementsByGrammar.get("comparison-field")).toEqual(expect.arrayContaining(["responsibility-ctable-h-label"]));
     expect(elementsByGrammar.get("table-text-system")).toEqual(expect.arrayContaining(["responsibility-table-stage"]));
     expect(elementsByGrammar.get("evidence-board")).toEqual(expect.arrayContaining(["responsibility-narrative-evidence-field"]));
     expect(new Set([...elementsByGrammar.values()].map((ids) => ids.join("|"))).size).toBe(3);
