@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { buildCandidateSnapshotPlan, scoreRenderedSnapshotMetrics } from "./candidateSnapshots.js";
+﻿import { describe, expect, it } from "vitest";
+import { buildCandidateSnapshotPlan, recommendRenderedCandidate, scoreRenderedSnapshotMetrics } from "./candidateSnapshots.js";
 
 describe("candidate snapshot adapter", () => {
   it("builds deterministic PNG paths from candidate Studio artifacts", () => {
@@ -56,5 +56,30 @@ describe("candidate snapshot adapter", () => {
     expect(broken.blocking).toBe(true);
     expect(clean.clarity).toBeGreaterThanOrEqual(80);
     expect(broken.clarity).toBeLessThan(50);
+  });
+
+  it("recommends only accuracy-gated, non-blocking candidates using rendered clarity and beauty", () => {
+    const recommendation = recommendRenderedCandidate(
+      [
+        { candidateId: "accurate-table", accuracy: 92, accuracyGatePassed: true },
+        { candidateId: "beautiful-but-inaccurate", accuracy: 64, accuracyGatePassed: false },
+        { candidateId: "accurate-but-overflowing", accuracy: 100, accuracyGatePassed: true }
+      ],
+      [
+        { candidateId: "accurate-table", clarity: 88, beauty: 76, blocking: false },
+        { candidateId: "beautiful-but-inaccurate", clarity: 98, beauty: 99, blocking: false },
+        { candidateId: "accurate-but-overflowing", clarity: 40, beauty: 90, blocking: true }
+      ]
+    );
+
+    expect(recommendation.recommendedCandidateId).toBe("accurate-table");
+    expect(recommendation.eligibleCandidateIds).toEqual(["accurate-table"]);
+    expect(recommendation.rejected).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ candidateId: "beautiful-but-inaccurate", reason: "accuracy-gate" }),
+        expect.objectContaining({ candidateId: "accurate-but-overflowing", reason: "render-blocking" })
+      ])
+    );
+    expect(recommendation.ranked[0].total).toBe(Math.round(92 * 0.5 + 88 * 0.3 + 76 * 0.2));
   });
 });
