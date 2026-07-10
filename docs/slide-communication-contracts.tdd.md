@@ -103,3 +103,37 @@ The CLI command `materialize-candidates` writes `candidate-summary.json`, one `.
 ### Remaining Render Boundary
 
 The current pptcreater render API produces PPTX, not PNG slide images. Image-based candidate comparison therefore still requires a snapshot adapter, most likely Studio HTML to PNG through Playwright. Until that adapter exists, `selectionPolicy` remains `primary-grammar-until-rendered`; deterministic DeckSpec reviews and PPTX package checks do not claim to be human visual evaluation.
+
+## Candidate Image Snapshot And Recommendation Slice
+
+The fourth slice adds a Playwright Core adapter that uses an installed Edge, Chrome, or Chromium executable without downloading a browser. It isolates the Studio `.native-canvas`, captures a 1280x720 PNG, and records rendered DOM metrics for text overflow, text/SVG overlap, occupied area, largest meaningful element, and text count.
+
+Full-slide background elements are excluded from occupancy and focal measurements. Studio header, sidebar, and outer article chrome are hidden during capture.
+
+| Stage | Evidence |
+| --- | --- |
+| Snapshot RED | Focused test failed because `candidateSnapshots.js` did not exist. |
+| Snapshot RED commit | `981195e test: define candidate image snapshots` |
+| Snapshot GREEN | `candidateSnapshots.ts` added browser discovery, screenshot planning, DOM metrics, and Clarity/Beauty scoring. |
+| Snapshot commit | `4ae5580 Capture expression candidate snapshots` |
+| First image smoke | Three PNGs were generated, but all occupied/focal ratios were 1 because Studio chrome and full-slide backgrounds polluted metrics. |
+| Metric repair | Studio chrome is hidden and elements covering at least 80% of the canvas are excluded from occupancy/focal metrics. |
+| Corrected image smoke | Comparison: occupancy 0.7215, focal 0.2379, Clarity 95, Beauty 86. Table: 0.8549 / 0.5276 / 90 / 73. Evidence board: 0.8038 / 0.2619 / 92 / 78. |
+| Recommendation RED | Focused test failed because `recommendRenderedCandidate` did not exist. |
+| Recommendation RED commit | `a840a6b test: define rendered candidate recommendation` |
+| Recommendation GREEN | Accuracy gate and rendered blocking checks run before 50/30/20 Accuracy/Clarity/Beauty ranking. |
+| Recommendation commit | `4af6d68 Recommend rendered expression candidates` |
+| Full final | `npm test -- --reporter=dot` passed 30 files / 442 tests; build, diagnostics, diff check, and BOM checks passed. |
+
+### Additional Guarantees
+
+| # | Guarantee | Result |
+| --- | --- | --- |
+| 16 | Studio snapshots contain only the native 16:9 slide canvas. | PASS |
+| 17 | Installed Edge/Chrome is used through `playwright-core`; browser download is not required. | PASS |
+| 18 | Accuracy-gate failures cannot win even with higher image Beauty. | PASS |
+| 19 | Render-blocking candidates cannot be recommended. | PASS |
+| 20 | Production selection and rendered recommendation remain separate fields. | PASS |
+| 21 | Candidate summary stores PNG path, DOM metrics, image scores, eligibility, ranking, and rejection reasons. | PASS |
+
+The current DOM/image metrics are deterministic proxies. They detect concrete rendered defects and composition differences, but they are not yet calibrated against human pairwise preference data.
