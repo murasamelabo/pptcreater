@@ -4,6 +4,7 @@ import { lintDeckSpec } from "./lint.js";
 import { reviewMessageMap } from "./messageMap.js";
 import { reviewSlideQuality } from "./slideQualityReview.js";
 import { reviewVisualQuality } from "./visualQuality.js";
+import { defaultTokens } from "./color.js";
 import type { DeckMessageMap } from "./schema.js";
 
 const MESSAGE_MAP: DeckMessageMap = {
@@ -87,6 +88,41 @@ const MESSAGE_MAP: DeckMessageMap = {
 };
 
 describe("message map deck generator", () => {
+  it("does not treat particles inside short Japanese words as title boundaries", () => {
+    const deck = createDeckFromMessageMap(
+      { objective: "判断をまとめる", audience: "設計者", desiredAction: "判断する", intents: [{ slideId: "summary", title: "技術判断まとめ", message: "4条件を確認する。", evidence: ["標準", "信頼", "統制", "責任"], quietInfo: [], visualType: "summary", emphasis: "技術判断" }] },
+      { title: "Title boundary", locale: "ja-JP", contentMode: "technical", planningMode: "narrative-v1", includeCover: false, includeClosing: false }
+    );
+
+    expect(deck.slides[0]?.title).toBe("技術判断まとめ");
+  });
+
+  it("keeps AI and MCP together in technical topic titles", () => {
+    const deck = createDeckFromMessageMap(
+      { objective: "AI委任を説明する", audience: "設計者", desiredAction: "確認する", intents: [{ slideId: "ai-mcp", title: "AI エージェント / MCP: 採用を加速する主因", message: "MCP委任を確認する。", evidence: ["OAuth", "ID-JAG", "MCP"], quietInfo: [], visualType: "summary", emphasis: "MCP" }] },
+      { title: "AI MCP", locale: "ja-JP", contentMode: "technical", planningMode: "narrative-v1", includeCover: false, includeClosing: false }
+    );
+
+    expect(deck.slides[0]?.title).toBe("AIエージェント / MCP");
+  });
+
+  it("uses dark ink on bright accent colors to preserve contrast", () => {
+    const tokens = defaultTokens("ja-JP");
+    tokens.colors.accent = "#38bdf8";
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "明るいアクセントを検証する",
+        audience: "設計者",
+        desiredAction: "可読性を確認する",
+        intents: [{ slideId: "contrast", title: "コントラスト", message: "明るい背景には暗い文字を使う。", evidence: ["読みやすさ", "WCAG", "アクセント"], quietInfo: [], visualType: "summary", emphasis: "可読性" }]
+      },
+      { title: "Bright accent", locale: "ja-JP", contentMode: "technical", planningMode: "narrative-v1", includeCover: false, includeClosing: false, tokens }
+    );
+    const accentText = deck.slides[0]?.elements.find((element) => element.type === "text" && element.contrastBackground === "#38bdf8");
+
+    expect(accentText).toMatchObject({ type: "text", color: "#111827", contrastBackground: "#38bdf8" });
+  });
+
   it("does not append fabricated filler to English evidence", () => {
     const deck = createDeckFromMessageMap(
       {
@@ -674,6 +710,38 @@ describe("message map deck generator", () => {
     expect(slide?.layout).toBe("message-grammar-table-text-system");
     expect(slide?.speakerNotes).toContain("Selection: visible=6 / notes=3 / omitted=0 / requiresSplit=true");
     expect(slide?.speakerNotes).toContain("Overflow evidence: Control 7: Evidence 7 / Control 8: Evidence 8 / Control 9: Evidence 9");
+  });
+
+  it("uses compact semantic labels for long protocol and account names", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "標準と代替手段を整理する",
+        audience: "アーキテクト",
+        desiredAction: "方式を比較する",
+        intents: [{
+          slideId: "standards",
+          title: "標準と代替手段",
+          message: "長い標準名を読みやすいラベルにする。",
+          evidence: [
+            "Identity Chaining Across Domains (draft-ietf-oauth-identity-chaining): 親仕様",
+            "OAuth 2.0 Token Exchange (RFC 8693): トークン交換",
+            "JWT Profile for OAuth (RFC 7523): JWT Bearer",
+            "サービスアカウント(広範権限): 固定ID",
+            "OBO(On-Behalf-Of)フロー(Entraなど各IdP独自): 独自委任"
+          ],
+          quietInfo: [],
+          visualType: "table",
+          slideRole: "data",
+          emphasis: "標準"
+        }]
+      },
+      { title: "Compact labels", locale: "ja-JP", contentMode: "technical", planningMode: "narrative-v1", includeCover: false, includeClosing: false }
+    );
+    const labels = deck.slides[0]?.elements
+      .filter((element): element is Extract<typeof element, { type: "text" }> => element.type === "text" && element.id.includes("table-row-label"))
+      .map((element) => element.text) ?? [];
+
+    expect(labels).toEqual(["Identity Chaining", "Token Exchange", "JWT Bearer", "サービスアカウント", "独自OBOフロー"]);
   });
 
   it("renders long sequential path rows with consistent sizing", () => {

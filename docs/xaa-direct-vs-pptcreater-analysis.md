@@ -263,6 +263,17 @@ selection counts. The exact XAA fixture reports MessageSpec/source `0.9369`, Dec
 `0.5710`, section coverage `1.0`, and required-term coverage `1.0`. Generic technical reports now
 fail before output when DeckSpec/source falls below `0.35` or renderer omissions are non-zero.
 
+**Verified rendered result 2026-07-10:** the corrected pipeline generated
+`xaa-id-jag-source-faithful-v2-20260710.pptx` and a matching Studio preview from the exact XAA
+Markdown. The final package contains 42 slides and 42 notes slides with zero empty non-directory
+OpenXML entries. The generic report now adds a source-derived agenda, four chapter markers, an
+explicit technical-decision summary, cover, closing action, and source references. The report style
+uses one non-neutral accent color and contrast-aware foreground ink. P4 improved from `67/C` on the
+first rendered source-faithful draft to `84/B`; final visual review reports `ok=true`, zero errors,
+zero truncated-text findings, and zero overlap findings. Remaining improvement is editorial rather
+than integrity-related: 42 slides are long for an executive handout, two repeated-layout runs remain,
+and 9 line-break/overflow heuristics are retained as warnings after visual inspection.
+
 ### P1: Preserve source chapter order
 
 Generate `NarrativeOutline` from source hierarchy first:

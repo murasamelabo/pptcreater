@@ -119,7 +119,7 @@ describe("MessageSpec generation", () => {
       .join("\n");
 
     expect(messageSpec.strategy).toBe("generic-technical-report");
-    expect(messageSpec.slides.map((slide) => slide.semanticTitle)).toEqual([
+    expect(messageSpec.slides.filter((slide) => !slide.id.startsWith("chapter-") && !["agenda", "technical-summary"].includes(slide.id)).map((slide) => slide.semanticTitle)).toEqual([
       "基本概念",
       "登場ロールと信頼",
       "Token Exchange",
@@ -139,8 +139,9 @@ describe("MessageSpec generation", () => {
     const messageSpec = createMessageSpecFromDocSpec(docSpec, { strategy: "generic-technical-report" });
     const messageMap = deckMessageMapFromMessageSpec(messageSpec);
 
-    expect(messageMap.intents[0]?.evidence).toContain("Control 9: Evidence 9");
-    expect(messageMap.intents[0]?.evidence.length).toBeGreaterThanOrEqual(9);
+    const controls = messageMap.intents.find((intent) => intent.slideId === docSpec.sections.find((section) => section.title === "Controls")?.id);
+    expect(controls?.evidence).toContain("Control 9: Evidence 9");
+    expect(controls?.evidence.length).toBeGreaterThanOrEqual(9);
   });
 
   it("rejects unexplained source omissions in generic technical reports", () => {

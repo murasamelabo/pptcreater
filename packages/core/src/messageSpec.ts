@@ -650,6 +650,36 @@ type GenericPlanningUnit = {
   attributedSectionIds: string[];
 };
 
+function displaySectionTitle(title: string): string {
+  return title.replace(/^\s*(?:第?\d+(?:\.\d+)*[.)]?|[０-９]+(?:\.[０-９]+)*[.)]?)\s*/u, "").trim() || title.trim();
+}
+
+function genericChapterGroups(docSpec: DocSpec): Array<{ id: string; title: string; sections: DocSection[] }> {
+  const sections = docSpec.sections.filter((section) => section.level === 2);
+  if (sections.length === 0) return [];
+  const groupCount = Math.min(4, sections.length);
+  const size = Math.ceil(sections.length / groupCount);
+  return Array.from({ length: groupCount }, (_, index) => {
+    const groupSections = sections.slice(index * size, Math.min(sections.length, (index + 1) * size));
+    const first = displaySectionTitle(groupSections[0]?.title ?? `Chapter ${index + 1}`);
+    const last = displaySectionTitle(groupSections.at(-1)?.title ?? first);
+    return {
+      id: `chapter-${index + 1}`,
+      title: first === last ? first : `${first} - ${last}`,
+      sections: groupSections
+    };
+  }).filter((group) => group.sections.length > 0);
+}
+
+function sectionBelongsToRoots(docSpec: DocSpec, sectionId: string, rootIds: Set<string>): boolean {
+  let current = docSpec.sections.find((section) => section.id === sectionId);
+  while (current) {
+    if (rootIds.has(current.id)) return true;
+    current = current.parentId ? docSpec.sections.find((section) => section.id === current?.parentId) : undefined;
+  }
+  return false;
+}
+
 function genericPlanningUnits(docSpec: DocSpec): GenericPlanningUnit[] {
   const levelTwoSections = docSpec.sections.filter((section) => section.level === 2);
   if (levelTwoSections.length === 0) {
@@ -676,7 +706,7 @@ function genericPlanningUnits(docSpec: DocSpec): GenericPlanningUnit[] {
 }
 
 function createGenericTechnicalReportMessageSpec(docSpec: DocSpec, options: MessageSpecOptions): MessageSpec {
-  const slides = genericPlanningUnits(docSpec).map((unit) => {
+  const contentSlides = genericPlanningUnits(docSpec).map((unit) => {
     const { section, sections } = unit;
     const sourceSections = [...new Set([...unit.attributedSectionIds, ...sections.map((item) => item.id)])];
     const sourceText = sections.map(sectionText).filter(Boolean).join("\n");
@@ -690,7 +720,7 @@ function createGenericTechnicalReportMessageSpec(docSpec: DocSpec, options: Mess
     const primaryClaim = genericPrimaryClaim(section, lines);
     return {
       id: section.id,
-      semanticTitle: section.title,
+      semanticTitle: displaySectionTitle(section.title),
       headline: primaryClaim,
       primaryClaim,
       slideRole: genericSlideRole(figureNeed),
@@ -703,11 +733,55 @@ function createGenericTechnicalReportMessageSpec(docSpec: DocSpec, options: Mess
       notesBlocks: []
     } satisfies MessageSlideSpec;
   });
+  const chapterGroups = genericChapterGroups(docSpec);
+  const agendaSlide = slide(
+    "agenda",
+    "目次",
+    "原文の章順に、背景・仕組み・適用・導入判断をたどる",
+    "原文の章構造を保ったまま技術論点を確認する。",
+    "overview",
+    { kind: "summary", rationale: "Show the source-derived reading order before technical details." },
+    chapterGroups.flatMap((group) => group.sections.map((section) => section.id)),
+    [],
+    chapterGroups.map((group, index) => ({ id: `agenda-${index + 1}`, label: `第${index + 1}部`, text: group.title, sourceSectionIds: group.sections.map((section) => section.id), requiredTerms: [] }))
+  );
+  const slides: MessageSlideSpec[] = [agendaSlide];
+  chapterGroups.forEach((group, index) => {
+    slides.push(slide(
+      group.id,
+      `第${index + 1}部 ${displaySectionTitle(group.sections[0]?.title ?? group.title)}`,
+      group.title,
+      `${group.title}の論点を確認する。`,
+      "overview",
+      { kind: "summary", rationale: "Create a source-derived section marker for long technical reports." },
+      group.sections.map((section) => section.id),
+      [],
+      group.sections.map((section) => ({ id: `${group.id}-${section.id}`, label: displaySectionTitle(section.title), text: sectionLines(section)[0] ?? displaySectionTitle(section.title), sourceSectionIds: [section.id], requiredTerms: termsInText(docSpec.requiredTerms, sectionText(section)) }))
+    ));
+    const sectionIds = new Set(group.sections.map((section) => section.id));
+    slides.push(...contentSlides.filter((contentSlide) => contentSlide.sourceSections.some((sectionId) => sectionBelongsToRoots(docSpec, sectionId, sectionIds))));
+  });
+  slides.push(slide(
+    "technical-summary",
+    "技術判断まとめ",
+    "標準適合・信頼境界・集中統制・実装責任を確認する",
+    "導入判断は4つの技術条件から始める。",
+    "action",
+    { kind: "summary", rationale: "Close the technical report with explicit decision criteria." },
+    docSpec.sections.slice(-4).map((section) => section.id),
+    termsInText(docSpec.requiredTerms, docSpec.keyFacts.map((fact) => fact.text).join("\n")),
+    [
+      { id: "summary-standard", label: "標準適合", text: "利用するOAuth拡張と相互運用範囲を確認", sourceSectionIds: [], requiredTerms: [] },
+      { id: "summary-trust", label: "信頼境界", text: "Client・IdP・Resource Appの検証責任を明確化", sourceSectionIds: [], requiredTerms: [] },
+      { id: "summary-control", label: "集中統制", text: "短命性・scope・監査・失効をIdP中心で評価", sourceSectionIds: [], requiredTerms: [] },
+      { id: "summary-poc", label: "次の判断", text: "対象連携を選びPoCでtoken exchangeと検証を確認", sourceSectionIds: [], requiredTerms: [] }
+    ]
+  ));
   const documentSections = docSpec.sections.filter((section) => section.level < 2);
-  if (slides[0] && documentSections.length > 0) {
-    slides[0].sourceSections = [...documentSections.map((section) => section.id), ...slides[0].sourceSections];
+  if (contentSlides[0] && documentSections.length > 0) {
+    contentSlides[0].sourceSections = [...documentSections.map((section) => section.id), ...contentSlides[0].sourceSections];
   }
-  const thesis = docSpec.keyFacts[0]?.text ?? slides[0]?.primaryClaim ?? docSpec.title;
+  const thesis = docSpec.keyFacts[0]?.text ?? contentSlides[0]?.primaryClaim ?? docSpec.title;
   return {
     strategy: "generic-technical-report",
     title: docSpec.title,

@@ -211,8 +211,16 @@ function luminance(hex: string): number {
   return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
 }
 
+function localContrastRatio(foreground: string, background: string): number {
+  const foregroundLuminance = luminance(foreground);
+  const backgroundLuminance = luminance(background);
+  return (Math.max(foregroundLuminance, backgroundLuminance) + 0.05) / (Math.min(foregroundLuminance, backgroundLuminance) + 0.05);
+}
+
 function readableOn(hex: string): string {
-  return luminance(hex) < 0.45 ? "#ffffff" : "#111827";
+  const lightInk = "#ffffff";
+  const darkInk = "#111827";
+  return localContrastRatio(lightInk, hex) >= localContrastRatio(darkInk, hex) ? lightInk : darkInk;
 }
 
 function buildTheme(tokens: DesignTokens): Theme {
@@ -535,6 +543,7 @@ function trimJapaneseDanglingEnd(value: string): string {
 
 function topicLabel(value: string): string {
   const normalized = value.replace(/^L\d+\s+/iu, "").replace(/(?<![A-Za-z0-9])[-_]+|[-_]+(?![A-Za-z0-9])/g, " ").replace(/\s+/g, " ").trim();
+  if (/AI\s*エージェント/iu.test(normalized) && /MCP/iu.test(normalized)) return "AIエージェント / MCP";
   if (/^対象\s*[:：]/u.test(normalized)) return "対象";
   if (/^観点\s*[:：]/u.test(normalized)) return "観点";
   if (/^表現\s*[:：]/u.test(normalized)) return "表現";
@@ -548,6 +557,10 @@ function topicLabel(value: string): string {
 
   if (/\b(?:OBO|ID-JAG|XAA|JWT|API|MCP|IdP)\b/u.test(normalized) && /(?:と|vs|VS|比較|対比)/u.test(normalized)) {
     return compactLabel(normalized, 22);
+  }
+
+  if (Array.from(normalized).length <= 18) {
+    return normalized;
   }
 
   const known = ["投資判断", "候補比較", "リスク整理", "ロードマップ", "次の行動"];
@@ -646,8 +659,21 @@ function polishJapaneseFragment(value: string): string {
   return value.replace(/拡張し$/u, "拡張").replace(/担い$/u, "担う").replace(/適合し$/u, "適合").replace(/交換し$/u, "交換する");
 }
 
+function normalizeVisibleCopy(value: string): string {
+  return value
+    .replace(/\[([^\]]+)\]\([^)]+\)/gu, "$1")
+    .replace(/[*~`]/gu, "")
+    .replace(/\.{3,}|…+/gu, "、")
+    .replace(/^>\s*/u, "")
+    .replace(/\s+/gu, " ")
+    .replace(/(?<=[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}])\s+(?=[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}])/gu, "")
+    .replace(/\s+([、。！？：；）】」』])/gu, "$1")
+    .replace(/([（【「『])\s+/gu, "$1")
+    .trim();
+}
+
 function visibleSentence(value: string): string {
-  const text = polishJapaneseFragment(technicalTermLabel(value) ?? value.trim());
+  const text = polishJapaneseFragment(normalizeVisibleCopy(technicalTermLabel(value) ?? value));
   if (!text) return text;
   if (/^(対象|観点|表現|口調|材料|読み手|行動|トーン)\s*[:：]/u.test(text) || /[:：]/.test(text) || /[、/／]/.test(text) || text.length <= 18) {
     return text;
@@ -662,7 +688,7 @@ function visibleSentence(value: string): string {
 }
 
 function leadSentence(value: string, maxLength = 54): string {
-  const text = polishJapaneseFragment(technicalTermLabel(value) ?? value.replace(/\s+/g, " ").trim());
+  const text = polishJapaneseFragment(normalizeVisibleCopy(technicalTermLabel(value) ?? value));
   if (text.length <= maxLength) return visibleSentence(text);
   const first = text.split(/[。；;\n]/u)[0]?.trim() || text;
   if (first.length <= maxLength) return visibleSentence(first);
@@ -1477,8 +1503,8 @@ function narrativeSlideShell(theme: Theme, intent: SlideIntent, elements: SlideE
           }),
           shape(`${id}-header-badge`, "roundRect", 0.72, 0.82, 0.76, 0.46, 2, theme.accent, theme.accent, { radius: 0.12 }),
           text(`${id}-header-badge-text`, "caption", intentBadgeText(intent), 0.8, 0.94, 0.6, 0.18, 3, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true, align: "center", valign: "middle" }),
-          text(`${id}-title`, "title", title, 1.66, 0.72, 3.46, 0.62, 4, theme, { fontSize: 26 }),
-          ...(showHeaderMessage ? [text(`${id}-message`, "subtitle", slideMessageText(intent), 5.22, 0.72, 7.12, 0.68, 5, theme, { color: theme.text, fontSize: 21 })] : []),
+          text(`${id}-title`, "title", title, 1.66, 0.58, 5.2, 0.82, 4, theme, { fontSize: 24, valign: "middle" }),
+          ...(showHeaderMessage ? [text(`${id}-message`, "subtitle", slideMessageText(intent), 7.1, 0.62, 5.24, 0.82, 5, theme, { color: theme.text, fontSize: 18, valign: "middle" })] : []),
           ...elements
         ]
   };
@@ -1489,7 +1515,7 @@ function hasCodeToken(value: string): boolean {
 }
 
 function narrativeLabel(value: string, max = 26): string {
-  const text = String(value).replace(/\s+/g, " ").trim();
+  const text = normalizeVisibleCopy(String(value));
   if (!text) return text;
   if (hasCodeToken(text)) {
     // Technical identifiers (grant_type=..., insufficient_user_authentication, MCP 2025-11-25) lose
@@ -1498,6 +1524,16 @@ function narrativeLabel(value: string, max = 26): string {
     const limit = Math.min(max + 40, 72);
     return chars.length <= limit ? text : chars.slice(0, limit).join("").trimEnd();
   }
+  return compactLabel(text, max);
+}
+
+function compactTechnicalLabel(value: string, max = 22): string {
+  const text = String(value).replace(/\s+/g, " ").trim();
+  if (/Identity Chaining Across Domains/iu.test(text)) return "Identity Chaining";
+  if (/OAuth\s*2\.0\s*Token Exchange|RFC\s*8693/iu.test(text)) return "Token Exchange";
+  if (/JWT Profile for OAuth|RFC\s*7523/iu.test(text)) return "JWT Bearer";
+  if (/サービスアカウント/iu.test(text)) return "サービスアカウント";
+  if (/OBO|On-Behalf-Of/iu.test(text)) return "独自OBOフロー";
   return compactLabel(text, max);
 }
 
@@ -1519,8 +1555,10 @@ function splitKeyValue(value: string): { key: string; value: string } | null {
 
 function tableBodyText(value: string): string {
   const text = value.trim();
-  if (!text || hasJapanese(text) || hasCodeToken(text)) return visibleSentence(text);
-  return /[.!?]$/u.test(text) ? text : `${text}.`;
+  if (!text) return text;
+  if (hasCodeToken(text) && Array.from(normalizeVisibleCopy(text)).length <= 72) return visibleSentence(text);
+  const visible = leadSentence(text, 72);
+  return !hasJapanese(visible) && !/[.!?]$/u.test(visible) ? `${visible}.` : visible;
 }
 
 function splitTableEvidence(value: string, index: number): { label: string; body: string } {
@@ -1559,13 +1597,13 @@ function tableRowsForIntent(intent: SlideIntent): Array<{ label: string; body: s
     if (parsed) {
       const body = detailByKey.get(parsed.key.toLowerCase()) ?? parsed.value;
       return {
-        label: narrativeLabel(parsed.key, 22),
+        label: compactTechnicalLabel(parsed.key, 22),
         body: body.trim() === parsed.key.trim() ? visibleSentence(intent.message) : visibleSentence(body)
       };
     }
     const matchingParsedDetail = parsedDetails.find((detail) => item.includes(detail.key));
     if (matchingParsedDetail) {
-      return { label: narrativeLabel(matchingParsedDetail.key, 22), body: tableBodyText(matchingParsedDetail.value) };
+      return { label: compactTechnicalLabel(matchingParsedDetail.key, 22), body: tableBodyText(matchingParsedDetail.value) };
     }
     const positionalDetail = intent.details?.[index]?.trim();
     const positionalDetailLength = Array.from(positionalDetail ?? "").length;
@@ -1682,7 +1720,7 @@ function narrativeTypographic(theme: Theme, intent: SlideIntent, expressionPlan:
 function narrativeSequentialPath(theme: Theme, intent: SlideIntent, _expressionPlan: ExpressionPlan): SlideElement[] {
   const id = intent.slideId;
   const rowMode = Math.max(intent.evidence.length, 3) >= 5;
-  const items = narrativeItems(intent, 3, 6, rowMode ? 52 : 18);
+  const items = narrativeItems(intent, 3, 6, rowMode ? 42 : 18).map((item) => rowMode ? leadSentence(item, 52) : item);
   const count = items.length;
   const stageX = 0.92;
   const stageW = 11.48;
@@ -1798,23 +1836,27 @@ type DetailPageVariant = "reading-board" | "checklist" | "brief";
 
 function detailPageVariant(intent: SlideIntent): DetailPageVariant {
   const text = [intent.slideId, intent.title, intent.message, intent.emphasis ?? "", ...intent.evidence, ...(intent.details ?? [])].join(" ");
+  const decisionText = [intent.title, intent.message, intent.emphasis ?? ""].join(" ");
   if (/キャッシュ|MemoryCache|Expiration/iu.test(text)) return "brief";
-  if (/リスク|制約|確認事項|チェック|MFA|PCIDSS|ROPC|禁止|漏洩|risk|constraint|checklist/iu.test(text)) return "checklist";
+  if (/リスク|制約|チェックリスト|MFA|PCIDSS|ROPC|禁止|漏洩|risk|constraint|checklist/iu.test(decisionText)) return "checklist";
   if (/仕様|契約|形式|項目|設定|キャッシュ|MemoryCache|Expiration|parameter|contract|spec|config/iu.test(text)) return "brief";
+  if ((intent.details ?? []).some((item) => /^Recommendations?\s*[:：]/iu.test(item))) return "reading-board";
+  if (Array.from(normalizeVisibleCopy(text)).length > 180) return "brief";
+  if (intent.evidence.length >= 3 && (intent.details?.length ?? 0) >= 2) return "brief";
   return "reading-board";
 }
 
 function detailItemsForIntent(intent: SlideIntent, max = 4): string[] {
   return selectVisibleItems([
-    ...(intent.details ?? []).map((item) => visibleSentence(item)),
-    ...intent.evidence.map((item) => visibleSentence(item))
+    ...(intent.details ?? []).map((item) => leadSentence(item, 84)),
+    ...intent.evidence.map((item) => leadSentence(item, 84))
   ], max).visible;
 }
 
 function parsedDetailItem(item: string, index: number): { label: string; body: string } {
   const parsed = splitKeyValue(item);
   if (!parsed) return { label: `項目 ${index + 1}`, body: item };
-  return { label: parsed.key.replace(/^補足\s+/u, ""), body: parsed.value };
+  return { label: compactTechnicalLabel(parsed.key.replace(/^補足\s+/u, ""), 22), body: parsed.value };
 }
 
 function narrativeDetailPage(theme: Theme, intent: SlideIntent, expressionPlan: ExpressionPlan): SlideElement[] {
@@ -1835,8 +1877,8 @@ function narrativeDetailReadingBoard(theme: Theme, intent: SlideIntent, expressi
     .filter(Boolean);
   const visibleRecommendations = selectVisibleItems(recommendations, 3).visible;
   const bodyItems = selectVisibleItems([
-    ...details.filter((item) => item !== recommendationDetail).map((item) => visibleSentence(item)),
-    ...intent.evidence.map((item) => visibleSentence(item))
+    ...details.filter((item) => item !== recommendationDetail).map((item) => leadSentence(item, 54)),
+    ...intent.evidence.map((item) => leadSentence(item, 54))
   ], 4).visible;
   const quote = visibleSentence(intent.message).replace(/。$/u, "").replace(/優先的な対策が必要である/u, "優先対策が必要");
   const continuedLabel = isJapanese ? "説明メモ" : "Briefing notes";
@@ -1862,10 +1904,10 @@ function narrativeDetailReadingBoard(theme: Theme, intent: SlideIntent, expressi
     const order = 20 + index * 3;
     const parsed = splitKeyValue(item);
     const body = (parsed ? parsed.value : item).replace(/成功した悪用は管理者権限や横展開につながる/u, "成功した悪用は権限昇格・横展開を招く").replace(/管理者権限や横展開につながる/u, "権限昇格・横展開を招く").replace(/狙われやすい。/u, "狙われる。");
-    elements.push(text(`${id}-report-body-${index}`, "body", body, x, y + (parsed ? 0.32 : 0), 2.58, parsed ? 0.72 : 0.96, order, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 14 }));
+    elements.push(text(`${id}-report-body-${index}`, "body", body, x, y + (parsed ? 0.42 : 0), 2.58, parsed ? 0.6 : 0.96, order, theme, { bg: theme.surface, color: theme.mutedText, fontSize: 14 }));
     if (parsed) {
       const heading = parsed.key.replace(/^補足\s+/u, "");
-      elements.push(text(`${id}-report-body-heading-${index}`, "caption", heading, x, y, 2.5, 0.18, order + 1, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true }));
+      elements.push(text(`${id}-report-body-heading-${index}`, "caption", compactTechnicalLabel(heading, 20), x, y, 2.5, 0.2, order + 1, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true }));
     }
   });
   visibleRecommendations.forEach((item, index) => {
@@ -1881,7 +1923,7 @@ function narrativeDetailReadingBoard(theme: Theme, intent: SlideIntent, expressi
 
 function narrativeDetailChecklist(theme: Theme, intent: SlideIntent, _expressionPlan: ExpressionPlan): SlideElement[] {
   const id = intent.slideId;
-  const items = detailItemsForIntent(intent, 5).map(parsedDetailItem);
+  const items = detailItemsForIntent(intent, 5).map(parsedDetailItem).map((item) => ({ ...item, body: leadSentence(item.body, 46) }));
   const elements: SlideElement[] = [
     shape(`${id}-check-frame`, "roundRect", 0.92, 1.9, 8.28, 4.92, 10, theme.surface, theme.line, { radius: 0.16 }),
     text(`${id}-check-kicker`, "caption", "確認項目", 1.24, 2.16, 2.64, 0.18, 11, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true }),
