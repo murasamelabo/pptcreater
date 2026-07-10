@@ -895,6 +895,8 @@ program
   .option("--locale <locale>", "Deck locale", "ja-JP")
   .option("--content-mode <mode>", "presentation, report, technical, handout, or decision", parseContentMode, "report")
   .option("--style <profile>", "Force a style: minimal, stylish, report, presentation, technical", parseStyleProfile)
+  .option("--render-pptx", "Render each candidate DeckSpec to PPTX", false)
+  .option("--render-studio", "Render each candidate DeckSpec to Studio HTML", false)
   .option("--json", "Emit JSON result", false)
   .action(commandAction(async (messageMapPath: string, options: {
     title: string;
@@ -903,6 +905,8 @@ program
     locale: string;
     contentMode: ContentMode;
     style?: StyleProfile;
+    renderPptx: boolean;
+    renderStudio: boolean;
     json: boolean;
   }) => {
     const raw = await readJson(messageMapPath);
@@ -925,6 +929,9 @@ program
         scoreRank,
         deckPath: `${options.outputDir}/${stem}.deck.json`,
         evaluationPath: `${options.outputDir}/${stem}.evaluation.json`,
+        pptxPath: options.renderPptx ? `${options.outputDir}/${stem}.pptx` : undefined,
+        studioPath: options.renderStudio ? `${options.outputDir}/${stem}.studio.html` : undefined,
+        renderWarnings: [] as string[],
         evaluation: candidate.evaluation,
         deck: candidate.deck
       };
@@ -932,6 +939,13 @@ program
     for (const artifact of candidateArtifacts) {
       await writeJson(artifact.deckPath, artifact.deck);
       await writeJson(artifact.evaluationPath, artifact.evaluation);
+      if (artifact.pptxPath) {
+        const renderResult = await renderDeckToPptx(artifact.deck, artifact.pptxPath, { allowLintErrors: true, polishLayout: true });
+        artifact.renderWarnings = renderResult.warnings;
+      }
+      if (artifact.studioPath) {
+        await writeFile(artifact.studioPath, renderStudioHtml(artifact.deck, outputLocale(artifact.deck.locale)), "utf8");
+      }
     }
     const summary = {
       slideId: result.slideId,
