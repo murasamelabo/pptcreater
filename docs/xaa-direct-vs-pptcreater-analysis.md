@@ -248,10 +248,20 @@ type VisibleSelection<T> = {
 
 If an item does not fit, split the slide or record why it moved. Never discard it only because a grammar supports fewer items.
 
-**Partially implemented 2026-07-10:** `deckMessageMapFromMessageSpec()` no longer caps evidence at
-seven items, and H3 splitting reduces the largest XAA MessageSpec unit from 68 to 21 blocks.
-The typed `VisibleSelection` result contract has not yet replaced every renderer-level selection;
-that is the next P0 change.
+**Implemented 2026-07-10:** `deckMessageMapFromMessageSpec()` no longer caps evidence at seven
+items, and H3 splitting reduces the largest XAA MessageSpec unit from 68 to 21 blocks. Main
+narrative evidence-selection paths now use a typed `VisibleSelection` contract.
+Every narrative slide records visible, notes, omitted, and requiresSplit counts in speaker notes;
+overflow evidence is copied to an explicit `Overflow evidence` note. The XAA fixture reports 150
+visible evidence items, 84 overflow items in notes, zero omitted items, and 17 slides that may be
+split in a later editorial pass.
+
+The `from-markdown` planning output now includes `source-fidelity-report.json`. It reports
+whitespace-normalized, duplicate-unit-filtered character ratios for Source, MessageSpec,
+MessageMap, and DeckSpec; source-section and required-term coverage; and aggregate renderer
+selection counts. The exact XAA fixture reports MessageSpec/source `0.9369`, DeckSpec/source
+`0.5710`, section coverage `1.0`, and required-term coverage `1.0`. Generic technical reports now
+fail before output when DeckSpec/source falls below `0.35` or renderer omissions are non-zero.
 
 ### P1: Preserve source chapter order
 

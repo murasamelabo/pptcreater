@@ -649,6 +649,33 @@ describe("message map deck generator", () => {
     expect(header?.text).not.toBe(message?.text);
   });
 
+  it("records table evidence overflow as notes instead of silently dropping it", () => {
+    const evidence = Array.from({ length: 9 }, (_, index) => `Control ${index + 1}: Evidence ${index + 1}`);
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "統制項目を説明する",
+        audience: "アーキテクト",
+        desiredAction: "全項目を確認する",
+        intents: [{
+          slideId: "controls",
+          title: "統制一覧",
+          message: "9件の統制項目を確認する。",
+          evidence,
+          quietInfo: [],
+          visualType: "table",
+          slideRole: "data",
+          emphasis: "統制項目"
+        }]
+      },
+      { title: "Visible selection", locale: "ja-JP", contentMode: "technical", styleProfile: "report", planningMode: "narrative-v1", includeCover: false, includeClosing: false }
+    );
+    const slide = deck.slides.find((candidate) => candidate.id === "controls");
+
+    expect(slide?.layout).toBe("message-grammar-table-text-system");
+    expect(slide?.speakerNotes).toContain("Selection: visible=6 / notes=3 / omitted=0 / requiresSplit=true");
+    expect(slide?.speakerNotes).toContain("Overflow evidence: Control 7: Evidence 7 / Control 8: Evidence 8 / Control 9: Evidence 9");
+  });
+
   it("renders long sequential path rows with consistent sizing", () => {
     const deck = createDeckFromMessageMap(
       {

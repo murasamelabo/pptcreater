@@ -1399,12 +1399,54 @@ function ownsFullSlideCanvas(elements: SlideElement[]): boolean {
   );
 }
 
+export type VisibleSelection<T> = {
+  visible: T[];
+  notes: T[];
+  omitted: Array<{ item: T; reason: string }>;
+  requiresSplit: boolean;
+};
+
+function selectVisibleItems<T>(items: T[], capacity: number): VisibleSelection<T> {
+  const visible = items.slice(0, capacity);
+  const notes = items.slice(capacity);
+  return {
+    visible,
+    notes,
+    omitted: [],
+    requiresSplit: notes.length > 0
+  };
+}
+
+function evidenceCapacityForGrammar(intent: SlideIntent, grammarId: ExpressionPlan["selectedGrammarId"]): number {
+  switch (grammarId) {
+    case "typographic-emphasis":
+      return 3;
+    case "spatial-model":
+    case "evidence-board":
+      return 5;
+    case "comparison-field":
+    case "decision-surface":
+      return 4;
+    case "sequential-path":
+    case "layered-model":
+    case "table-text-system":
+      return 6;
+    case "detail-reading-page":
+      return detailPageVariant(intent) === "checklist" ? 5 : 4;
+    case "photo-product-anchor":
+      return 1;
+    default:
+      return intent.evidence.length;
+  }
+}
+
 function narrativeSlideShell(theme: Theme, intent: SlideIntent, elements: SlideElement[], expressionPlan: ExpressionPlan, index: number): Slide {
   const id = intent.slideId;
   const title = slideTopicTitle(intent);
   const fullSlideComponent = ownsFullSlideCanvas(elements);
   const slideNumber = `SLIDE ${String(index + 1).padStart(2, "0")}`;
   const showHeaderMessage = expressionPlan.selectedGrammarId !== "detail-reading-page";
+  const selection = selectVisibleItems(intent.evidence, evidenceCapacityForGrammar(intent, expressionPlan.selectedGrammarId));
   return {
     id,
     title,
@@ -1414,6 +1456,8 @@ function narrativeSlideShell(theme: Theme, intent: SlideIntent, elements: SlideE
       `Message: ${intent.message}`,
       intent.evidence.length ? `Evidence: ${intent.evidence.join(" / ")}` : "",
       intent.details?.length ? `Details: ${intent.details.join(" / ")}` : "",
+      `Selection: visible=${selection.visible.length} / notes=${selection.notes.length} / omitted=${selection.omitted.length} / requiresSplit=${selection.requiresSplit}`,
+      selection.notes.length ? `Overflow evidence: ${selection.notes.join(" / ")}` : "",
       `Expression: ${expressionPlan.selectedGrammarId}`,
       `Rationale: ${expressionPlan.rationale}`,
       intent.quietInfo.length ? `Quiet info: ${intent.quietInfo.join(" / ")}` : "",
@@ -1464,7 +1508,7 @@ function isContextEvidenceRow(value: string): boolean {
 function narrativeItems(intent: SlideIntent, min = 3, max = 6, labelMax = 26): string[] {
   const values = intent.evidence.map((item) => (isContextEvidenceRow(item) ? compactLabel(item, 58) : narrativeLabel(item, labelMax))).filter(Boolean);
   while (values.length < min) values.push(narrativeLabel(intent.emphasis ?? intent.message, labelMax));
-  return values.slice(0, max);
+  return selectVisibleItems(values, max).visible;
 }
 
 function splitKeyValue(value: string): { key: string; value: string } | null {
@@ -1510,7 +1554,7 @@ function tableRowsForIntent(intent: SlideIntent): Array<{ label: string; body: s
     }
   }
   const source = intent.evidence.length ? intent.evidence : intent.details ?? [];
-  const rows = source.slice(0, 6).map((item, index) => {
+  const rows = selectVisibleItems(source, 6).visible.map((item, index) => {
     const parsed = splitKeyValue(item);
     if (parsed) {
       const body = detailByKey.get(parsed.key.toLowerCase()) ?? parsed.value;
@@ -1707,7 +1751,7 @@ function narrativeComparisonField(theme: Theme, intent: SlideIntent, expressionP
 
 function narrativeDecisionSurface(theme: Theme, intent: SlideIntent, expressionPlan: ExpressionPlan): SlideElement[] {
   const id = intent.slideId;
-  const items = narrativeItems(intent, 4, 6);
+  const items = narrativeItems(intent, 4, 4);
   const axisLabels = matrixAxisLabels(intent);
   const elements: SlideElement[] = [
     shape(`${id}-decision-stage`, "roundRect", 0.92, 1.96, 8.02, 4.86, 10, theme.surface, theme.line, { radius: 0.18 }),
@@ -1721,7 +1765,7 @@ function narrativeDecisionSurface(theme: Theme, intent: SlideIntent, expressionP
     text(`${id}-decision-note-title`, "callout", topicLabel(intent.emphasis ?? intent.title), 9.46, 2.54, 2.48, 0.34, 51, theme, { bg: theme.accentSoft, color: theme.accent, fontSize: 20 }),
     text(`${id}-decision-note-body`, "body", visibleSentence(intent.message), 9.46, 3.24, 2.42, 1.68, 52, theme, { bg: theme.accentSoft, color: theme.text, fontSize: 15 })
   ];
-  items.slice(0, 4).forEach((item, index) => {
+  items.forEach((item, index) => {
     const [x, y] = matrixPointPosition(item, index, { x: 1.95, y: 2.98, w: 4.95, h: 2.28 });
     const order = 20 + index * 4;
     elements.push(shape(`${id}-decision-point-${index}`, "ellipse", x, y, 0.3, 0.3, order, theme.accent, theme.accent));
@@ -1761,10 +1805,10 @@ function detailPageVariant(intent: SlideIntent): DetailPageVariant {
 }
 
 function detailItemsForIntent(intent: SlideIntent, max = 4): string[] {
-  return [
+  return selectVisibleItems([
     ...(intent.details ?? []).map((item) => visibleSentence(item)),
     ...intent.evidence.map((item) => visibleSentence(item))
-  ].slice(0, max);
+  ], max).visible;
 }
 
 function parsedDetailItem(item: string, index: number): { label: string; body: string } {
@@ -1788,12 +1832,12 @@ function narrativeDetailReadingBoard(theme: Theme, intent: SlideIntent, expressi
   const recommendations = (recommendationDetail ? recommendationDetail.replace(/^Recommendations?\s*[:：]\s*/iu, "") : intent.quietInfo.join(" / "))
     .split(/\s+[／/]\s+|\s*\/\s*|、|;|；/u)
     .map((item) => item.trim())
-    .filter(Boolean)
-    .slice(0, 3);
-  const bodyItems = [
+    .filter(Boolean);
+  const visibleRecommendations = selectVisibleItems(recommendations, 3).visible;
+  const bodyItems = selectVisibleItems([
     ...details.filter((item) => item !== recommendationDetail).map((item) => visibleSentence(item)),
     ...intent.evidence.map((item) => visibleSentence(item))
-  ].slice(0, 4);
+  ], 4).visible;
   const quote = visibleSentence(intent.message).replace(/。$/u, "").replace(/優先的な対策が必要である/u, "優先対策が必要");
   const continuedLabel = isJapanese ? "説明メモ" : "Briefing notes";
   const recommendationsLabel = isJapanese ? "確認事項" : "Recommendations";
@@ -1824,11 +1868,11 @@ function narrativeDetailReadingBoard(theme: Theme, intent: SlideIntent, expressi
       elements.push(text(`${id}-report-body-heading-${index}`, "caption", heading, x, y, 2.5, 0.18, order + 1, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true }));
     }
   });
-  recommendations.forEach((item, index) => {
+  visibleRecommendations.forEach((item, index) => {
     const y = 2.82 + index * 1.08;
     const order = 60 + index * 3;
     elements.push(text(`${id}-report-rec-heading-${index}`, "caption", recText(item), 10.1, y, 2.42, 0.22, order, theme, { bg: mix(theme.accent, theme.background, 0.9), color: theme.text, fontSize: 12, bold: true }));
-    if (index < recommendations.length - 1) {
+    if (index < visibleRecommendations.length - 1) {
       elements.push(shape(`${id}-report-rec-sep-${index}`, "rect", 10.1, y + 0.74, 2.46, 0.01, order + 1, theme.line, theme.line, { radius: 0 }));
     }
   });

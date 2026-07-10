@@ -12,6 +12,7 @@ import {
   cliMessage,
   createDeckFromMessageMap,
   createMessageSpecFromDocSpec,
+  createSourceFidelityReport,
   type NarrativeDesignComponentRequest,
   type NarrativeDesignComponentResponse,
   type NarrativeDiagramRenderRequest,
@@ -1667,12 +1668,17 @@ program
       locale: parsedLocale,
       contentMode: options.contentMode
     });
+    const sourceFidelityReport = createSourceFidelityReport(markdown, messageSpec, messageMap, deck);
+    if (!sourceFidelityReport.ok) {
+      throw new Error(`Source fidelity review failed before DeckSpec output:\n${sourceFidelityReport.issues.map((issue) => `ERROR ${issue.code}: ${issue.message}`).join("\n")}`);
+    }
     if (options.planningOutputDir) {
       await mkdir(options.planningOutputDir, { recursive: true });
       await writeJson(`${options.planningOutputDir}/doc-spec.json`, docSpec);
       await writeJson(`${options.planningOutputDir}/message-spec.json`, messageSpec);
       await writeJson(`${options.planningOutputDir}/message-spec-review.json`, messageSpecReview);
       await writeJson(`${options.planningOutputDir}/message-map.json`, messageMap);
+      await writeJson(`${options.planningOutputDir}/source-fidelity-report.json`, sourceFidelityReport);
       await writeJson(`${options.planningOutputDir}/deck-planning-input.json`, planningArtifacts.planningInput);
       await writeJson(`${options.planningOutputDir}/deck-brief.json`, planningArtifacts.deckBrief);
       await writeJson(`${options.planningOutputDir}/chapter-plan.json`, planningArtifacts.chapters);
@@ -1686,7 +1692,7 @@ program
     }
     await writeJson(options.output, deck);
     if (options.json) {
-      console.log(JSON.stringify({ outputPath: options.output, planningOutputDir: options.planningOutputDir, docSpec, messageSpec, messageSpecReview, messageMap, planningArtifacts, deck }, null, 2));
+      console.log(JSON.stringify({ outputPath: options.output, planningOutputDir: options.planningOutputDir, docSpec, messageSpec, messageSpecReview, messageMap, sourceFidelityReport, planningArtifacts, deck }, null, 2));
       return;
     }
     console.log(cliMessage(outputLocale(deck.locale), "cli.created", { path: options.output }));
