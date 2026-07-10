@@ -15,6 +15,12 @@ early, see [`narrative-authoring-pipeline.md`](narrative-authoring-pipeline.md).
 visual grammar metadata, expression selection, and layout composition before concrete objects are
 created.
 
+For empirical evidence about premature compression, see
+[`xaa-direct-vs-pptcreater-analysis.md`](xaa-direct-vs-pptcreater-analysis.md). It compares two
+24-slide decks generated from the same XAA/ID-JAG Markdown and shows that most information loss
+occurs before layout, during source-to-message planning. The corresponding upstream redesign is
+documented in [`message-spec-generation-improvement-plan.md`](message-spec-generation-improvement-plan.md).
+
 When a user supplies a `DESIGN.md` or a DESIGN.md-style reference collection, translate it into a
 slide design brief before rendering. See
 [`design-md-slide-translation.md`](design-md-slide-translation.md). Use it for palette, typography,
