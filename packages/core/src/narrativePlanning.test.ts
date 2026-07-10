@@ -1,5 +1,5 @@
 ﻿import { describe, expect, it } from "vitest";
-import { createDeckFromMessageMap } from "./messageDeck.js";
+import { createDeckFromMessageMap, materializeExpressionCandidateDecks } from "./messageDeck.js";
 import { createNarrativePlanArtifacts } from "./narrativePlanning.js";
 import type { DeckMessageMap } from "./schema.js";
 import { reviewVisualQuality } from "./visualQuality.js";
@@ -189,6 +189,47 @@ describe("narrative planning artifacts", () => {
     expect(selected?.selectionReasons).toEqual(expect.arrayContaining([expect.stringContaining("tradeoff")]));
     expect(candidateSet.candidates.filter((candidate) => candidate.accuracyGate.passed).length).toBeGreaterThanOrEqual(1);
     expect(candidateSet.candidates.some((candidate) => !candidate.accuracyGate.passed)).toBe(true);
+  });
+
+  it("materializes ranked candidates as isolated DeckSpecs with deterministic review evidence", () => {
+    const map: DeckMessageMap = {
+      objective: "運用条件を整理する",
+      audience: "実務担当者",
+      desiredAction: "運用方針を確認する",
+      intents: [
+        {
+          slideId: "operations",
+          title: "運用条件",
+          message: "運用条件を分類して確認する。",
+          evidence: ["監視: ログを確認", "期限: Expirationを確認", "障害: 結果コードを確認"],
+          details: ["担当者を決める"],
+          quietInfo: [],
+          visualType: "summary",
+          emphasis: "運用条件"
+        }
+      ]
+    };
+
+    const result = materializeExpressionCandidateDecks(map, {
+      title: "Candidate materialization",
+      locale: "ja-JP",
+      contentMode: "handout"
+    });
+
+    expect(result.candidateDecks).toHaveLength(3);
+    expect(new Set(result.candidateDecks.map((candidate) => candidate.grammarId)).size).toBe(3);
+    for (const candidate of result.candidateDecks) {
+      expect(candidate.deck.slides).toHaveLength(1);
+      expect(candidate.deck.slides[0].layout).toBe(`message-grammar-${candidate.grammarId}`);
+      expect(candidate.evaluation.accuracy).toBeGreaterThanOrEqual(0);
+      expect(candidate.evaluation.clarity).toBeGreaterThanOrEqual(0);
+      expect(candidate.evaluation.beauty).toBeGreaterThanOrEqual(0);
+      expect(candidate.evaluation.reviewEvidence.blockingCount).toBeGreaterThanOrEqual(0);
+      expect(candidate.evaluation.reviewEvidence.visualErrorCount).toBeGreaterThanOrEqual(0);
+      expect(candidate.evaluation.reviewEvidence.qualityOverall).toBeGreaterThanOrEqual(0);
+    }
+    expect(result.selectedCandidateId).toBe(result.planningCandidateSet.selectedCandidateId);
+    expect(result.selectionPolicy).toBe("primary-grammar-until-rendered");
   });
 
   it("does not force list-like matrix intents into repeated two-axis maps", () => {
