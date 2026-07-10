@@ -96,8 +96,39 @@ export type VisualRole = {
   priority: number;
 };
 
+export type CommunicationRelation =
+  | "sequence"
+  | "comparison"
+  | "tradeoff"
+  | "causality"
+  | "hierarchy"
+  | "responsibility"
+  | "classification"
+  | "evidence"
+  | "detail";
+
+export type SemanticRelation = {
+  from: string;
+  to: string;
+  label: string;
+};
+
+export type SlideCommunicationContract = {
+  id: string;
+  slideId: string;
+  audienceQuestion: string;
+  takeaway: string;
+  relation: CommunicationRelation;
+  entities: string[];
+  relations: SemanticRelation[];
+  comparisonAxes?: string[];
+  readerTest: string;
+  forbiddenLosses: string[];
+};
+
 export type ExpressionPlan = {
   slideId: string;
+  communicationContractId: string;
   selectedGrammarId: VisualGrammarId;
   rationale: string;
   rejectedAlternatives: { grammarId: VisualGrammarId; reason: string }[];
@@ -146,6 +177,7 @@ export type NarrativePlanArtifacts = {
   deckBrief: DeckBrief;
   chapters: ChapterPlan[];
   slideBriefs: SlideBrief[];
+  communicationContracts: SlideCommunicationContract[];
   slideTextPlans: SlideTextPlan[];
   expressionPlans: ExpressionPlan[];
   layoutPlans: LayoutPlan[];
@@ -314,15 +346,111 @@ function impliesTwoAxisSurface(text: string): boolean {
   );
 }
 
-function grammarForIntent(intent: SlideIntent, contentMode: ContentMode): VisualGrammarId {
+function unique(values: string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function comparisonRows(intent: SlideIntent): Array<{ axis: string; values: string[] }> {
+  return intent.evidence.flatMap((item) => {
+    const separator = item.indexOf(":");
+    if (separator <= 0) return [];
+    const axis = item.slice(0, separator).trim();
+    const values = item
+      .slice(separator + 1)
+      .split(/\s*[／/]\s*/u)
+      .map((value) => value.trim())
+      .filter(Boolean);
+    return axis && values.length >= 2 ? [{ axis, values }] : [];
+  });
+}
+
+function entityFromComparisonValue(value: string): string {
+  return value
+    .replace(/^(?:担当|主体|owner)\s*[:：]?\s*/iu, "")
+    .split(/(?:は|が|を|で|による|として|\s+-\s+)/u, 1)[0]
+    .replace(/(?:側|担当)$/u, "")
+    .trim();
+}
+
+function twoAxisLabels(text: string): string[] {
+  const match = text.match(/([^\s、。:：]+)と([^\s、。:：]+)の(?:二軸|2軸)/u);
+  return match ? [match[1], match[2]] : [];
+}
+
+function communicationRelationForIntent(intent: SlideIntent): CommunicationRelation {
+  const text = slideText(intent);
+  const role = slideRoleForIntent(intent);
+  const rows = comparisonRows(intent);
+  if (/責任|責務|分界|担当|担う|owner|ownership/iu.test(text) && rows.length > 0) return "responsibility";
+  if (impliesTwoAxisSurface(text)) return "tradeoff";
+  if (role === "process") return "sequence";
+  if (role === "comparison") return "comparison";
+  if (role === "detail") return "detail";
+  if (role === "evidence" || hasStrongMetric(text)) return "evidence";
+  if (intent.diagram && /階層|レイヤ|layer|stack|基盤|platform|構成/iu.test(text)) return "hierarchy";
+  if (/原因|結果|因果|ため|によって|cause|effect|because|therefore/iu.test(text)) return "causality";
+  return "classification";
+}
+
+function readerTestFor(relation: CommunicationRelation, intent: SlideIntent): string {
+  const japanese = hasJapanese(slideText(intent));
+  const tests: Record<CommunicationRelation, { ja: string; en: string }> = {
+    sequence: { ja: "処理の順序と次の段階を説明できる。", en: "The reader can explain the order and next stage." },
+    comparison: { ja: "比較対象ごとの差を説明できる。", en: "The reader can explain the differences between options." },
+    tradeoff: { ja: "二つの軸で対象の位置と判断理由を説明できる。", en: "The reader can explain each position and decision across two axes." },
+    causality: { ja: "原因から結果までのつながりを説明できる。", en: "The reader can explain how the cause leads to the outcome." },
+    hierarchy: { ja: "上位概念と下位要素の関係を説明できる。", en: "The reader can explain parent and child relationships." },
+    responsibility: { ja: "誰が何を担うかを説明できる。", en: "The reader can explain who owns each responsibility." },
+    classification: { ja: "情報をどの分類で読むかを説明できる。", en: "The reader can explain how the information is classified." },
+    evidence: { ja: "主張を支える根拠を説明できる。", en: "The reader can explain the evidence supporting the claim." },
+    detail: { ja: "主要条件と例外を説明できる。", en: "The reader can explain the main conditions and exceptions." }
+  };
+  return japanese ? tests[relation].ja : tests[relation].en;
+}
+
+function communicationContractForIntent(intent: SlideIntent): SlideCommunicationContract {
+  const relation = communicationRelationForIntent(intent);
+  const rows = comparisonRows(intent);
+  const axisLabels = relation === "tradeoff" ? twoAxisLabels(slideText(intent)) : rows.map((row) => row.axis);
+  const entities = unique([
+    ...rows.flatMap((row) => row.values.map(entityFromComparisonValue)),
+    ...(intent.diagram?.nodes.map((node) => node.label) ?? [])
+  ]);
+  const semanticRelations = rows.flatMap((row) =>
+    row.values.map((value) => ({
+      from: entityFromComparisonValue(value),
+      to: row.axis,
+      label: value
+    }))
+  );
+  return {
+    id: `${intent.slideId}-communication-contract`,
+    slideId: intent.slideId,
+    audienceQuestion: intent.title,
+    takeaway: intent.emphasis ?? intent.message,
+    relation,
+    entities,
+    relations: semanticRelations,
+    comparisonAxes: axisLabels.length > 0 ? unique(axisLabels) : undefined,
+    readerTest: readerTestFor(relation, intent),
+    forbiddenLosses: unique([...(intent.quietInfo ?? []), ...(intent.sourceTrace ?? [])])
+  };
+}
+
+function grammarForIntent(intent: SlideIntent, contentMode: ContentMode, contract: SlideCommunicationContract): VisualGrammarId {
   const text = slideText(intent);
   const lower = text.toLowerCase();
   const evidenceCount = intent.evidence.length;
   const slideRole = slideRoleForIntent(intent);
 
-  if (intent.diagram && (intent.visualType === "native-diagram" || intent.visualType === "map" || intent.visualType === "ponchi-e")) {
-    return /階層|レイヤ|layer|stack|基盤|platform|構成/u.test(lower) ? "layered-model" : "spatial-model";
+  if (intent.diagram) {
+    return /階層|レイヤ|layer|stack|基盤|platform|構成|architecture/u.test(lower) ? "layered-model" : "spatial-model";
   }
+
+  if (contract.relation === "responsibility") return "comparison-field";
+  if (contract.relation === "tradeoff") return "decision-surface";
+  if (contract.relation === "sequence") return intent.visualType === "cycle" ? "spatial-model" : "sequential-path";
+  if (contract.relation === "detail") return "detail-reading-page";
 
   if (intent.slideRole) {
     if (slideRole === "detail") return "detail-reading-page";
@@ -406,13 +534,14 @@ function riskTagsForIntent(intent: SlideIntent, grammarId: VisualGrammarId): str
   return risks;
 }
 
-function expressionPlanForIntent(intent: SlideIntent, contentMode: ContentMode): ExpressionPlan {
-  const selectedGrammarId = grammarForIntent(intent, contentMode);
+function expressionPlanForIntent(intent: SlideIntent, contentMode: ContentMode, contract: SlideCommunicationContract): ExpressionPlan {
+  const selectedGrammarId = grammarForIntent(intent, contentMode, contract);
   const grammar = getVisualGrammarSpec(selectedGrammarId);
   return {
     slideId: intent.slideId,
+    communicationContractId: contract.id,
     selectedGrammarId,
-    rationale: `Selected ${grammar.label} because the slide needs to express ${grammar.expresses.slice(0, 2).join(" / ")} from message semantics and ${intent.evidence.length} evidence unit(s), rather than directly rendering visualType "${intent.visualType}".`,
+    rationale: `Selected ${grammar.label} because communication relation "${contract.relation}" needs to express ${grammar.expresses.slice(0, 2).join(" / ")} from message semantics and ${intent.evidence.length} evidence unit(s), rather than directly rendering visualType "${intent.visualType}".`,
     rejectedAlternatives: rejectedAlternativesFor(selectedGrammarId, intent),
     visualRoles: visualRolesForGrammar(selectedGrammarId),
     variationKnobs: {
@@ -524,8 +653,9 @@ export function createNarrativePlanArtifacts(messageMap: DeckMessageMap, options
   const deckBrief = deckBriefFromMessageMap(messageMap, planningInput);
   const chapters = createChapters(messageMap.intents, planningInput.locale);
   const slideBriefs = messageMap.intents.map((intent) => slideBriefForIntent(intent, chapterIdForSlide(chapters, intent.slideId)));
+  const communicationContracts = messageMap.intents.map(communicationContractForIntent);
   const slideTextPlans = messageMap.intents.map(slideTextPlanForIntent);
-  const expressionPlans = messageMap.intents.map((intent) => expressionPlanForIntent(intent, planningInput.deliveryMode));
+  const expressionPlans = messageMap.intents.map((intent, index) => expressionPlanForIntent(intent, planningInput.deliveryMode, communicationContracts[index]));
   const layoutPlans = messageMap.intents.map((intent, index) => layoutPlanForIntent(intent, expressionPlans[index]));
 
   return {
@@ -533,6 +663,7 @@ export function createNarrativePlanArtifacts(messageMap: DeckMessageMap, options
     deckBrief,
     chapters,
     slideBriefs,
+    communicationContracts,
     slideTextPlans,
     expressionPlans,
     layoutPlans,

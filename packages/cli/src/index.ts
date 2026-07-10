@@ -868,6 +868,7 @@ program
         await writeJson(`${options.planningOutputDir}/deck-brief.json`, planningArtifacts.deckBrief);
         await writeJson(`${options.planningOutputDir}/chapter-plan.json`, planningArtifacts.chapters);
         await writeJson(`${options.planningOutputDir}/slide-briefs.json`, planningArtifacts.slideBriefs);
+        await writeJson(`${options.planningOutputDir}/slide-communication-contracts.json`, planningArtifacts.communicationContracts);
         await writeJson(`${options.planningOutputDir}/slide-text-plan.json`, planningArtifacts.slideTextPlans);
         await writeJson(`${options.planningOutputDir}/expression-plan.json`, planningArtifacts.expressionPlans);
         await writeJson(`${options.planningOutputDir}/layout-plan.json`, planningArtifacts.layoutPlans);
@@ -1427,6 +1428,7 @@ program
       await writeJson(`${options.planningOutputDir}/deck-brief.json`, planningArtifacts.deckBrief);
       await writeJson(`${options.planningOutputDir}/chapter-plan.json`, planningArtifacts.chapters);
       await writeJson(`${options.planningOutputDir}/slide-briefs.json`, planningArtifacts.slideBriefs);
+      await writeJson(`${options.planningOutputDir}/slide-communication-contracts.json`, planningArtifacts.communicationContracts);
       await writeJson(`${options.planningOutputDir}/slide-text-plan.json`, planningArtifacts.slideTextPlans);
       await writeJson(`${options.planningOutputDir}/expression-plan.json`, planningArtifacts.expressionPlans);
       await writeJson(`${options.planningOutputDir}/layout-plan.json`, planningArtifacts.layoutPlans);
