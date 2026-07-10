@@ -82,4 +82,23 @@ describe("candidate snapshot adapter", () => {
     );
     expect(recommendation.ranked[0].total).toBe(Math.round(92 * 0.5 + 88 * 0.3 + 76 * 0.2));
   });
+
+  it("uses calibrated weights only after calibration is explicitly supplied", () => {
+    const candidates = [
+      { candidateId: "accurate", accuracy: 100, accuracyGatePassed: true },
+      { candidateId: "beautiful", accuracy: 82, accuracyGatePassed: true }
+    ];
+    const snapshots = [
+      { candidateId: "accurate", clarity: 70, beauty: 70, blocking: false },
+      { candidateId: "beautiful", clarity: 85, beauty: 90, blocking: false }
+    ];
+
+    const baseline = recommendRenderedCandidate(candidates, snapshots);
+    const calibrated = recommendRenderedCandidate(candidates, snapshots, { accuracy: 0.3, clarity: 0.3, beauty: 0.4 });
+
+    expect(baseline.recommendedCandidateId).toBe("accurate");
+    expect(calibrated.recommendedCandidateId).toBe("beautiful");
+    expect(calibrated.weights).toEqual({ accuracy: 0.3, clarity: 0.3, beauty: 0.4 });
+    expect(calibrated.weightSource).toBe("calibrated");
+  });
 });
