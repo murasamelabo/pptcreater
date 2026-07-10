@@ -2527,9 +2527,12 @@ export function createDeckFromMessageMap(messageMap: DeckMessageMap, options: Cr
           }
         : baseExpressionPlan;
       const layoutPlan = narrativeArtifacts.layoutPlans[index];
-      const authoredComparison = renderComparisonTable(theme, intent);
-      const authoredDiagram = authoredComparison ?? renderAuthoredDiagram(theme, intent, options.diagramRenderer);
-      const designComponent = authoredDiagram
+      const isPrimaryCandidate =
+        !expressionOverride ||
+        (expressionOverride.candidateId === baseExpressionPlan.selectedCandidateId && expressionOverride.grammarId === baseExpressionPlan.selectedGrammarId);
+      const authoredComparison = isPrimaryCandidate ? renderComparisonTable(theme, intent) : null;
+      const authoredDiagram = isPrimaryCandidate ? authoredComparison ?? renderAuthoredDiagram(theme, intent, options.diagramRenderer) : null;
+      const designComponent = authoredDiagram || !isPrimaryCandidate
         ? null
         : options.designComponentRenderer?.({
             idPrefix: `${intent.slideId}-dc`,
