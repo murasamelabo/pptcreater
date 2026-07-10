@@ -70,6 +70,14 @@ import {
 import { importNotPersistedWarning, importPersistenceSuffix, importTemplateFromPptx, renderDeckToPptx, reviewPptxSlideTextFit } from "@pptcreater/render-pptx";
 import { renderStudioHtml } from "@pptcreater/studio";
 import {
+  addPairwiseComparison,
+  calibrateCandidateWeights,
+  candidateBenchmarkSourceFromSummary,
+  createCandidateBenchmark,
+  parseCandidateBenchmark,
+  type PairwiseComparison
+} from "./candidateBenchmark.js";
+import {
   buildCandidateSnapshotPlan,
   captureCandidateSnapshots,
   recommendRenderedCandidate,
@@ -639,6 +647,34 @@ function parsePlanningMode(value: string): PlanningMode {
   throw new InvalidArgumentError("Planning mode must be one of: legacy, narrative-v1.");
 }
 
+function parsePairwisePreference(value: string): PairwiseComparison["preference"] {
+  if (value === "left" || value === "right" || value === "tie") return value;
+  throw new InvalidArgumentError("Preference must be one of: left, right, tie.");
+}
+
+function parsePairwiseDimension(value: string): PairwiseComparison["dimension"] {
+  if (value === "overall" || value === "accuracy" || value === "clarity" || value === "beauty") return value;
+  throw new InvalidArgumentError("Dimension must be one of: overall, accuracy, clarity, beauty.");
+}
+
+function parsePairwiseConfidence(value: string): PairwiseComparison["confidence"] {
+  const confidence = Number(value);
+  if (Number.isInteger(confidence) && confidence >= 1 && confidence <= 5) return confidence as PairwiseComparison["confidence"];
+  throw new InvalidArgumentError("Confidence must be an integer from 1 to 5.");
+}
+
+function parseCalibrationWeight(value: string): number {
+  const weight = Number(value);
+  if (Number.isFinite(weight) && weight >= 0 && weight <= 1) return weight;
+  throw new InvalidArgumentError("Calibration weights must be numbers from 0 to 1.");
+}
+
+function parseMinimumComparisons(value: string): number {
+  const count = Number(value);
+  if (Number.isInteger(count) && count >= 1) return count;
+  throw new InvalidArgumentError("Minimum comparisons must be a positive integer.");
+}
+
 /**
  * Adapter that lets the narrative message-map pipeline render authored `intent.diagram` figures as
  * editable native diagrams via `@pptcreater/diagram`, without the core package depending on it.
@@ -891,6 +927,84 @@ program
       return;
     }
     console.log(cliMessage(outputLocale(deck.locale), "cli.created", { path: options.output }));
+  }));
+
+program
+  .command("benchmark-init")
+  .description("Create a pairwise human-preference benchmark from a rendered candidate summary.")
+  .argument("<candidate-summary>", "candidate-summary.json created by materialize-candidates --snapshot-images")
+  .requiredOption("--benchmark-id <id>", "Stable benchmark id")
+  .requiredOption("-o, --output <path>", "Output benchmark JSON path")
+  .action(commandAction(async (summaryPath: string, options: { benchmarkId: string; output: string }) => {
+    const source = candidateBenchmarkSourceFromSummary(await readJson(summaryPath), summaryPath);
+    const benchmark = createCandidateBenchmark(options.benchmarkId, source);
+    await writeJson(options.output, benchmark);
+    console.log(`Created pairwise benchmark ${benchmark.benchmarkId} at ${options.output}`);
+  }));
+
+program
+  .command("benchmark-record")
+  .description("Append one human pairwise comparison to a benchmark and write a new benchmark JSON.")
+  .argument("<benchmark>", "Input pairwise benchmark JSON")
+  .requiredOption("--comparison-id <id>", "Unique comparison id")
+  .requiredOption("--reviewer <id>", "Reviewer id or pseudonymous handle")
+  .requiredOption("--left <candidate-id>", "Left candidate id")
+  .requiredOption("--right <candidate-id>", "Right candidate id")
+  .requiredOption("--preference <choice>", "left, right, or tie", parsePairwisePreference)
+  .option("--confidence <1-5>", "Reviewer confidence", parsePairwiseConfidence, 3)
+  .option("--dimension <dimension>", "overall, accuracy, clarity, or beauty", parsePairwiseDimension, "overall")
+  .option("--notes <text>", "Optional review notes")
+  .requiredOption("-o, --output <path>", "Output benchmark JSON path")
+  .action(commandAction(async (benchmarkPath: string, options: {
+    comparisonId: string;
+    reviewer: string;
+    left: string;
+    right: string;
+    preference: PairwiseComparison["preference"];
+    confidence: PairwiseComparison["confidence"];
+    dimension: PairwiseComparison["dimension"];
+    notes?: string;
+    output: string;
+  }) => {
+    const benchmark = parseCandidateBenchmark(await readJson(benchmarkPath));
+    const updated = addPairwiseComparison(benchmark, {
+      comparisonId: options.comparisonId,
+      reviewerId: options.reviewer,
+      leftCandidateId: options.left,
+      rightCandidateId: options.right,
+      preference: options.preference,
+      confidence: options.confidence,
+      dimension: options.dimension,
+      notes: options.notes,
+      createdAt: new Date().toISOString()
+    });
+    await writeJson(options.output, updated);
+    console.log(`Recorded comparison ${options.comparisonId} in ${options.output}`);
+  }));
+
+program
+  .command("benchmark-calibrate")
+  .description("Calibrate Accuracy/Clarity/Beauty weights against one or more human pairwise benchmarks.")
+  .argument("<benchmarks...>", "One or more pairwise benchmark JSON paths")
+  .requiredOption("-o, --output <path>", "Output calibration report JSON path")
+  .option("--weight-step <number>", "Grid-search step that divides 1 exactly", parseCalibrationWeight, 0.05)
+  .option("--minimum-accuracy-weight <number>", "Minimum allowed Accuracy weight", parseCalibrationWeight, 0.3)
+  .option("--minimum-comparisons <number>", "Comparisons required for calibrated status", parseMinimumComparisons, 3)
+  .action(commandAction(async (benchmarkPaths: string[], options: {
+    output: string;
+    weightStep: number;
+    minimumAccuracyWeight: number;
+    minimumComparisons: number;
+  }) => {
+    const benchmarks = await Promise.all(benchmarkPaths.map(async (path) => parseCandidateBenchmark(await readJson(path))));
+    const report = calibrateCandidateWeights(benchmarks, {
+      weightStep: options.weightStep,
+      minimumAccuracyWeight: options.minimumAccuracyWeight,
+      minimumComparisons: options.minimumComparisons,
+      baselineWeights: { accuracy: 0.5, clarity: 0.3, beauty: 0.2 }
+    });
+    await writeJson(options.output, report);
+    console.log(`Calibration ${report.status}: baseline=${report.baselineAgreement}, calibrated=${report.calibratedAgreement}, output=${options.output}`);
   }));
 
 program

@@ -2,6 +2,7 @@
 import {
   addPairwiseComparison,
   calibrateCandidateWeights,
+  candidateBenchmarkSourceFromSummary,
   createCandidateBenchmark,
   type CandidateBenchmarkSource
 } from "./candidateBenchmark.js";
@@ -15,26 +16,51 @@ const SOURCE: CandidateBenchmarkSource = {
       grammarId: "comparison-field",
       snapshotPath: "generated/candidates/comparison.png",
       accuracyGatePassed: true,
-      scores: { accuracy: 95, clarity: 80, beauty: 68 }
+      scores: { accuracy: 100, clarity: 85, beauty: 60 }
     },
     {
       candidateId: "table",
       grammarId: "table-text-system",
       snapshotPath: "generated/candidates/table.png",
       accuracyGatePassed: true,
-      scores: { accuracy: 90, clarity: 88, beauty: 74 }
+      scores: { accuracy: 92, clarity: 88, beauty: 75 }
     },
     {
       candidateId: "board",
       grammarId: "evidence-board",
       snapshotPath: "generated/candidates/board.png",
       accuracyGatePassed: true,
-      scores: { accuracy: 82, clarity: 92, beauty: 96 }
+      scores: { accuracy: 82, clarity: 90, beauty: 100 }
     }
   ]
 };
 
 describe("candidate pairwise benchmark", () => {
+  it("derives benchmark features from a rendered candidate summary", () => {
+    const source = candidateBenchmarkSourceFromSummary(
+      {
+        slideId: "responsibility-boundary",
+        candidates: SOURCE.candidates.map((candidate) => ({
+          candidateId: candidate.candidateId,
+          grammarId: candidate.grammarId,
+          snapshotPath: candidate.snapshotPath,
+          snapshotScore: { clarity: candidate.scores.clarity, beauty: candidate.scores.beauty, blocking: false },
+          evaluation: { accuracy: candidate.scores.accuracy, accuracyGatePassed: candidate.accuracyGatePassed }
+        }))
+      },
+      SOURCE.sourceSummaryPath
+    );
+
+    expect(source).toEqual(SOURCE);
+    expect(() => candidateBenchmarkSourceFromSummary({
+      slideId: "x",
+      candidates: [
+        { candidateId: "a", grammarId: "comparison-field", evaluation: { accuracy: 90, accuracyGatePassed: true }, snapshotScore: { clarity: 80, beauty: 70 } },
+        { candidateId: "b", grammarId: "table-text-system", snapshotPath: "b.png", evaluation: { accuracy: 85, accuracyGatePassed: true }, snapshotScore: { clarity: 82, beauty: 72 } }
+      ]
+    }, "bad.json")).toThrow(/snapshot/u);
+  });
+
   it("stores immutable candidate features and human comparison provenance", () => {
     const benchmark = createCandidateBenchmark("auth-web-v1", SOURCE, "2026-07-10T00:00:00.000Z");
     const updated = addPairwiseComparison(benchmark, {
@@ -110,5 +136,23 @@ describe("candidate pairwise benchmark", () => {
     expect(report.calibratedAgreement).toBe(1);
     expect(report.weights.beauty).toBeGreaterThan(0.2);
     expect(report.benchmarkIds).toEqual(["auth-web-v1"]);
+  });
+
+  it("excludes human comparisons that include an accuracy-gate failure", () => {
+    const gatedSource: CandidateBenchmarkSource = {
+      ...SOURCE,
+      candidates: SOURCE.candidates.map((candidate) => candidate.candidateId === "board" ? { ...candidate, accuracyGatePassed: false } : candidate)
+    };
+    let benchmark = createCandidateBenchmark("gated-v1", gatedSource, "2026-07-10T00:00:00.000Z");
+    benchmark = addPairwiseComparison(benchmark, {
+      comparisonId: "gated-pair", reviewerId: "reviewer-a", leftCandidateId: "table", rightCandidateId: "board",
+      preference: "right", confidence: 5, dimension: "overall", createdAt: "2026-07-10T00:01:00.000Z"
+    });
+
+    const report = calibrateCandidateWeights([benchmark], { minimumComparisons: 1 });
+
+    expect(report.sampleSize).toBe(0);
+    expect(report.status).toBe("insufficient-data");
+    expect(report.excludedComparisons).toContainEqual({ comparisonId: "gated-pair", reason: "accuracy-gate-failed" });
   });
 });
