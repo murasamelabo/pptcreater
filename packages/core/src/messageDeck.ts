@@ -692,7 +692,33 @@ function leadSentence(value: string, maxLength = 54): string {
   if (text.length <= maxLength) return visibleSentence(text);
   const first = text.split(/[。；;\n]/u)[0]?.trim() || text;
   if (first.length <= maxLength) return visibleSentence(first);
-  return visibleSentence(Array.from(first).slice(0, maxLength).join(""));
+  const chars = Array.from(first);
+  let clipped = chars.slice(0, maxLength).join("").trimEnd();
+  const next = chars[maxLength] ?? "";
+  if (/[A-Za-z0-9_./:=+-]/u.test(next) && /[A-Za-z0-9_./:=+-]$/u.test(clipped)) {
+    const atBoundary = clipped.replace(/\s+[A-Za-z0-9_./:=+-]+$/u, "").trimEnd();
+    if (atBoundary) clipped = atBoundary;
+  }
+  clipped = clipped.replace(/[（【「『(\[{:：/、,;；]+$/u, "").trimEnd();
+  return visibleSentence(clipped);
+}
+
+function compactVisibleBody(value: string, maxLength = 54): string {
+  let normalized = normalizeVisibleCopy(value)
+    .replace(/[「」『』]/gu, "")
+    .replace(/\s*[（(]\s*/gu, "。")
+    .replace(/[）)]/gu, "")
+    .replace(/\bdraft-([a-z0-9]+)-[a-z0-9-]{24,}\b/giu, (_token, owner: string) => `${owner.toUpperCase()} draft`);
+  const repeatedHeading = /^(.{2,60})[:：]\s*\1$/u.exec(normalized);
+  if (repeatedHeading?.[1]) normalized = repeatedHeading[1];
+  const withoutLongUrls = normalized.replace(/https?:\/\/[^\s]+/giu, (url) => {
+    try {
+      return new URL(url).hostname.replace(/^www\./iu, "");
+    } catch {
+      return url;
+    }
+  });
+  return leadSentence(withoutLongUrls, maxLength);
 }
 
 function isGenericSlideTitle(value: string): boolean {
@@ -927,7 +953,8 @@ function slideTopicTitle(intent: SlideIntent): string {
   }
   const contextual = contextualTopicTitle(intent);
   if (contextual) return contextual;
-  return replacements[normalized] ?? topicLabel(normalized);
+  const title = replacements[normalized] ?? topicLabel(normalized);
+  return title.replace(/[（(][^）)]*$/u, "").trim() || title.replace(/[（(]/gu, "").trim();
 }
 
 function evidenceItems(intent: SlideIntent, min = 3): string[] {
@@ -1529,6 +1556,7 @@ function narrativeLabel(value: string, max = 26): string {
 
 function compactTechnicalLabel(value: string, max = 22): string {
   const text = String(value).replace(/\s+/g, " ").trim();
+  if (/Token Exchange.*レスポンス/iu.test(text)) return "HTTPレスポンス";
   if (/Identity Chaining Across Domains/iu.test(text)) return "Identity Chaining";
   if (/OAuth\s*2\.0\s*Token Exchange|RFC\s*8693/iu.test(text)) return "Token Exchange";
   if (/JWT Profile for OAuth|RFC\s*7523/iu.test(text)) return "JWT Bearer";
@@ -1597,7 +1625,7 @@ function tableRowsForIntent(intent: SlideIntent): Array<{ label: string; body: s
     if (parsed) {
       const body = detailByKey.get(parsed.key.toLowerCase()) ?? parsed.value;
       return {
-        label: compactTechnicalLabel(parsed.key, 22),
+        label: /^(?:確認対象|補足)$/u.test(normalizeVisibleCopy(parsed.key)) ? semanticDetailLabel(`${parsed.key} ${body}`, index) : compactTechnicalLabel(parsed.key, 22),
         body: body.trim() === parsed.key.trim() ? visibleSentence(intent.message) : visibleSentence(body)
       };
     }
@@ -1617,7 +1645,14 @@ function tableRowsForIntent(intent: SlideIntent): Array<{ label: string; body: s
     }
     return splitTableEvidence(item, index);
   });
-  return rows.length ? rows : [{ label: narrativeLabel(intent.emphasis ?? intent.title, 24), body: visibleSentence(intent.message) }];
+  if (!rows.length) return [{ label: narrativeLabel(intent.emphasis ?? intent.title, 24), body: visibleSentence(intent.message) }];
+  const merged = new Map<string, string[]>();
+  for (const row of rows) {
+    const bodies = merged.get(row.label) ?? [];
+    if (!bodies.includes(row.body)) bodies.push(row.body);
+    merged.set(row.label, bodies);
+  }
+  return [...merged.entries()].map(([label, bodies]) => ({ label, body: tableBodyText(bodies.join(" / ")) }));
 }
 
 function tableHeaderText(intent: SlideIntent): string {
@@ -1675,7 +1710,8 @@ function conceptMarkElement(theme: Theme, intent: SlideIntent, id: string, x: nu
 
 function narrativeEvidenceBoard(theme: Theme, intent: SlideIntent, _expressionPlan: ExpressionPlan): SlideElement[] {
   const id = intent.slideId;
-  const items = narrativeItems(intent, 3, 5);
+  const items = selectVisibleItems(intent.evidence, 5).visible.slice();
+  while (items.length < 3) items.push(intent.emphasis ?? intent.message);
   const elements: SlideElement[] = [
     shape(`${id}-narrative-claim-panel`, "roundRect", 0.86, 1.96, 5.3, 4.84, 10, theme.accent, theme.accent, { radius: 0.22 }),
     text(`${id}-narrative-grammar`, "caption", visualKickerLabel(intent), 1.18, 2.32, 3.7, 0.2, 11, theme, { bg: theme.accent, color: theme.inkOnAccent, fontSize: 12, bold: true }),
@@ -1691,7 +1727,7 @@ function narrativeEvidenceBoard(theme: Theme, intent: SlideIntent, _expressionPl
     const isRequiredTermRow = isContextEvidenceRow(item);
     elements.push(shape(`${id}-narrative-proof-${index}`, "roundRect", 7.08, y, 4.82, 0.55, order, fill, theme.line, { radius: 0.14 }));
     elements.push(icon(`${id}-narrative-proof-icon-${index}`, iconForEvidence(item, index), 7.3, y + 0.14, 0.26, order + 1, theme, { color: theme.accent, decorative: true }));
-    elements.push(text(`${id}-narrative-proof-text-${index}`, "body", visibleSentence(item), 7.76, y + 0.09, 3.68, isRequiredTermRow ? 0.32 : 0.24, order + 2, theme, { bg: fill, color: theme.text, fontSize: isRequiredTermRow ? 12 : 15 }));
+    elements.push(text(`${id}-narrative-proof-text-${index}`, "body", compactVisibleBody(item, 42), 7.76, y + 0.09, 3.68, 0.34, order + 2, theme, { bg: fill, color: theme.text, fontSize: 12 }));
   });
   return elements;
 }
@@ -1859,20 +1895,64 @@ function detailItemsForIntent(intent: SlideIntent, max = 4): string[] {
 
 function semanticDetailLabel(value: string, index: number): string {
   const text = normalizeVisibleCopy(value.replace(/^補足\s+/u, ""));
+  if (/^確認対象(?:\s|[:：]|$)/u.test(text)) return "対象技術";
   if (/設計目標|ID-JAG\/XAAを軸/u.test(text)) return "設計目標";
   if (/監査証跡|いつ何にアクセス/u.test(text)) return "監査証跡";
   if (/即時失効|キルスイッチ/u.test(text)) return "即時失効";
   if (/可視化/u.test(text)) return "集中可視化";
   if (/ポリシー制御|ポリシー.*アクセス制御|アクセス制御/u.test(text)) return "ポリシー制御";
-  if (/短命|自動失効/u.test(text)) return "短命クレデンシャル";
-  return `詳細 ${index + 1}`;
+  if (/初版ドラフト/u.test(text)) return "初版ドラフト";
+  if (/現在は|WG採択|Standards Track/u.test(text)) return "標準化状況";
+  if (/親仕様|Identity Chaining/u.test(text)) return "親仕様";
+  if (/長命|Long-lived/iu.test(text)) return "長命鍵";
+  if (/過剰スコープ|Over-scoped/iu.test(text)) return "過剰スコープ";
+  if (/分散管理|Decentralized/iu.test(text)) return "分散管理";
+  if (/前提条件/u.test(text)) return "前提条件";
+  if (/競合かつ相互運用|同一標準/u.test(text)) return "相互運用";
+  if (/集中承認|ブロックリスト/u.test(text)) return "集中承認";
+  if (/同意疲れ/u.test(text)) return "同意疲れの解消";
+  if (/コンプライアンス/u.test(text)) return "監査・コンプライアンス";
+  if (/https?:\/\//u.test(text)) {
+    const sourceName = text.split(/https?:\/\//u)[0]?.replace(/[：:（(\s]+$/u, "").replace(/^参考リンク\s*\d*\s*[:：]?/u, "").trim();
+    if (sourceName) return compactTechnicalLabel(sourceName, 22);
+    try { return new URL(text.match(/https?:\/\/[^\s)]+/u)?.[0] ?? "").hostname.replace(/^www\./u, ""); } catch { return "参照資料"; }
+  }
+  const codeKey = text.match(/^["']?([A-Za-z_][A-Za-z0-9_.-]{1,32})["']?\s*[:=]/u)?.[1];
+  if (codeKey) return codeKey;
+  const phrase = text.match(/^(.{2,24}?)(?:は|が|を|で|に|と|、|。|\(|（|:|：)/u)?.[1]?.trim();
+  return compactTechnicalLabel(phrase || text, 20);
 }
 
 function parsedDetailItem(item: string, index: number): { label: string; body: string } {
   const cleanItem = item.replace(/^補足\s+/u, "");
   const parsed = splitKeyValue(cleanItem);
   if (!parsed) return { label: semanticDetailLabel(cleanItem, index), body: cleanItem };
-  return { label: semanticDetailLabel(`${parsed.key} ${parsed.value}`, index), body: parsed.value };
+  const normalizedKey = normalizeVisibleCopy(parsed.key);
+  const label = !/^(?:補足|確認対象|参考リンク\s*\d*|ステップ\s*\d+|\d+(?:\.\d+)*\s+)/u.test(normalizedKey) && Array.from(normalizedKey).length <= 28
+    ? compactTechnicalLabel(normalizedKey, 22)
+    : semanticDetailLabel(`${normalizedKey} ${parsed.value}`, index);
+  return { label, body: parsed.value };
+}
+
+function mergeDetailItems(items: Array<{ label: string; body: string }>): Array<{ label: string; body: string }> {
+  const merged = new Map<string, string[]>();
+  for (const item of items) {
+    const bodies = merged.get(item.label) ?? [];
+    if (!bodies.includes(item.body)) bodies.push(item.body);
+    merged.set(item.label, bodies);
+  }
+  return [...merged.entries()].map(([label, bodies]) => ({ label, body: leadSentence(bodies.join(" / "), 72) }));
+}
+
+function parsedDetailItemsForIntent(intent: SlideIntent, max: number): Array<{ label: string; body: string }> {
+  const details = intent.details ?? [];
+  const ordered = [
+    ...details.filter((item) => !/^補足\s+/u.test(item)),
+    ...intent.evidence,
+    ...details.filter((item) => /^補足\s+/u.test(item))
+  ];
+  const parsed = ordered.map((item, index) => parsedDetailItem(leadSentence(item, 84), index));
+  return selectVisibleItems(mergeDetailItems(parsed), max).visible;
 }
 
 function narrativeDetailPage(theme: Theme, intent: SlideIntent, expressionPlan: ExpressionPlan): SlideElement[] {
@@ -1939,7 +2019,7 @@ function narrativeDetailReadingBoard(theme: Theme, intent: SlideIntent, expressi
 
 function narrativeDetailChecklist(theme: Theme, intent: SlideIntent, _expressionPlan: ExpressionPlan): SlideElement[] {
   const id = intent.slideId;
-  const items = detailItemsForIntent(intent, 5).map(parsedDetailItem).map((item) => ({ ...item, body: leadSentence(item.body, 46) }));
+  const items = parsedDetailItemsForIntent(intent, 5).map((item) => ({ ...item, body: leadSentence(item.body, 46) }));
   const elements: SlideElement[] = [
     shape(`${id}-check-frame`, "roundRect", 0.92, 1.9, 8.28, 4.92, 10, theme.surface, theme.line, { radius: 0.16 }),
     text(`${id}-check-kicker`, "caption", "確認項目", 1.24, 2.16, 2.64, 0.18, 11, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true }),
@@ -1965,12 +2045,12 @@ function narrativeDetailChecklist(theme: Theme, intent: SlideIntent, _expression
 
 function narrativeDetailBrief(theme: Theme, intent: SlideIntent, _expressionPlan: ExpressionPlan): SlideElement[] {
   const id = intent.slideId;
-  const items = detailItemsForIntent(intent, 4).map(parsedDetailItem);
+  const items = parsedDetailItemsForIntent(intent, 4).map((item) => ({ ...item, body: compactVisibleBody(item.body, 54) }));
   const elements: SlideElement[] = [
     shape(`${id}-brief-frame`, "roundRect", 0.92, 1.9, 11.44, 4.92, 10, theme.surface, theme.line, { radius: 0.16 }),
     text(`${id}-brief-kicker`, "caption", "仕様メモ", 1.24, 2.16, 2.64, 0.18, 11, theme, { bg: theme.surface, color: theme.accent, fontSize: 12, bold: true }),
     text(`${id}-brief-heading`, "callout", slideTopicTitle(intent), 1.24, 2.5, 4.84, 0.38, 12, theme, { bg: theme.surface, color: theme.accent, fontSize: 20 }),
-    text(`${id}-brief-message`, "body", visibleSentence(intent.message), 6.72, 2.36, 4.92, 0.48, 13, theme, { bg: theme.surface, color: theme.text, fontSize: 16 }),
+    text(`${id}-brief-message`, "body", compactVisibleBody(intent.message, 48), 6.72, 2.3, 4.92, 0.58, 13, theme, { bg: theme.surface, color: theme.text, fontSize: 15 }),
     shape(`${id}-brief-rule`, "rect", 1.24, 3.0, 10.72, 0.02, 14, theme.accent, theme.accent, { radius: 0 })
   ];
   items.forEach((item, index) => {
@@ -1982,7 +2062,7 @@ function narrativeDetailBrief(theme: Theme, intent: SlideIntent, _expressionPlan
     const fill = index === 0 ? theme.accentSoft : index % 2 === 0 ? mix(theme.accent, theme.background, 0.95) : theme.background;
     elements.push(shape(`${id}-brief-card-${index}`, "roundRect", x, y, 4.86, 1.02, order, fill, theme.line, { radius: 0.14 }));
     elements.push(text(`${id}-brief-card-label-${index}`, "caption", item.label, x + 0.24, y + 0.18, 4.2, 0.16, order + 1, theme, { bg: fill, color: theme.accent, fontSize: 12, bold: true }));
-    elements.push(text(`${id}-brief-card-body-${index}`, "body", item.body, x + 0.24, y + 0.5, 4.22, 0.24, order + 2, theme, { bg: fill, color: theme.text, fontSize: 15 }));
+    elements.push(text(`${id}-brief-card-body-${index}`, "body", item.body, x + 0.24, y + 0.46, 4.22, 0.4, order + 2, theme, { bg: fill, color: theme.text, fontSize: 13 }));
   });
   return elements;
 }
@@ -2016,7 +2096,7 @@ function narrativeTableTextSystem(theme: Theme, intent: SlideIntent, expressionP
     elements.push(shape(`${id}-table-row-${index}`, "rect", 1.18, y, 10.98, 0.52, order, fill, fill, { radius: 0 }));
     elements.push(text(`${id}-table-row-index-${index}`, "caption", String(index + 1).padStart(2, "0"), 1.42, y + 0.17, 0.42, 0.12, order + 1, theme, { bg: fill, color: theme.accent, fontSize: 11, bold: true }));
     elements.push(text(`${id}-table-row-label-${index}`, "body", row.label, 2.08, y + 0.1, 2.4, 0.2, order + 2, theme, { bg: fill, color: theme.text, fontSize: 14, bold: true }));
-    elements.push(text(`${id}-table-row-body-${index}`, "caption", row.body, 4.7, y + 0.12, 6.9, 0.18, order + 3, theme, { bg: fill, color: theme.mutedText, fontSize: 12 }));
+    elements.push(text(`${id}-table-row-body-${index}`, "caption", compactVisibleBody(row.body, 64), 4.7, y + 0.1, 6.9, 0.28, order + 3, theme, { bg: fill, color: theme.mutedText, fontSize: 11 }));
   });
   return elements;
 }

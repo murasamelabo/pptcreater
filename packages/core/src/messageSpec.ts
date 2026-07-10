@@ -610,8 +610,30 @@ function genericSemanticLabel(line: string, sectionTitle: string, index: number)
   if (/可視化/u.test(text)) return "集中可視化";
   if (/ポリシー.*アクセス制御|アクセス制御/u.test(text)) return "ポリシー制御";
   if (/短命|自動失効/u.test(text)) return "短命クレデンシャル";
+  if (/アプリ間連携.*不可欠/u.test(text)) return "業務要件";
+  if (/^利用例/u.test(text)) return "利用例";
+  if (/従来手段|スケールしない/u.test(text)) return "従来手段の限界";
   if (/^([^、。:：]{2,24})(?:は|が|を|で|に|と).+/u.test(text)) return RegExp.$1.trim();
-  return `${displaySectionTitle(sectionTitle)} ${index + 1}`;
+  const phrase = text.match(/^(.{2,24}?)(?:は|が|を|で|に|と|、|。|\(|（)/u)?.[1]?.trim();
+  if (phrase) return phrase;
+  return displaySectionTitle(sectionTitle);
+}
+
+function genericLineUnits(line: string): string[] {
+  const text = line.trim();
+  if (text.length <= 60 || /https?:\/\/|^\s*[{[]|urn:|```/iu.test(text)) return [text];
+  const sentences = text.match(/[^。！？]+[。！？]?/gu)?.map((item) => item.trim()).filter((item) => item.length >= 4) ?? [];
+  if (sentences.length > 1) return sentences;
+  const parenthetical = /^(.*?)[(（]([^()（）]{8,})[)）](.*)$/u.exec(text);
+  const examples = parenthetical?.[2]?.trim();
+  const outside = parenthetical ? `${parenthetical[1]}${parenthetical[3]}` : text;
+  const clauses = outside
+    .replace(/(?:だが|しかし|一方で?)、?/gu, "。")
+    .match(/[^。！？]+[。！？]?/gu)
+    ?.map((item) => item.trim())
+    .filter((item) => item.length >= 4) ?? [];
+  if (examples) clauses.splice(Math.min(1, clauses.length), 0, `利用例: ${examples}`);
+  return clauses.length > 1 ? clauses : [text];
 }
 
 function genericPrimaryClaim(section: DocSection, lines: string[]): string {
@@ -631,7 +653,7 @@ function genericPrimaryClaim(section: DocSection, lines: string[]): string {
 
 function genericBlocks(docSpec: DocSpec, sections: DocSection[], tables: DocTable[], terms: RequiredTerm[]): MessageBlock[] {
   const sectionIds = sections.map((section) => section.id);
-  const lineBlocks = sections.flatMap((section) => sectionLines(section).map((line, index) => {
+  const lineBlocks = sections.flatMap((section) => sectionLines(section).flatMap(genericLineUnits).map((line, index) => {
     const match = /^(.{1,32}?)(?:[:：])\s*(.+)$/u.exec(line);
     return {
       id: `${section.id}-line-${index + 1}`,

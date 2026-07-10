@@ -172,6 +172,25 @@ describe("MessageSpec generation", () => {
     expect(contentSlide?.supportingBlocks.map((block) => block.label)).not.toContain("項目 2");
   });
 
+  it("splits long source prose into multiple source-traced information units", () => {
+    const markdown = `# Report\n\n## 課題\n\nエンタープライズではアプリ間連携が不可欠です。従来のAPIキーは長命で分散管理されます。中央失効が難しく、監査証跡も不足します。ID-JAGは短命な委任へ移行します。`;
+    const docSpec = extractDocSpecFromMarkdown(markdown, { sourceId: "long-prose", title: "Report" });
+    const messageSpec = createMessageSpecFromDocSpec(docSpec, { strategy: "generic-technical-report" });
+    const contentSlide = messageSpec.slides.find((slide) => slide.semanticTitle === "課題");
+
+    expect(contentSlide?.supportingBlocks.length).toBeGreaterThanOrEqual(4);
+    expect(new Set(contentSlide?.supportingBlocks.map((block) => block.sourceSectionIds[0])).size).toBe(1);
+  });
+
+  it("splits parenthetical examples and contrast clauses into semantic units", () => {
+    const markdown = `# Report\n\n## 課題\n\nエンタープライズではアプリ間連携(管理ツールがCRMを参照、CI/CDがリポジトリへpush)が不可欠だが、従来手段はスケールしない。`;
+    const docSpec = extractDocSpecFromMarkdown(markdown, { sourceId: "contrast-prose", title: "Report" });
+    const messageSpec = createMessageSpecFromDocSpec(docSpec, { strategy: "generic-technical-report" });
+    const contentSlide = messageSpec.slides.find((slide) => slide.semanticTitle === "課題");
+
+    expect(contentSlide?.supportingBlocks.map((block) => block.label)).toEqual(["業務要件", "利用例", "従来手段の限界"]);
+  });
+
   it("rejects unexplained source omissions in generic technical reports", () => {
     const docSpec = extractDocSpecFromMarkdown(GENERIC_TECHNICAL_MARKDOWN, { sourceId: "xaa", title: "XAA" });
     const messageSpec = createMessageSpecFromDocSpec(docSpec, { strategy: "generic-technical-report" });

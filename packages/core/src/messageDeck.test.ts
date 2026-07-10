@@ -133,6 +133,75 @@ describe("message map deck generator", () => {
     expect(labels).not.toEqual(expect.arrayContaining(["項目 2", "補足 即時失効"]));
   });
 
+  it("merges duplicate semantic labels instead of repeating cards", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "対象技術を整理する",
+        audience: "設計者",
+        desiredAction: "確認する",
+        intents: [{ slideId: "targets", title: "標準化仕様", message: "対象技術を確認する。", evidence: ["確認対象: OAuth / OIDC", "確認対象: SAML / JWT", "現在: WG採択済み"], quietInfo: [], visualType: "detail", emphasis: "標準化" }]
+      },
+      { title: "Merged labels", locale: "ja-JP", contentMode: "technical", planningMode: "narrative-v1", includeCover: false, includeClosing: false }
+    );
+    const labels = deck.slides[0]?.elements
+      .filter((element): element is Extract<typeof element, { type: "text" }> => element.type === "text" && element.id.includes("brief-card-label"))
+      .map((element) => element.text) ?? [];
+
+    expect(labels).toEqual(["対象技術", "現在"]);
+  });
+
+  it("merges duplicate table labels and compacts response-topic labels", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "標準を整理する",
+        audience: "設計者",
+        desiredAction: "確認する",
+        intents: [{ slideId: "response", title: "Token Exchange", message: "レスポンスを確認する。", evidence: ["確認対象: OAuth / aud", "確認対象: exp / scope", "Token Exchange レスポンス 1: HTTP/1.1 200 OK"], quietInfo: [], visualType: "table", emphasis: "レスポンス" }]
+      },
+      { title: "Merged table", locale: "ja-JP", contentMode: "technical", planningMode: "narrative-v1", includeCover: false, includeClosing: false }
+    );
+    const labels = deck.slides[0]?.elements
+      .filter((element): element is Extract<typeof element, { type: "text" }> => element.type === "text" && element.id.includes("table-row-label"))
+      .map((element) => element.text) ?? [];
+
+    expect(labels).toEqual(["対象技術", "HTTPレスポンス"]);
+  });
+
+  it("does not cut technical identifiers or opening punctuation in visible copy", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "技術参照を整理する",
+        audience: "設計者",
+        desiredAction: "確認する",
+        intents: [{
+          slideId: "technical-copy",
+          title: "技術参照",
+          message: "競合各社が自社実装を提供する「競合かつ相互運用」の構図",
+          evidence: [
+            "標準化状況: 標準は draft-ietf-oauth-identity-assertion-authz-grant で進行中。",
+            "仕様URL: https://datatracker.ietf.org/doc/draft-ietf-oauth-identity-assertion-authz-grant/"
+          ],
+          details: [
+            "標準化状況: 標準は draft-ietf-oauth-identity-assertion-authz-grant で進行中。",
+            "仕様URL: https://datatracker.ietf.org/doc/draft-ietf-oauth-identity-assertion-authz-grant/"
+          ],
+          quietInfo: [],
+          visualType: "detail",
+          emphasis: "技術参照"
+        }]
+      },
+      { title: "Technical copy", locale: "ja-JP", contentMode: "technical", planningMode: "narrative-v1", includeCover: false, includeClosing: false }
+    );
+    const visible = deck.slides[0]?.elements
+      .filter((element): element is Extract<typeof element, { type: "text" }> => element.type === "text")
+      .map((element) => element.text) ?? [];
+
+    expect(visible.some((value) => /draft-ietf-oauth-identity-assertion-authz-grant/iu.test(value))).toBe(false);
+    expect(visible.some((value) => /[（【「『(\[{:：/、,;；]$/u.test(value))).toBe(false);
+    expect(visible.some((value) => value.includes("IETF draft"))).toBe(true);
+    expect(deck.slides[0]?.speakerNotes).toContain("https://datatracker.ietf.org/doc/draft-ietf-oauth-identity-assertion-authz-grant/");
+  });
+
   it("uses dark ink on bright accent colors to preserve contrast", () => {
     const tokens = defaultTokens("ja-JP");
     tokens.colors.accent = "#38bdf8";
