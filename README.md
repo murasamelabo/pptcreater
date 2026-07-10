@@ -74,6 +74,60 @@ pptcreater from-message-map .\message-map.json `
 
 From MCP, use `create_deck_from_message_map` for the same workflow. Follow it with `finalize_deck` / `render_pptx`, then run `review_message_map`, `review_visual_quality`, and finished-deck `review_slide_quality` (CLI: `pptcreater quality-review`). The generator adds inline SVG icons/illustration accents to message slides, uses categorized panels for hub-map / ponchi-e style comparisons to avoid broken radial connector layouts, and supports `visualType: "image"` with `visualAsset` for left/right official-image-or-illustration + message layouts. Only embed official images, screenshots, or photos when usage rights are clear; otherwise recreate the idea as an editable illustration and still record sources. The first-pass rules also incorporate locally OCRed PowerPoint-craft principles from both supplied PDFs and the ppptevaluater quality standard: decide the audience action before opening PowerPoint, treat whitespace as a design element, plan eye flow/axes before placing objects, weaken supporting elements before strengthening the hero, keep table grids/arrows/chart axes subordinate, break text into semantic chunks instead of black blocks, and check D1-D9 dimensions, A1-A6 anti-patterns, and S1-S7 deck story flow.
 
+### Human pairwise calibration
+
+For important slide types, materialize multiple visual-grammar candidates and capture their native canvases before choosing one:
+
+```powershell
+pptcreater materialize-candidates .\message-map.json `
+  --title "Candidate comparison" `
+  --slide-id responsibility-boundary `
+  --output-dir .\generated\candidates `
+  --content-mode handout `
+  --render-pptx `
+  --snapshot-images
+```
+
+This writes candidate DeckSpecs, evaluations, PPTX files, Studio HTML, PNG snapshots, rendered DOM metrics, and `candidate-summary.json`. Create a benchmark from that immutable summary, then append human A/B judgements as new JSON files:
+
+```powershell
+pptcreater benchmark-init .\generated\candidates\candidate-summary.json `
+  --benchmark-id auth-web-responsibility-v1 `
+  --output .\generated\benchmark-0.json
+
+pptcreater benchmark-record .\generated\benchmark-0.json `
+  --comparison-id review-001 `
+  --reviewer reviewer-a `
+  --left responsibility-comparison-field-candidate `
+  --right responsibility-table-text-system-candidate `
+  --preference left `
+  --confidence 5 `
+  --dimension overall `
+  --output .\generated\benchmark-1.json
+```
+
+Calibrate the Accuracy, Clarity, and Beauty weights across one or more benchmark files:
+
+```powershell
+pptcreater benchmark-calibrate .\generated\benchmark-1.json `
+  --minimum-accuracy-weight 0.3 `
+  --minimum-comparisons 3 `
+  --output .\generated\calibration.json
+```
+
+Apply a calibrated report when regenerating candidate recommendations:
+
+```powershell
+pptcreater materialize-candidates .\message-map.json `
+  --title "Calibrated comparison" `
+  --slide-id responsibility-boundary `
+  --output-dir .\generated\calibrated-candidates `
+  --snapshot-images `
+  --calibration-report .\generated\calibration.json
+```
+
+Only `overall` comparisons calibrate the combined weights. Comparisons involving an Accuracy-gate failure are excluded, and `insufficient-data` reports do not change recommendation weights. The candidate summary keeps production selection, rendered recommendation, calibration status, applied weights, benchmark ids, sample size, agreement, and rejection reasons as separate auditable fields.
+
 `review_content` / `pptcreater content-review` provides the content-writing guardrail that prevents AI-generated decks from reading like long documents. It switches rules by locale and `contentMode`:
 
 - Japanese `report`, `technical`, and `handout`: use a short topic-label title plus a separate slide message (one factual claim, about 50 characters or fewer).

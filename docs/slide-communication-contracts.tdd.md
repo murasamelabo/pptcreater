@@ -137,3 +137,33 @@ Full-slide background elements are excluded from occupancy and focal measurement
 | 21 | Candidate summary stores PNG path, DOM metrics, image scores, eligibility, ranking, and rejection reasons. | PASS |
 
 The current DOM/image metrics are deterministic proxies. They detect concrete rendered defects and composition differences, but they are not yet calibrated against human pairwise preference data.
+
+## Human Pairwise Benchmark And Calibration Slice
+
+The fifth slice persists immutable candidate features and human A/B judgements, then calibrates Accuracy, Clarity, and Beauty weights by confidence-weighted pairwise agreement.
+
+Benchmark format version `1.0` stores benchmark and source-summary ids, slide id, candidate ids/grammars/snapshot paths, frozen automatic scores, Accuracy-gate state, reviewer id, preference, confidence, dimension, notes, and timestamp. Duplicate comparison ids, unknown candidates, same-candidate comparisons, and duplicate reviewer/pair/dimension judgements are rejected.
+
+| Stage | Evidence |
+| --- | --- |
+| Benchmark RED | Focused test failed because `candidateBenchmark.js` did not exist. |
+| Benchmark RED commit | `5a8b474 test: define pairwise benchmark calibration` |
+| Benchmark GREEN | Runtime parsers, immutable comparison recording, confidence-weighted agreement, constrained grid search, and CLI lifecycle commands implemented. |
+| Benchmark commit | `8af214a Add pairwise benchmark calibration` |
+| Benchmark smoke | `benchmark-init`, three `benchmark-record` calls, and `benchmark-calibrate` completed; benchmark had 3 candidates / 3 comparisons / 3 reviewers. |
+| Calibration RED | Corrected focused test showed explicit calibrated weights were ignored. |
+| Calibration RED commit | `57f6c0f test: define calibrated recommendation weights` |
+| Calibration GREEN | `materialize-candidates --calibration-report` applies weights only for `calibrated` status and records provenance. |
+| Calibration commit | `de96381 Apply calibrated candidate weights` |
+| Full final | `npm test -- --reporter=dot` passed 31 files / 448 tests; build, diagnostics, diff check, and BOM checks passed. |
+
+### Calibration Rules
+
+- Only `overall` comparisons train combined weights; dimension-specific comparisons remain available for future specialist calibration.
+- Confidence 1-5 weights pairwise agreement.
+- Accuracy, Clarity, and Beauty weights are non-negative and sum to 1.
+- Accuracy weight has a configurable minimum, default 0.3.
+- Comparisons containing an Accuracy-gate failure are excluded with evidence.
+- Fewer than the configured minimum comparisons produce `insufficient-data` and retain baseline weights.
+- Ties in agreement prefer the weight vector closest to baseline, then deterministic Accuracy/Clarity/Beauty ordering.
+- Production selection and calibrated rendered recommendation remain separate fields.
