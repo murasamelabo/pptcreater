@@ -143,6 +143,16 @@ describe("narrative planning artifacts", () => {
     expect(contract.forbiddenLosses).toEqual(expect.arrayContaining(["認証結果コードを境界にする"]));
     expect(artifacts.expressionPlans[0].communicationContractId).toBe(contract.id);
     expect(artifacts.expressionPlans[0].rationale).toContain("responsibility");
+
+    const candidateSet = artifacts.expressionCandidateSets[0];
+    expect(candidateSet.slideId).toBe("responsibility-boundary");
+    expect(candidateSet.candidates.length).toBeGreaterThanOrEqual(2);
+    expect(candidateSet.selectedCandidateId).toBe(candidateSet.candidates[0].id);
+    expect(candidateSet.candidates[0].grammarId).toBe("comparison-field");
+    expect(candidateSet.candidates[0].scores.accuracy).toBeGreaterThanOrEqual(90);
+    expect(candidateSet.candidates[0].accuracyGate.passed).toBe(true);
+    expect(candidateSet.candidates.every((candidate) => candidate.scores.total >= 0 && candidate.scores.total <= 100)).toBe(true);
+    expect(artifacts.expressionPlans[0].selectedCandidateId).toBe(candidateSet.selectedCandidateId);
   });
 
   it("uses an explicit two-axis communication relation for decision surfaces", () => {
@@ -169,6 +179,13 @@ describe("narrative planning artifacts", () => {
     expect(artifacts.communicationContracts[0].relation).toBe("tradeoff");
     expect(artifacts.communicationContracts[0].comparisonAxes).toEqual(["統制強度", "実装負荷"]);
     expect(artifacts.expressionPlans[0].selectedGrammarId).toBe("decision-surface");
+
+    const candidateSet = artifacts.expressionCandidateSets[0];
+    const selected = candidateSet.candidates.find((candidate) => candidate.id === candidateSet.selectedCandidateId);
+    expect(selected?.grammarId).toBe("decision-surface");
+    expect(selected?.selectionReasons).toEqual(expect.arrayContaining([expect.stringContaining("tradeoff")]));
+    expect(candidateSet.candidates.filter((candidate) => candidate.accuracyGate.passed).length).toBeGreaterThanOrEqual(1);
+    expect(candidateSet.candidates.some((candidate) => !candidate.accuracyGate.passed)).toBe(true);
   });
 
   it("does not force list-like matrix intents into repeated two-axis maps", () => {
