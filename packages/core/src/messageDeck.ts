@@ -658,7 +658,7 @@ function visibleSentence(value: string): string {
   if (/[。.!?！？]$/u.test(text) || /(する|した|できる|ある|いる|なる|進める|示す|伝える|確認する|選ぶ)$/u.test(text)) {
     return text;
   }
-  return hasJapanese(text) ? `${text}。` : `${text} matters.`;
+  return hasJapanese(text) ? `${text}。` : text;
 }
 
 function leadSentence(value: string, maxLength = 54): string {

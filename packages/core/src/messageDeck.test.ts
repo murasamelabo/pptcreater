@@ -87,6 +87,30 @@ const MESSAGE_MAP: DeckMessageMap = {
 };
 
 describe("message map deck generator", () => {
+  it("does not append fabricated filler to English evidence", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "Explain ecosystem support",
+        audience: "Architects",
+        desiredAction: "Review providers",
+        intents: [{
+          slideId: "ecosystem",
+          title: "Ecosystem",
+          message: "The ecosystem spans identity and resource providers.",
+          evidence: ["Okta, Athenz, Keycloak", "Claude Code, VS Code, WorkOS", "Asana, Atlassian, Figma"],
+          quietInfo: [],
+          visualType: "summary",
+          emphasis: "Interoperability"
+        }]
+      },
+      { title: "Ecosystem", locale: "en-US", contentMode: "technical", planningMode: "narrative-v1", includeCover: false, includeClosing: false }
+    );
+    const visibleText = deck.slides.flatMap((slide) => slide.elements.filter((element) => element.type === "text").map((element) => element.text)).join("\n");
+
+    expect(visibleText).not.toContain("matters.");
+    expect(visibleText).toContain("Okta, Athenz, Keycloak");
+  });
+
   it("supports expressive message-map patterns beyond generic text panels", () => {
     const deck = createDeckFromMessageMap(
       {

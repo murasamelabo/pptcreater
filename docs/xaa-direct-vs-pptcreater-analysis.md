@@ -206,6 +206,13 @@ type MessageSpecStrategy = "generic-technical-report" | "auth-web-spec" | "expli
 
 Do not route arbitrary Markdown through auth-web-specific section names.
 
+**Implemented 2026-07-10:** `createMessageSpecFromDocSpec()` now defaults to
+`generic-technical-report`; `auth-web-spec` is an explicit strategy. The generic strategy uses H2
+sections and their H3 children as source-ordered planning units, preserves all table rows as
+MessageBlocks, and uses detail pages when a short source section has insufficient evidence for a
+diagram. The exact XAA source now produces 33 content slides rather than a fixed auth-web outline,
+with no auth-web-specific terms in the generated DeckSpec.
+
 ### P0: Add a Source Fidelity Gate before DeckSpec generation
 
 For technical reports, block or require a waiver when:
@@ -218,6 +225,13 @@ For technical reports, block or require a waiver when:
 - generated text contains known fragments such as `matters.`, partial identifiers, or generic numbered labels
 
 The gate should report source, MessageSpec, MessageMap, and DeckSpec retention separately.
+
+**Implemented 2026-07-10:** generic technical reports now block when visible source-section
+coverage is below 90%, must-visible term coverage is below 100%, or an omitted section has no
+reason. The XAA fixture passes at 100% section coverage and 100% must-visible term coverage. Its
+generated DeckSpec contains 11,365 visible characters, versus 4,289 in the prior PPTCreater deck.
+The metrics do not yet report all four retention stages or enforce final rendered-character
+thresholds; that remains follow-up work.
 
 ### P0: Make omission explicit
 
@@ -233,6 +247,11 @@ type VisibleSelection<T> = {
 ```
 
 If an item does not fit, split the slide or record why it moved. Never discard it only because a grammar supports fewer items.
+
+**Partially implemented 2026-07-10:** `deckMessageMapFromMessageSpec()` no longer caps evidence at
+seven items, and H3 splitting reduces the largest XAA MessageSpec unit from 68 to 21 blocks.
+The typed `VisibleSelection` result contract has not yet replaced every renderer-level selection;
+that is the next P0 change.
 
 ### P1: Preserve source chapter order
 

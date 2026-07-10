@@ -83,7 +83,8 @@ function stripInlineMarkup(value: string): string {
   return value
     .replace(/`([^`]+)`/gu, "$1")
     .replace(/\[([^\]]+)\]\([^)]+\)/gu, "$1")
-    .replace(/[*_~]/gu, "")
+    .replace(/[*~]/gu, "")
+    .replace(/(?<![\p{L}\p{N}])_([^_\n]+)_(?![\p{L}\p{N}])/gu, "$1")
     .trim();
 }
 

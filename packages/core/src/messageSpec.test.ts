@@ -80,11 +80,89 @@ MemoryCacheでAD問い合わせを抑えるが、ADロック挙動に注意す�
 - アプリ別移行方式判定表を作るか。
 `;
 
+const GENERIC_TECHNICAL_MARKDOWN = `# XAA / ID-JAG 技術解説
+
+## 基本概念
+
+ID-JAGは、IdPがアプリ間APIアクセスを許可したことを示す短命JWTです。
+
+## 登場ロールと信頼
+
+- Clientはユーザー代理アクセスを要求する。
+- IdPはポリシーを評価してID-JAGを発行する。
+- Resource AppはIdPのJWKSで署名を検証する。
+
+## Token Exchange
+
+RFC 8693のToken ExchangeでID TokenをID-JAGへ交換します。
+
+| パラメータ | 値 |
+| --- | --- |
+| grant_type | urn:ietf:params:oauth:grant-type:token-exchange |
+| requested_token_type | urn:ietf:params:oauth:token-type:id-jag |
+
+## Resource側検証
+
+RFC 7523 JWT BearerでID-JAGを提示し、aud、client_id、exp、scopeを検証します。
+
+## 導入評価
+
+既存OBOとの差、短命性、集中統制、MCPとの接続を評価します。
+`;
+
 describe("MessageSpec generation", () => {
+  it("creates a generic technical report in source chapter order without auth-web assumptions", () => {
+    const docSpec = extractDocSpecFromMarkdown(GENERIC_TECHNICAL_MARKDOWN, { sourceId: "xaa", title: "XAA / ID-JAG 技術解説" });
+    const messageSpec = createMessageSpecFromDocSpec(docSpec, { strategy: "generic-technical-report" });
+    const visibleText = messageSpec.slides
+      .flatMap((slide) => [slide.semanticTitle, slide.headline, slide.primaryClaim, ...slide.supportingBlocks.flatMap((block) => [block.label, block.text])])
+      .join("\n");
+
+    expect(messageSpec.strategy).toBe("generic-technical-report");
+    expect(messageSpec.slides.map((slide) => slide.semanticTitle)).toEqual([
+      "基本概念",
+      "登場ロールと信頼",
+      "Token Exchange",
+      "Resource側検証",
+      "導入評価"
+    ]);
+    expect(messageSpec.sourceCoverage.sectionCoverage.every((section) => section.status === "visible")).toBe(true);
+    expect(visibleText).toContain("RFC 8693");
+    expect(visibleText).toContain("RFC 7523");
+    expect(visibleText).toContain("requested_token_type");
+    expect(visibleText).not.toMatch(/CRANE|認証Web|ROPC方式の制約/u);
+  });
+
+  it("keeps all selected evidence in the DeckMessageMap instead of silently capping it", () => {
+    const markdown = `# Technical report\n\n## Controls\n\n${Array.from({ length: 9 }, (_, index) => `- Control ${index + 1}: Evidence ${index + 1}`).join("\n")}`;
+    const docSpec = extractDocSpecFromMarkdown(markdown, { sourceId: "controls", title: "Controls" });
+    const messageSpec = createMessageSpecFromDocSpec(docSpec, { strategy: "generic-technical-report" });
+    const messageMap = deckMessageMapFromMessageSpec(messageSpec);
+
+    expect(messageMap.intents[0]?.evidence).toContain("Control 9: Evidence 9");
+    expect(messageMap.intents[0]?.evidence.length).toBeGreaterThanOrEqual(9);
+  });
+
+  it("rejects unexplained source omissions in generic technical reports", () => {
+    const docSpec = extractDocSpecFromMarkdown(GENERIC_TECHNICAL_MARKDOWN, { sourceId: "xaa", title: "XAA" });
+    const messageSpec = createMessageSpecFromDocSpec(docSpec, { strategy: "generic-technical-report" });
+    messageSpec.sourceCoverage.sectionCoverage[1] = { ...messageSpec.sourceCoverage.sectionCoverage[1], status: "omitted" };
+
+    const review = reviewMessageSpec(messageSpec, {
+      minSlides: 1,
+      minTotalVisibleChars: 1,
+      preferredAverageVisibleChars: 1,
+      minSectionCoverageRatio: 0,
+      minRequiredTermCoverageRatio: 0
+    });
+
+    expect(review.issues.map((issue) => issue.code)).toContain("message-spec.omission-reason-missing");
+  });
+
   it("creates a source-faithful MessageSpec and derived DeckMessageMap from DocSpec", () => {
     const docSpec = extractDocSpecFromMarkdown(AUTH_WEB_MARKDOWN, { sourceId: "auth-web", title: "認証Web" });
     const ledger = createInformationLedger(docSpec);
-    const messageSpec = createMessageSpecFromDocSpec(docSpec, { audience: "担当者", desiredAction: "棚卸しする" });
+    const messageSpec = createMessageSpecFromDocSpec(docSpec, { strategy: "auth-web-spec", audience: "担当者", desiredAction: "棚卸しする" });
     const messageMap = deckMessageMapFromMessageSpec(messageSpec);
     const review = reviewMessageSpec(messageSpec, { minSlides: 8, minTotalVisibleChars: 900, preferredAverageVisibleChars: 120 });
 

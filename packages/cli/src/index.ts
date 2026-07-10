@@ -1606,8 +1606,12 @@ program
     const markdown = await readFile(markdownPath, "utf8");
     const parsedLocale = asLocale(options.locale);
     const docSpec = extractDocSpecFromMarkdown(markdown, { sourceId: markdownPath, title: options.title });
-    const messageSpec = createMessageSpecFromDocSpec(docSpec, { audience: docSpec.title, desiredAction: "確認事項を整理する" });
-    const messageSpecReview = reviewMessageSpec(messageSpec);
+    const messageSpec = createMessageSpecFromDocSpec(docSpec, {
+      strategy: "generic-technical-report",
+      audience: docSpec.title,
+      desiredAction: "確認事項を整理する"
+    });
+    const messageSpecReview = reviewMessageSpec(messageSpec, { maxSlides: messageSpec.strategy === "generic-technical-report" ? 40 : undefined });
     if (!messageSpecReview.ok) {
       throw new Error(`MessageSpec review failed before DeckSpec generation:\n${messageSpecReview.issues.map((issue) => `${issue.severity.toUpperCase()} ${issue.code} ${issue.path}: ${issue.message}`).join("\n")}`);
     }

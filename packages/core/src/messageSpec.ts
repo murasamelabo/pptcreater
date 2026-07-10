@@ -88,6 +88,7 @@ export type SourceCoverage = {
 };
 
 export type MessageSpec = {
+  strategy?: MessageSpecStrategy;
   title: string;
   thesis: string;
   audience: string;
@@ -97,7 +98,10 @@ export type MessageSpec = {
   slides: MessageSlideSpec[];
 };
 
+export type MessageSpecStrategy = "generic-technical-report" | "auth-web-spec";
+
 export type MessageSpecOptions = {
+  strategy?: MessageSpecStrategy;
   audience?: string;
   desiredAction?: string;
   minSlides?: number;
@@ -121,6 +125,8 @@ export type MessageSpecReview = {
     averageVisibleChars: number;
     mustVisibleTerms: number;
     visibleMustTerms: number;
+    sectionCoverageRatio: number;
+    requiredTermCoverageRatio: number;
   };
 };
 
@@ -129,6 +135,8 @@ export type MessageSpecReviewOptions = {
   maxSlides?: number;
   minTotalVisibleChars?: number;
   preferredAverageVisibleChars?: number;
+  minSectionCoverageRatio?: number;
+  minRequiredTermCoverageRatio?: number;
 };
 
 const TECHNICAL_BUDGET: VisibleTextBudget = { minChars: 180, targetChars: 250, maxChars: 340 };
@@ -390,6 +398,11 @@ export function reviewMessageSpec(messageSpec: MessageSpec, options: MessageSpec
   const mustVisibleTerms = messageSpec.requiredTerms.filter((term) => term.visibility === "must-visible");
   const visibleText = visibleBySlide.join("\n");
   const visibleMustTerms = mustVisibleTerms.filter((term) => visibleText.includes(term.term));
+  const visibleSections = messageSpec.sourceCoverage.sectionCoverage.filter((section) => section.status === "visible").length;
+  const sectionCoverageRatio = messageSpec.sourceCoverage.sectionCoverage.length > 0 ? visibleSections / messageSpec.sourceCoverage.sectionCoverage.length : 1;
+  const requiredTermCoverageRatio = mustVisibleTerms.length > 0 ? visibleMustTerms.length / mustVisibleTerms.length : 1;
+  const minSectionCoverageRatio = options.minSectionCoverageRatio ?? (messageSpec.strategy === "generic-technical-report" ? 0.9 : 0);
+  const minRequiredTermCoverageRatio = options.minRequiredTermCoverageRatio ?? (messageSpec.strategy === "generic-technical-report" ? 1 : 0);
 
   if (messageSpec.slides.length < minSlides || messageSpec.slides.length > maxSlides) {
     issues.push({
@@ -418,6 +431,37 @@ export function reviewMessageSpec(messageSpec: MessageSpec, options: MessageSpec
       details: { averageVisibleChars, preferredMinimum: preferredAverageVisibleChars }
     });
   }
+
+  if (sectionCoverageRatio < minSectionCoverageRatio) {
+    issues.push({
+      severity: "error",
+      code: "message-spec.source-section-coverage-low",
+      message: "Generic technical reports must retain at least 90% of source sections as visible content before layout.",
+      path: "sourceCoverage.sectionCoverage",
+      details: { sectionCoverageRatio, minimum: minSectionCoverageRatio, visibleSections, sourceSections: messageSpec.sourceCoverage.sectionCoverage.length }
+    });
+  }
+
+  if (requiredTermCoverageRatio < minRequiredTermCoverageRatio) {
+    issues.push({
+      severity: "error",
+      code: "message-spec.required-term-coverage-low",
+      message: "Generic technical reports must keep every must-visible source term visible before layout.",
+      path: "sourceCoverage.requiredTermCoverage",
+      details: { requiredTermCoverageRatio, minimum: minRequiredTermCoverageRatio, visibleMustTerms: visibleMustTerms.length, mustVisibleTerms: mustVisibleTerms.length }
+    });
+  }
+
+  messageSpec.sourceCoverage.sectionCoverage
+    .filter((section) => section.status === "omitted" && !section.reason?.trim())
+    .forEach((section) => {
+      issues.push({
+        severity: "error",
+        code: "message-spec.omission-reason-missing",
+        message: `Omitted source section "${section.title}" must record why it is not visible or in notes.`,
+        path: `sourceCoverage.sectionCoverage.${section.sectionId}`
+      });
+    });
 
   const missingMustVisibleTerms = mustVisibleTerms.filter((term) => !visibleText.includes(term.term));
   missingMustVisibleTerms.forEach((term) => {
@@ -481,7 +525,9 @@ export function reviewMessageSpec(messageSpec: MessageSpec, options: MessageSpec
       totalVisibleChars,
       averageVisibleChars,
       mustVisibleTerms: mustVisibleTerms.length,
-      visibleMustTerms: visibleMustTerms.length
+      visibleMustTerms: visibleMustTerms.length,
+      sectionCoverageRatio,
+      requiredTermCoverageRatio
     }
   };
 }
@@ -532,6 +578,149 @@ export function createInformationLedger(docSpec: DocSpec): InformationLedger {
 }
 
 export function createMessageSpecFromDocSpec(docSpec: DocSpec, options: MessageSpecOptions = {}): MessageSpec {
+  const strategy = options.strategy ?? "generic-technical-report";
+  return strategy === "auth-web-spec" ? createAuthWebMessageSpec(docSpec, options) : createGenericTechnicalReportMessageSpec(docSpec, options);
+}
+
+function genericFigureNeed(section: DocSection, tables: DocTable[]): FigureNeed {
+  const value = `${section.title}\n${section.text}`;
+  if (tables.length > 0) return { kind: "table", rationale: "Preserve the source table as structured visible evidence." };
+  if (/比較|差分|代替|対比|versus|\bvs\.?\b/iu.test(value)) return { kind: "detail", rationale: "Retain the comparison prose until explicit axes and comparable columns are available." };
+  if (/フロー|手順|ステップ|処理|交換|シーケンス/u.test(value)) return { kind: "process", rationale: "The source section explains ordered behavior." };
+  if (/構成|アーキテクチャ|登場ロール|信頼|関係/u.test(value)) return { kind: "architecture", rationale: "The source section explains actors or structural relationships." };
+  if (/まとめ|要約|結論/u.test(value)) return { kind: "summary", rationale: "The source section summarizes the report." };
+  return { kind: "detail", rationale: "Retain the source explanation as a readable technical detail page." };
+}
+
+function genericSlideRole(figureNeed: FigureNeed): SlideRole {
+  if (figureNeed.kind === "process" || figureNeed.kind === "architecture") return "process";
+  if (figureNeed.kind === "comparison") return "comparison";
+  if (figureNeed.kind === "table") return "data";
+  if (figureNeed.kind === "summary") return "action";
+  return "detail";
+}
+
+function genericPrimaryClaim(section: DocSection, lines: string[]): string {
+  const candidate = (lines[0] ?? section.text.trim() ?? section.title)
+    .replace(/^>\s*/u, "")
+    .replace(/[*~]/gu, "")
+    .replace(/すべての/gu, "各")
+    .replace(/\s+/gu, " ")
+    .trim();
+  const sentence = candidate.split(/(?<=[。！？!?])/u)[0]?.trim() ?? candidate;
+  if ([...sentence].length <= 60 && (sentence.match(/[、,]/gu) ?? []).length < 3) return sentence;
+  const prefix = [...sentence].slice(0, 60).join("");
+  const boundary = Math.max(prefix.lastIndexOf("。"), prefix.lastIndexOf("！"), prefix.lastIndexOf("？"), prefix.lastIndexOf("、"), prefix.lastIndexOf("；"), prefix.lastIndexOf(";"));
+  if (boundary >= 12) return `${prefix.slice(0, boundary).replace(/[、；;]+$/u, "")}。`;
+  return `${section.title}の技術要点を整理する。`;
+}
+
+function genericBlocks(docSpec: DocSpec, sections: DocSection[], tables: DocTable[], terms: RequiredTerm[]): MessageBlock[] {
+  const sectionIds = sections.map((section) => section.id);
+  const lineBlocks = sections.flatMap((section) => sectionLines(section).map((line, index) => {
+    const match = /^(.{1,32}?)(?:[:：])\s*(.+)$/u.exec(line);
+    return {
+      id: `${section.id}-line-${index + 1}`,
+      label: match?.[1] ?? section.title,
+      text: match?.[2] ?? line,
+      sourceSectionIds: [section.id],
+      requiredTerms: termsInText(terms, line)
+    } satisfies MessageBlock;
+  }));
+  const tableBlocks = tables.flatMap((table) => table.rows.map((row, index) => ({
+    id: `${table.id}-row-${index + 1}`,
+    label: row[0]?.trim() || table.headers[0]?.trim() || `Row ${index + 1}`,
+    text: row.slice(1).filter(Boolean).join(" / "),
+    sourceSectionIds: [table.sectionId],
+    requiredTerms: termsInText(terms, row.join(" "))
+  } satisfies MessageBlock)));
+  if (lineBlocks.length > 0 || tableBlocks.length > 0) return [...lineBlocks, ...tableBlocks];
+  return [{
+    id: `${sections[0]?.id ?? "section"}-source`,
+    label: sections[0]?.title ?? "Source",
+    text: sections.map(sectionText).filter(Boolean).join("\n"),
+    sourceSectionIds: sectionIds,
+    requiredTerms: termsInText(terms, sections.map(sectionText).join("\n"))
+  }];
+}
+
+type GenericPlanningUnit = {
+  section: DocSection;
+  sections: DocSection[];
+  attributedSectionIds: string[];
+};
+
+function genericPlanningUnits(docSpec: DocSpec): GenericPlanningUnit[] {
+  const levelTwoSections = docSpec.sections.filter((section) => section.level === 2);
+  if (levelTwoSections.length === 0) {
+    const minimumLevel = Math.min(...docSpec.sections.map((section) => section.level));
+    return docSpec.sections.filter((section) => section.level === minimumLevel).map((section) => ({ section, sections: [section], attributedSectionIds: [section.id] }));
+  }
+  return levelTwoSections.flatMap((section) => {
+    const children = childSections(docSpec, section);
+    const directTables = docSpec.tables.filter((table) => table.sectionId === section.id);
+    const hasDirectContent = sectionLines(section).length > 0 || directTables.length > 0 || docSpec.diagrams.some((diagram) => diagram.sectionId === section.id);
+    const units: GenericPlanningUnit[] = [];
+    if (hasDirectContent || children.length === 0) {
+      units.push({ section, sections: [section], attributedSectionIds: [section.id] });
+    }
+    children.forEach((child, index) => {
+      units.push({
+        section: child,
+        sections: sectionFamily(docSpec, child),
+        attributedSectionIds: [...(!hasDirectContent && index === 0 ? [section.id] : []), child.id]
+      });
+    });
+    return units;
+  });
+}
+
+function createGenericTechnicalReportMessageSpec(docSpec: DocSpec, options: MessageSpecOptions): MessageSpec {
+  const slides = genericPlanningUnits(docSpec).map((unit) => {
+    const { section, sections } = unit;
+    const sourceSections = [...new Set([...unit.attributedSectionIds, ...sections.map((item) => item.id)])];
+    const sourceText = sections.map(sectionText).filter(Boolean).join("\n");
+    const lines = sections.flatMap(sectionLines);
+    const tables = docSpec.tables.filter((table) => sourceSections.includes(table.sectionId));
+    const supportingBlocks = genericBlocks(docSpec, sections, tables, docSpec.requiredTerms);
+    const inferredFigureNeed = genericFigureNeed(section, tables);
+    const figureNeed = supportingBlocks.length < 3 && ["architecture", "process", "comparison"].includes(inferredFigureNeed.kind)
+      ? { kind: "detail" as const, rationale: "Retain the short source section as prose because it lacks enough structured evidence for a figure." }
+      : inferredFigureNeed;
+    const primaryClaim = genericPrimaryClaim(section, lines);
+    return {
+      id: section.id,
+      semanticTitle: section.title,
+      headline: primaryClaim,
+      primaryClaim,
+      slideRole: genericSlideRole(figureNeed),
+      chapterId: section.parentId ?? section.id,
+      visibleBudget: TECHNICAL_BUDGET,
+      sourceSections,
+      requiredTerms: termsInText(docSpec.requiredTerms, sourceText),
+      supportingBlocks,
+      figureNeed,
+      notesBlocks: []
+    } satisfies MessageSlideSpec;
+  });
+  const documentSections = docSpec.sections.filter((section) => section.level < 2);
+  if (slides[0] && documentSections.length > 0) {
+    slides[0].sourceSections = [...documentSections.map((section) => section.id), ...slides[0].sourceSections];
+  }
+  const thesis = docSpec.keyFacts[0]?.text ?? slides[0]?.primaryClaim ?? docSpec.title;
+  return {
+    strategy: "generic-technical-report",
+    title: docSpec.title,
+    thesis,
+    audience: options.audience ?? "技術担当者、アーキテクト、意思決定者",
+    desiredAction: options.desiredAction ?? "技術内容を理解し、評価事項と次の判断を整理する",
+    sourceCoverage: coverageFor(docSpec, slides),
+    requiredTerms: docSpec.requiredTerms,
+    slides
+  };
+}
+
+function createAuthWebMessageSpec(docSpec: DocSpec, options: MessageSpecOptions): MessageSpec {
   const terms = docSpec.requiredTerms;
   const purpose = findSection(docSpec, /システムの目的/u);
   const architecture = findSection(docSpec, /全体構成/u);
@@ -643,6 +832,7 @@ export function createMessageSpecFromDocSpec(docSpec: DocSpec, options: MessageS
   const slides = candidateSlides.filter((item) => item.sourceSections.length > 0 || item.supportingBlocks.length > 0 || item.id === "overview" || item.id === "summary");
 
   return {
+    strategy: "auth-web-spec",
     title: docSpec.title,
     thesis: "認証Webは共通基盤だが、ROPC方式の制約を踏まえ移行判断が必要である。",
     audience: options.audience ?? "認証Web利用アプリ担当者、ID基盤担当者、セキュリティ担当者",
@@ -738,7 +928,7 @@ export function deckMessageMapFromMessageSpec(messageSpec: MessageSpec): DeckMes
         slideRole: slideSpec.slideRole,
         visualType: visualTypeForFigure(slideSpec.figureNeed),
         emphasis: slideSpec.headline,
-        evidence: evidence.slice(0, 7),
+        evidence,
         details,
         sourceTrace: slideSpec.sourceSections,
         quietInfo: slideSpec.requiredTerms,
