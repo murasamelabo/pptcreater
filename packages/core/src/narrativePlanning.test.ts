@@ -232,6 +232,46 @@ describe("narrative planning artifacts", () => {
     expect(result.selectionPolicy).toBe("primary-grammar-until-rendered");
   });
 
+  it("materializes structured comparison candidates with distinct grammar elements", () => {
+    const map: DeckMessageMap = {
+      objective: "責任分界を合意する",
+      audience: "開発担当者",
+      desiredAction: "担当を確定する",
+      intents: [
+        {
+          slideId: "responsibility",
+          title: "責任分界",
+          message: "認証Webは認証と情報取得まで、認可判断はアプリ側。",
+          slideRole: "comparison",
+          evidence: [
+            "責務: 認証Web / アプリ側",
+            "本人確認: ADへの認証問い合わせ / ログイン画面・入力チェック",
+            "情報取得: ユーザー属性・所属グループ取得 / 認証Web呼び出し",
+            "結果処理: 結果コード・返却形式を返す / 結果コード判定・エラー表示"
+          ],
+          quietInfo: [],
+          visualType: "contrast",
+          emphasis: "認証と認可を分離"
+        }
+      ]
+    };
+
+    const result = materializeExpressionCandidateDecks(map, {
+      title: "Structured comparison candidates",
+      locale: "ja-JP",
+      contentMode: "handout"
+    });
+    const elementsByGrammar = new Map(result.candidateDecks.map((candidate) => [
+      candidate.grammarId,
+      candidate.deck.slides[0].elements.map((element) => element.id)
+    ]));
+
+    expect(elementsByGrammar.get("comparison-field")).toEqual(expect.arrayContaining(["responsibility-comparison-left"]));
+    expect(elementsByGrammar.get("table-text-system")).toEqual(expect.arrayContaining(["responsibility-table-stage"]));
+    expect(elementsByGrammar.get("evidence-board")).toEqual(expect.arrayContaining(["responsibility-narrative-evidence-field"]));
+    expect(new Set([...elementsByGrammar.values()].map((ids) => ids.join("|"))).size).toBe(3);
+  });
+
   it("does not force list-like matrix intents into repeated two-axis maps", () => {
     const map: DeckMessageMap = {
       objective: "統制要件を整理する",
