@@ -1,5 +1,6 @@
 ﻿import { defaultTokens } from "./color.js";
 import { estimateTextOverflow, normalizeDeckLayout } from "./layout.js";
+import { reviewDeck } from "./director.js";
 import type {
   ContentMode,
   DeckMessageMap,
@@ -19,8 +20,18 @@ import type {
   PptxSlideColorReplacement,
   TextElement
 } from "./schema.js";
-import { createNarrativePlanArtifacts, type ExpressionPlan, type LayoutPlan, type PlanningMode } from "./narrativePlanning.js";
+import { reviewSlideQuality } from "./slideQualityReview.js";
+import { reviewVisualQuality } from "./visualQuality.js";
+import {
+  createNarrativePlanArtifacts,
+  type ExpressionCandidate,
+  type ExpressionCandidateSet,
+  type ExpressionPlan,
+  type LayoutPlan,
+  type PlanningMode
+} from "./narrativePlanning.js";
 import { getTemplate, recommendTemplateForContentMode, styleProfileTokens, templateForStyleProfile, type StyleProfile } from "./templates.js";
+import type { VisualGrammarId } from "./visualGrammarRegistry.js";
 
 const W = 13.333;
 const H = 7.5;
@@ -105,8 +116,45 @@ export type CreateDeckFromMessageMapOptions = {
   includeClosing?: boolean;
   tokens?: DesignTokens;
   planningMode?: PlanningMode;
+  expressionGrammarOverrides?: Record<string, { candidateId: string; grammarId: VisualGrammarId }>;
   diagramRenderer?: NarrativeDiagramRenderer;
   designComponentRenderer?: NarrativeDesignComponentRenderer;
+};
+
+export type MaterializedExpressionCandidateDeck = {
+  slideId: string;
+  candidateId: string;
+  grammarId: VisualGrammarId;
+  deck: DeckSpec;
+  evaluation: {
+    accuracy: number;
+    clarity: number;
+    beauty: number;
+    total: number;
+    accuracyGatePassed: boolean;
+    reviewEvidence: {
+      blockingCount: number;
+      polishFixableCount: number;
+      visualErrorCount: number;
+      visualWarningCount: number;
+      qualityOverall: number;
+    };
+  };
+};
+
+export type MaterializedExpressionCandidateResult = {
+  slideId: string;
+  selectionPolicy: ExpressionCandidateSet["selectionPolicy"];
+  selectedCandidateId: string;
+  planningCandidateSet: ExpressionCandidateSet;
+  candidateDecks: MaterializedExpressionCandidateDeck[];
+};
+
+export type MaterializeExpressionCandidateOptions = Omit<
+  CreateDeckFromMessageMapOptions,
+  "includeCover" | "includeClosing" | "expressionGrammarOverrides"
+> & {
+  slideId?: string;
 };
 
 type Theme = {
@@ -2468,7 +2516,16 @@ export function createDeckFromMessageMap(messageMap: DeckMessageMap, options: Cr
   }
   authoringMessageMap.intents.forEach((intent, index) => {
     if (narrativeArtifacts) {
-      const expressionPlan = narrativeArtifacts.expressionPlans[index];
+      const baseExpressionPlan = narrativeArtifacts.expressionPlans[index];
+      const expressionOverride = options.expressionGrammarOverrides?.[intent.slideId];
+      const expressionPlan: ExpressionPlan = expressionOverride
+        ? {
+            ...baseExpressionPlan,
+            selectedCandidateId: expressionOverride.candidateId,
+            selectedGrammarId: expressionOverride.grammarId,
+            rationale: `${baseExpressionPlan.rationale} Materialized candidate ${expressionOverride.candidateId} with grammar ${expressionOverride.grammarId}.`
+          }
+        : baseExpressionPlan;
       const layoutPlan = narrativeArtifacts.layoutPlans[index];
       const authoredComparison = renderComparisonTable(theme, intent);
       const authoredDiagram = authoredComparison ?? renderAuthoredDiagram(theme, intent, options.diagramRenderer);
@@ -2516,4 +2573,84 @@ export function createDeckFromMessageMap(messageMap: DeckMessageMap, options: Cr
   };
 
   return normalizeDeckLayout(deck);
+}
+
+function materializedScore(value: number): number {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function evaluateMaterializedCandidate(candidate: ExpressionCandidate, deck: DeckSpec): MaterializedExpressionCandidateDeck["evaluation"] {
+  const deckReview = reviewDeck(deck, { includeBusinessReview: false });
+  const visualReview = reviewVisualQuality(deck);
+  const qualityReview = reviewSlideQuality(deck);
+  const visualErrorCount = visualReview.issues.filter((issue) => issue.severity === "error").length;
+  const visualWarningCount = visualReview.issues.filter((issue) => issue.severity === "warning").length;
+  const clarity = materializedScore(
+    candidate.scores.clarity - deckReview.blocking.length * 20 - deckReview.polishFixable.length * 5 - visualErrorCount * 15 - visualWarningCount * 2
+  );
+  const beauty = materializedScore(qualityReview.overallScore);
+  return {
+    accuracy: candidate.scores.accuracy,
+    clarity,
+    beauty,
+    total: materializedScore(candidate.scores.accuracy * 0.5 + clarity * 0.3 + beauty * 0.2),
+    accuracyGatePassed: candidate.accuracyGate.passed,
+    reviewEvidence: {
+      blockingCount: deckReview.blocking.length,
+      polishFixableCount: deckReview.polishFixable.length,
+      visualErrorCount,
+      visualWarningCount,
+      qualityOverall: qualityReview.overallScore
+    }
+  };
+}
+
+export function materializeExpressionCandidateDecks(
+  messageMap: DeckMessageMap,
+  options: MaterializeExpressionCandidateOptions
+): MaterializedExpressionCandidateResult {
+  if (messageMap.intents.length === 0) {
+    throw new Error("messageMap.intents must contain at least one SlideIntent.");
+  }
+  if (messageMap.intents.length > 1 && !options.slideId) {
+    throw new Error("slideId is required when materializing candidates from a Message Map with multiple intents.");
+  }
+  const targetIntent = options.slideId
+    ? messageMap.intents.find((intent) => intent.slideId === options.slideId)
+    : messageMap.intents[0];
+  if (!targetIntent) {
+    throw new Error(`SlideIntent not found for candidate materialization: ${options.slideId}.`);
+  }
+
+  const locale = options.locale ?? "ja-JP";
+  const contentMode = options.contentMode ?? "report";
+  const targetMessageMap: DeckMessageMap = { ...messageMap, intents: [targetIntent] };
+  const planningArtifacts = createNarrativePlanArtifacts(targetMessageMap, { title: options.title, locale, contentMode });
+  const planningCandidateSet = planningArtifacts.expressionCandidateSets[0];
+  const candidateDecks = planningCandidateSet.candidates.map((candidate): MaterializedExpressionCandidateDeck => {
+    const deck = createDeckFromMessageMap(targetMessageMap, {
+      ...options,
+      planningMode: "narrative-v1",
+      includeCover: false,
+      includeClosing: false,
+      expressionGrammarOverrides: {
+        [targetIntent.slideId]: { candidateId: candidate.id, grammarId: candidate.grammarId }
+      }
+    });
+    return {
+      slideId: targetIntent.slideId,
+      candidateId: candidate.id,
+      grammarId: candidate.grammarId,
+      deck,
+      evaluation: evaluateMaterializedCandidate(candidate, deck)
+    };
+  });
+
+  return {
+    slideId: targetIntent.slideId,
+    selectionPolicy: planningCandidateSet.selectionPolicy,
+    selectedCandidateId: planningCandidateSet.selectedCandidateId,
+    planningCandidateSet,
+    candidateDecks
+  };
 }

@@ -35,6 +35,7 @@ import {
   listSkillPacks,
   lintDeckSpec,
   localizeLintReport,
+  materializeExpressionCandidateDecks,
   normalizeDeckLayout,
   planBusinessDeck,
   parseDeckSpec,
@@ -882,6 +883,69 @@ program
       return;
     }
     console.log(cliMessage(outputLocale(deck.locale), "cli.created", { path: options.output }));
+  }));
+
+program
+  .command("materialize-candidates")
+  .description("Materialize ranked visual-grammar candidates as isolated DeckSpecs with deterministic review evidence.")
+  .argument("<message-map>", "JSON path containing a DeckMessageMap, { messageMap }, or a DeckSpec with metadata.messageMap")
+  .requiredOption("--title <title>", "Deck title")
+  .requiredOption("--output-dir <path>", "Directory for candidate DeckSpecs and evaluations")
+  .option("--slide-id <id>", "SlideIntent id; required when the Message Map contains multiple intents")
+  .option("--locale <locale>", "Deck locale", "ja-JP")
+  .option("--content-mode <mode>", "presentation, report, technical, handout, or decision", parseContentMode, "report")
+  .option("--style <profile>", "Force a style: minimal, stylish, report, presentation, technical", parseStyleProfile)
+  .option("--json", "Emit JSON result", false)
+  .action(commandAction(async (messageMapPath: string, options: {
+    title: string;
+    outputDir: string;
+    slideId?: string;
+    locale: string;
+    contentMode: ContentMode;
+    style?: StyleProfile;
+    json: boolean;
+  }) => {
+    const raw = await readJson(messageMapPath);
+    const container = raw as { messageMap?: unknown; metadata?: { messageMap?: unknown } };
+    const messageMap = DeckMessageMapSchema.parse(container.messageMap ?? container.metadata?.messageMap ?? raw);
+    const result = materializeExpressionCandidateDecks(messageMap, {
+      title: options.title,
+      slideId: options.slideId,
+      locale: asLocale(options.locale),
+      contentMode: options.contentMode,
+      styleProfile: options.style
+    });
+    await mkdir(options.outputDir, { recursive: true });
+    const candidateArtifacts = result.candidateDecks.map((candidate) => {
+      const scoreRank = result.planningCandidateSet.candidates.find((item) => item.id === candidate.candidateId)?.scoreRank ?? 0;
+      const stem = `candidate-${String(scoreRank).padStart(2, "0")}-${candidate.grammarId}`;
+      return {
+        candidateId: candidate.candidateId,
+        grammarId: candidate.grammarId,
+        scoreRank,
+        deckPath: `${options.outputDir}/${stem}.deck.json`,
+        evaluationPath: `${options.outputDir}/${stem}.evaluation.json`,
+        evaluation: candidate.evaluation,
+        deck: candidate.deck
+      };
+    });
+    for (const artifact of candidateArtifacts) {
+      await writeJson(artifact.deckPath, artifact.deck);
+      await writeJson(artifact.evaluationPath, artifact.evaluation);
+    }
+    const summary = {
+      slideId: result.slideId,
+      selectionPolicy: result.selectionPolicy,
+      selectedCandidateId: result.selectedCandidateId,
+      planningCandidateSet: result.planningCandidateSet,
+      candidates: candidateArtifacts.map(({ deck, ...artifact }) => artifact)
+    };
+    await writeJson(`${options.outputDir}/candidate-summary.json`, summary);
+    if (options.json) {
+      console.log(JSON.stringify(summary, null, 2));
+      return;
+    }
+    console.log(`Materialized ${candidateArtifacts.length} expression candidates in ${options.outputDir}`);
   }));
 
 program
