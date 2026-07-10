@@ -38,6 +38,8 @@ export type CapturedCandidateSnapshot = CandidateSnapshotPlanItem & {
 
 export type RenderedCandidateRecommendation = {
   recommendedCandidateId: string;
+  weights: { accuracy: number; clarity: number; beauty: number };
+  weightSource: "baseline" | "calibrated";
   eligibleCandidateIds: string[];
   ranked: Array<{ candidateId: string; accuracy: number; clarity: number; beauty: number; total: number }>;
   rejected: Array<{ candidateId: string; reason: "accuracy-gate" | "render-blocking" | "snapshot-missing" }>;
@@ -76,8 +78,16 @@ export function scoreRenderedSnapshotMetrics(metrics: RenderedSnapshotMetrics): 
 
 export function recommendRenderedCandidate(
   candidates: Array<{ candidateId: string; accuracy: number; accuracyGatePassed: boolean }>,
-  snapshots: Array<{ candidateId: string; clarity: number; beauty: number; blocking: boolean }>
+  snapshots: Array<{ candidateId: string; clarity: number; beauty: number; blocking: boolean }>,
+  calibratedWeights?: { accuracy: number; clarity: number; beauty: number }
 ): RenderedCandidateRecommendation {
+  const baselineWeights = { accuracy: 0.5, clarity: 0.3, beauty: 0.2 };
+  const weightSource = calibratedWeights ? "calibrated" : "baseline";
+  const weights = calibratedWeights ?? baselineWeights;
+  const totalWeight = weights.accuracy + weights.clarity + weights.beauty;
+  if (weights.accuracy < 0 || weights.clarity < 0 || weights.beauty < 0 || Math.abs(totalWeight - 1) > 1e-8) {
+    throw new Error("Rendered recommendation weights must be non-negative and sum to 1.");
+  }
   const snapshotsById = new Map(snapshots.map((snapshot) => [snapshot.candidateId, snapshot]));
   const rejected: RenderedCandidateRecommendation["rejected"] = [];
   const ranked = candidates.flatMap((candidate) => {
@@ -99,7 +109,7 @@ export function recommendRenderedCandidate(
       accuracy: candidate.accuracy,
       clarity: snapshot.clarity,
       beauty: snapshot.beauty,
-      total: clampScore(candidate.accuracy * 0.5 + snapshot.clarity * 0.3 + snapshot.beauty * 0.2)
+      total: clampScore(candidate.accuracy * weights.accuracy + snapshot.clarity * weights.clarity + snapshot.beauty * weights.beauty)
     }];
   }).sort((left, right) =>
     right.total - left.total ||
@@ -114,6 +124,8 @@ export function recommendRenderedCandidate(
   }
   return {
     recommendedCandidateId: recommended.candidateId,
+    weights,
+    weightSource,
     eligibleCandidateIds: ranked.map((candidate) => candidate.candidateId),
     ranked,
     rejected

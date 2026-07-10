@@ -145,6 +145,41 @@ export function parseCandidateBenchmark(value: unknown): CandidatePairwiseBenchm
   return parsed;
 }
 
+export function parseCandidateCalibrationReport(value: unknown): CandidateCalibrationReport {
+  const report = objectValue(value, "calibration report");
+  if (report.version !== "1.0") throw new Error("Unsupported calibration report version.");
+  if (report.status !== "calibrated" && report.status !== "insufficient-data") throw new Error("Invalid calibration report status.");
+  const weights = objectValue(report.weights, "calibration report weights");
+  const baselineWeights = objectValue(report.baselineWeights, "calibration report baseline weights");
+  const parseWeights = (input: Record<string, unknown>, label: string): CandidateScoreWeights => {
+    const parsed = normalizedWeights({
+      accuracy: requiredScore(input.accuracy, `${label} accuracy`),
+      clarity: requiredScore(input.clarity, `${label} clarity`),
+      beauty: requiredScore(input.beauty, `${label} beauty`)
+    });
+    return parsed;
+  };
+  if (!Array.isArray(report.benchmarkIds) || !report.benchmarkIds.every((id) => typeof id === "string")) throw new Error("calibration report benchmarkIds must be string array.");
+  if (!Array.isArray(report.excludedComparisons)) throw new Error("calibration report excludedComparisons must be array.");
+  return {
+    version: "1.0",
+    status: report.status,
+    benchmarkIds: [...report.benchmarkIds],
+    sampleSize: Number(report.sampleSize),
+    reviewerCount: Number(report.reviewerCount),
+    baselineWeights: parseWeights(baselineWeights, "baseline weights"),
+    weights: parseWeights(weights, "calibration weights"),
+    baselineAgreement: Number(report.baselineAgreement),
+    calibratedAgreement: Number(report.calibratedAgreement),
+    minimumAccuracyWeight: Number(report.minimumAccuracyWeight),
+    weightStep: Number(report.weightStep),
+    excludedComparisons: report.excludedComparisons.map((raw) => {
+      const item = objectValue(raw, "excluded comparison");
+      return { comparisonId: requiredString(item.comparisonId, "excluded comparison id"), reason: requiredString(item.reason, "excluded comparison reason") };
+    })
+  };
+}
+
 function cloneCandidate(candidate: CandidateBenchmarkCandidate): CandidateBenchmarkCandidate {
   return { ...candidate, scores: { ...candidate.scores } };
 }

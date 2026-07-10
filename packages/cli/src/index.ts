@@ -74,6 +74,7 @@ import {
   calibrateCandidateWeights,
   candidateBenchmarkSourceFromSummary,
   createCandidateBenchmark,
+  parseCandidateCalibrationReport,
   parseCandidateBenchmark,
   type PairwiseComparison
 } from "./candidateBenchmark.js";
@@ -1021,6 +1022,7 @@ program
   .option("--render-studio", "Render each candidate DeckSpec to Studio HTML", false)
   .option("--snapshot-images", "Capture each candidate native canvas as a PNG and record rendered DOM metrics", false)
   .option("--browser-path <path>", "Edge, Chrome, or Chromium executable used for PNG snapshots")
+  .option("--calibration-report <path>", "Calibration JSON from benchmark-calibrate; applies weights only when status is calibrated")
   .option("--json", "Emit JSON result", false)
   .action(commandAction(async (messageMapPath: string, options: {
     title: string;
@@ -1033,6 +1035,7 @@ program
     renderStudio: boolean;
     snapshotImages: boolean;
     browserPath?: string;
+    calibrationReport?: string;
     json: boolean;
   }) => {
     const raw = await readJson(messageMapPath);
@@ -1076,6 +1079,8 @@ program
         await writeFile(artifact.studioPath, renderStudioHtml(artifact.deck, outputLocale(artifact.deck.locale)), "utf8");
       }
     }
+    const calibration = options.calibrationReport ? parseCandidateCalibrationReport(await readJson(options.calibrationReport)) : undefined;
+    const appliedCalibrationWeights = calibration?.status === "calibrated" ? calibration.weights : undefined;
     let renderedRecommendation: RenderedCandidateRecommendation | undefined;
     if (options.snapshotImages) {
       const snapshotPlan = buildCandidateSnapshotPlan(options.outputDir, candidateArtifacts);
@@ -1093,7 +1098,8 @@ program
           accuracy: artifact.evaluation.accuracy,
           accuracyGatePassed: artifact.evaluation.accuracyGatePassed
         })),
-        snapshots.map((snapshot) => ({ candidateId: snapshot.candidateId, ...snapshot.score }))
+        snapshots.map((snapshot) => ({ candidateId: snapshot.candidateId, ...snapshot.score })),
+        appliedCalibrationWeights
       );
     }
     const summary = {
@@ -1101,6 +1107,16 @@ program
       selectionPolicy: result.selectionPolicy,
       selectedCandidateId: result.selectedCandidateId,
       renderedRecommendation,
+      calibration: calibration
+        ? {
+            reportPath: options.calibrationReport,
+            status: calibration.status,
+            applied: Boolean(appliedCalibrationWeights),
+            benchmarkIds: calibration.benchmarkIds,
+            sampleSize: calibration.sampleSize,
+            calibratedAgreement: calibration.calibratedAgreement
+          }
+        : undefined,
       planningCandidateSet: result.planningCandidateSet,
       candidates: candidateArtifacts.map(({ deck, ...artifact }) => artifact)
     };
