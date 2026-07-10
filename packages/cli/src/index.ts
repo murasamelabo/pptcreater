@@ -69,6 +69,7 @@ import {
 } from "@pptcreater/core";
 import { importNotPersistedWarning, importPersistenceSuffix, importTemplateFromPptx, renderDeckToPptx, reviewPptxSlideTextFit } from "@pptcreater/render-pptx";
 import { renderStudioHtml } from "@pptcreater/studio";
+import { buildCandidateSnapshotPlan, captureCandidateSnapshots } from "./candidateSnapshots.js";
 import { installGuidance } from "./installGuidance.js";
 
 async function readJson(path: string): Promise<unknown> {
@@ -897,6 +898,8 @@ program
   .option("--style <profile>", "Force a style: minimal, stylish, report, presentation, technical", parseStyleProfile)
   .option("--render-pptx", "Render each candidate DeckSpec to PPTX", false)
   .option("--render-studio", "Render each candidate DeckSpec to Studio HTML", false)
+  .option("--snapshot-images", "Capture each candidate native canvas as a PNG and record rendered DOM metrics", false)
+  .option("--browser-path <path>", "Edge, Chrome, or Chromium executable used for PNG snapshots")
   .option("--json", "Emit JSON result", false)
   .action(commandAction(async (messageMapPath: string, options: {
     title: string;
@@ -907,6 +910,8 @@ program
     style?: StyleProfile;
     renderPptx: boolean;
     renderStudio: boolean;
+    snapshotImages: boolean;
+    browserPath?: string;
     json: boolean;
   }) => {
     const raw = await readJson(messageMapPath);
@@ -930,7 +935,10 @@ program
         deckPath: `${options.outputDir}/${stem}.deck.json`,
         evaluationPath: `${options.outputDir}/${stem}.evaluation.json`,
         pptxPath: options.renderPptx ? `${options.outputDir}/${stem}.pptx` : undefined,
-        studioPath: options.renderStudio ? `${options.outputDir}/${stem}.studio.html` : undefined,
+        studioPath: options.renderStudio || options.snapshotImages ? `${options.outputDir}/${stem}.studio.html` : undefined,
+        snapshotPath: undefined as string | undefined,
+        snapshotMetrics: undefined as unknown,
+        snapshotScore: undefined as unknown,
         renderWarnings: [] as string[],
         evaluation: candidate.evaluation,
         deck: candidate.deck
@@ -945,6 +953,17 @@ program
       }
       if (artifact.studioPath) {
         await writeFile(artifact.studioPath, renderStudioHtml(artifact.deck, outputLocale(artifact.deck.locale)), "utf8");
+      }
+    }
+    if (options.snapshotImages) {
+      const snapshotPlan = buildCandidateSnapshotPlan(options.outputDir, candidateArtifacts);
+      const snapshots = await captureCandidateSnapshots(snapshotPlan, { browserPath: options.browserPath });
+      for (const snapshot of snapshots) {
+        const artifact = candidateArtifacts.find((candidate) => candidate.candidateId === snapshot.candidateId);
+        if (!artifact) continue;
+        artifact.snapshotPath = snapshot.snapshotPath;
+        artifact.snapshotMetrics = snapshot.metrics;
+        artifact.snapshotScore = snapshot.score;
       }
     }
     const summary = {

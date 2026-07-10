@@ -20,7 +20,8 @@
     "@pptcreater/diagram": "0.5.44",
     "@pptcreater/render-pptx": "0.5.44",
     "@pptcreater/studio": "0.5.44",
-    "commander": "^15.0.0"
+    "commander": "^15.0.0",
+    "playwright-core": "^1.61.1"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
