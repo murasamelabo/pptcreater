@@ -600,6 +600,20 @@ function genericSlideRole(figureNeed: FigureNeed): SlideRole {
   return "detail";
 }
 
+function genericSemanticLabel(line: string, sectionTitle: string, index: number): string {
+  const text = line.replace(/^[-*>]\s*/u, "").trim();
+  const emphasized = [...text.matchAll(/\*\*([^*]+)\*\*/gu)].map((match) => match[1].trim()).find(Boolean);
+  if (emphasized) return emphasized;
+  if (/設計目標|これらが.+目標/u.test(text)) return "設計目標";
+  if (/監査証跡|いつ何にアクセス/u.test(text)) return "監査証跡";
+  if (/即時失効|キルスイッチ/u.test(text)) return "即時失効";
+  if (/可視化/u.test(text)) return "集中可視化";
+  if (/ポリシー.*アクセス制御|アクセス制御/u.test(text)) return "ポリシー制御";
+  if (/短命|自動失効/u.test(text)) return "短命クレデンシャル";
+  if (/^([^、。:：]{2,24})(?:は|が|を|で|に|と).+/u.test(text)) return RegExp.$1.trim();
+  return `${displaySectionTitle(sectionTitle)} ${index + 1}`;
+}
+
 function genericPrimaryClaim(section: DocSection, lines: string[]): string {
   const candidate = (lines[0] ?? section.text.trim() ?? section.title)
     .replace(/^>\s*/u, "")
@@ -621,7 +635,7 @@ function genericBlocks(docSpec: DocSpec, sections: DocSection[], tables: DocTabl
     const match = /^(.{1,32}?)(?:[:：])\s*(.+)$/u.exec(line);
     return {
       id: `${section.id}-line-${index + 1}`,
-      label: match?.[1] ?? section.title,
+      label: match?.[1] ?? genericSemanticLabel(line, section.title, index),
       text: match?.[2] ?? line,
       sourceSectionIds: [section.id],
       requiredTerms: termsInText(terms, line)

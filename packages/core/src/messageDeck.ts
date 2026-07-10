@@ -1847,16 +1847,32 @@ function detailPageVariant(intent: SlideIntent): DetailPageVariant {
 }
 
 function detailItemsForIntent(intent: SlideIntent, max = 4): string[] {
+  const details = intent.details ?? [];
+  const primaryDetails = details.filter((item) => !/^補足\s+/u.test(item));
+  const supplementaryDetails = details.filter((item) => /^補足\s+/u.test(item));
   return selectVisibleItems([
-    ...(intent.details ?? []).map((item) => leadSentence(item, 84)),
-    ...intent.evidence.map((item) => leadSentence(item, 84))
+    ...primaryDetails.map((item) => leadSentence(item, 84)),
+    ...intent.evidence.map((item) => leadSentence(item, 84)),
+    ...supplementaryDetails.map((item) => leadSentence(item, 84))
   ], max).visible;
 }
 
+function semanticDetailLabel(value: string, index: number): string {
+  const text = normalizeVisibleCopy(value.replace(/^補足\s+/u, ""));
+  if (/設計目標|ID-JAG\/XAAを軸/u.test(text)) return "設計目標";
+  if (/監査証跡|いつ何にアクセス/u.test(text)) return "監査証跡";
+  if (/即時失効|キルスイッチ/u.test(text)) return "即時失効";
+  if (/可視化/u.test(text)) return "集中可視化";
+  if (/ポリシー制御|ポリシー.*アクセス制御|アクセス制御/u.test(text)) return "ポリシー制御";
+  if (/短命|自動失効/u.test(text)) return "短命クレデンシャル";
+  return `詳細 ${index + 1}`;
+}
+
 function parsedDetailItem(item: string, index: number): { label: string; body: string } {
-  const parsed = splitKeyValue(item);
-  if (!parsed) return { label: `項目 ${index + 1}`, body: item };
-  return { label: compactTechnicalLabel(parsed.key.replace(/^補足\s+/u, ""), 22), body: parsed.value };
+  const cleanItem = item.replace(/^補足\s+/u, "");
+  const parsed = splitKeyValue(cleanItem);
+  if (!parsed) return { label: semanticDetailLabel(cleanItem, index), body: cleanItem };
+  return { label: semanticDetailLabel(`${parsed.key} ${parsed.value}`, index), body: parsed.value };
 }
 
 function narrativeDetailPage(theme: Theme, intent: SlideIntent, expressionPlan: ExpressionPlan): SlideElement[] {

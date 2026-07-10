@@ -110,6 +110,18 @@ RFC 7523 JWT BearerでID-JAGを提示し、aud、client_id、exp、scopeを検�
 既存OBOとの差、短命性、集中統制、MCPとの接続を評価します。
 `;
 
+const GENERIC_LABEL_MARKDOWN = `# 統制要件
+
+## エンタープライズが必要とするもの
+
+- アプリ間連携の**集中可視化**
+- セキュリティチームが管理する**ポリシーベースのアクセス制御**
+- **短命で自動失効する**クレデンシャル
+- どのアプリがいつ何にアクセスしたかの**監査証跡**
+- 単一ポイントからの**即時失効(キルスイッチ)**
+- → これらがID-JAG/XAAの設計目標。
+`;
+
 describe("MessageSpec generation", () => {
   it("creates a generic technical report in source chapter order without auth-web assumptions", () => {
     const docSpec = extractDocSpecFromMarkdown(GENERIC_TECHNICAL_MARKDOWN, { sourceId: "xaa", title: "XAA / ID-JAG 技術解説" });
@@ -142,6 +154,22 @@ describe("MessageSpec generation", () => {
     const controls = messageMap.intents.find((intent) => intent.slideId === docSpec.sections.find((section) => section.title === "Controls")?.id);
     expect(controls?.evidence).toContain("Control 9: Evidence 9");
     expect(controls?.evidence.length).toBeGreaterThanOrEqual(9);
+  });
+
+  it("derives distinct semantic labels for unkeyed generic Markdown bullets", () => {
+    const docSpec = extractDocSpecFromMarkdown(GENERIC_LABEL_MARKDOWN, { sourceId: "controls", title: "統制要件" });
+    const messageSpec = createMessageSpecFromDocSpec(docSpec, { strategy: "generic-technical-report" });
+    const contentSlide = messageSpec.slides.find((slide) => slide.semanticTitle === "エンタープライズが必要とするもの");
+
+    expect(contentSlide?.supportingBlocks.map((block) => block.label)).toEqual([
+      "集中可視化",
+      "ポリシーベースのアクセス制御",
+      "短命クレデンシャル",
+      "監査証跡",
+      "即時失効(キルスイッチ)",
+      "設計目標"
+    ]);
+    expect(contentSlide?.supportingBlocks.map((block) => block.label)).not.toContain("項目 2");
   });
 
   it("rejects unexplained source omissions in generic technical reports", () => {

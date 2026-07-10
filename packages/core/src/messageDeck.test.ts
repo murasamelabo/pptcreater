@@ -106,6 +106,33 @@ describe("message map deck generator", () => {
     expect(deck.slides[0]?.title).toBe("AIエージェント / MCP");
   });
 
+  it("renders evidence before supplementary notes and avoids generic detail labels", () => {
+    const deck = createDeckFromMessageMap(
+      {
+        objective: "統制を説明する",
+        audience: "設計者",
+        desiredAction: "確認する",
+        intents: [{
+          slideId: "controls",
+          title: "統制要件",
+          message: "集中統制を確認する。",
+          evidence: ["集中可視化: アプリ間連携を一元化", "ポリシー制御: 許可と拒否を管理", "短命クレデンシャル: 自動失効"],
+          details: ["補足 即時失効: 単一ポイントから停止", "補足 設計目標: ID-JAG/XAAを軸に整理"],
+          quietInfo: [],
+          visualType: "detail",
+          emphasis: "集中統制"
+        }]
+      },
+      { title: "Detail order", locale: "ja-JP", contentMode: "technical", planningMode: "narrative-v1", includeCover: false, includeClosing: false }
+    );
+    const labels = deck.slides[0]?.elements
+      .filter((element): element is Extract<typeof element, { type: "text" }> => element.type === "text" && element.id.includes("brief-card-label"))
+      .map((element) => element.text) ?? [];
+
+    expect(labels.slice(0, 3)).toEqual(["集中可視化", "ポリシー制御", "短命クレデンシャル"]);
+    expect(labels).not.toEqual(expect.arrayContaining(["項目 2", "補足 即時失効"]));
+  });
+
   it("uses dark ink on bright accent colors to preserve contrast", () => {
     const tokens = defaultTokens("ja-JP");
     tokens.colors.accent = "#38bdf8";
