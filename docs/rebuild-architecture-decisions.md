@@ -192,6 +192,24 @@ on a draft slide. A manuscript author reviews that Markdown, merges or splits so
 natural narrative, and records reasons while `assertCompleteManuscriptCoverage()` prevents silent
 loss. The lossless draft is an editorial starting point, not an automatic finished deck outline.
 
+## Phase 2 Slide SDK And Figure Catalog
+
+`@pptcreater/slide-sdk` executes DeckSpec-independent `DrawCommand` programs directly with
+PptxGenJS. Its initial renderer supports text, shapes, images, connectors, groups, speaker notes,
+source references, and structural/CJK text preflight. It deliberately rejects
+`importPptxComponent` until the OpenXML transplant code is extracted from the legacy renderer into
+a low-level package that does not import `@pptcreater/core`.
+
+`@pptcreater/figure-catalog` reads the existing diagram encyclopedia and tree manifests through a
+backward-compatible v1 reader, infers conservative v2 metadata, searches by semantic need/data
+shape/item count/tone, and instantiates editable `SlideFragment` component commands. Catalog
+metadata inferred by automation remains marked `metadataConfidence=inferred` until reviewed.
+
+The next Phase 2 slice is `@pptcreater/pptx-component-transplant`: a DeckSpec-independent OpenXML
+engine used by Slide SDK after base PPTX generation. The new authoring dependency graph must never
+route through the legacy `@pptcreater/render-pptx` entry point because that package imports core
+DeckSpec types.
+
 ## Rollback
 
 All rebuild phases are additive until default routing changes. Legacy CLI/MCP behavior remains available for at least two releases after migration. Failure to match the direct-authoring benchmark does not justify weakening acceptance criteria; the fallback is Manuscript plus a constrained layout DSL, not MessageSpec v2.

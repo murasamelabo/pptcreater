@@ -11,6 +11,12 @@
       "path": "./packages/manuscript"
     },
     {
+      "path": "./packages/slide-sdk"
+    },
+    {
+      "path": "./packages/figure-catalog"
+    },
+    {
       "path": "./packages/core"
     },
     {
