@@ -40,6 +40,7 @@ export async function critiqueDirectAuthoring(input: CriticInput): Promise<Criti
     defects.push(issue.defect); revisionBriefs.push(issue.revision);
   }
   for (const issue of preflightSlideProgram(program)) {
+    if (issue.code === "unsupported-component-import") continue;
     const type: VisualDefect = issue.code === "bad-line-break" ? "bad-line-break" : issue.code === "text-overflow-risk" ? "truncation" : "alignment";
     const result = finding(issue.slideId, `${issue.slideId}/${issue.commandId ?? "slide"}`, type, "blocking", issue.message, "Revise the Slide Program command geometry or copy; do not patch generated PPTX objects.");
     defects.push(result.defect); revisionBriefs.push(result.revision);

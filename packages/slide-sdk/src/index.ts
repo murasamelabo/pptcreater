@@ -66,9 +66,11 @@ function textPreflight(command: Extract<DrawCommand, { kind: "text" }>): string[
   const maxLines = Math.max(1, Math.floor((command.frame.h * 72) / (fontSize * 1.22)));
   const issues: string[] = [];
   if (estimatedLines > maxLines) issues.push(`Estimated ${estimatedLines} lines exceed the ${maxLines}-line box capacity.`);
-  const explicitLines = command.text.split(/\r?\n/u).map((line) => line.trim()).filter(Boolean);
-  const bad = explicitLines.find((line) => BAD_LINE_START.test(line) || BAD_LINE_END.test(line));
-  if (bad) issues.push(`Line has unsafe Japanese punctuation boundary: ${bad}`);
+  if (command.style.preformatted !== true) {
+    const explicitLines = command.text.split(/\r?\n/u).map((line) => line.trim()).filter(Boolean);
+    const bad = explicitLines.find((line) => BAD_LINE_START.test(line) || BAD_LINE_END.test(line));
+    if (bad) issues.push(`Line has unsafe Japanese punctuation boundary: ${bad}`);
+  }
   return issues;
 }
 
@@ -100,7 +102,7 @@ function color(value: unknown, fallback: string): string {
 function renderCommand(slide: PptxSlide, command: DrawCommand): void {
   const { x, y, w, h } = command.frame;
   if (command.kind === "text") {
-    slide.addText(command.text, { x, y, w, h, margin: command.style.margin ?? 0, fontFace: command.style.fontFace, fontSize: command.style.fontSize, bold: command.style.bold, color: color(command.style.color, "222222"), align: command.style.align, valign: command.style.valign, fit: "shrink", breakLine: false, ...(command.style.hyperlink ? { hyperlink: { url: command.style.hyperlink } } : {}) });
+    slide.addText(command.text, { x, y, w, h, margin: command.style.margin ?? 0, fontFace: command.style.fontFace, fontSize: command.style.fontSize, bold: command.style.bold, color: color(command.style.color, "222222"), align: command.style.align, valign: command.style.valign, fit: "shrink", breakLine: false, breakLineOnOverflow: command.style.preformatted !== true, ...(command.style.hyperlink ? { hyperlink: { url: command.style.hyperlink } } : {}) });
     return;
   }
   if (command.kind === "shape") {

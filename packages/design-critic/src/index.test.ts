@@ -47,4 +47,11 @@ describe("design critic", () => {
     const report = await critiqueDirectAuthoring({ notebook, manuscript, program });
     expect(report.defects.map((defect) => defect.type)).toContain("semantic-figure-mismatch");
   });
+
+  it("does not treat a resolved Figure Catalog import as an alignment defect", async () => {
+    const { notebook, manuscript, program } = fixture();
+    program.slides[0].commands = [{ id: "catalog", kind: "importPptxComponent", componentId: "flow-horizontal-p1", frame: { x: 0, y: 0, w: 13.333, h: 7.5 }, sourceRefs: program.slides[0].sourceRefs, replacements: {}, operations: [] }];
+    const report = await critiqueDirectAuthoring({ notebook, manuscript, program });
+    expect(report.defects).toEqual([]);
+  });
 });
