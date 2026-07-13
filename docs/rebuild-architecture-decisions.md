@@ -180,6 +180,18 @@ The notebook stores normalized source text for exact normalized round-trip. A on
 ingest the information still present in a legacy DocSpec, but the warning on that notebook makes
 clear that discarded Markdown syntax cannot be recovered.
 
+## Phase 1 Deck Manuscript
+
+`@pptcreater/manuscript` defines the human-readable authoring source that follows the Source
+Notebook. It stores chapters, slide takeaways, complete visible prose, notes, source references,
+optional semantic figure briefs, and explicit keep/merge/split/omit decisions. It contains no
+layout names or object geometry. See [Deck Manuscript Format](deck-manuscript-format.md).
+
+The initial `createLosslessManuscriptDraft()` is intentionally verbose: every source block appears
+on a draft slide. A manuscript author reviews that Markdown, merges or splits source units into a
+natural narrative, and records reasons while `assertCompleteManuscriptCoverage()` prevents silent
+loss. The lossless draft is an editorial starting point, not an automatic finished deck outline.
+
 ## Rollback
 
 All rebuild phases are additive until default routing changes. Legacy CLI/MCP behavior remains available for at least two releases after migration. Failure to match the direct-authoring benchmark does not justify weakening acceptance criteria; the fallback is Manuscript plus a constrained layout DSL, not MessageSpec v2.

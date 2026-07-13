@@ -8,6 +8,9 @@
       "path": "./packages/source-notebook"
     },
     {
+      "path": "./packages/manuscript"
+    },
+    {
       "path": "./packages/core"
     },
     {
