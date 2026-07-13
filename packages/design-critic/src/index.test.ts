@@ -78,4 +78,18 @@ describe("design critic", () => {
     const report = await critiqueDirectAuthoring({ notebook, manuscript, program });
     expect(report.defects.map((defect) => defect.type)).toContain("missing-focal-visual");
   });
+
+  it("blocks Markdown table rows that leak into visible slide text", async () => {
+    const { notebook, manuscript, program } = fixture();
+    program.slides[0].commands[1] = { id: "raw-table", kind: "text", role: "body", text: "用語 | 位置づけ | 補足", frame: { x: 1, y: 2, w: 10, h: 2 }, sourceRefs: program.slides[0].sourceRefs, style: {} };
+    const report = await critiqueDirectAuthoring({ notebook, manuscript, program });
+    expect(report.defects.map((defect) => defect.type)).toContain("raw-markdown-artifact");
+  });
+
+  it("blocks partial Figure Catalog reduction that can leave template copy behind", async () => {
+    const { notebook, manuscript, program } = fixture();
+    program.slides[0].commands = [{ id: "catalog", kind: "importPptxComponent", componentId: "flow-horizontal-p1", frame: { x: 0, y: 0, w: 13.333, h: 7.5 }, sourceRefs: program.slides[0].sourceRefs, replacements: { "要件定義": "SSO" }, operations: [{ op: "remove", target: "テスト" }] }];
+    const report = await critiqueDirectAuthoring({ notebook, manuscript, program });
+    expect(report.defects.map((defect) => defect.type)).toContain("unsafe-template-reduction");
+  });
 });

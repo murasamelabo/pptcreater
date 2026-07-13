@@ -46,6 +46,16 @@ export async function critiqueDirectAuthoring(input: CriticInput): Promise<Criti
     defects.push(result.defect); revisionBriefs.push(result.revision);
   }
   for (const slide of program.slides) {
+    for (const command of slide.commands) {
+      if (command.kind === "text" && command.text.split(/\r?\n/u).some((line) => (line.match(/\s\|\s/gu) ?? []).length >= 2)) {
+        const result = finding(slide.id, `${slide.id}/${command.id}`, "raw-markdown-artifact", "blocking", `Text command ${command.id} contains a Markdown-style table row.`, "Render table semantics as labeled columns, rows, or comparison regions instead of exposing Markdown delimiters.");
+        defects.push(result.defect); revisionBriefs.push(result.revision);
+      }
+      if (command.kind === "importPptxComponent" && command.operations.some((operation) => operation.op === "remove")) {
+        const result = finding(slide.id, `${slide.id}/${command.id}`, "unsafe-template-reduction", "blocking", `Component ${command.componentId} removes template labels without proving that the associated shapes, numbers, captions, and connectors are removed together.`, "Use a component with the exact item count, a group-aware transplant operation, or a native Slide Program composition.");
+        defects.push(result.defect); revisionBriefs.push(result.revision);
+      }
+    }
     const proseCommands = slide.commands.filter((command) => command.kind === "text" && command.role === "body" && [...command.text].length >= 180);
     const oversizedProse = proseCommands.find((command) => command.frame.w * command.frame.h >= 13.333 * 7.5 * 0.45);
     if (!oversizedProse || oversizedProse.kind !== "text") continue;

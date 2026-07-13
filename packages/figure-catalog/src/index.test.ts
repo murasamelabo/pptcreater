@@ -20,17 +20,24 @@ describe("figure catalog", () => {
     expect(results.some((entry) => entry.id.startsWith("flow-horizontal"))).toBe(true);
   });
 
-  it("instantiates a three-item editable flow as a DeckSpec-independent fragment", async () => {
+  it("instantiates a fixed-cardinality editable flow as a DeckSpec-independent fragment", async () => {
     const catalog = await loadFigureCatalog();
     const entry = catalog.find((item) => item.id === "flow-horizontal-p1")!;
-    const fragment = instantiateFigure(entry, { labels: ["Source", "Manuscript", "PPTX"], sourceRefs: ["src_1", "src_2", "src_3"] }, { x: 1, y: 1.5, w: 11, h: 4.5 });
+    const fragment = instantiateFigure(entry, { labels: ["Source", "Notebook", "Manuscript", "Program", "PPTX"], sourceRefs: ["src_1", "src_2", "src_3"] }, { x: 1, y: 1.5, w: 11, h: 4.5 });
     const command = fragment.commands[0];
     expect(command.kind).toBe("importPptxComponent");
     if (command.kind !== "importPptxComponent") throw new Error("Unexpected command");
-    expect(command.replacements).toMatchObject({ 要件定義: "Source", 設計: "Manuscript", 開発: "PPTX" });
-    expect(command.operations).toEqual(expect.arrayContaining([{ op: "remove", target: "テスト" }, { op: "remove", target: "リリース" }]));
+    expect(command.replacements).toMatchObject({ 要件定義: "Source", 設計: "Notebook", 開発: "Manuscript", テスト: "Program", リリース: "PPTX" });
+    expect(command.operations).toEqual([]);
     expect(fragment.editModel.map((item) => item.capability)).toEqual(expect.arrayContaining(["edit-text", "reorder"]));
     expect(validateFigureInstance(fragment, entry)).toEqual([]);
+  });
+
+  it("rejects partial reduction of inferred PowerPoint templates", async () => {
+    const catalog = await loadFigureCatalog();
+    const entry = catalog.find((item) => item.id === "flow-horizontal-p1")!;
+    expect(entry.editability.addRemove).toBe(false);
+    expect(() => instantiateFigure(entry, { labels: ["Source", "Manuscript", "PPTX"], sourceRefs: ["src"] }, { x: 0, y: 0, w: 10, h: 4 })).toThrow(/exactly 5 items/u);
   });
 
   it("rejects label and item counts outside component constraints", async () => {

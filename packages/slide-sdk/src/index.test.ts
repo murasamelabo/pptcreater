@@ -67,6 +67,12 @@ describe("slide sdk", () => {
     expect(codes).toEqual(expect.arrayContaining(["duplicate-command-id", "text-overflow-risk", "unknown-command-ref"]));
   });
 
+  it("blocks extraction-induced whitespace inside Japanese words", () => {
+    const program = sampleProgram();
+    program.slides[0].commands.push({ id: "broken-japanese", kind: "text", role: "body", text: "OAuth拡 張仕様", frame: { x: 1, y: 2, w: 5, h: 1 }, sourceRefs: [], style: { fontSize: 16 } });
+    expect(preflightSlideProgram(program).map((issue) => issue.code)).toContain("broken-cjk-word");
+  });
+
   it("keeps component import explicitly unsupported until Figure Catalog wiring", () => {
     const program = sampleProgram();
     program.slides[0].commands.push({ id: "component", kind: "importPptxComponent", componentId: "flow-horizontal-p1", frame: { x: 1, y: 1, w: 10, h: 4 }, sourceRefs: [], replacements: {}, operations: [] });
@@ -76,7 +82,7 @@ describe("slide sdk", () => {
   it("transplants a real diagram encyclopedia component into the generated PPTX", async () => {
     const catalog = await loadFigureCatalog();
     const entry = catalog.find((item) => item.id === "flow-horizontal-p1")!;
-    const fragment = instantiateFigure(entry, { labels: ["Source", "Manuscript", "PPTX"], sourceRefs: ["src_1", "src_2", "src_3"] }, { x: 0, y: 0, w: 13.333, h: 7.5 });
+    const fragment = instantiateFigure(entry, { labels: ["Source", "Notebook", "Manuscript", "Program", "PPTX"], sourceRefs: ["src_1", "src_2", "src_3"] }, { x: 0, y: 0, w: 13.333, h: 7.5 });
     const program = sampleProgram();
     program.slides[1].commands = fragment.commands;
     const directory = await mkdtemp(join(tmpdir(), "slide-sdk-component-"));
@@ -89,10 +95,10 @@ describe("slide sdk", () => {
       const zip = await JSZip.loadAsync(bytes);
       const xml = await zip.file("ppt/slides/slide2.xml")!.async("string");
       expect(xml).toContain("Source");
+      expect(xml).toContain("Notebook");
       expect(xml).toContain("Manuscript");
+      expect(xml).toContain("Program");
       expect(xml).toContain("PPTX");
-      expect(xml).not.toContain("テスト");
-      expect(xml).not.toContain("リリース");
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

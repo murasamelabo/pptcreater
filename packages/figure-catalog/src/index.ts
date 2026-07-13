@@ -56,7 +56,7 @@ export async function loadFigureCatalog(options: { roots?: string[] } = {}): Pro
     for (const component of manifest.components) {
       const dataShape = inferDataShape(component.kind);
       const editable = component.editableGroups.length > 0;
-      entries.push(FigureCatalogEntrySchema.parse({ ...component, packId: manifest.id, packName: manifest.name, sourcePptxPath, sourceVersion: manifest.version, avoidWhen: inferredAvoidWhen(dataShape), dataShape, editability: { text: true, addRemove: editable, reorder: editable, recolor: true }, toneSupport: "both", metadataConfidence: "inferred" }));
+      entries.push(FigureCatalogEntrySchema.parse({ ...component, packId: manifest.id, packName: manifest.name, sourcePptxPath, sourceVersion: manifest.version, avoidWhen: inferredAvoidWhen(dataShape), dataShape, editability: { text: true, addRemove: false, reorder: editable, recolor: true }, toneSupport: "both", metadataConfidence: "inferred" }));
     }
   }
   return entries.sort((a, b) => a.packId.localeCompare(b.packId) || a.sourceSlideIndex - b.sourceSlideIndex);
@@ -67,7 +67,7 @@ export function searchFigures(catalog: FigureCatalogEntry[], query: FigureSearch
   const terms = (query.semanticNeed ?? "").toLowerCase().split(/\s+|[、。・／/]/u).filter((term) => term.length >= 2);
   return catalog
     .filter((entry) => !query.dataShape || entry.dataShape === query.dataShape)
-    .filter((entry) => query.itemCount === undefined || ((entry.constraints.minItems ?? 0) <= query.itemCount && (entry.constraints.maxItems ?? Number.POSITIVE_INFINITY) >= query.itemCount))
+    .filter((entry) => query.itemCount === undefined || ((!entry.editability.addRemove && entry.editableGroups[0]) ? entry.editableGroups[0].members.length === query.itemCount : (entry.constraints.minItems ?? 0) <= query.itemCount && (entry.constraints.maxItems ?? Number.POSITIVE_INFINITY) >= query.itemCount))
     .filter((entry) => !query.tone || entry.toneSupport === "both" || entry.toneSupport === query.tone)
     .map((entry) => {
       const searchable = [entry.name, entry.kind, ...entry.bestFor].join(" ").toLowerCase();
@@ -89,9 +89,10 @@ export function instantiateFigure(entryInput: FigureCatalogEntry, content: Figur
     if (tooLong) throw new Error(`${entry.id} label exceeds ${entry.constraints.maxLabelChars} characters: ${tooLong}`);
   }
   const group = entry.editableGroups[0];
+  if (group && !entry.editability.addRemove && count !== group.members.length) throw new Error(`${entry.id} requires exactly ${group.members.length} items because its inferred template groups cannot be safely added or removed.`);
   const replacements = { ...(content.replacements ?? {}) };
   if (group) group.members.slice(0, count).forEach((member, index) => { replacements[member] = content.labels[index]; });
-  const operations = group && count < group.members.length ? group.members.slice(count).map((member) => ({ op: "remove" as const, target: member })) : [];
+  const operations = group && entry.editability.addRemove && count < group.members.length ? group.members.slice(count).map((member) => ({ op: "remove" as const, target: member })) : [];
   const command = { id: `${entry.id}-component`, kind: "importPptxComponent" as const, componentId: entry.id, frame, sourceRefs: content.sourceRefs ?? [], replacements, operations };
   return SlideFragmentSchema.parse({ id: `${entry.id}-fragment`, bounds: frame, commands: [command], editModel: [{ id: `${entry.id}-text`, commandIds: [command.id], capability: "edit-text" }, ...(entry.editability.reorder ? [{ id: `${entry.id}-order`, commandIds: [command.id], capability: "reorder" as const, groupId: group?.id }] : [])], sourceRefs: content.sourceRefs ?? [], accessibility: { summary: entry.name, longDescription: `${entry.name}: ${content.labels.join(" -> ")}`, readingOrder: [command.id] }, constraints: entry.constraints });
 }

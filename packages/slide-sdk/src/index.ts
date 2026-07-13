@@ -46,7 +46,7 @@ export const SlideProgramSchema = z.object({
 export type SlideProgram = z.infer<typeof SlideProgramSchema>;
 
 export type PreflightIssue = {
-  code: "text-overflow-risk" | "bad-line-break" | "unknown-command-ref" | "unsupported-component-import" | "duplicate-command-id";
+  code: "text-overflow-risk" | "bad-line-break" | "broken-cjk-word" | "unknown-command-ref" | "unsupported-component-import" | "duplicate-command-id";
   slideId: string;
   commandId?: string;
   message: string;
@@ -54,6 +54,7 @@ export type PreflightIssue = {
 
 const BAD_LINE_START = /^[、。，．・,，!?！？:：;；）」』】\]\})]/u;
 const BAD_LINE_END = /[（「『【\[\({]$/u;
+const BROKEN_CJK_WORD = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]\s+[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
 
 function textUnits(text: string): number {
   return [...text].reduce((sum, char) => sum + (/^[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]$/u.test(char) ? 1 : char === " " ? 0.3 : 0.55), 0);
@@ -84,6 +85,7 @@ export function preflightSlideProgram(programInput: SlideProgram): PreflightIssu
       ids.add(command.id);
       if (command.kind === "text") {
         for (const message of textPreflight(command)) issues.push({ code: message.startsWith("Estimated") ? "text-overflow-risk" : "bad-line-break", slideId: slide.id, commandId: command.id, message });
+        if (BROKEN_CJK_WORD.test(command.text)) issues.push({ code: "broken-cjk-word", slideId: slide.id, commandId: command.id, message: "Text contains whitespace inside a Japanese word; normalize source extraction artifacts before rendering." });
       }
       if (command.kind === "importPptxComponent") issues.push({ code: "unsupported-component-import", slideId: slide.id, commandId: command.id, message: "PPTX component import requires the Figure Catalog transplant renderer." });
     }
