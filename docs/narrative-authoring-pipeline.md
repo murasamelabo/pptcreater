@@ -1,5 +1,8 @@
 ﻿# Narrative Authoring Pipeline Proposal
 
+> Rebuild note: the next-generation implementation no longer treats MessageSpec or DeckSpec as the
+> authoring source of truth. See [Direct Authoring Rebuild: Architecture Decisions](rebuild-architecture-decisions.md).
+
 ## Purpose
 
 This proposal changes pptcreater's deck-generation approach from selecting fixed diagram patterns early to planning the deck as a communication artifact first, then choosing an expression strategy for each slide.

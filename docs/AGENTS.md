@@ -9,11 +9,12 @@ This document is about **deck authoring**. For improving pptcreater itself with 
 Simulator, Evaluator, and QA Gatekeeper, see
 [`dev-loop-architecture.md`](dev-loop-architecture.md).
 
-For the proposed next-generation authoring path that avoids choosing fixed diagram patterns too
-early, see [`narrative-authoring-pipeline.md`](narrative-authoring-pipeline.md). That proposal keeps
-`DeckSpec` as the render/review boundary, but inserts narrative planning, slide copy planning,
-visual grammar metadata, expression selection, and layout composition before concrete objects are
-created.
+For the active next-generation rebuild, see
+[`rebuild-architecture-decisions.md`](rebuild-architecture-decisions.md). It makes executable Slide
+Programs the authoring target, keeps the diagram encyclopedia as an optional Figure Catalog, and
+demotes MessageSpec and DeckSpec to legacy interchange/debug boundaries. The earlier
+[`narrative-authoring-pipeline.md`](narrative-authoring-pipeline.md) remains useful background but is
+not the target architecture.
 
 For empirical evidence about premature compression, see
 [`xaa-direct-vs-pptcreater-analysis.md`](xaa-direct-vs-pptcreater-analysis.md). It compares two

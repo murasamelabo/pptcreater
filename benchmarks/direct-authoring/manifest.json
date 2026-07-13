@@ -1,0 +1,66 @@
+﻿{
+  "version": "1.0",
+  "scenarios": [
+    {
+      "id": "xaa-technical-report",
+      "title": "XAA / ID-JAG technical report",
+      "source": {
+        "path": "$PPTCREATER_BENCH_XAA_SOURCE",
+        "sha256": "08A25526A1A652A71B37B980B89DE3CBE45516EEE711A80616DACE22DBBD6E0B",
+        "availability": "external-required"
+      },
+      "baselines": {
+        "legacy": "$PPTCREATER_BENCH_XAA_LEGACY",
+        "direct": "$PPTCREATER_BENCH_XAA_DIRECT"
+      },
+      "dimensions": ["flow", "information-density", "clarity", "aesthetics", "source-fidelity", "figure-fit", "editability", "generation-time"]
+    },
+    {
+      "id": "auth-web-dense-handout",
+      "title": "Authentication web specification handout",
+      "source": { "path": "$PPTCREATER_BENCH_AUTH_WEB_SOURCE", "availability": "external-required" },
+      "baselines": { "legacy": "$PPTCREATER_BENCH_AUTH_WEB_LEGACY" },
+      "dimensions": ["flow", "information-density", "clarity", "source-fidelity", "editability"]
+    },
+    {
+      "id": "github-copilot-figure-catalog",
+      "title": "GitHub Copilot figure catalog",
+      "source": { "path": "$PPTCREATER_BENCH_COPILOT_CATALOG_SOURCE", "availability": "external-required" },
+      "baselines": { "legacy": "$PPTCREATER_BENCH_COPILOT_CATALOG_LEGACY" },
+      "dimensions": ["clarity", "aesthetics", "figure-fit", "editability", "generation-time"]
+    },
+    {
+      "id": "travel-comparison",
+      "title": "Hakone and Shonan travel comparison",
+      "source": { "path": "benchmarks/direct-authoring/fixtures/travel-comparison.md", "availability": "to-create" },
+      "baselines": {},
+      "dimensions": ["flow", "information-density", "clarity", "aesthetics", "figure-fit"]
+    },
+    {
+      "id": "enterprise-access-model",
+      "title": "Enterprise access model",
+      "source": { "path": "examples/enterprise-access-model.intent.json", "availability": "repo" },
+      "baselines": {},
+      "dimensions": ["flow", "clarity", "source-fidelity", "figure-fit", "editability"]
+    },
+    {
+      "id": "incident-postmortem",
+      "title": "Technical incident postmortem",
+      "source": { "path": "benchmarks/direct-authoring/fixtures/incident-postmortem.md", "availability": "to-create" },
+      "baselines": {},
+      "dimensions": ["flow", "information-density", "clarity", "source-fidelity", "figure-fit"]
+    }
+  ],
+  "humanGate": {
+    "minimumRaters": 5,
+    "pairwisePreferenceThreshold": 0.66,
+    "agreementTarget": 0.7
+  },
+  "releaseGate": {
+    "minimumScenarioWins": 5,
+    "blockingDefects": 0,
+    "sectionCoverage": 1,
+    "requiredTermCoverage": 1,
+    "unexplainedOmissions": 0
+  }
+}

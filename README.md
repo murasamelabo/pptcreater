@@ -175,6 +175,11 @@ Modern slide generation follows these principles: content-mode-aware titles/mess
 
 ## Development improvement loop
 
+The next-generation authoring rebuild is specified in
+[`docs/rebuild-architecture-decisions.md`](docs/rebuild-architecture-decisions.md). Its additive
+Phase 0 package, `@pptcreater/authoring-contracts`, freezes DeckSpec-independent source, fragment,
+design-brief, critic, and benchmark contracts and includes a direct PptxGenJS architecture spike.
+
 For improving pptcreater itself, use the development-loop architecture in
 [`docs/dev-loop-architecture.md`](docs/dev-loop-architecture.md). It is intentionally separate from
 the deck-authoring agent team: the development loop uses a Dev Lead, User Simulator, Evaluator, and

@@ -2,6 +2,9 @@
   "files": [],
   "references": [
     {
+      "path": "./packages/authoring-contracts"
+    },
+    {
       "path": "./packages/core"
     },
     {
