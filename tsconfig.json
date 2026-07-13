@@ -11,10 +11,13 @@
       "path": "./packages/manuscript"
     },
     {
-      "path": "./packages/slide-sdk"
+      "path": "./packages/pptx-component-transplant"
     },
     {
       "path": "./packages/figure-catalog"
+    },
+    {
+      "path": "./packages/slide-sdk"
     },
     {
       "path": "./packages/core"

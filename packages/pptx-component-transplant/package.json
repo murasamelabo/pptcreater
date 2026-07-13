@@ -1,5 +1,5 @@
 ﻿{
-  "name": "@pptcreater/figure-catalog",
+  "name": "@pptcreater/pptx-component-transplant",
   "version": "0.5.44",
   "type": "module",
   "engines": { "node": ">=22.12.0", "npm": ">=10" },
@@ -7,6 +7,6 @@
   "types": "./dist/index.d.ts",
   "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
   "scripts": { "build": "tsc -b" },
-  "dependencies": { "@pptcreater/authoring-contracts": "0.5.44", "@pptcreater/pptx-component-transplant": "0.5.44", "zod": "^4.4.3" },
+  "dependencies": { "@pptcreater/authoring-contracts": "0.5.44", "jszip": "^3.10.1" },
   "devDependencies": { "@types/node": "^24.10.1", "typescript": "^5.9.3" }
 }

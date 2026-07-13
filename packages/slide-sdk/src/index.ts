@@ -1,5 +1,6 @@
 ﻿import { createRequire } from "node:module";
 import { DrawCommandSchema, SlideFragmentSchema, type DesignBrief, type DrawCommand, type SlideFragment } from "@pptcreater/authoring-contracts";
+import { applyComponentImports, type ComponentResolver } from "@pptcreater/pptx-component-transplant";
 import { z } from "zod";
 
 const require = createRequire(import.meta.url);
@@ -116,18 +117,18 @@ function renderCommand(slide: PptxSlide, command: DrawCommand): void {
     slide.addImage({ path: command.source, x, y, w, h, altText: command.altText, sizing: command.fit });
     return;
   }
-  if (command.kind === "group") return;
-  throw new Error(`Unsupported command ${command.kind}: Figure Catalog component import is not wired yet.`);
+  if (command.kind === "group" || command.kind === "importPptxComponent") return;
 }
 
 export function fragmentToCommands(fragmentInput: SlideFragment): DrawCommand[] {
   return SlideFragmentSchema.parse(fragmentInput).commands;
 }
 
-export async function renderSlideProgram(programInput: SlideProgram, outputPath: string, options: { allowPreflightIssues?: boolean } = {}): Promise<{ outputPath: string; issues: PreflightIssue[] }> {
+export async function renderSlideProgram(programInput: SlideProgram, outputPath: string, options: { allowPreflightIssues?: boolean; componentResolver?: ComponentResolver; workspaceRoot?: string } = {}): Promise<{ outputPath: string; issues: PreflightIssue[] }> {
   const program = SlideProgramSchema.parse(programInput);
   const issues = preflightSlideProgram(program);
-  if (issues.length && !options.allowPreflightIssues) throw new Error(`Slide Program preflight failed:\n${issues.map((issue) => `${issue.code} ${issue.slideId}/${issue.commandId ?? "slide"}: ${issue.message}`).join("\n")}`);
+  const blockingIssues = issues.filter((issue) => issue.code !== "unsupported-component-import" || !options.componentResolver);
+  if (blockingIssues.length && !options.allowPreflightIssues) throw new Error(`Slide Program preflight failed:\n${blockingIssues.map((issue) => `${issue.code} ${issue.slideId}/${issue.commandId ?? "slide"}: ${issue.message}`).join("\n")}`);
   const pptx = new PptxGenJSConstructor();
   pptx.layout = "LAYOUT_WIDE";
   pptx.author = "pptcreater Slide SDK";
@@ -144,5 +145,10 @@ export async function renderSlideProgram(programInput: SlideProgram, outputPath:
     if (notes) slide.addNotes(notes);
   }
   await pptx.writeFile({ fileName: outputPath });
+  const componentImports = program.slides.flatMap((slide, targetSlideIndex) => slide.commands.filter((command): command is Extract<DrawCommand, { kind: "importPptxComponent" }> => command.kind === "importPptxComponent").map((command) => ({ targetSlideIndex, command })));
+  if (componentImports.length) {
+    if (!options.componentResolver) throw new Error("Slide Program contains component imports but no componentResolver was provided.");
+    await applyComponentImports(outputPath, componentImports, options.componentResolver, { workspaceRoot: options.workspaceRoot });
+  }
   return { outputPath, issues };
 }

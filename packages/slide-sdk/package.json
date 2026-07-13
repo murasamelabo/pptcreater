@@ -9,8 +9,9 @@
   "scripts": { "build": "tsc -b" },
   "dependencies": {
     "@pptcreater/authoring-contracts": "0.5.44",
+    "@pptcreater/pptx-component-transplant": "0.5.44",
     "pptxgenjs": "^4.0.1",
     "zod": "^4.4.3"
   },
-  "devDependencies": { "@types/node": "^24.10.1", "typescript": "^5.9.3" }
+  "devDependencies": { "@pptcreater/figure-catalog": "0.5.44", "@types/node": "^24.10.1", "jszip": "^3.10.1", "typescript": "^5.9.3" }
 }

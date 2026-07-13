@@ -1,6 +1,7 @@
 ﻿import { access, readFile, readdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { SlideFragmentSchema, type Frame, type SlideFragment } from "@pptcreater/authoring-contracts";
+import type { ComponentResolver } from "@pptcreater/pptx-component-transplant";
 import { z } from "zod";
 
 const EditableGroupSchema = z.object({ id: z.string().min(1), axis: z.enum(["x", "y"]), layout: z.enum(["tree", "linear-x", "linear-y", "staircase-x", "radial"]).optional(), parentText: z.string().optional(), members: z.array(z.string()).min(1), connectorBetween: z.boolean().optional(), renumber: z.boolean().optional(), minBoxEmu: z.number().positive().optional() });
@@ -103,4 +104,12 @@ export function validateFigureInstance(fragmentInput: SlideFragment, entryInput:
   else if (fragment.commands[0].componentId !== entry.id) issues.push(`Fragment component ${fragment.commands[0].componentId} does not match ${entry.id}.`);
   if (!fragment.sourceRefs.length) issues.push("Figure instance has no source references.");
   return issues;
+}
+
+export function createCatalogComponentResolver(catalog: FigureCatalogEntry[]): ComponentResolver {
+  const entries = new Map(catalog.map((entry) => [entry.id, entry]));
+  return async (componentId) => {
+    const entry = entries.get(componentId);
+    return entry ? { componentId: entry.id, templatePath: entry.sourcePptxPath, sourceSlideIndex: entry.sourceSlideIndex } : undefined;
+  };
 }

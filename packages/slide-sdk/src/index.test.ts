@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { DesignBriefSchema, SlideFragmentSchema } from "@pptcreater/authoring-contracts";
+import { createCatalogComponentResolver, instantiateFigure, loadFigureCatalog } from "@pptcreater/figure-catalog";
 import { fragmentToCommands, preflightSlideProgram, renderSlideProgram, type SlideProgram } from "./index.js";
 
 const designBrief = DesignBriefSchema.parse({ id: "direct-light", locale: "ja-JP", mood: ["editorial", "precise"], paletteRoles: { background: "FBFAF7", text: "222222", accent: "A33B32" }, typography: { headingFont: "Yu Gothic", bodyFont: "Yu Gothic", cjkFallbacks: ["Meiryo"] }, spacing: { gridInches: 0.125, marginInches: 0.7, whitespace: "balanced" }, density: { targetVisibleChars: 240, maxVisibleChars: 520 }, do: ["Preserve prose"], dont: ["Force card grids"], referenceAssets: [] });
@@ -70,6 +71,31 @@ describe("slide sdk", () => {
     const program = sampleProgram();
     program.slides[0].commands.push({ id: "component", kind: "importPptxComponent", componentId: "flow-horizontal-p1", frame: { x: 1, y: 1, w: 10, h: 4 }, sourceRefs: [], replacements: {}, operations: [] });
     expect(preflightSlideProgram(program).map((issue) => issue.code)).toContain("unsupported-component-import");
+  });
+
+  it("transplants a real diagram encyclopedia component into the generated PPTX", async () => {
+    const catalog = await loadFigureCatalog();
+    const entry = catalog.find((item) => item.id === "flow-horizontal-p1")!;
+    const fragment = instantiateFigure(entry, { labels: ["Source", "Manuscript", "PPTX"], sourceRefs: ["src_1", "src_2", "src_3"] }, { x: 0, y: 0, w: 13.333, h: 7.5 });
+    const program = sampleProgram();
+    program.slides[1].commands = fragment.commands;
+    const directory = await mkdtemp(join(tmpdir(), "slide-sdk-component-"));
+    try {
+      const outputPath = join(directory, "component.pptx");
+      await renderSlideProgram(program, outputPath, { componentResolver: createCatalogComponentResolver(catalog), workspaceRoot: process.cwd() });
+      const bytes = await readFile(outputPath);
+      expect([...bytes.subarray(0, 4)]).toEqual([0x50, 0x4b, 0x03, 0x04]);
+      const JSZip = (await import("jszip")).default;
+      const zip = await JSZip.loadAsync(bytes);
+      const xml = await zip.file("ppt/slides/slide2.xml")!.async("string");
+      expect(xml).toContain("Source");
+      expect(xml).toContain("Manuscript");
+      expect(xml).toContain("PPTX");
+      expect(xml).not.toContain("テスト");
+      expect(xml).not.toContain("リリース");
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 
   it("accepts SlideFragment commands without a DeckSpec conversion", () => {
