@@ -9,6 +9,8 @@
     "src/**/*.ts"
   ],
   "references": [
+    { "path": "../source-notebook" },
+    { "path": "../figure-catalog" },
     {
       "path": "../core"
     },

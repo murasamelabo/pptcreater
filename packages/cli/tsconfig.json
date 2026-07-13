@@ -9,6 +9,10 @@
     "src/**/*.ts"
   ],
   "references": [
+    { "path": "../source-notebook" },
+    { "path": "../manuscript" },
+    { "path": "../figure-catalog" },
+    { "path": "../direct-authoring" },
     {
       "path": "../core"
     },

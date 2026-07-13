@@ -18,8 +18,12 @@
     "@pptcreater/assets-svg": "0.5.44",
     "@pptcreater/core": "0.5.44",
     "@pptcreater/diagram": "0.5.44",
+    "@pptcreater/direct-authoring": "0.5.44",
+    "@pptcreater/figure-catalog": "0.5.44",
+    "@pptcreater/manuscript": "0.5.44",
     "@pptcreater/render-pptx": "0.5.44",
     "@pptcreater/studio": "0.5.44",
+    "@pptcreater/source-notebook": "0.5.44",
     "commander": "^15.0.0",
     "playwright-core": "^1.61.1"
   },

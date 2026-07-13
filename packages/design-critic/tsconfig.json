@@ -1,0 +1,6 @@
+﻿{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "composite": true, "rootDir": "src", "outDir": "dist" },
+  "references": [{ "path": "../authoring-contracts" }, { "path": "../source-notebook" }, { "path": "../manuscript" }, { "path": "../slide-sdk" }],
+  "include": ["src/**/*.ts"]
+}

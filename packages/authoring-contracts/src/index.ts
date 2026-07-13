@@ -110,7 +110,7 @@ export const DesignBriefSchema = z.object({
 });
 export type DesignBrief = z.infer<typeof DesignBriefSchema>;
 
-export const VisualDefectSchema = z.enum(["overlap", "truncation", "distortion", "contrast", "alignment", "bad-line-break", "missing-media", "semantic-figure-mismatch"]);
+export const VisualDefectSchema = z.enum(["source-fidelity", "overlap", "truncation", "distortion", "contrast", "alignment", "bad-line-break", "missing-media", "semantic-figure-mismatch"]);
 export type VisualDefect = z.infer<typeof VisualDefectSchema>;
 
 export const CriticRequestSchema = z.object({

@@ -113,6 +113,7 @@ Output contains typed visual defects, scores, slide findings, and revision brief
 
 Blocking defect types are:
 
+- source fidelity loss;
 - overlap;
 - truncation;
 - distortion;
@@ -209,6 +210,27 @@ The next Phase 2 slice is `@pptcreater/pptx-component-transplant`: a DeckSpec-in
 engine used by Slide SDK after base PPTX generation. The new authoring dependency graph must never
 route through the legacy `@pptcreater/render-pptx` entry point because that package imports core
 DeckSpec types.
+
+## Phase 3/4 Critic And Opt-In Orchestrator
+
+`@pptcreater/design-critic` applies deterministic manuscript coverage, program source-reference,
+text preflight, semantic figure-brief, and PPTX package-integrity gates. Its revision briefs target
+Slide Program source IDs; generated PowerPoint objects are never patched as the primary fix.
+
+`@pptcreater/direct-authoring` compiles an edited Deck Manuscript into a Slide Program through an
+injectable `SlideComposer`, optionally instantiates Figure Catalog fragments, renders with Slide
+SDK, and runs Design Critic. The default composer is intentionally modest and prose-preserving; an
+LLM or human program author can replace it slide by slide without changing the manuscript or
+coverage contract.
+
+```powershell
+npm run author:direct -- generated/source-notebook.json edited-manuscript.json output.pptx
+```
+
+This path remains opt-in. `from-markdown` cannot switch defaults until the frozen blind human
+benchmark reaches the migration gate. The 168-slide XAA lossless draft is an editorial starting
+point, not an acceptable automatic final deck; a manuscript author must merge it into a natural
+narrative before direct rendering.
 
 ## Rollback
 

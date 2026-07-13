@@ -1,0 +1,6 @@
+﻿{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "composite": true, "rootDir": "src", "outDir": "dist" },
+  "references": [{ "path": "../authoring-contracts" }, { "path": "../source-notebook" }, { "path": "../manuscript" }, { "path": "../pptx-component-transplant" }, { "path": "../figure-catalog" }, { "path": "../slide-sdk" }, { "path": "../design-critic" }],
+  "include": ["src/**/*.ts"]
+}

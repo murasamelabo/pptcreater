@@ -342,11 +342,29 @@ async function upsertInstruction(root: string, path: string, blockStart: string,
 }
 
 /**
- * The six deck-building custom agents, kept in sync with the repository's `.github/agents/*.agent.md`
+ * The deck-building custom agents, kept in sync with the repository's `.github/agents/*.agent.md`
  * files. They are embedded here (rather than read from disk) so `pptcreater install-*` works from a
  * published npm package where the source `.github` directory is not shipped.
  */
 export const DECK_AGENTS: ReadonlyArray<{ file: string; contents: string }> = [
+  {
+    file: "deck-manuscript-author.agent.md",
+    contents: `---
+description: 'Edits a lossless Source Notebook draft into a natural, source-complete Deck Manuscript before any layout or figure is selected.'
+name: 'Deck Manuscript Author'
+tools: ['edit', 'search', 'pptcreater']
+---
+
+# Deck Manuscript Author
+
+Use the opt-in direct-authoring path only after creating a Source Notebook. Edit the lossless draft
+into a natural reader journey with complete takeaways and visible prose. Preserve SourceAnchor ids,
+record every keep/merge/split/omit decision with a reason, and block on incomplete manuscript
+coverage. Do not choose DeckSpec layouts, visual grammar ids, card counts, row caps, or coordinates.
+A FigureBrief is optional; no figure is a valid choice. Never render the lossless one-source-block-
+per-slide draft as a final deck. Hand the edited manuscript to the Program Author.
+`
+  },
   {
     file: "deck-director.agent.md",
     contents: `---

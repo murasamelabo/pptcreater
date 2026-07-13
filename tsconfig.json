@@ -20,6 +20,12 @@
       "path": "./packages/slide-sdk"
     },
     {
+      "path": "./packages/design-critic"
+    },
+    {
+      "path": "./packages/direct-authoring"
+    },
+    {
       "path": "./packages/core"
     },
     {

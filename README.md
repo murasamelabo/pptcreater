@@ -180,6 +180,21 @@ The next-generation authoring rebuild is specified in
 Phase 0 package, `@pptcreater/authoring-contracts`, freezes DeckSpec-independent source, fragment,
 design-brief, critic, and benchmark contracts and includes a direct PptxGenJS architecture spike.
 
+The opt-in implementation now includes Source Notebook, Deck Manuscript, Slide SDK, Figure Catalog,
+editable PowerPoint component transplant, Design Critic, and direct-authoring orchestration:
+
+```powershell
+pptcreater source-notebook source.md -o notebook.json
+pptcreater manuscript-lossless notebook.json -o manuscript.json --markdown manuscript.md
+# Edit manuscript.json into a natural source-complete narrative before rendering.
+pptcreater figures-v2 --need "工程 手順" --shape sequence --items 5
+pptcreater direct-author notebook.json manuscript.json -o output.pptx --report critic.json --program program.json
+```
+
+The lossless manuscript is an editorial starting point, not a final deck. The legacy pipeline stays
+the default until the frozen blind human benchmark passes; quality proxy scores cannot authorize the
+switch.
+
 For improving pptcreater itself, use the development-loop architecture in
 [`docs/dev-loop-architecture.md`](docs/dev-loop-architecture.md). It is intentionally separate from
 the deck-authoring agent team: the development loop uses a Dev Lead, User Simulator, Evaluator, and

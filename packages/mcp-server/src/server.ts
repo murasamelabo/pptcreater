@@ -5,6 +5,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, resolveIconForKeyword, searchAllSvgAssets, suggestIconForKeyword } from "@pptcreater/assets-svg";
 import { DiagramIntentSchema, SCHEMATIC_KIND_CATALOG, SCHEMATIC_MODE_TEMPLATES, SCHEMATIC_STYLE_PRESETS, SchematicKindSchema, SchematicToneSchema, renderDiagramIntent, renderNativePonchiDiagram, renderNativeSchematicDiagram, renderPonchiDiagram, renderSchematicDiagram, schematicPresetForStyleProfile, schematicTemplatesForStyleProfile } from "@pptcreater/diagram";
+import { FigureDataShapeSchema, loadFigureCatalog, searchFigures } from "@pptcreater/figure-catalog";
+import { notebookCoverage, parseMarkdownToSourceNotebook } from "@pptcreater/source-notebook";
 import {
   applyTemplateContentDesign,
   BUSINESS_STYLE_MODES,
@@ -828,6 +830,54 @@ export function createPptcreaterMcpServer(): McpServer {
     },
     async ({ locale, purpose, audience, slideCount, contentMode, styleProfile }) =>
       jsonText(createSampleDeck(locale, { purpose, audience, slideCount, contentMode, styleProfile }))
+  );
+
+  server.registerTool(
+    "create_source_notebook",
+    {
+      title: "Create Source Notebook",
+      description: "Parse Markdown into ordered source blocks without choosing slides, layouts, evidence counts, or visual grammars. Use this as the first stage of the opt-in direct-authoring rebuild.",
+      inputSchema: {
+        markdown: z.string().min(1).max(10 * 1024 * 1024),
+        sourceUri: z.string().min(1),
+        title: z.string().optional()
+      }
+    },
+    async ({ markdown, sourceUri, title }) => {
+      const notebook = parseMarkdownToSourceNotebook(markdown, { sourceUri, title });
+      return jsonText({ notebook, coverage: notebookCoverage(notebook) });
+    }
+  );
+
+  server.registerTool(
+    "search_figure_catalog_v2",
+    {
+      title: "Search Figure Catalog v2",
+      description: "Search the DeckSpec-independent diagram encyclopedia. Results are optional candidates; no figure is required merely because one exists.",
+      inputSchema: {
+        semanticNeed: z.string().optional(),
+        dataShape: FigureDataShapeSchema.optional(),
+        itemCount: z.number().int().positive().optional(),
+        tone: z.enum(["light", "dark"]).optional(),
+        limit: z.number().int().min(1).max(30).default(12)
+      }
+    },
+    async (query) => jsonText(searchFigures(await loadFigureCatalog(), query))
+  );
+
+  server.registerTool(
+    "get_direct_authoring_rebuild_status",
+    {
+      title: "Get Direct Authoring Rebuild Status",
+      description: "Return the implemented direct-authoring stages and the migration gate. This path remains opt-in until blind human benchmarks pass.",
+      inputSchema: {}
+    },
+    async () => jsonText({
+      status: "opt-in",
+      stages: ["Source Notebook", "Deck Manuscript", "Slide Program", "Figure Catalog", "PPTX component transplant", "Design Critic"],
+      defaultSwitchBlockedBy: ["blind human benchmark", "edited manuscript authoring", "relationship-aware component transplant completeness"],
+      guidance: "Author and review a complete Deck Manuscript before generating a Slide Program. Do not render the lossless draft as a final deck."
+    })
   );
 
   server.registerTool(

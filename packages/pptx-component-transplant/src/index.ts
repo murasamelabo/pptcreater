@@ -3,6 +3,10 @@ import { extname, relative, resolve } from "node:path";
 import { type DrawCommand } from "@pptcreater/authoring-contracts";
 import JSZip from "jszip";
 
+const MAX_SOURCE_ZIP_ENTRIES = 2000;
+const MAX_TARGET_ZIP_ENTRIES = 10000;
+const MAX_SLIDE_XML_CHARS = 5_000_000;
+
 export type ComponentSource = {
   componentId: string;
   templatePath: string;
@@ -94,17 +98,21 @@ export async function applyComponentImports(pptxPath: string, imports: Component
   if (!imports.length) return;
   const workspaceRoot = options.workspaceRoot ?? process.cwd();
   const targetZip = await JSZip.loadAsync(await readFile(pptxPath));
+  if (Object.keys(targetZip.files).length > MAX_TARGET_ZIP_ENTRIES) throw new Error(`Target PPTX exceeds ${MAX_TARGET_ZIP_ENTRIES} package entries.`);
   for (const item of imports) {
     const source = await resolver(item.command.componentId);
     if (!source) throw new Error(`Unknown figure component ${item.command.componentId}.`);
     const templatePath = await safeTemplatePath(source.templatePath, workspaceRoot);
     const sourceZip = await JSZip.loadAsync(await readFile(templatePath));
+    if (Object.keys(sourceZip.files).length > MAX_SOURCE_ZIP_ENTRIES) throw new Error(`Component package exceeds ${MAX_SOURCE_ZIP_ENTRIES} entries.`);
     const sourceEntry = sourceZip.file(`ppt/slides/slide${source.sourceSlideIndex}.xml`);
     const targetEntry = targetZip.file(`ppt/slides/slide${item.targetSlideIndex + 1}.xml`);
     if (!sourceEntry || !targetEntry) throw new Error("Source or target slide XML is missing.");
     const sourceXml = await sourceEntry.async("string");
+    if (sourceXml.length > MAX_SLIDE_XML_CHARS) throw new Error(`Component slide XML exceeds ${MAX_SLIDE_XML_CHARS} characters.`);
     if (/\br:(?:embed|link|id)="/u.test(sourceXml)) throw new Error(`Component ${source.componentId} has relationships; use the full relationship-aware transplant engine.`);
     const targetXml = await targetEntry.async("string");
+    if (targetXml.length > MAX_SLIDE_XML_CHARS) throw new Error(`Target slide XML exceeds ${MAX_SLIDE_XML_CHARS} characters.`);
     const sourceTree = spTreeParts(sourceXml);
     let blocks = topLevelBlocks(sourceTree.children);
     blocks = applyOperations(blocks, item.command.operations).map((block) => replaceText(block, item.command.replacements));

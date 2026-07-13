@@ -1,10 +1,14 @@
 ﻿#!/usr/bin/env node
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname } from "node:path";
 import { Command, InvalidArgumentError, Option } from "commander";
 import { BUILTIN_ICON_NAMES, createSimpleIconSvg, getDefaultSvgRegistryPath, listIconSourceCatalogs, registerSvgAsset, resolveIconForKeyword, searchAllSvgAssets, suggestIconForKeyword, type BuiltinIconName } from "@pptcreater/assets-svg";
 import { SCHEMATIC_KIND_CATALOG, SCHEMATIC_MODE_TEMPLATES, SCHEMATIC_STYLE_PRESETS, renderDiagramIntent, renderNativePonchiDiagram, renderPonchiDiagram, renderSchematicDiagram, schematicPresetForStyleProfile, schematicTemplatesForStyleProfile } from "@pptcreater/diagram";
+import { runDirectAuthoring } from "@pptcreater/direct-authoring";
+import { loadFigureCatalog, searchFigures } from "@pptcreater/figure-catalog";
+import { createLosslessManuscriptDraft, DeckManuscriptSchema, serializeDeckManuscript } from "@pptcreater/manuscript";
+import { notebookCoverage, parseMarkdownToSourceNotebook, SourceNotebookSchema } from "@pptcreater/source-notebook";
 import {
   applyTemplateContentDesign,
   BUSINESS_STYLE_MODES,
@@ -96,7 +100,7 @@ async function readJson(path: string): Promise<unknown> {
 
 async function writeJson(path: string, value: unknown): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  await writeFile(path, `\uFEFF${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
 type DeckSource = DeckSpec["metadata"]["sources"][number];
@@ -2271,6 +2275,73 @@ program
   .action(commandAction((options: { json: boolean }) => {
     const skills = listSkillPacks();
     console.log(options.json ? JSON.stringify(skills, null, 2) : skills.map((skill) => `${skill.id}\t${skill.name}`).join("\n"));
+  }));
+
+program
+  .command("source-notebook")
+  .description("Parse Markdown into a lossless, non-slide-shaped Source Notebook.")
+  .argument("<markdown>", "Source Markdown path")
+  .requiredOption("-o, --output <path>", "Output Source Notebook JSON")
+  .action(commandAction(async (markdownPath: string, options: { output: string }) => {
+    const notebook = parseMarkdownToSourceNotebook(await readFile(markdownPath, "utf8"), { sourceUri: markdownPath });
+    await writeJson(options.output, notebook);
+    console.log(JSON.stringify({ outputPath: options.output, sourceHash: notebook.sourceHash, blocks: notebook.blocks.length, coverage: notebookCoverage(notebook), warnings: notebook.parseWarnings.length }, null, 2));
+  }));
+
+program
+  .command("manuscript-lossless")
+  .description("Create a source-complete editorial starting manuscript; this is not a finished deck outline.")
+  .argument("<notebook>", "Source Notebook JSON")
+  .requiredOption("-o, --output <path>", "Output Deck Manuscript JSON")
+  .option("--markdown <path>", "Optional human-readable manuscript Markdown output")
+  .option("--audience <text>", "Audience", "Manuscript reviewer")
+  .option("--purpose <text>", "Purpose", "Preserve source content before editorial planning")
+  .option("--action <text>", "Desired action", "Review and merge source units into a natural narrative")
+  .action(commandAction(async (notebookPath: string, options: { output: string; markdown?: string; audience: string; purpose: string; action: string }) => {
+    const notebook = SourceNotebookSchema.parse(await readJson(notebookPath));
+    const manuscript = createLosslessManuscriptDraft(notebook, { audience: options.audience, purpose: options.purpose, desiredAction: options.action });
+    await writeJson(options.output, manuscript);
+    if (options.markdown) await writeFile(options.markdown, serializeDeckManuscript(manuscript), "utf8");
+    console.log(JSON.stringify({ outputPath: options.output, markdownPath: options.markdown, chapters: manuscript.chapters.length, slides: manuscript.chapters.flatMap((chapter) => chapter.slides).length }, null, 2));
+  }));
+
+program
+  .command("figures-v2")
+  .description("Search the DeckSpec-independent Figure Catalog.")
+  .option("--need <text>", "Semantic need")
+  .option("--shape <shape>", "sequence, comparison, hierarchy, relationship, matrix, cycle, timeline, list, formula, custom")
+  .option("--items <count>", "Item count", (value) => Number(value))
+  .option("--limit <count>", "Maximum results", (value) => Number(value), 12)
+  .action(commandAction(async (options: { need?: string; shape?: string; items?: number; limit: number }) => {
+    const catalog = await loadFigureCatalog();
+    const dataShape = options.shape as Parameters<typeof searchFigures>[1]["dataShape"];
+    console.log(JSON.stringify(searchFigures(catalog, { semanticNeed: options.need, dataShape, itemCount: options.items, limit: options.limit }), null, 2));
+  }));
+
+program
+  .command("direct-author")
+  .description("Render an edited Deck Manuscript through the opt-in direct-authoring pipeline.")
+  .argument("<notebook>", "Source Notebook JSON")
+  .argument("<manuscript>", "Edited Deck Manuscript JSON")
+  .requiredOption("-o, --output <path>", "Output PPTX")
+  .option("--force", "Overwrite an existing output PPTX", false)
+  .option("--report <path>", "Critic report JSON")
+  .option("--program <path>", "Compiled Slide Program JSON")
+  .action(commandAction(async (notebookPath: string, manuscriptPath: string, options: { output: string; report?: string; program?: string; force: boolean }) => {
+    try {
+      await lstat(options.output);
+      if (!options.force) throw new Error(`Output already exists: ${options.output}. Pass --force to overwrite it.`);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT" && !(error instanceof Error && error.message.startsWith("Output already exists:"))) throw error;
+      if (error instanceof Error && error.message.startsWith("Output already exists:")) throw error;
+    }
+    const notebook = SourceNotebookSchema.parse(await readJson(notebookPath));
+    const manuscript = DeckManuscriptSchema.parse(await readJson(manuscriptPath));
+    const result = await runDirectAuthoring({ notebook, manuscript, outputPath: options.output });
+    if (options.report) await writeJson(options.report, result.critic);
+    if (options.program) await writeJson(options.program, result.program);
+    console.log(JSON.stringify({ outputPath: result.outputPath, reportPath: options.report, programPath: options.program, slides: result.program.slides.length, defects: result.critic.defects.length, humanReviewNeeded: result.critic.humanReviewNeeded }, null, 2));
+    if (result.critic.defects.some((defect) => defect.severity === "blocking")) process.exitCode = 1;
   }));
 
 await program.parseAsync();

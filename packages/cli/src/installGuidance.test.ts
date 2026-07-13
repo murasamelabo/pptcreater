@@ -61,19 +61,19 @@ describe("installGuidance", () => {
     await expect(readFile(join(targetDir, ".github", "copilot-instructions.md"), "utf8")).rejects.toThrow();
   });
 
-  it("installs the six deck-building custom agents", async () => {
+  it("installs the seven deck-building custom agents", async () => {
     const targetDir = await mkdtemp(join(tmpdir(), "pptcreater-agents-"));
 
     const result = await installGuidance("copilot", { targetDir });
 
-    expect(result.agentPaths).toHaveLength(6);
+    expect(result.agentPaths).toHaveLength(7);
     const director = await readFile(join(targetDir, ".github", "agents", "deck-director.agent.md"), "utf8");
     expect(director).toContain("name: 'Deck Director'");
     expect(director).toContain("review_deck");
     const reviewer = await readFile(join(targetDir, ".github", "agents", "deck-reviewer.agent.md"), "utf8");
     expect(reviewer).toContain("review_slide_quality");
     expect(reviewer).toContain("D1-D9");
-    // All six agent files exist with frontmatter.
+    // All seven agent files exist with frontmatter.
     for (const file of [
       "deck-director.agent.md",
       "deck-story-architect.agent.md",

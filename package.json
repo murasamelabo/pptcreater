@@ -24,6 +24,7 @@
     "spike:direct-authoring": "npm run build && node scripts/run-direct-authoring-spike.mjs",
     "source:notebook": "npm run build && node scripts/create-source-notebook.mjs",
     "manuscript:lossless": "npm run build && node scripts/create-lossless-manuscript.mjs",
+    "author:direct": "npm run build && node scripts/run-direct-authoring.mjs",
     "dev-loop": "node scripts/run-dev-loop.mjs",
     "studio": "node ./packages/cli/dist/index.js studio ./examples/deck.ja.json --output ./generated/studio.html"
   },
