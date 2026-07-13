@@ -165,6 +165,21 @@ node scripts/run-direct-authoring-spike.mjs <source.md> generated/direct-authori
 
 The spike is intentionally small. Its purpose is to prove that direct slide code and the new contracts compile and render without importing MessageSpec, SlideIntent, DeckMessageMap, or DeckSpec. It is not the final Slide SDK or an automated manuscript author.
 
+## Phase 1 Source Notebook
+
+`@pptcreater/source-notebook` parses Markdown into ordered, non-slide-shaped source blocks. It
+preserves headings, paragraphs, list items, tables, fenced code, quotes, images, citations, and
+inline marks. Every block receives a content-addressed SourceAnchor. Whitespace-only changes keep
+the ID; content edits at the same structural position create a new ID with `previousId` lineage.
+
+```powershell
+npm run source:notebook -- <source.md> generated/source-notebook.json
+```
+
+The notebook stores normalized source text for exact normalized round-trip. A one-way adapter can
+ingest the information still present in a legacy DocSpec, but the warning on that notebook makes
+clear that discarded Markdown syntax cannot be recovered.
+
 ## Rollback
 
 All rebuild phases are additive until default routing changes. Legacy CLI/MCP behavior remains available for at least two releases after migration. Failure to match the direct-authoring benchmark does not justify weakening acceptance criteria; the fallback is Manuscript plus a constrained layout DSL, not MessageSpec v2.

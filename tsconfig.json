@@ -5,6 +5,9 @@
       "path": "./packages/authoring-contracts"
     },
     {
+      "path": "./packages/source-notebook"
+    },
+    {
       "path": "./packages/core"
     },
     {

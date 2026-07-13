@@ -22,6 +22,7 @@
     "sample:tree-design": "npm run build && node scripts/generate-tree-design-gallery.mjs",
     "sample:zukai-design": "npm run build && node scripts/generate-zukai-gallery.mjs",
     "spike:direct-authoring": "npm run build && node scripts/run-direct-authoring-spike.mjs",
+    "source:notebook": "npm run build && node scripts/create-source-notebook.mjs",
     "dev-loop": "node scripts/run-dev-loop.mjs",
     "studio": "node ./packages/cli/dist/index.js studio ./examples/deck.ja.json --output ./generated/studio.html"
   },
