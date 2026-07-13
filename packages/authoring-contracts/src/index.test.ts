@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   BenchmarkManifestSchema,
   CriticResponseSchema,
+  DesignBriefSchema,
   SlideFragmentSchema,
   createSourceAnchor,
   renderDirectAuthoringSpike
@@ -72,6 +73,25 @@ describe("direct authoring architecture contracts", () => {
     });
 
     expect(response.revisionBriefs[0].programSourceId).toContain("program.ts");
+  });
+
+  it("records external design references as principles rather than copyable assets", () => {
+    const brief = DesignBriefSchema.parse({
+      id: "editorial-reference",
+      locale: "ja-JP",
+      typography: { headingFont: "Yu Gothic", bodyFont: "Yu Gothic", cjkFallbacks: [] },
+      spacing: { gridInches: 0.125, marginInches: 0.7, whitespace: "generous" },
+      density: { targetVisibleChars: 240, maxVisibleChars: 520 },
+      referenceProfiles: [{
+        id: "slideland-recommendation",
+        sourceUrl: "https://www.slideland.tech/docs/recommendation",
+        principles: ["Lead with one claim", "Separate the focal visual from support copy"],
+        applicableRoles: ["prose", "comparison"]
+      }]
+    });
+
+    expect(brief.referenceProfiles[0].inspirationOnly).toBe(true);
+    expect(brief.referenceProfiles[0].prohibitedCopying).toEqual(["text", "brand assets", "illustrations", "exact layout"]);
   });
 
   it("loads the frozen benchmark manifest", async () => {

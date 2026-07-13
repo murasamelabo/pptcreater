@@ -50,6 +50,29 @@ describe("direct authoring orchestrator", () => {
     expect(program.slides.every((slide) => slide.commands[0].kind === "text" && slide.commands[0].text.startsWith("CUSTOM:"))).toBe(true);
   });
 
+  it("propagates design reference profiles to the program and composer", async () => {
+    const { notebook, manuscript } = editedFixture();
+    let composerProfileId = "";
+    const designBrief = {
+      id: "slideland-inspired",
+      locale: "ja-JP" as const,
+      mood: ["editorial"],
+      paletteRoles: {},
+      typography: { headingFont: "Yu Gothic", bodyFont: "Yu Gothic", cjkFallbacks: [] },
+      spacing: { gridInches: 0.125, marginInches: 0.7, whitespace: "generous" as const },
+      density: { targetVisibleChars: 240, maxVisibleChars: 520 },
+      do: [], dont: [], referenceAssets: [],
+      referenceProfiles: [{ id: "slideland", sourceUrl: "https://www.slideland.tech/docs/recommendation", principles: ["Lead with one claim"] }]
+    };
+    const program = await compileManuscriptToSlideProgram({ notebook, manuscript, catalog: [], designBrief, composer: (slide, _index, context) => {
+      composerProfileId = context.designBrief.referenceProfiles[0].id;
+      return { id: slide.id, title: slide.title, background: "FFFFFF", sourceRefs: slide.sourceRefs, notes: [], commands: [{ id: `${slide.id}-title`, kind: "text", role: "title", text: slide.title, frame: { x: 1, y: 1, w: 10, h: 1 }, sourceRefs: slide.sourceRefs, style: {} }] };
+    } });
+    expect(composerProfileId).toBe("slideland");
+    expect(program.designBrief.referenceProfiles[0].principles).toEqual(["Lead with one claim"]);
+    expect(program.designBrief.referenceProfiles[0].inspirationOnly).toBe(true);
+  });
+
   it("does not import legacy authoring packages", async () => {
     const source = await readFile(resolve("packages/direct-authoring/src/index.ts"), "utf8");
     const imports = source.split(/\r?\n/u).filter((line) => /^import\s/u.test(line)).join("\n");

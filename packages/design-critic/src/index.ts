@@ -45,6 +45,20 @@ export async function critiqueDirectAuthoring(input: CriticInput): Promise<Criti
     const result = finding(issue.slideId, `${issue.slideId}/${issue.commandId ?? "slide"}`, type, "blocking", issue.message, "Revise the Slide Program command geometry or copy; do not patch generated PPTX objects.");
     defects.push(result.defect); revisionBriefs.push(result.revision);
   }
+  for (const slide of program.slides) {
+    const proseCommands = slide.commands.filter((command) => command.kind === "text" && command.role === "body" && [...command.text].length >= 180);
+    const oversizedProse = proseCommands.find((command) => command.frame.w * command.frame.h >= 13.333 * 7.5 * 0.45);
+    if (!oversizedProse || oversizedProse.kind !== "text") continue;
+    const proseResult = finding(slide.id, `${slide.id}/${oversizedProse.id}`, "single-large-prose-container", "advisory", `Body command ${oversizedProse.id} contains ${[...oversizedProse.text].length} characters and occupies at least 45% of the slide.`, "Turn the main claim into a focal visual or comparison, then move definitions and evidence into separate support regions.");
+    defects.push(proseResult.defect); revisionBriefs.push(proseResult.revision);
+    const structuralShapes = slide.commands.filter((command) => command.kind === "shape" && command.shape !== "line").length;
+    const hasConnectedDiagram = structuralShapes >= 2 && slide.commands.some((command) => command.kind === "connector");
+    const hasFocalVisual = structuralShapes >= 3 || hasConnectedDiagram || slide.commands.some((command) => command.kind === "image" || command.kind === "importPptxComponent");
+    if (!hasFocalVisual) {
+      const focalResult = finding(slide.id, slide.id, "missing-focal-visual", "advisory", "The slide relies on one dominant prose region without a diagram, comparison, image, or multi-region composition.", "Create one immediately scannable visual statement that communicates the takeaway before the support copy is read.");
+      defects.push(focalResult.defect); revisionBriefs.push(focalResult.revision);
+    }
+  }
   for (const slide of manuscript.chapters.flatMap((chapter) => chapter.slides)) {
     const bodyChars = [...slide.visibleBody.join("")].length;
     const findings: string[] = [];

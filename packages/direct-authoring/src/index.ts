@@ -1,5 +1,5 @@
 ﻿import { writeFile } from "node:fs/promises";
-import { DesignBriefSchema, type DrawCommand, type SlideFragment } from "@pptcreater/authoring-contracts";
+import { DesignBriefSchema, type DesignBriefInput, type DrawCommand, type SlideFragment } from "@pptcreater/authoring-contracts";
 import { critiqueDirectAuthoring } from "@pptcreater/design-critic";
 import { createCatalogComponentResolver, instantiateFigure, loadFigureCatalog, searchFigures, type FigureCatalogEntry } from "@pptcreater/figure-catalog";
 import { assertCompleteManuscriptCoverage, DeckManuscriptSchema, serializeDeckManuscript, type DeckManuscript, type ManuscriptSlide } from "@pptcreater/manuscript";
@@ -39,12 +39,12 @@ export const defaultSlideComposer: SlideComposer = async (slide, index, context)
   return { id: slide.id, title: slide.title, background: "FBFAF7", sourceRefs: slide.sourceRefs, notes: slide.notes, commands };
 };
 
-export async function compileManuscriptToSlideProgram(input: { notebook: SourceNotebook; manuscript: DeckManuscript; composer?: SlideComposer; catalog?: FigureCatalogEntry[] }): Promise<SlideProgram> {
+export async function compileManuscriptToSlideProgram(input: { notebook: SourceNotebook; manuscript: DeckManuscript; composer?: SlideComposer; catalog?: FigureCatalogEntry[]; designBrief?: DesignBriefInput }): Promise<SlideProgram> {
   const notebook = SourceNotebookSchema.parse(input.notebook);
   const manuscript = DeckManuscriptSchema.parse(input.manuscript);
   assertCompleteManuscriptCoverage(notebook, manuscript);
   const catalog = input.catalog ?? await loadFigureCatalog();
-  const designBrief = DesignBriefSchema.parse({ id: "direct-authoring-default", locale: "ja-JP", mood: ["editorial", "precise"], paletteRoles: { background: "FBFAF7", text: "222222", accent: "A33B32" }, typography: { headingFont: "Yu Gothic", bodyFont: "Yu Gothic", cjkFallbacks: ["Meiryo"] }, spacing: { gridInches: 0.125, marginInches: 0.7, whitespace: "balanced" }, density: { targetVisibleChars: 240, maxVisibleChars: 520 }, do: ["Preserve complete prose", "Use figures only when semantic"], dont: ["Force card grids", "Fragment sentences"], referenceAssets: [] });
+  const designBrief = DesignBriefSchema.parse(input.designBrief ?? { id: "direct-authoring-default", locale: "ja-JP", mood: ["editorial", "precise"], paletteRoles: { background: "FBFAF7", text: "222222", accent: "A33B32" }, typography: { headingFont: "Yu Gothic", bodyFont: "Yu Gothic", cjkFallbacks: ["Meiryo"] }, spacing: { gridInches: 0.125, marginInches: 0.7, whitespace: "balanced" }, density: { targetVisibleChars: 240, maxVisibleChars: 520 }, do: ["Preserve complete prose", "Use figures only when semantic"], dont: ["Force card grids", "Fragment sentences"], referenceAssets: [] });
   const context: ProgramAuthorContext = { manuscript, notebook, catalog, designBrief };
   const composer = input.composer ?? defaultSlideComposer;
   const manuscriptSlides = manuscript.chapters.flatMap((chapter) => chapter.slides.map((slide, slideIndex) => slideIndex === 0 ? { ...slide, sourceRefs: [...new Set([...chapter.sourceRefs, ...slide.sourceRefs])] } : slide));
@@ -53,9 +53,9 @@ export async function compileManuscriptToSlideProgram(input: { notebook: SourceN
   return { version: "1.0", id: `${notebook.sourceHash}-program`, title: manuscript.title, locale: designBrief.locale, designBrief, slides };
 }
 
-export async function runDirectAuthoring(input: { notebook: SourceNotebook; manuscript: DeckManuscript; outputPath: string; manuscriptOutputPath?: string; composer?: SlideComposer }): Promise<{ program: SlideProgram; critic: Awaited<ReturnType<typeof critiqueDirectAuthoring>>; outputPath: string }> {
+export async function runDirectAuthoring(input: { notebook: SourceNotebook; manuscript: DeckManuscript; outputPath: string; manuscriptOutputPath?: string; composer?: SlideComposer; designBrief?: DesignBriefInput }): Promise<{ program: SlideProgram; critic: Awaited<ReturnType<typeof critiqueDirectAuthoring>>; outputPath: string }> {
   const catalog = await loadFigureCatalog();
-  const program = await compileManuscriptToSlideProgram({ notebook: input.notebook, manuscript: input.manuscript, composer: input.composer, catalog });
+  const program = await compileManuscriptToSlideProgram({ notebook: input.notebook, manuscript: input.manuscript, composer: input.composer, catalog, designBrief: input.designBrief });
   await renderSlideProgram(program, input.outputPath, { componentResolver: createCatalogComponentResolver(catalog), workspaceRoot: process.cwd() });
   const critic = await critiqueDirectAuthoring({ notebook: input.notebook, manuscript: input.manuscript, program, pptxPath: input.outputPath });
   if (input.manuscriptOutputPath) await writeFile(input.manuscriptOutputPath, serializeDeckManuscript(input.manuscript), "utf8");

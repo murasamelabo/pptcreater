@@ -106,11 +106,20 @@ export const DesignBriefSchema = z.object({
   density: z.object({ targetVisibleChars: z.number().int().positive(), maxVisibleChars: z.number().int().positive() }),
   do: z.array(z.string()).default([]),
   dont: z.array(z.string()).default([]),
-  referenceAssets: z.array(z.string()).default([])
+  referenceAssets: z.array(z.string()).default([]),
+  referenceProfiles: z.array(z.object({
+    id: z.string().min(1),
+    sourceUrl: z.string().url(),
+    inspirationOnly: z.boolean().default(true),
+    principles: z.array(z.string().min(1)).min(1),
+    applicableRoles: z.array(z.enum(["cover", "agenda", "section", "prose", "comparison", "process", "table", "summary"])).default([]),
+    prohibitedCopying: z.array(z.string().min(1)).default(["text", "brand assets", "illustrations", "exact layout"])
+  })).default([])
 });
+export type DesignBriefInput = z.input<typeof DesignBriefSchema>;
 export type DesignBrief = z.infer<typeof DesignBriefSchema>;
 
-export const VisualDefectSchema = z.enum(["source-fidelity", "overlap", "truncation", "distortion", "contrast", "alignment", "bad-line-break", "missing-media", "semantic-figure-mismatch"]);
+export const VisualDefectSchema = z.enum(["source-fidelity", "overlap", "truncation", "distortion", "contrast", "alignment", "bad-line-break", "missing-media", "semantic-figure-mismatch", "single-large-prose-container", "missing-focal-visual"]);
 export type VisualDefect = z.infer<typeof VisualDefectSchema>;
 
 export const CriticRequestSchema = z.object({

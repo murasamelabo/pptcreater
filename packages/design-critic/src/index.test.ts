@@ -54,4 +54,28 @@ describe("design critic", () => {
     const report = await critiqueDirectAuthoring({ notebook, manuscript, program });
     expect(report.defects).toEqual([]);
   });
+
+  it("advises against putting a concept slide into one large prose container", async () => {
+    const { notebook, manuscript, program } = fixture();
+    program.slides[0].commands = [{
+      id: "prose",
+      kind: "text",
+      role: "body",
+      text: "A long conceptual explanation. ".repeat(15),
+      frame: { x: 0.8, y: 1.8, w: 11.6, h: 4.5 },
+      sourceRefs: program.slides[0].sourceRefs,
+      style: {}
+    }];
+    const report = await critiqueDirectAuthoring({ notebook, manuscript, program });
+    expect(report.defects.map((defect) => defect.type)).toContain("single-large-prose-container");
+    expect(report.defects.map((defect) => defect.type)).toContain("missing-focal-visual");
+    expect(report.defects.find((defect) => defect.type === "single-large-prose-container")?.severity).toBe("advisory");
+  });
+
+  it("does not treat an incidental connector as a focal visual", async () => {
+    const { notebook, manuscript, program } = fixture();
+    program.slides[0].commands = [{ id: "prose", kind: "text", role: "body", text: "A long conceptual explanation. ".repeat(15), frame: { x: 0.8, y: 1.8, w: 11.6, h: 4.5 }, sourceRefs: program.slides[0].sourceRefs, style: {} }, { id: "incidental", kind: "connector", from: "prose", to: "prose", frame: { x: 1, y: 6.5, w: 1, h: 0.01 }, sourceRefs: [], style: {} }];
+    const report = await critiqueDirectAuthoring({ notebook, manuscript, program });
+    expect(report.defects.map((defect) => defect.type)).toContain("missing-focal-visual");
+  });
 });
